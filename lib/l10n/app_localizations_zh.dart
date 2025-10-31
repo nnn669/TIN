@@ -2292,7 +2292,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageFontLocalFileLabel => '本地文件';
 
   @override
-  String get displaySettingsPageFontResetLabel => '恢复字体默认设置';
+  String get displaySettingsPageFontResetLabel => '恢复默认';
 
   @override
   String get displaySettingsPageOtherSettingsTitle => '其他设置';
@@ -4964,7 +4964,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageFontLocalFileLabel => '本地文件';
 
   @override
-  String get displaySettingsPageFontResetLabel => '恢复字体默认设置';
+  String get displaySettingsPageFontResetLabel => '恢复默认';
 
   @override
   String get displaySettingsPageOtherSettingsTitle => '其他设置';
@@ -7635,7 +7635,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageFontLocalFileLabel => '本機檔案';
 
   @override
-  String get displaySettingsPageFontResetLabel => '回復字體預設設定';
+  String get displaySettingsPageFontResetLabel => '回復預設設定';
 
   @override
   String get displaySettingsPageOtherSettingsTitle => '其他設定';

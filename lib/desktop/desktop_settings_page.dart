@@ -3930,22 +3930,37 @@ class _DesktopAppFontRow extends StatelessWidget {
         : current;
     return _LabeledRow(
       label: l10n.desktopFontAppLabel,
-      trailing: _DesktopFontDropdownButton(
-        display: displayText,
-        onTap: () async {
-          final fam = await _showDesktopFontChooserDialog(
-            context,
-            title: l10n.desktopFontAppLabel,
-            initial: sp.appFontFamily,
-            showSystemDefault: true,
-          );
-          if (fam == null) return;
-          if (fam == '__SYSTEM__') {
-            await context.read<SettingsProvider>().clearAppFont();
-          } else {
-            await context.read<SettingsProvider>().setAppFontSystemFamily(fam);
-          }
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DesktopFontDropdownButton(
+            display: displayText,
+            onTap: () async {
+              final fam = await _showDesktopFontChooserDialog(
+                context,
+                title: l10n.desktopFontAppLabel,
+                initial: sp.appFontFamily,
+                showSystemDefault: false,
+              );
+              if (fam == null) return;
+              if (fam == '__SYSTEM__') {
+                await context.read<SettingsProvider>().clearAppFont();
+              } else {
+                await context.read<SettingsProvider>().setAppFontSystemFamily(fam);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: l10n.displaySettingsPageFontResetLabel,
+            child: _IconBtn(
+              icon: lucide.Lucide.RotateCcw,
+              onTap: () async {
+                await context.read<SettingsProvider>().clearAppFont();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3963,22 +3978,37 @@ class _DesktopCodeFontRow extends StatelessWidget {
         : current;
     return _LabeledRow(
       label: l10n.desktopFontCodeLabel,
-      trailing: _DesktopFontDropdownButton(
-        display: displayText,
-        onTap: () async {
-          final fam = await _showDesktopFontChooserDialog(
-            context,
-            title: l10n.desktopFontCodeLabel,
-            initial: sp.codeFontFamily,
-            showMonospaceDefault: true,
-          );
-          if (fam == null) return;
-          if (fam == '__MONO__') {
-            await context.read<SettingsProvider>().clearCodeFont();
-          } else {
-            await context.read<SettingsProvider>().setCodeFontSystemFamily(fam);
-          }
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DesktopFontDropdownButton(
+            display: displayText,
+            onTap: () async {
+              final fam = await _showDesktopFontChooserDialog(
+                context,
+                title: l10n.desktopFontCodeLabel,
+                initial: sp.codeFontFamily,
+                showMonospaceDefault: false,
+              );
+              if (fam == null) return;
+              if (fam == '__MONO__') {
+                await context.read<SettingsProvider>().clearCodeFont();
+              } else {
+                await context.read<SettingsProvider>().setCodeFontSystemFamily(fam);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: l10n.displaySettingsPageFontResetLabel,
+            child: _IconBtn(
+              icon: lucide.Lucide.RotateCcw,
+              onTap: () async {
+                await context.read<SettingsProvider>().clearCodeFont();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4157,24 +4187,6 @@ Future<String?> _showDesktopFontChooserDialog(
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 10),
-                  if (showSystemDefault || showMonospaceDefault) ...[
-                    Row(children: [
-                      if (showSystemDefault)
-                        _DeskIosButton(
-                          label: l10n.desktopFontFamilySystemDefault,
-                          dense: true,
-                          onTap: () => Navigator.of(ctx).pop('__SYSTEM__'),
-                        ),
-                      if (showSystemDefault && showMonospaceDefault) const SizedBox(width: 8),
-                      if (showMonospaceDefault)
-                        _DeskIosButton(
-                          label: l10n.desktopFontFamilyMonospaceDefault,
-                          dense: true,
-                          onTap: () => Navigator.of(ctx).pop('__MONO__'),
-                        ),
-                    ]),
-                    const SizedBox(height: 8),
-                  ],
                   Expanded(
                     child: DecoratedBox(
                       decoration: BoxDecoration(

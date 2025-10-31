@@ -740,7 +740,7 @@
   "fontPickerFilterHint": "輸入以過濾字體…",
   "desktopFontLoading": "正在載入字體…",
   "displaySettingsPageFontLocalFileLabel": "本機檔案",
-  "displaySettingsPageFontResetLabel": "回復字體預設設定",
+  "displaySettingsPageFontResetLabel": "回復預設設定",
   "displaySettingsPageOtherSettingsTitle": "其他設定",
   "themeSettingsPageDynamicColorSection": "動態顏色",
   "themeSettingsPageUseDynamicColorTitle": "系統動態配色",

@@ -782,7 +782,7 @@
   "fontPickerFilterHint": "输入以过滤字体…",
   "desktopFontLoading": "正在加载字体…",
   "displaySettingsPageFontLocalFileLabel": "本地文件",
-  "displaySettingsPageFontResetLabel": "恢复字体默认设置",
+  "displaySettingsPageFontResetLabel": "恢复默认",
   "displaySettingsPageOtherSettingsTitle": "其他设置",
   "themeSettingsPageDynamicColorSection": "动态颜色",
   "themeSettingsPageUseDynamicColorTitle": "系统动态配色",
