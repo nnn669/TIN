@@ -5368,9 +5368,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
-                                      border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.20)),
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.06)
+                                          : Colors.white.withOpacity(0.07),
                                       shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.10)
+                                            : Theme.of(context).colorScheme.outline.withOpacity(0.20),
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Material(
                                       type: MaterialType.transparency,
