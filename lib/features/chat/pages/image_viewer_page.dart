@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +10,7 @@ import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../l10n/app_localizations.dart';
@@ -36,6 +38,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   bool _dragActive = false; // only when zoom ~ 1.0
   double _animFrom = 0.0; // for restore animation
   Offset? _lastDoubleTapPos; // focal point for double-tap zoom
+  bool _saving = false; // saving to gallery state
 
   @override
   void initState() {
@@ -156,6 +159,94 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
       ..forward();
   }
 
+  Future<void> _saveCurrent() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final src = widget.images[_index];
+      Uint8List? bytes;
+
+      if (src.startsWith('data:')) {
+        final marker = 'base64,';
+        final idx = src.indexOf(marker);
+        if (idx != -1) {
+          bytes = base64Decode(src.substring(idx + marker.length));
+        }
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        final resp = await http.get(Uri.parse(src));
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          bytes = resp.bodyBytes;
+        } else {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.imageViewerPageSaveFailed('HTTP ${resp.statusCode}'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+      } else {
+        final local = SandboxPathResolver.fix(src);
+        final file = File(local);
+        if (await file.exists()) {
+          bytes = await file.readAsBytes();
+        } else {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.imageViewerPageSaveFailed('file-missing'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveFailed('empty-bytes'),
+          type: NotificationType.error,
+        );
+        return;
+      }
+
+      final name = 'kelivo-${DateTime.now().millisecondsSinceEpoch}';
+      final result = await ImageGallerySaverPlus.saveImage(bytes, quality: 100, name: name);
+      bool success = false;
+      if (result is Map) {
+        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+        final filePath = result['filePath'] ?? result['file_path'];
+        success = isSuccess || (filePath is String && filePath.isNotEmpty);
+      }
+
+      if (!mounted) return;
+      if (success) {
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveSuccess,
+          type: NotificationType.success,
+        );
+      } else {
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveFailed('unknown'),
+          type: NotificationType.error,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.imageViewerPageSaveFailed(e.toString()),
+        type: NotificationType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _shareCurrent() async {
     final l10n = AppLocalizations.of(context)!;
     try {
@@ -252,6 +343,12 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -373,7 +470,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
               ],
             ),
           ),
-          // Bottom share button (no gradient background)
+          // Bottom action buttons (save + share)
           Positioned(
             left: 0,
             right: 0,
@@ -383,16 +480,56 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            style: buttonStyle,
+                            onPressed: _saving ? null : _saveCurrent,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                              child: _saving
+                                  ? Row(
+                                      key: const ValueKey('saving'),
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2.4),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(l10n.imageViewerPageSaveButton),
+                                      ],
+                                    )
+                                  : Row(
+                                      key: const ValueKey('ready'),
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.download),
+                                        const SizedBox(width: 8),
+                                        Text(l10n.imageViewerPageSaveButton),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: buttonStyle,
+                            onPressed: _shareCurrent,
+                            icon: const Icon(Icons.share),
+                            label: Text(l10n.imageViewerPageShareButton),
+                          ),
+                        ),
+                      ],
                     ),
-                    onPressed: _shareCurrent,
-                    icon: const Icon(Icons.share),
-                    label: Text(l10n.imageViewerPageShareButton),
                   ),
                 ),
               ),

@@ -803,6 +803,16 @@
   "imageViewerPageShareFailedOpenFile": "无法分享，已尝试打开文件: {message}",
   "imageViewerPageShareFailed": "分享失败: {error}",
   "imageViewerPageShareButton": "分享图片",
+  "imageViewerPageSaveButton": "保存图片",
+  "imageViewerPageSaveSuccess": "已保存到相册",
+  "imageViewerPageSaveFailed": "保存失败: {error}",
+  "@imageViewerPageSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsShare": "Kelivo - 开源AI助手",
   "searchProviderBingLocalDescription": "使用网络抓取工具获取必应搜索结果。无需 API 密钥，但可能不够稳定。",
   "searchProviderBraveDescription": "Brave 独立搜索引擎。注重隐私，无跟踪或画像。",

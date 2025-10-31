@@ -2355,6 +2355,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageViewerPageShareButton => '分享图片';
 
   @override
+  String get imageViewerPageSaveButton => '保存图片';
+
+  @override
+  String get imageViewerPageSaveSuccess => '已保存到相册';
+
+  @override
+  String imageViewerPageSaveFailed(String error) {
+    return '保存失败: $error';
+  }
+
+  @override
   String get settingsShare => 'Kelivo - 开源AI助手';
 
   @override
@@ -4977,6 +4988,17 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get imageViewerPageShareButton => '分享图片';
 
   @override
+  String get imageViewerPageSaveButton => '保存图片';
+
+  @override
+  String get imageViewerPageSaveSuccess => '已保存到相册';
+
+  @override
+  String imageViewerPageSaveFailed(String error) {
+    return '保存失败: $error';
+  }
+
+  @override
   String get settingsShare => 'Kelivo - 开源AI助手';
 
   @override
@@ -7596,6 +7618,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get imageViewerPageShareButton => '分享圖片';
+
+  @override
+  String get imageViewerPageSaveButton => '儲存圖片';
+
+  @override
+  String get imageViewerPageSaveSuccess => '已儲存到相簿';
+
+  @override
+  String imageViewerPageSaveFailed(String error) {
+    return '儲存失敗: $error';
+  }
 
   @override
   String get settingsShare => 'Kelivo - 開源AI助理';
