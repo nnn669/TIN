@@ -4494,17 +4494,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
-              leading: IconButton(
-                onPressed: _toggleTabletSidebar,
-                icon: SvgPicture.asset(
+              leading: IosIconButton(
+                size: 20,
+                padding: const EdgeInsets.all(8),
+                minSize: 40,
+                builder: (color) => SvgPicture.asset(
                   'assets/icons/list.svg',
                   width: 14,
                   height: 14,
-                  colorFilter: ColorFilter.mode(
-                    Theme.of(context).iconTheme.color ?? Theme.of(context).colorScheme.onSurface,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
                 ),
+                onTap: _toggleTabletSidebar,
               ),
               titleSpacing: 2,
               title: Builder(builder: (context) {
@@ -4638,12 +4638,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 );
               }),
               actions: [
-                IconButton(
-                  onPressed: () async {
+                IosIconButton(
+                  size: 20,
+                  padding: const EdgeInsets.all(8),
+                  minSize: 40,
+                  icon: Lucide.MessageCirclePlus,
+                  onTap: () async {
                     await _createNewConversation();
                     if (mounted) _forceScrollToBottomSoon();
                   },
-                  icon: const Icon(Lucide.MessageCirclePlus, size: 22),
                 ),
                 const SizedBox(width: 6),
               ],
