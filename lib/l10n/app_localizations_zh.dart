@@ -2256,6 +2256,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
+  String get desktopFontAppLabel => '应用字体';
+
+  @override
+  String get desktopFontCodeLabel => '代码字体';
+
+  @override
+  String get desktopFontFamilySystemDefault => '系统默认';
+
+  @override
+  String get desktopFontFamilyMonospaceDefault => '等宽字体（默认）';
+
+  @override
+  String get desktopFontFilterHint => '输入以过滤字体…';
+
+  @override
+  String get displaySettingsPageAppFontTitle => '应用字体';
+
+  @override
+  String get displaySettingsPageCodeFontTitle => '代码字体';
+
+  @override
+  String get fontPickerChooseLocalFile => '选择本地文件';
+
+  @override
+  String get fontPickerGetFromGoogleFonts => '从 Google Fonts 获取';
+
+  @override
+  String get fontPickerFilterHint => '输入以过滤字体…';
+
+  @override
+  String get desktopFontLoading => '正在加载字体…';
+
+  @override
+  String get displaySettingsPageFontLocalFileLabel => '本地文件';
+
+  @override
+  String get displaySettingsPageFontResetLabel => '恢复字体默认设置';
+
+  @override
   String get displaySettingsPageOtherSettingsTitle => '其他设置';
 
   @override
@@ -4889,6 +4928,45 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
+  String get desktopFontAppLabel => '应用字体';
+
+  @override
+  String get desktopFontCodeLabel => '代码字体';
+
+  @override
+  String get desktopFontFamilySystemDefault => '系统默认';
+
+  @override
+  String get desktopFontFamilyMonospaceDefault => '等宽字体（默认）';
+
+  @override
+  String get desktopFontFilterHint => '输入以过滤字体…';
+
+  @override
+  String get displaySettingsPageAppFontTitle => '应用字体';
+
+  @override
+  String get displaySettingsPageCodeFontTitle => '代码字体';
+
+  @override
+  String get fontPickerChooseLocalFile => '选择本地文件';
+
+  @override
+  String get fontPickerGetFromGoogleFonts => '从 Google Fonts 获取';
+
+  @override
+  String get fontPickerFilterHint => '输入以过滤字体…';
+
+  @override
+  String get desktopFontLoading => '正在加载字体…';
+
+  @override
+  String get displaySettingsPageFontLocalFileLabel => '本地文件';
+
+  @override
+  String get displaySettingsPageFontResetLabel => '恢复字体默认设置';
+
+  @override
   String get displaySettingsPageOtherSettingsTitle => '其他设置';
 
   @override
@@ -7519,6 +7597,45 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopSettingsFontsTitle => '字體設定';
+
+  @override
+  String get desktopFontAppLabel => '應用字體';
+
+  @override
+  String get desktopFontCodeLabel => '程式碼字體';
+
+  @override
+  String get desktopFontFamilySystemDefault => '系統預設';
+
+  @override
+  String get desktopFontFamilyMonospaceDefault => '等寬字體（預設）';
+
+  @override
+  String get desktopFontFilterHint => '輸入以過濾字體…';
+
+  @override
+  String get displaySettingsPageAppFontTitle => '應用字體';
+
+  @override
+  String get displaySettingsPageCodeFontTitle => '程式碼字體';
+
+  @override
+  String get fontPickerChooseLocalFile => '選擇本機檔案';
+
+  @override
+  String get fontPickerGetFromGoogleFonts => '從 Google Fonts 取得';
+
+  @override
+  String get fontPickerFilterHint => '輸入以過濾字體…';
+
+  @override
+  String get desktopFontLoading => '正在載入字體…';
+
+  @override
+  String get displaySettingsPageFontLocalFileLabel => '本機檔案';
+
+  @override
+  String get displaySettingsPageFontResetLabel => '回復字體預設設定';
 
   @override
   String get displaySettingsPageOtherSettingsTitle => '其他設定';

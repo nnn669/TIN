@@ -2334,6 +2334,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsFontsTitle => 'Fonts';
 
   @override
+  String get desktopFontAppLabel => 'App Font';
+
+  @override
+  String get desktopFontCodeLabel => 'Code Font';
+
+  @override
+  String get desktopFontFamilySystemDefault => 'System Default';
+
+  @override
+  String get desktopFontFamilyMonospaceDefault => 'Monospace (default)';
+
+  @override
+  String get desktopFontFilterHint => 'Filter fonts...';
+
+  @override
+  String get displaySettingsPageAppFontTitle => 'App Font';
+
+  @override
+  String get displaySettingsPageCodeFontTitle => 'Code Font';
+
+  @override
+  String get fontPickerChooseLocalFile => 'Choose Local File';
+
+  @override
+  String get fontPickerGetFromGoogleFonts => 'Browse Google Fonts';
+
+  @override
+  String get fontPickerFilterHint => 'Filter fonts...';
+
+  @override
+  String get desktopFontLoading => 'Loading fonts…';
+
+  @override
+  String get displaySettingsPageFontLocalFileLabel => 'Local file';
+
+  @override
+  String get displaySettingsPageFontResetLabel => 'Reset font settings';
+
+  @override
   String get displaySettingsPageOtherSettingsTitle => 'Other';
 
   @override

@@ -9,6 +9,10 @@ import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/haptics.dart';
+import 'package:file_picker/file_picker.dart';
+import 'google_fonts_picker_page.dart';
+
+enum _FontTarget { app, code }
 
 class DisplaySettingsPage extends StatefulWidget {
   const DisplaySettingsPage({super.key});
@@ -118,6 +122,54 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
             _iosDivider(context),
             _iosNavRow(
               context,
+              icon: Lucide.Type,
+              label: l10n.displaySettingsPageAppFontTitle,
+              detailBuilder: (ctx) {
+                final sp = ctx.watch<SettingsProvider>();
+                final fam = sp.appFontFamily;
+                final useLocal = (sp.appFontLocalAlias ?? '').isNotEmpty;
+                final text = useLocal
+                    ? l10n.displaySettingsPageFontLocalFileLabel
+                    : (fam == null || fam.isEmpty)
+                        ? l10n.desktopFontFamilySystemDefault
+                        : fam;
+                return Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13),
+                );
+              },
+              onTap: () => _showMobileFontSourceSheet(context, target: _FontTarget.app),
+            ),
+            _iosDivider(context),
+            _iosNavRow(
+              context,
+              icon: Lucide.Code,
+              label: l10n.displaySettingsPageCodeFontTitle,
+              detailBuilder: (ctx) {
+                final sp = ctx.watch<SettingsProvider>();
+                final fam = sp.codeFontFamily;
+                final useLocal = (sp.codeFontLocalAlias ?? '').isNotEmpty;
+                final text = useLocal
+                    ? l10n.displaySettingsPageFontLocalFileLabel
+                    : (fam == null || fam.isEmpty)
+                        ? l10n.desktopFontFamilyMonospaceDefault
+                        : fam;
+                return Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13),
+                );
+              },
+              onTap: () => _showMobileFontSourceSheet(context, target: _FontTarget.code),
+            ),
+            _iosDivider(context),
+            _iosNavRow(
+              context,
               icon: Lucide.CaseSensitive,
               label: l10n.displaySettingsPageChatFontSizeTitle,
               detailBuilder: (ctx) {
@@ -154,6 +206,62 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
       ),
     );
   }
+
+  Future<void> _showMobileFontSourceSheet(BuildContext context, {required _FontTarget target}) async {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetOption(ctx, label: l10n.fontPickerChooseLocalFile, onTap: () => Navigator.of(ctx).pop('local')),
+              _sheetDividerNoIcon(ctx),
+              _sheetOption(ctx, label: l10n.fontPickerGetFromGoogleFonts, onTap: () => Navigator.of(ctx).pop('google')),
+              _sheetDividerNoIcon(ctx),
+              _sheetOption(ctx, label: l10n.displaySettingsPageFontResetLabel, onTap: () => Navigator.of(ctx).pop('reset')),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null) return;
+    if (choice == 'local') {
+      final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['ttf', 'otf']);
+      final path = res?.files.singleOrNull?.path;
+      if (path == null) return;
+      if (target == _FontTarget.app) {
+        await context.read<SettingsProvider>().setAppFontFromLocal(path: path);
+      } else {
+        await context.read<SettingsProvider>().setCodeFontFromLocal(path: path);
+      }
+      return;
+    }
+    if (choice == 'google') {
+      final title = target == _FontTarget.app ? l10n.displaySettingsPageAppFontTitle : l10n.displaySettingsPageCodeFontTitle;
+      final selected = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => GoogleFontsPickerPage(title: title)));
+      if (selected == null || selected.isEmpty) return;
+      if (target == _FontTarget.app) {
+        await context.read<SettingsProvider>().setAppFontFromGoogle(selected);
+      } else {
+        await context.read<SettingsProvider>().setCodeFontFromGoogle(selected);
+      }
+      return;
+    }
+    if (choice == 'reset') {
+      if (target == _FontTarget.app) {
+        await context.read<SettingsProvider>().clearAppFont();
+      } else {
+        await context.read<SettingsProvider>().clearCodeFont();
+      }
+    }
+  }
+
 
   Future<void> _showLanguageSheet(BuildContext context) async {
     final cs = Theme.of(context).colorScheme;

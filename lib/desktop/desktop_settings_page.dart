@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
@@ -27,6 +28,7 @@ import 'model_edit_dialog.dart' show showDesktopCreateModelDialog, showDesktopMo
 import '../features/model/widgets/model_select_sheet.dart' show showModelSelector;
 import '../utils/brand_assets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:async';
 import '../core/models/api_keys.dart';
 import 'package:file_picker/file_picker.dart';
 import 'desktop_context_menu.dart';
@@ -37,6 +39,7 @@ import 'setting/tts_services_pane.dart';
 import 'setting/quick_phrases_pane.dart';
 import 'setting/backup_pane.dart';
 import 'setting/about_pane.dart';
+import 'package:system_fonts/system_fonts.dart';
 
 /// Desktop settings layout: left menu + vertical divider + right content.
 /// For now, only the left menu and the Display Settings content are implemented.
@@ -2993,6 +2996,10 @@ class _DisplaySettingsBody extends StatelessWidget {
               _SettingsCard(
                 title: l10n.desktopSettingsFontsTitle,
                 children: const [
+                  _DesktopAppFontRow(),
+                  _RowDivider(),
+                  _DesktopCodeFontRow(),
+                  _RowDivider(),
                   _AppLanguageRow(),
                   _RowDivider(),
                   _ChatFontSizeRow(),
@@ -3905,6 +3912,352 @@ class _BorderInputState extends State<_BorderInput> {
           hoverColor: Colors.transparent,
         ),
         onSubmitted: widget.onSubmitted,
+      ),
+    );
+  }
+}
+
+// --- Desktop Font Rows ---
+class _DesktopAppFontRow extends StatelessWidget {
+  const _DesktopAppFontRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    final current = sp.appFontFamily;
+    final displayText = (current == null || current.isEmpty)
+        ? l10n.desktopFontFamilySystemDefault
+        : current;
+    return _LabeledRow(
+      label: l10n.desktopFontAppLabel,
+      trailing: _DesktopFontDropdownButton(
+        display: displayText,
+        onTap: () async {
+          final fam = await _showDesktopFontChooserDialog(
+            context,
+            title: l10n.desktopFontAppLabel,
+            initial: sp.appFontFamily,
+            showSystemDefault: true,
+          );
+          if (fam == null) return;
+          if (fam == '__SYSTEM__') {
+            await context.read<SettingsProvider>().clearAppFont();
+          } else {
+            await context.read<SettingsProvider>().setAppFontSystemFamily(fam);
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _DesktopCodeFontRow extends StatelessWidget {
+  const _DesktopCodeFontRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    final current = sp.codeFontFamily;
+    final displayText = (current == null || current.isEmpty)
+        ? l10n.desktopFontFamilyMonospaceDefault
+        : current;
+    return _LabeledRow(
+      label: l10n.desktopFontCodeLabel,
+      trailing: _DesktopFontDropdownButton(
+        display: displayText,
+        onTap: () async {
+          final fam = await _showDesktopFontChooserDialog(
+            context,
+            title: l10n.desktopFontCodeLabel,
+            initial: sp.codeFontFamily,
+            showMonospaceDefault: true,
+          );
+          if (fam == null) return;
+          if (fam == '__MONO__') {
+            await context.read<SettingsProvider>().clearCodeFont();
+          } else {
+            await context.read<SettingsProvider>().setCodeFontSystemFamily(fam);
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _DesktopFontDropdownButton extends StatefulWidget {
+  const _DesktopFontDropdownButton({required this.display, required this.onTap});
+  final String display;
+  final VoidCallback onTap;
+  @override
+  State<_DesktopFontDropdownButton> createState() => _DesktopFontDropdownButtonState();
+}
+
+class _DesktopFontDropdownButtonState extends State<_DesktopFontDropdownButton> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.28), width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 220),
+                child: Text(
+                  widget.display,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: cs.onSurface, decoration: TextDecoration.none),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(lucide.Lucide.ChevronDown, size: 16, color: cs.onSurface.withOpacity(0.7)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<String?> _showDesktopFontChooserDialog(
+  BuildContext context, {
+  required String title,
+  String? initial,
+  bool showSystemDefault = false,
+  bool showMonospaceDefault = false,
+}) async {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  final ctrl = TextEditingController();
+  String? result;
+
+  Future<List<String>> _fetchSystemFonts() async {
+    try {
+      final sf = SystemFonts();
+      // Load fonts so preview works
+      final loaded = await sf.loadAllFonts();
+      final list = List<String>.from(loaded);
+      if (list.isNotEmpty) {
+        list.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        return list;
+      }
+      final alt = await Future.value(sf.getFontList());
+      final out = List<String>.from(alt ?? const <String>[]);
+      out.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      if (out.isNotEmpty) return out;
+    } catch (_) {/* ignore and fallback */}
+    return <String>[
+      'System UI', 'Segoe UI', 'SF Pro Text', 'San Francisco', 'Helvetica Neue', 'Arial', 'Roboto', 'PingFang SC', 'Microsoft YaHei', 'SimHei', 'Noto Sans SC', 'Noto Serif', 'Courier New', 'JetBrains Mono', 'Fira Code', 'monospace'
+    ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
+  // Show loading dialog only if fetch takes time, and ensure it closes
+  bool loadingShown = false;
+  Timer? loadingTimer;
+  loadingTimer = Timer(const Duration(milliseconds: 300), () {
+    loadingShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final bg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+        final cs2 = Theme.of(ctx).colorScheme;
+        return Dialog(
+          elevation: 0,
+          backgroundColor: bg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const CupertinoActivityIndicator(radius: 12),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.desktopFontLoading,
+                  style: TextStyle(color: cs2.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  });
+  final fonts = await _fetchSystemFonts();
+  if (loadingTimer?.isActive ?? false) loadingTimer?.cancel();
+  if (loadingShown) {
+    try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+  }
+  await showDialog<String>(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return Dialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 520),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: StatefulBuilder(builder: (context, setState) {
+              String q = ctrl.text.trim().toLowerCase();
+              final filtered = q.isEmpty
+                  ? fonts
+                  : fonts.where((f) => f.toLowerCase().contains(q)).toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+                    _IconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(ctx).maybePop()),
+                  ]),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      hintText: l10n.desktopFontFilterHint,
+                      fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.12), width: 0.6),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.12), width: 0.6),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.35), width: 0.8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 10),
+                  if (showSystemDefault || showMonospaceDefault) ...[
+                    Row(children: [
+                      if (showSystemDefault)
+                        _DeskIosButton(
+                          label: l10n.desktopFontFamilySystemDefault,
+                          dense: true,
+                          onTap: () => Navigator.of(ctx).pop('__SYSTEM__'),
+                        ),
+                      if (showSystemDefault && showMonospaceDefault) const SizedBox(width: 8),
+                      if (showMonospaceDefault)
+                        _DeskIosButton(
+                          label: l10n.desktopFontFamilyMonospaceDefault,
+                          dense: true,
+                          onTap: () => Navigator.of(ctx).pop('__MONO__'),
+                        ),
+                    ]),
+                    const SizedBox(height: 8),
+                  ],
+                  Expanded(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, i) {
+                          final fam = filtered[i];
+                          final selected = fam == initial;
+                          return _FontRowItem(
+                            family: fam,
+                            selected: selected,
+                            onTap: () => Navigator.of(ctx).pop(fam),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+      );
+    },
+  ).then((v) => result = v);
+  return result;
+}
+
+class _FontRowItem extends StatefulWidget {
+  const _FontRowItem({required this.family, required this.onTap, this.selected = false});
+  final String family;
+  final VoidCallback onTap;
+  final bool selected;
+  @override
+  State<_FontRowItem> createState() => _FontRowItemState();
+}
+
+class _FontRowItemState extends State<_FontRowItem> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04)) : Colors.transparent;
+    final sample = 'Aa字';
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.family,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: cs.onSurface, decoration: TextDecoration.none),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(sample, style: TextStyle(fontFamily: widget.family, fontSize: 16, color: cs.onSurface, decoration: TextDecoration.none)),
+                  ],
+                ),
+              ),
+              if (widget.selected) ...[
+                const SizedBox(width: 10),
+                Icon(lucide.Lucide.Check, size: 16, color: cs.primary),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

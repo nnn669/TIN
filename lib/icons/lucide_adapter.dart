@@ -130,4 +130,5 @@ class Lucide {
   static const IconData toggleRight = lucide.LucideIcons.toggleRight;
   static const IconData Calendar = lucide.LucideIcons.calendar;
   static const IconData ImageOff = lucide.LucideIcons.imageOff;
+  static const IconData RotateCcw = lucide.LucideIcons.rotateCcw;
 }

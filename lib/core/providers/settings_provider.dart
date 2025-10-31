@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -44,6 +46,15 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
+  // Fonts
+  static const String _displayAppFontFamilyKey = 'display_app_font_family_v1';
+  static const String _displayCodeFontFamilyKey = 'display_code_font_family_v1';
+  static const String _displayAppFontIsGoogleKey = 'display_app_font_is_google_v1';
+  static const String _displayCodeFontIsGoogleKey = 'display_code_font_is_google_v1';
+  static const String _displayAppFontLocalPathKey = 'display_app_font_local_path_v1';
+  static const String _displayCodeFontLocalPathKey = 'display_code_font_local_path_v1';
+  static const String _displayAppFontLocalAliasKey = 'display_app_font_local_alias_v1';
+  static const String _displayCodeFontLocalAliasKey = 'display_code_font_local_alias_v1';
   static const String _appLocaleKey = 'app_locale_v1';
   static const String _translateModelKey = 'translate_model_v1';
   static const String _translatePromptKey = 'translate_prompt_v1';
@@ -259,7 +270,194 @@ class SettingsProvider extends ChangeNotifier {
     // kick off a one-time connectivity test for services (exclude local Bing)
     _initSearchConnectivityTests();
 
+    // Attempt to reload any user-installed local fonts (mobile platforms)
+    await _reloadLocalFontsIfAny();
+
     notifyListeners();
+  }
+
+  // ===== User Font Settings =====
+  String? _appFontFamily; // system or Google font family to use globally
+  String? _codeFontFamily; // system or Google font family to use for code blocks
+  // Whether the above family names refer to Google Fonts (as opposed to system fonts)
+  bool _appFontIsGoogle = false;
+  bool _codeFontIsGoogle = false;
+  // Local font file selections (mobile): persisted for reload
+  String? _appFontLocalPath;
+  String? _codeFontLocalPath;
+  // The alias family name registered via FontLoader for local fonts
+  String? _appFontLocalAlias;
+  String? _codeFontLocalAlias;
+
+  String? get appFontFamily => _effectiveAppFontAlias ?? _appFontFamily;
+  String? get codeFontFamily => _effectiveCodeFontAlias ?? _codeFontFamily;
+  bool get appFontIsGoogle => _appFontIsGoogle;
+  bool get codeFontIsGoogle => _codeFontIsGoogle;
+  String? get appFontLocalAlias => _appFontLocalAlias;
+  String? get codeFontLocalAlias => _codeFontLocalAlias;
+
+  // Use alias if a local font is set and successfully registered
+  String? get _effectiveAppFontAlias => (_appFontLocalAlias?.isNotEmpty == true) ? _appFontLocalAlias : null;
+  String? get _effectiveCodeFontAlias => (_codeFontLocalAlias?.isNotEmpty == true) ? _codeFontLocalAlias : null;
+
+  Future<void> setAppFontSystemFamily(String? family) async {
+    _appFontIsGoogle = false;
+    _appFontFamily = (family == null || family.trim().isEmpty) ? null : family.trim();
+    // Clear local alias for system/google switch
+    _appFontLocalAlias = null;
+    _appFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayAppFontFamilyKey, _appFontFamily ?? '');
+    await prefs.setBool(_displayAppFontIsGoogleKey, _appFontIsGoogle);
+    await prefs.remove(_displayAppFontLocalAliasKey);
+    await prefs.remove(_displayAppFontLocalPathKey);
+  }
+
+  Future<void> setCodeFontSystemFamily(String? family) async {
+    _codeFontIsGoogle = false;
+    _codeFontFamily = (family == null || family.trim().isEmpty) ? null : family.trim();
+    _codeFontLocalAlias = null;
+    _codeFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayCodeFontFamilyKey, _codeFontFamily ?? '');
+    await prefs.setBool(_displayCodeFontIsGoogleKey, _codeFontIsGoogle);
+    await prefs.remove(_displayCodeFontLocalAliasKey);
+    await prefs.remove(_displayCodeFontLocalPathKey);
+  }
+
+  Future<void> setAppFontFromGoogle(String family) async {
+    _appFontIsGoogle = true;
+    _appFontFamily = family.trim();
+    _appFontLocalAlias = null;
+    _appFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayAppFontFamilyKey, _appFontFamily!);
+    await prefs.setBool(_displayAppFontIsGoogleKey, true);
+    await prefs.remove(_displayAppFontLocalAliasKey);
+    await prefs.remove(_displayAppFontLocalPathKey);
+  }
+
+  Future<void> setCodeFontFromGoogle(String family) async {
+    _codeFontIsGoogle = true;
+    _codeFontFamily = family.trim();
+    _codeFontLocalAlias = null;
+    _codeFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayCodeFontFamilyKey, _codeFontFamily!);
+    await prefs.setBool(_displayCodeFontIsGoogleKey, true);
+    await prefs.remove(_displayCodeFontLocalAliasKey);
+    await prefs.remove(_displayCodeFontLocalPathKey);
+  }
+
+  Future<void> setAppFontFromLocal({required String path, String? alias}) async {
+    final fam = await _registerLocalFont(path: path, aliasPrefix: alias ?? 'kelivo_local_app');
+    if (fam == null) return;
+    _appFontIsGoogle = false;
+    _appFontFamily = fam;
+    _appFontLocalAlias = fam;
+    _appFontLocalPath = path;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayAppFontFamilyKey, _appFontFamily!);
+    await prefs.setBool(_displayAppFontIsGoogleKey, false);
+    await prefs.setString(_displayAppFontLocalAliasKey, _appFontLocalAlias!);
+    await prefs.setString(_displayAppFontLocalPathKey, _appFontLocalPath!);
+  }
+
+  Future<void> setCodeFontFromLocal({required String path, String? alias}) async {
+    final fam = await _registerLocalFont(path: path, aliasPrefix: alias ?? 'kelivo_local_code');
+    if (fam == null) return;
+    _codeFontIsGoogle = false;
+    _codeFontFamily = fam;
+    _codeFontLocalAlias = fam;
+    _codeFontLocalPath = path;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayCodeFontFamilyKey, _codeFontFamily!);
+    await prefs.setBool(_displayCodeFontIsGoogleKey, false);
+    await prefs.setString(_displayCodeFontLocalAliasKey, _codeFontLocalAlias!);
+    await prefs.setString(_displayCodeFontLocalPathKey, _codeFontLocalPath!);
+  }
+
+  Future<void> clearAppFont() async {
+    _appFontFamily = null;
+    _appFontIsGoogle = false;
+    _appFontLocalAlias = null;
+    _appFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_displayAppFontFamilyKey);
+    await prefs.remove(_displayAppFontIsGoogleKey);
+    await prefs.remove(_displayAppFontLocalAliasKey);
+    await prefs.remove(_displayAppFontLocalPathKey);
+  }
+
+  Future<void> clearCodeFont() async {
+    _codeFontFamily = null;
+    _codeFontIsGoogle = false;
+    _codeFontLocalAlias = null;
+    _codeFontLocalPath = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_displayCodeFontFamilyKey);
+    await prefs.remove(_displayCodeFontIsGoogleKey);
+    await prefs.remove(_displayCodeFontLocalAliasKey);
+    await prefs.remove(_displayCodeFontLocalPathKey);
+  }
+
+  Future<void> _reloadLocalFontsIfAny() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Load persisted values
+    _appFontFamily = _nonEmpty(prefs.getString(_displayAppFontFamilyKey));
+    _codeFontFamily = _nonEmpty(prefs.getString(_displayCodeFontFamilyKey));
+    _appFontIsGoogle = prefs.getBool(_displayAppFontIsGoogleKey) ?? false;
+    _codeFontIsGoogle = prefs.getBool(_displayCodeFontIsGoogleKey) ?? false;
+    _appFontLocalPath = _nonEmpty(prefs.getString(_displayAppFontLocalPathKey));
+    _codeFontLocalPath = _nonEmpty(prefs.getString(_displayCodeFontLocalPathKey));
+    _appFontLocalAlias = _nonEmpty(prefs.getString(_displayAppFontLocalAliasKey));
+    _codeFontLocalAlias = _nonEmpty(prefs.getString(_displayCodeFontLocalAliasKey));
+
+    // Re-register local fonts if paths are available (best effort)
+    if (_appFontLocalPath != null && _appFontLocalPath!.isNotEmpty) {
+      final alias = _appFontLocalAlias ?? 'kelivo_local_app';
+      final fam = await _registerLocalFont(path: _appFontLocalPath!, aliasPrefix: alias);
+      if (fam != null) {
+        _appFontLocalAlias = fam;
+        _appFontFamily = fam;
+      }
+    }
+    if (_codeFontLocalPath != null && _codeFontLocalPath!.isNotEmpty) {
+      final alias = _codeFontLocalAlias ?? 'kelivo_local_code';
+      final fam = await _registerLocalFont(path: _codeFontLocalPath!, aliasPrefix: alias);
+      if (fam != null) {
+        _codeFontLocalAlias = fam;
+        _codeFontFamily = fam;
+      }
+    }
+  }
+
+  String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
+
+  Future<String?> _registerLocalFont({required String path, required String aliasPrefix}) async {
+    try {
+      // Use a stable alias derived from file name to reduce duplicates
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final alias = '${aliasPrefix}_$ts';
+      final file = File(path);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      final bd = bytes.buffer.asByteData();
+      final loader = FontLoader(alias);
+      loader.addFont(Future.value(bd));
+      await loader.load();
+      return alias;
+    } catch (_) {
+      return null;
+    }
   }
 
   // ===== Desktop UI setters =====

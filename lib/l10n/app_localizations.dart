@@ -4439,6 +4439,84 @@ abstract class AppLocalizations {
   /// **'Fonts'**
   String get desktopSettingsFontsTitle;
 
+  /// No description provided for @desktopFontAppLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App Font'**
+  String get desktopFontAppLabel;
+
+  /// No description provided for @desktopFontCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Font'**
+  String get desktopFontCodeLabel;
+
+  /// No description provided for @desktopFontFamilySystemDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'System Default'**
+  String get desktopFontFamilySystemDefault;
+
+  /// No description provided for @desktopFontFamilyMonospaceDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Monospace (default)'**
+  String get desktopFontFamilyMonospaceDefault;
+
+  /// No description provided for @desktopFontFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter fonts...'**
+  String get desktopFontFilterHint;
+
+  /// No description provided for @displaySettingsPageAppFontTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Font'**
+  String get displaySettingsPageAppFontTitle;
+
+  /// No description provided for @displaySettingsPageCodeFontTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Font'**
+  String get displaySettingsPageCodeFontTitle;
+
+  /// No description provided for @fontPickerChooseLocalFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Local File'**
+  String get fontPickerChooseLocalFile;
+
+  /// No description provided for @fontPickerGetFromGoogleFonts.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse Google Fonts'**
+  String get fontPickerGetFromGoogleFonts;
+
+  /// No description provided for @fontPickerFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter fonts...'**
+  String get fontPickerFilterHint;
+
+  /// No description provided for @desktopFontLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading fonts…'**
+  String get desktopFontLoading;
+
+  /// No description provided for @displaySettingsPageFontLocalFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Local file'**
+  String get displaySettingsPageFontLocalFileLabel;
+
+  /// No description provided for @displaySettingsPageFontResetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset font settings'**
+  String get displaySettingsPageFontResetLabel;
+
   /// No description provided for @displaySettingsPageOtherSettingsTitle.
   ///
   /// In en, this message translates to:

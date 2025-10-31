@@ -28,6 +28,7 @@ import 'core/services/chat/chat_service.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
 import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
@@ -135,6 +136,57 @@ class MyApp extends StatelessWidget {
                 dynamicScheme: useDyn ? darkDynamic : null,
                 pureBackground: settings.usePureBackground,
               );
+              // Resolve effective app font family (system/Google/local alias)
+              String? _effectiveAppFontFamily() {
+                final fam = settings.appFontFamily;
+                if (fam == null || fam.isEmpty) return null;
+                if (settings.appFontIsGoogle) {
+                  try {
+                    final s = GoogleFonts.getFont(fam);
+                    return s.fontFamily ?? fam;
+                  } catch (_) {
+                    return fam;
+                  }
+                }
+                return fam;
+              }
+              final effectiveAppFont = _effectiveAppFontFamily();
+
+              // Apply user-selected app font to theme text styles and app bar
+              ThemeData _applyAppFont(ThemeData base) {
+                if (effectiveAppFont == null || effectiveAppFont.isEmpty) return base;
+                TextStyle? _f(TextStyle? s) => s?.copyWith(fontFamily: effectiveAppFont);
+                TextTheme _apply(TextTheme t) => t.copyWith(
+                      displayLarge: _f(t.displayLarge),
+                      displayMedium: _f(t.displayMedium),
+                      displaySmall: _f(t.displaySmall),
+                      headlineLarge: _f(t.headlineLarge),
+                      headlineMedium: _f(t.headlineMedium),
+                      headlineSmall: _f(t.headlineSmall),
+                      titleLarge: _f(t.titleLarge),
+                      titleMedium: _f(t.titleMedium),
+                      titleSmall: _f(t.titleSmall),
+                      bodyLarge: _f(t.bodyLarge),
+                      bodyMedium: _f(t.bodyMedium),
+                      bodySmall: _f(t.bodySmall),
+                      labelLarge: _f(t.labelLarge),
+                      labelMedium: _f(t.labelMedium),
+                      labelSmall: _f(t.labelSmall),
+                    );
+                final bar = base.appBarTheme;
+                final appBar = bar.copyWith(
+                  titleTextStyle: (bar.titleTextStyle ?? const TextStyle()).copyWith(fontFamily: effectiveAppFont),
+                  toolbarTextStyle: (bar.toolbarTextStyle ?? const TextStyle()).copyWith(fontFamily: effectiveAppFont),
+                );
+                // Apply as default family to all text in ThemeData
+                return base.copyWith(
+                  textTheme: _apply(base.textTheme),
+                  primaryTextTheme: _apply(base.primaryTextTheme),
+                  appBarTheme: appBar,
+                );
+              }
+              final themedLight = _applyAppFont(light);
+              final themedDark = _applyAppFont(dark);
               // Log top-level colors likely used by widgets (card/bg/shadow approximations)
               // debugPrint('[Theme/App] Light scaffoldBg=${light.colorScheme.surface.value.toRadixString(16)} card≈${light.colorScheme.surface.value.toRadixString(16)} shadow=${light.colorScheme.shadow.value.toRadixString(16)}');
               // debugPrint('[Theme/App] Dark scaffoldBg=${dark.colorScheme.surface.value.toRadixString(16)} card≈${dark.colorScheme.surface.value.toRadixString(16)} shadow=${dark.colorScheme.shadow.value.toRadixString(16)}');
@@ -145,8 +197,8 @@ class MyApp extends StatelessWidget {
                 locale: settings.appLocaleForMaterialApp,
                 supportedLocales: AppLocalizations.supportedLocales,
                 localizationsDelegates: AppLocalizations.localizationsDelegates,
-                theme: light,
-                darkTheme: dark,
+                theme: themedLight,
+                darkTheme: themedDark,
                 themeMode: settings.themeMode,
                 navigatorObservers: <NavigatorObserver>[routeObserver],
                 home: _selectHome(),
@@ -181,11 +233,15 @@ class MyApp extends StatelessWidget {
                 });
               }
 
+                  // Enforce app font as a default across the tree for Texts without explicit family
                   return AnnotatedRegion<SystemUiOverlayStyle>(
                     value: overlay,
-                    child: AppSnackBarOverlay(
-                      child: child ?? const SizedBox.shrink(),
-                    ),
+                    child: effectiveAppFont == null
+                        ? AppSnackBarOverlay(child: child ?? const SizedBox.shrink())
+                        : DefaultTextStyle.merge(
+                            style: TextStyle(fontFamily: effectiveAppFont),
+                            child: AppSnackBarOverlay(child: child ?? const SizedBox.shrink()),
+                          ),
                   );
                 },
               );

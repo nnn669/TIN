@@ -19,6 +19,7 @@ import 'mermaid_image_cache.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:Kelivo/theme/theme_factory.dart' show getPlatformFontFallback;
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/settings_provider.dart';
 
 /// gpt_markdown with custom code block highlight and inline code styling.
@@ -77,7 +78,39 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     }
     components.insert(0, AtxHeadingMd());
     components.insert(0, FencedCodeBlockMd());
-    return GptMarkdown(
+    // Resolve user preferred code font family (default to monospace)
+    String resolveCodeFont() {
+      final fam = settings.codeFontFamily;
+      if (fam == null || fam.isEmpty) return 'monospace';
+      if (settings.codeFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(fam);
+          return s.fontFamily ?? fam;
+        } catch (_) {
+          return fam;
+        }
+      }
+      return fam;
+    }
+    final codeFontFamily = resolveCodeFont();
+
+    // Resolve app font for all markdown text (headings, lists, etc.)
+    String resolveAppFont() {
+      final fam = settings.appFontFamily;
+      if (fam == null || fam.isEmpty) return '';
+      if (settings.appFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(fam);
+          return s.fontFamily ?? fam;
+        } catch (_) {
+          return fam;
+        }
+      }
+      return fam;
+    }
+    final appFontFamily = resolveAppFont();
+
+    final markdownWidget = GptMarkdown(
       normalized,
       style: baseTextStyle,
       followLinkColor: true,
@@ -303,8 +336,8 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           ),
           child: Text(
             softened,
-            style: const TextStyle(
-              fontFamily: 'monospace',
+            style: TextStyle(
+              fontFamily: codeFontFamily,
               fontSize: 13,
               height: 1.4,
             ).copyWith(color: Theme.of(context).colorScheme.onSurface),
@@ -321,6 +354,12 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         }
         return _CollapsibleCodeBlock(language: lang, code: code);
       },
+    );
+
+    if (appFontFamily.isEmpty) return markdownWidget;
+    return DefaultTextStyle.merge(
+      style: TextStyle(fontFamily: appFontFamily),
+      child: markdownWidget,
     );
   }
 
@@ -567,6 +606,21 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final settings = context.watch<SettingsProvider>();
+    String resolveCodeFont() {
+      final fam = settings.codeFontFamily;
+      if (fam == null || fam.isEmpty) return 'monospace';
+      if (settings.codeFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(fam);
+          return s.fontFamily ?? fam;
+        } catch (_) {
+          return fam;
+        }
+      }
+      return fam;
+    }
+    final codeFontFamily = resolveCodeFont();
 
     // Use theme-tinted surfaces so headers follow the current theme color.
     final Color bodyBg = Color.alphaBlend(
@@ -714,8 +768,8 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                             isDark ? atomOneDarkReasonableTheme : githubTheme,
                           ),
                           padding: EdgeInsets.zero,
-                          textStyle: const TextStyle(
-                            fontFamily: 'monospace',
+                          textStyle: TextStyle(
+                            fontFamily: codeFontFamily,
                             fontSize: 13,
                             height: 1.5,
                           ),
@@ -1319,6 +1373,17 @@ class AtxHeadingMd extends BlockMd {
     final t = Theme.of(ctx).textTheme;
     final cs = Theme.of(ctx).colorScheme;
     final isZh = MarkdownWithCodeHighlight._isZh(ctx);
+    final settings = ctx.read<SettingsProvider>();
+    String? appFamily;
+    if ((settings.appFontFamily ?? '').isNotEmpty) {
+      appFamily = settings.appFontFamily;
+      if (settings.appFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(appFamily!);
+          appFamily = s.fontFamily ?? appFamily;
+        } catch (_) {}
+      }
+    }
     // Start from Material styles but tighten sizes for balance with body text
     TextStyle base;
     // Explicit sizes ensure visible contrast over the body (16.0)
@@ -1349,6 +1414,7 @@ class AtxHeadingMd extends BlockMd {
       height: h,
       letterSpacing: ls,
       color: cs.onSurface,
+      fontFamily: appFamily,
       fontFamilyFallback: getPlatformFontFallback(),
     );
   }
