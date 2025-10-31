@@ -1015,6 +1015,16 @@
     }
   },
   "imageViewerPageShareButton": "Share Image",
+  "imageViewerPageSaveButton": "Save Image",
+  "imageViewerPageSaveSuccess": "Saved to gallery",
+  "imageViewerPageSaveFailed": "Save failed: {error}",
+  "@imageViewerPageSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsShare": "Kelivo - Open Source AI Assistant",
   "searchProviderBingLocalDescription": "Uses web scraping to fetch Bing results. No API key required; may be unstable.",
   "searchProviderBraveDescription": "Independent search engine by Brave. Privacy-focused with no tracking or profiling.",

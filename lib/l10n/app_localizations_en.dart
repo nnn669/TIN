@@ -2438,6 +2438,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get imageViewerPageShareButton => 'Share Image';
 
   @override
+  String get imageViewerPageSaveButton => 'Save Image';
+
+  @override
+  String get imageViewerPageSaveSuccess => 'Saved to gallery';
+
+  @override
+  String imageViewerPageSaveFailed(String error) {
+    return 'Save failed: $error';
+  }
+
+  @override
   String get settingsShare => 'Kelivo - Open Source AI Assistant';
 
   @override

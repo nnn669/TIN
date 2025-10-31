@@ -4625,6 +4625,24 @@ abstract class AppLocalizations {
   /// **'Share Image'**
   String get imageViewerPageShareButton;
 
+  /// No description provided for @imageViewerPageSaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Image'**
+  String get imageViewerPageSaveButton;
+
+  /// No description provided for @imageViewerPageSaveSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to gallery'**
+  String get imageViewerPageSaveSuccess;
+
+  /// No description provided for @imageViewerPageSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed: {error}'**
+  String imageViewerPageSaveFailed(String error);
+
   /// No description provided for @settingsShare.
   ///
   /// In en, this message translates to:

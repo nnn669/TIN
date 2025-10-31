@@ -759,6 +759,16 @@
   "imageViewerPageShareFailedOpenFile": "無法分享，已嘗試開啟檔案: {message}",
   "imageViewerPageShareFailed": "分享失敗: {error}",
   "imageViewerPageShareButton": "分享圖片",
+  "imageViewerPageSaveButton": "儲存圖片",
+  "imageViewerPageSaveSuccess": "已儲存到相簿",
+  "imageViewerPageSaveFailed": "儲存失敗: {error}",
+  "@imageViewerPageSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsShare": "Kelivo - 開源AI助理",
   "searchProviderBingLocalDescription": "使用網路抓取工具取得 Bing 搜尋結果。無需 API 金鑰，但可能不夠穩定。",
   "searchProviderBraveDescription": "Brave 獨立搜尋引擎。注重隱私，無追蹤或建立個人檔案。",
