@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:vector_math/vector_math_64.dart' show Vector3;
@@ -160,6 +162,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   }
 
   Future<void> _saveCurrent() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      await _saveCurrentDesktop();
+      return;
+    }
     if (_saving) return;
     setState(() => _saving = true);
     final l10n = AppLocalizations.of(context)!;
@@ -343,12 +349,6 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final buttonStyle = ElevatedButton.styleFrom(
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -478,58 +478,35 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                 child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            style: buttonStyle,
-                            onPressed: _saving ? null : _saveCurrent,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-                              child: _saving
-                                  ? Row(
-                                      key: const ValueKey('saving'),
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(strokeWidth: 2.4),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(l10n.imageViewerPageSaveButton),
-                                      ],
-                                    )
-                                  : Row(
-                                      key: const ValueKey('ready'),
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.download),
-                                        const SizedBox(width: 8),
-                                        Text(l10n.imageViewerPageSaveButton),
-                                      ],
-                                    ),
-                            ),
-                          ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _GlassCircleButton(
+                        onTap: _saving ? null : _saveCurrent,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                          child: _saving
+                              ? SizedBox(
+                                  key: const ValueKey('saving'),
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation(_iconColor(context)),
+                                  ),
+                                )
+                              : Icon(Icons.download, color: _iconColor(context), size: 20, key: const ValueKey('ready')),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: buttonStyle,
-                            onPressed: _shareCurrent,
-                            icon: const Icon(Icons.share),
-                            label: Text(l10n.imageViewerPageShareButton),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 16),
+                      _GlassCircleButton(
+                        onTap: _shareCurrent,
+                        child: Icon(Icons.share, color: _iconColor(context), size: 20),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -539,6 +516,123 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         ),
       ),
     );
+  }
+
+  // Dynamic icon color for glass buttons
+  Color _iconColor(BuildContext context) {
+    if (_bgOpacity >= 0.5) return Colors.white;
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? Colors.white : Colors.black;
+  }
+
+  // Desktop save: choose a location via file picker
+  Future<void> _saveCurrentDesktop() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final src = widget.images[_index];
+      Uint8List? bytes;
+      String ext = '.jpg';
+
+      if (src.startsWith('data:')) {
+        final marker = 'base64,';
+        final idx = src.indexOf(marker);
+        if (idx != -1) {
+          bytes = base64Decode(src.substring(idx + marker.length));
+        }
+        final mimeEnd = src.indexOf(';');
+        if (mimeEnd != -1) {
+          final mime = src.substring(5, mimeEnd);
+          if (mime.contains('png')) ext = '.png';
+          else if (mime.contains('jpeg') || mime.contains('jpg')) ext = '.jpg';
+          else if (mime.contains('gif')) ext = '.gif';
+          else if (mime.contains('webp')) ext = '.webp';
+        }
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        final resp = await http.get(Uri.parse(src));
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          bytes = resp.bodyBytes;
+          final urlExt = p.extension(Uri.parse(src).path);
+          if (urlExt.isNotEmpty) ext = urlExt;
+        } else {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.imageViewerPageSaveFailed('HTTP ${resp.statusCode}'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+      } else {
+        final local = SandboxPathResolver.fix(src);
+        final file = File(local);
+        if (await file.exists()) {
+          bytes = await file.readAsBytes();
+          final pathExt = p.extension(local);
+          if (pathExt.isNotEmpty) ext = pathExt;
+        } else {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.imageViewerPageSaveFailed('file-missing'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveFailed('empty-bytes'),
+          type: NotificationType.error,
+        );
+        return;
+      }
+
+      final defaultName = 'kelivo-${DateTime.now().millisecondsSinceEpoch}$ext';
+      final allowed = [ext.replaceFirst('.', '').toLowerCase()];
+      String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: l10n.imageViewerPageSaveButton,
+        fileName: defaultName,
+        type: FileType.custom,
+        allowedExtensions: allowed,
+      );
+      if (savePath == null) {
+        // user cancelled
+        return;
+      }
+      try {
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsBytes(bytes);
+      } catch (e) {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveFailed(e.toString()),
+          type: NotificationType.error,
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.imageViewerPageSaveSuccess,
+        type: NotificationType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.imageViewerPageSaveFailed(e.toString()),
+        type: NotificationType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 
@@ -555,4 +649,65 @@ Route _buildFancyRoute(Widget page) {
       );
     },
   );
+}
+
+class _GlassCircleButton extends StatefulWidget {
+  const _GlassCircleButton({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.size = 48,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final double size;
+
+  @override
+  State<_GlassCircleButton> createState() => _GlassCircleButtonState();
+}
+
+class _GlassCircleButtonState extends State<_GlassCircleButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool v) {
+    if (_pressed == v) return;
+    setState(() => _pressed = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool disabled = widget.onTap == null;
+    final Color baseFill = Colors.white.withOpacity(disabled ? 0.10 : 0.18);
+    final Color border = Colors.white.withOpacity(disabled ? 0.20 : 0.35);
+    final Color fill = _pressed ? Colors.white.withOpacity(disabled ? 0.12 : 0.24) : baseFill;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onTapDown: (_) => _setPressed(true),
+      onTapUp: (_) => _setPressed(false),
+      onTapCancel: () => _setPressed(false),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutCubic,
+        scale: _pressed ? 0.94 : 1.0,
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: fill,
+                shape: BoxShape.circle,
+                border: Border.all(color: border, width: 0.6),
+              ),
+              child: Center(child: widget.child),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
