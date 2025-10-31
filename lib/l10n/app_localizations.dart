@@ -4460,7 +4460,7 @@ abstract class AppLocalizations {
   /// No description provided for @desktopFontFamilyMonospaceDefault.
   ///
   /// In en, this message translates to:
-  /// **'Monospace (default)'**
+  /// **'Monospace'**
   String get desktopFontFamilyMonospaceDefault;
 
   /// No description provided for @desktopFontFilterHint.

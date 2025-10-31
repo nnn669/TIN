@@ -2343,7 +2343,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFontFamilySystemDefault => 'System Default';
 
   @override
-  String get desktopFontFamilyMonospaceDefault => 'Monospace (default)';
+  String get desktopFontFamilyMonospaceDefault => 'Monospace';
 
   @override
   String get desktopFontFilterHint => 'Filter fonts...';

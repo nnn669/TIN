@@ -2265,7 +2265,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopFontFamilySystemDefault => '系统默认';
 
   @override
-  String get desktopFontFamilyMonospaceDefault => '等宽字体（默认）';
+  String get desktopFontFamilyMonospaceDefault => '系统默认';
 
   @override
   String get desktopFontFilterHint => '输入以过滤字体…';
@@ -4937,7 +4937,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopFontFamilySystemDefault => '系统默认';
 
   @override
-  String get desktopFontFamilyMonospaceDefault => '等宽字体（默认）';
+  String get desktopFontFamilyMonospaceDefault => '系统默认';
 
   @override
   String get desktopFontFilterHint => '输入以过滤字体…';
@@ -7608,7 +7608,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get desktopFontFamilySystemDefault => '系統預設';
 
   @override
-  String get desktopFontFamilyMonospaceDefault => '等寬字體（預設）';
+  String get desktopFontFamilyMonospaceDefault => '系統預設';
 
   @override
   String get desktopFontFilterHint => '輸入以過濾字體…';

@@ -773,7 +773,7 @@
   "desktopFontAppLabel": "应用字体",
   "desktopFontCodeLabel": "代码字体",
   "desktopFontFamilySystemDefault": "系统默认",
-  "desktopFontFamilyMonospaceDefault": "等宽字体（默认）",
+  "desktopFontFamilyMonospaceDefault": "系统默认",
   "desktopFontFilterHint": "输入以过滤字体…",
   "displaySettingsPageAppFontTitle": "应用字体",
   "displaySettingsPageCodeFontTitle": "代码字体",

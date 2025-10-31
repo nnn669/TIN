@@ -731,7 +731,7 @@
   "desktopFontAppLabel": "應用字體",
   "desktopFontCodeLabel": "程式碼字體",
   "desktopFontFamilySystemDefault": "系統預設",
-  "desktopFontFamilyMonospaceDefault": "等寬字體（預設）",
+  "desktopFontFamilyMonospaceDefault": "系統預設",
   "desktopFontFilterHint": "輸入以過濾字體…",
   "displaySettingsPageAppFontTitle": "應用字體",
   "displaySettingsPageCodeFontTitle": "程式碼字體",

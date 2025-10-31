@@ -966,7 +966,7 @@
   "desktopFontAppLabel": "App Font",
   "desktopFontCodeLabel": "Code Font",
   "desktopFontFamilySystemDefault": "System Default",
-  "desktopFontFamilyMonospaceDefault": "Monospace (default)",
+  "desktopFontFamilyMonospaceDefault": "Monospace",
   "desktopFontFilterHint": "Filter fonts...",
   "displaySettingsPageAppFontTitle": "App Font",
   "displaySettingsPageCodeFontTitle": "Code Font",
