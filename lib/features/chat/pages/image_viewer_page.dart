@@ -41,6 +41,11 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   double _animFrom = 0.0; // for restore animation
   Offset? _lastDoubleTapPos; // focal point for double-tap zoom
   bool _saving = false; // saving to gallery state
+  final GlobalKey _viewerKey = GlobalKey();
+  final GlobalKey _saveBtnKey = GlobalKey();
+  final GlobalKey _shareBtnKey = GlobalKey();
+
+  final Map<String, _SampledImage> _samples = <String, _SampledImage>{};
 
   @override
   void initState() {
@@ -61,6 +66,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         });
       });
     _zoomCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 230));
+
+    // prepare sample for initial image
+    _prepareSampleForIndex(_index);
   }
 
   @override
@@ -382,6 +390,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                     _dragDy = 0.0;
                     _bgOpacity = 1.0;
                   });
+                  _prepareSampleForIndex(i);
                 },
                 itemBuilder: (context, i) {
                   final src = widget.images[i];
@@ -431,6 +440,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                                   final scale = _zoomCtrls[i].value.getMaxScaleOnAxis();
                                   final canPan = scale > 1.01;
                                   return InteractiveViewer(
+                                    key: i == _index ? _viewerKey : null,
                                     transformationController: _zoomCtrls[i],
                                     minScale: 1.0,
                                     maxScale: 5,
@@ -480,33 +490,42 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                 child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _GlassCircleButton(
-                        onTap: _saving ? null : _saveCurrent,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-                          child: _saving
-                              ? SizedBox(
-                                  key: const ValueKey('saving'),
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    valueColor: AlwaysStoppedAnimation(_iconColor(context)),
-                                  ),
-                                )
-                              : Icon(Icons.download, color: _iconColor(context), size: 20, key: const ValueKey('ready')),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      _GlassCircleButton(
-                        onTap: _shareCurrent,
-                        child: Icon(Icons.share, color: _iconColor(context), size: 20),
-                      ),
-                    ],
+                  child: AnimatedBuilder(
+                    animation: _zoomCtrls[_index],
+                    builder: (context, _) {
+                      final leftColor = _smartIconColorForKey(context, _saveBtnKey);
+                      final rightColor = _smartIconColorForKey(context, _shareBtnKey);
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _GlassCircleButton(
+                            key: _saveBtnKey,
+                            onTap: _saving ? null : _saveCurrent,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                              child: _saving
+                                  ? SizedBox(
+                                      key: const ValueKey('saving'),
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        valueColor: AlwaysStoppedAnimation(leftColor),
+                                      ),
+                                    )
+                                  : Icon(Icons.download, color: leftColor, size: 20, key: const ValueKey('ready')),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          _GlassCircleButton(
+                            key: _shareBtnKey,
+                            onTap: _shareCurrent,
+                            child: Icon(Icons.share, color: rightColor, size: 20),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -519,10 +538,112 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   }
 
   // Dynamic icon color for glass buttons
-  Color _iconColor(BuildContext context) {
+  Color _fallbackIconColor(BuildContext context) {
     if (_bgOpacity >= 0.5) return Colors.white;
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.dark ? Colors.white : Colors.black;
+  }
+
+  double _currentScale() {
+    if (_index < 0 || _index >= _zoomCtrls.length) return 1.0;
+    return _zoomCtrls[_index].value.getMaxScaleOnAxis();
+  }
+
+  Color _smartIconColorForKey(BuildContext context, GlobalKey key) {
+    final src = (_index >= 0 && _index < widget.images.length) ? widget.images[_index] : null;
+    if (src == null) return _fallbackIconColor(context);
+    final sample = _samples[src];
+    final viewerCtx = _viewerKey.currentContext;
+    final btnCtx = key.currentContext;
+    if (sample == null || viewerCtx == null || btnCtx == null) return _fallbackIconColor(context);
+    final viewerBox = viewerCtx.findRenderObject();
+    final btnBox = btnCtx.findRenderObject();
+    if (viewerBox is! RenderBox || btnBox is! RenderBox || !viewerBox.hasSize) return _fallbackIconColor(context);
+
+    try {
+      final btnCenterGlobal = btnBox.localToGlobal(btnBox.size.center(Offset.zero));
+      final viewerLocal = viewerBox.globalToLocal(btnCenterGlobal);
+
+      // Invert InteractiveViewer transform to get child-space point
+      final m = _zoomCtrls[_index].value;
+      final inv = Matrix4.inverted(m);
+      final p = inv.transform3(Vector3(viewerLocal.dx, viewerLocal.dy, 0));
+      final childPt = Offset(p.x, p.y);
+
+      final childSize = viewerBox.size;
+      final imgSize = Size(sample.w.toDouble(), sample.h.toDouble());
+      final fitted = applyBoxFit(BoxFit.contain, imgSize, childSize);
+      final dest = Size(fitted.destination.width, fitted.destination.height);
+      final dx = (childSize.width - dest.width) / 2.0;
+      final dy = (childSize.height - dest.height) / 2.0;
+      final destRect = Rect.fromLTWH(dx, dy, dest.width, dest.height);
+      if (!destRect.contains(childPt)) {
+        return _fallbackIconColor(context);
+      }
+
+      final u = ((childPt.dx - destRect.left) / destRect.width).clamp(0.0, 1.0);
+      final v = ((childPt.dy - destRect.top) / destRect.height).clamp(0.0, 1.0);
+      final sx = (u * (sample.w - 1)).round();
+      final sy = (v * (sample.h - 1)).round();
+      final avgLum = sample.avgLuminance(sx, sy, radius: 4);
+      // Choose color: light bg -> black icon; dark bg -> white icon
+      return avgLum >= 0.58 ? Colors.black : Colors.white;
+    } catch (_) {
+      return _fallbackIconColor(context);
+    }
+  }
+
+  Future<void> _prepareSampleForIndex(int i) async {
+    if (i < 0 || i >= widget.images.length) return;
+    final src = widget.images[i];
+    if (_samples.containsKey(src)) return;
+    try {
+      Uint8List? bytes;
+      if (src.startsWith('data:')) {
+        final idx = src.indexOf('base64,');
+        if (idx != -1) {
+          bytes = base64Decode(src.substring(idx + 7));
+        }
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        final resp = await http.get(Uri.parse(src));
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          bytes = resp.bodyBytes;
+        }
+      } else {
+        final local = SandboxPathResolver.fix(src);
+        final f = File(local);
+        if (await f.exists()) {
+          bytes = await f.readAsBytes();
+        }
+      }
+      if (bytes == null) return;
+      // Downscale decode for sampling
+      const int targetW = 96;
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: targetW);
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (data == null) return;
+      final w = img.width;
+      final h = img.height;
+      final lum = Uint8List(w * h);
+      final bd = data.buffer.asUint8List();
+      for (int y = 0; y < h; y++) {
+        int row = y * w;
+        for (int x = 0; x < w; x++) {
+          final idx4 = (row + x) * 4;
+          final r = bd[idx4 + 0];
+          final g = bd[idx4 + 1];
+          final b = bd[idx4 + 2];
+          final yv = (0.299 * r + 0.587 * g + 0.114 * b).clamp(0, 255).toInt();
+          lum[row + x] = yv;
+        }
+      }
+      _samples[src] = _SampledImage(w, h, lum);
+      if (mounted) setState(() {});
+    } catch (_) {
+      // ignore sampling failures
+    }
   }
 
   // Desktop save: choose a location via file picker
@@ -709,5 +830,31 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
         ),
       ),
     );
+  }
+}
+
+class _SampledImage {
+  final int w;
+  final int h;
+  final Uint8List lum; // 0..255 luminance
+  _SampledImage(this.w, this.h, this.lum);
+
+  double avgLuminance(int cx, int cy, {int radius = 3}) {
+    if (w == 0 || h == 0) return 0.0;
+    int x0 = (cx - radius).clamp(0, w - 1);
+    int x1 = (cx + radius).clamp(0, w - 1);
+    int y0 = (cy - radius).clamp(0, h - 1);
+    int y1 = (cy + radius).clamp(0, h - 1);
+    int sum = 0;
+    int count = 0;
+    for (int y = y0; y <= y1; y++) {
+      int row = y * w;
+      for (int x = x0; x <= x1; x++) {
+        sum += lum[row + x];
+        count++;
+      }
+    }
+    if (count == 0) return 0.0;
+    return (sum / count) / 255.0;
   }
 }
