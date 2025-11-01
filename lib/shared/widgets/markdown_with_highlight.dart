@@ -1361,10 +1361,10 @@ class AtxHeadingMd extends BlockMd {
 
     return Padding(
       padding: EdgeInsets.only(top: top, bottom: bottom),
-      child: RichText(
-        text: TextSpan(style: style, children: [inner]),
-        textScaler: MediaQuery.of(context).textScaler,
-        textAlign: TextAlign.start,
+      child: DefaultTextStyle.merge(
+        // Use selection-aware renderer from config so headings can be selected/copied
+        style: style,
+        child: config.getRich(inner),
       ),
     );
   }
@@ -1442,10 +1442,10 @@ class SetextHeadingMd extends BlockMd {
 
     return Padding(
       padding: EdgeInsets.only(top: top, bottom: bottom),
-      child: RichText(
-        text: TextSpan(style: style, children: [inner]),
-        textScaler: MediaQuery.of(context).textScaler,
-        textAlign: TextAlign.start,
+      child: DefaultTextStyle.merge(
+        // Use selection-aware renderer from config so headings can be selected/copied
+        style: style,
+        child: config.getRich(inner),
       ),
     );
   }
