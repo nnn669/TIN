@@ -595,90 +595,85 @@ Future<bool?> _confirmDeleteDesktop(BuildContext context) async {
     barrierColor: Colors.black.withOpacity(0.15),
     transitionDuration: const Duration(milliseconds: 160),
     pageBuilder: (ctx, _, __) {
-      // Positioned small dialog at bottom-right
       final dialog = Material(
         color: Colors.transparent,
-        child: SafeArea(
-          child: Align(
-            alignment: Alignment.bottomRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 18, bottom: 18),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: cs.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(color: Theme.of(ctx).brightness == Brightness.dark
-                          ? Colors.white.withOpacity(0.08)
-                          : cs.outlineVariant.withOpacity(0.25)),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: cs.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(
+                    color: Theme.of(ctx).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.08)
+                        : cs.outlineVariant.withOpacity(0.25),
+                  ),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.assistantSettingsDeleteDialogTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: MaterialLocalizations.of(ctx).closeButtonTooltip,
+                            icon: const Icon(lucide.Lucide.X, size: 18),
+                            color: cs.onSurface,
+                            onPressed: () => Navigator.of(ctx).maybePop(false),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: 40,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  l10n.assistantSettingsDeleteDialogTitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: MaterialLocalizations.of(ctx).closeButtonTooltip,
-                                icon: const Icon(lucide.Lucide.X, size: 18),
-                                color: cs.onSurface,
-                                onPressed: () => Navigator.of(ctx).maybePop(false),
-                              ),
-                            ],
-                          ),
+                  Divider(height: 1, thickness: 0.5, color: cs.outlineVariant.withOpacity(0.12)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          l10n.assistantSettingsDeleteDialogContent,
+                          style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13.5),
                         ),
-                      ),
-                      Divider(height: 1, thickness: 0.5, color: cs.outlineVariant.withOpacity(0.12)),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(
-                              l10n.assistantSettingsDeleteDialogContent,
-                              style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13.5),
+                            _DeskIosButton(
+                              label: l10n.assistantSettingsDeleteDialogCancel,
+                              filled: false,
+                              dense: true,
+                              onTap: () => Navigator.of(ctx).pop(false),
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                _DeskIosButton(
-                                  label: l10n.assistantSettingsDeleteDialogCancel,
-                                  filled: false,
-                                  dense: true,
-                                  onTap: () => Navigator.of(ctx).pop(false),
-                                ),
-                                const SizedBox(width: 8),
-                                _DeskIosButton(
-                                  label: l10n.assistantSettingsDeleteDialogConfirm,
-                                  filled: true,
-                                  danger: true,
-                                  dense: true,
-                                  onTap: () => Navigator.of(ctx).pop(true),
-                                ),
-                              ],
+                            const SizedBox(width: 8),
+                            _DeskIosButton(
+                              label: l10n.assistantSettingsDeleteDialogConfirm,
+                              filled: true,
+                              danger: true,
+                              dense: true,
+                              onTap: () => Navigator.of(ctx).pop(true),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -690,8 +685,8 @@ Future<bool?> _confirmDeleteDesktop(BuildContext context) async {
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
       return FadeTransition(
         opacity: curved,
-        child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0.05, 0.05), end: Offset.zero).animate(curved),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1.0).animate(curved),
           child: child,
         ),
       );
