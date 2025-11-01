@@ -5,6 +5,7 @@ import 'desktop_nav_rail.dart';
 import 'desktop_chat_page.dart';
 import 'window_title_bar.dart';
 import 'desktop_settings_page.dart';
+import 'desktop_translate_page.dart';
 
 /// Desktop home screen: left compact rail + main content.
 /// Phase 1 focuses on structure and platform-appropriate interactions/hover.
@@ -62,8 +63,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 children: [
                   // Chat page remains mounted
                   const DesktopChatPage(),
-                  // Translate placeholder remains mounted
-                  const _TranslatePlaceholder(key: ValueKey('translate_placeholder')),
+                  // Translate page remains mounted
+                  const DesktopTranslatePage(key: ValueKey('translate_page')),
                   // Settings page remains mounted with its initialProviderKey
                   DesktopSettingsPage(
                     key: const ValueKey('settings_page'),
@@ -114,28 +115,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           ),
         );
       },
-    );
-  }
-}
-
-class _TranslatePlaceholder extends StatelessWidget {
-  const _TranslatePlaceholder({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.25)),
-        ),
-        child: Text(
-          '翻译（占位）',
-          style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.7), fontWeight: FontWeight.w600),
-        ),
-      ),
     );
   }
 }
