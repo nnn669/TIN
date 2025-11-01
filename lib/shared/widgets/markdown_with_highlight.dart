@@ -63,6 +63,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     if (rbIdx != -1) components[rbIdx] = ModernRadioMd();
     // Prepend custom renderers in priority order (fence first)
     components.insert(0, LabelValueLineMd());
+    // Ensure backslash-escaped punctuation renders literally (e.g., \*, \`, \[)
+    // Must run before emphasis/links/code parsing to neutralize markers.
+    components.insert(0, BackslashEscapeMd());
     // Conditionally add LaTeX/math renderers
     if (settings.enableMathRendering) {
       // Block-level LaTeX (e.g., $$...$$ or \[...\])
@@ -1752,5 +1755,27 @@ class ModernRadioMd extends BlockMd {
         ],
       ),
     );
+  }
+}
+
+/// Treat backslash-escaped punctuation as a literal character, so that
+/// sequences like `\*text\*`, `\`code\``, `\[label\]`, and `\# heading`
+/// do not trigger emphasis, inline code, links, or headings.
+///
+/// We intentionally DO NOT consume `\(` and `\)` here to avoid interfering
+/// with inline LaTeX parsing handled by InlineLatexParenScrollableMd.
+class BackslashEscapeMd extends InlineMd {
+  @override
+  // CommonMark escape set (subset), excluding parentheses to keep LaTeX intact.
+  // Matches a backslash followed by one escapable punctuation character.
+  RegExp get exp => RegExp(r"\\([\\`*_{}\[\]#+\-.!])");
+
+  @override
+  InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
+    final m = exp.firstMatch(text);
+    if (m == null) return TextSpan(text: text, style: config.style);
+    final ch = m.group(1) ?? '';
+    // Render only the escaped character (drop the backslash)
+    return TextSpan(text: ch, style: config.style);
   }
 }
