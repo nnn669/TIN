@@ -53,9 +53,9 @@ class _TranslatePageState extends State<TranslatePage> {
     final lc = Localizations.localeOf(context).languageCode.toLowerCase();
     setState(() {
       if (lc.startsWith('zh')) {
-        _lang = supportedLanguages.firstWhere((e) => e.code == 'en', orElse: () => supportedLanguages.first);
-      } else {
         _lang = supportedLanguages.firstWhere((e) => e.code == 'zh-CN', orElse: () => supportedLanguages.first);
+      } else {
+        _lang = supportedLanguages.firstWhere((e) => e.code == 'en', orElse: () => supportedLanguages.first);
       }
       _providerKey = settings.translateModelProvider ?? assistant?.chatModelProvider ?? settings.currentModelProvider;
       _modelId = settings.translateModelId ?? assistant?.chatModelId ?? settings.currentModelId;
