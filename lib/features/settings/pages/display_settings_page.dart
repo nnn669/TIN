@@ -685,7 +685,7 @@ Widget _iosNavRow(
               SizedBox(width: 36, child: Icon(icon, size: 20, color: c)),
               const SizedBox(width: 12),
               Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: c), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              if (detailBuilder != null) Padding(padding: const EdgeInsets.only(right: 6), child: DefaultTextStyle(style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)), child: detailBuilder(context)))
+              if (detailBuilder != null) Padding(padding: const EdgeInsets.only(right: 6), child: DefaultTextStyle.merge(style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)), child: detailBuilder(context)))
               else if (detailText != null) Padding(padding: const EdgeInsets.only(right: 6), child: Text(detailText, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)))),
               if (interactive) Icon(Lucide.ChevronRight, size: 16, color: c),
             ]),

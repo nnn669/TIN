@@ -436,7 +436,7 @@ Widget _iosNavRow(
                 if (detailBuilder != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: DefaultTextStyle(
+                    child: DefaultTextStyle.merge(
                       style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)),
                       child: detailBuilder(context),
                     ),
