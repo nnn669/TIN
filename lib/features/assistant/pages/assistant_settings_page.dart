@@ -472,14 +472,18 @@ class _AssistantAvatar extends StatelessWidget {
         );
       } else if (!kIsWeb && (av.startsWith('/') || av.contains(':'))) {
         final fixed = SandboxPathResolver.fix(av);
-        return ClipOval(
-          child: Image(
-            image: FileImage(File(fixed)),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          ),
-        );
+        final f = File(fixed);
+        if (f.existsSync()) {
+          return ClipOval(
+            child: Image(
+              image: FileImage(f),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+            ),
+          );
+        }
+        return _initial(cs);
       } else {
         return _emoji(cs, av);
       }

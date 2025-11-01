@@ -489,19 +489,24 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         },
       );
     } else if (userProvider.avatarType == 'file' && userProvider.avatarValue != null) {
-      avatarContent = ClipOval(
-        child: Image.file(
-          File(SandboxPathResolver.fix(userProvider.avatarValue!)),
-          width: 32,
-          height: 32,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(
-            Lucide.User,
-            size: 18,
-            color: cs.primary,
+      final fixed = SandboxPathResolver.fix(userProvider.avatarValue!);
+      final f = File(fixed);
+      if (f.existsSync()) {
+        avatarContent = ClipOval(
+          child: Image.file(
+            f,
+            width: 32,
+            height: 32,
+            fit: BoxFit.cover,
           ),
-        ),
-      );
+        );
+      } else {
+        avatarContent = Icon(
+          Lucide.User,
+          size: 18,
+          color: cs.primary,
+        );
+      }
     } else {
       avatarContent = Icon(
         Lucide.User,
@@ -1686,10 +1691,13 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       }
       if (av.startsWith('/') || av.contains(':')) {
         final fixed = SandboxPathResolver.fix(av);
-        return ClipOval(
-          child: Image.file(File(fixed), width: 32, height: 32, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _assistantInitial(cs)),
-        );
+        final f = File(fixed);
+        if (f.existsSync()) {
+          return ClipOval(
+            child: Image.file(f, width: 32, height: 32, fit: BoxFit.cover),
+          );
+        }
+        return _assistantInitial(cs);
       }
       // treat as emoji or single char label
       final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
@@ -2368,7 +2376,13 @@ ImageProvider _imageProviderFor(String src) {
       }
     } catch (_) {}
   }
-  return FileImage(File(src));
+  final fixed = SandboxPathResolver.fix(src);
+  final f = File(fixed);
+  if (f.existsSync()) {
+    return FileImage(f);
+  }
+  // Fallback to a placeholder to avoid codec exceptions
+  return const AssetImage('assets/app_icon.png');
 }
 
 class _ReasoningSection extends StatefulWidget {

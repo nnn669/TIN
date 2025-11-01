@@ -34,6 +34,10 @@ class UserProvider extends ChangeNotifier {
     _avatarType = prefs.getString(_prefsAvatarTypeKey);
     final rawAvatar = prefs.getString(_prefsAvatarValueKey);
     _avatarValue = rawAvatar == null ? null : SandboxPathResolver.fix(rawAvatar);
+    // Persist the fixed path back if it changed (helps desktop after imports)
+    if (rawAvatar != null && _avatarValue != null && rawAvatar != _avatarValue) {
+      try { await prefs.setString(_prefsAvatarValueKey, _avatarValue!); } catch (_) {}
+    }
     // Only notify if avatar exists; otherwise rely on name notify above
     if (_avatarType != null && _avatarValue != null) {
       notifyListeners();

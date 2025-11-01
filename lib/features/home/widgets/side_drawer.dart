@@ -113,14 +113,19 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
           );
         } else if (!kIsWeb && (av.startsWith('/') || av.contains(':'))) {
           final fixed = SandboxPathResolver.fix(av);
-          avatar = ClipOval(
-            child: Image(
-              image: FileImage(File(fixed)),
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-            ),
-          );
+          final f = File(fixed);
+          if (f.existsSync()) {
+            avatar = ClipOval(
+              child: Image(
+                image: FileImage(f),
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+              ),
+            );
+          } else {
+            avatar = _assistantInitialAvatar(cs, name, size);
+          }
         } else {
           avatar = _assistantEmojiAvatar(cs, av, size);
         }
@@ -626,14 +631,18 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
         );
       }
       if (type == 'file' && value != null && value.isNotEmpty && !kIsWeb) {
-        return ClipOval(
-          child: Image(
-            image: FileImage(File(value)),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          ),
-        );
+        final fixed = SandboxPathResolver.fix(value);
+        final f = File(fixed);
+        if (f.existsSync()) {
+          return ClipOval(
+            child: Image(
+              image: FileImage(f),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+            ),
+          );
+        }
       }
       // default: initial
       final letter = name.isNotEmpty ? name.characters.first : '?';

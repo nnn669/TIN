@@ -35,6 +35,31 @@ class AssistantProvider extends ChangeNotifier {
       _assistants
         ..clear()
         ..addAll(Assistant.decodeList(raw));
+      // Fix any sandboxed local paths (avatars/backgrounds) imported from other platforms
+      bool changed = false;
+      for (int i = 0; i < _assistants.length; i++) {
+        final a = _assistants[i];
+        String? av = a.avatar;
+        String? bg = a.background;
+        if (av != null && av.isNotEmpty && (av.startsWith('/') || av.contains(':')) && !av.startsWith('http')) {
+          final fixed = SandboxPathResolver.fix(av);
+          if (fixed != av) {
+            av = fixed; changed = true;
+          }
+        }
+        if (bg != null && bg.isNotEmpty && (bg.startsWith('/') || bg.contains(':')) && !bg.startsWith('http')) {
+          final fixedBg = SandboxPathResolver.fix(bg);
+          if (fixedBg != bg) {
+            bg = fixedBg; changed = true;
+          }
+        }
+        if (changed) {
+          _assistants[i] = a.copyWith(avatar: av, background: bg);
+        }
+      }
+      if (changed) {
+        try { await _persist(); } catch (_) {}
+      }
     }
     // Do not create defaults here because localization is not available.
     // Defaults will be ensured later via ensureDefaults(context).

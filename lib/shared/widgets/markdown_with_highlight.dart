@@ -660,7 +660,12 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       } catch (_) {}
     }
     final fixed = SandboxPathResolver.fix(src);
-    return FileImage(File(fixed));
+    final f = File(fixed);
+    if (f.existsSync()) {
+      return FileImage(f);
+    }
+    // Fallback to a harmless placeholder to avoid codec exceptions on missing files
+    return const AssetImage('assets/app_icon.png');
   }
 }
 

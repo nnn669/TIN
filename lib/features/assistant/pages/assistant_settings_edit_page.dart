@@ -1969,10 +1969,15 @@ class _BackgroundPreviewState extends State<_BackgroundPreview> {
     final isNetwork = widget.path.startsWith('http');
     final imageWidget = isNetwork
         ? Image.network(widget.path, fit: BoxFit.contain)
-        : Image.file(
-            File(SandboxPathResolver.fix(widget.path)),
-            fit: BoxFit.contain,
-          );
+        : (() {
+            final fixed = SandboxPathResolver.fix(widget.path);
+            final f = File(fixed);
+            if (!f.existsSync()) {
+              // Gracefully fallback to empty box when local file missing (e.g., imported from mobile)
+              return const SizedBox.shrink();
+            }
+            return Image.file(f, fit: BoxFit.contain);
+          })();
     // When size known, maintain aspect ratio; otherwise cap the height to avoid overflow
     if (_size != null && _size!.width > 0 && _size!.height > 0) {
       final ratio = _size!.width / _size!.height;
@@ -5460,9 +5465,21 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
                   child: Image.network(av, width: 56, height: 56, fit: BoxFit.cover),
                 );
               } else if (av.startsWith('/') || av.contains(':')) {
-                inner = ClipOval(
-                  child: Image.file(File(SandboxPathResolver.fix(av)), width: 56, height: 56, fit: BoxFit.cover),
-                );
+                final fixed = SandboxPathResolver.fix(av);
+                final f = File(fixed);
+                if (f.existsSync()) {
+                  inner = ClipOval(
+                    child: Image.file(f, width: 56, height: 56, fit: BoxFit.cover),
+                  );
+                } else {
+                  inner = Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Text((a.name.isNotEmpty ? a.name.characters.first : '?'), style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: 22)),
+                  );
+                }
               } else {
                 inner = Container(
                   width: 56,

@@ -13,6 +13,7 @@ import '../icons/lucide_adapter.dart' as lucide;
 import '../shared/widgets/emoji_text.dart';
 import '../shared/widgets/emoji_picker_dialog.dart';
 import '../shared/widgets/snackbar.dart';
+import '../utils/sandbox_path_resolver.dart';
 
 Future<void> showUserProfileDialog(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
@@ -94,14 +95,20 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
         ),
       );
     } else if (type == 'file' && value != null && value.isNotEmpty) {
-      avatarWidget = ClipOval(
-        child: Image(
-          image: FileImage(File(value)),
-          width: 84,
-          height: 84,
-          fit: BoxFit.cover,
-        ),
-      );
+      final fixed = SandboxPathResolver.fix(value);
+      final f = File(fixed);
+      if (f.existsSync()) {
+        avatarWidget = ClipOval(
+          child: Image(
+            image: FileImage(f),
+            width: 84,
+            height: 84,
+            fit: BoxFit.cover,
+          ),
+        );
+      } else {
+        avatarWidget = _initialAvatar(up.name, cs, size: 84);
+      }
     } else {
       avatarWidget = _initialAvatar(up.name, cs, size: 84);
     }

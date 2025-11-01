@@ -8,6 +8,7 @@ import '../core/providers/user_provider.dart';
 import '../core/providers/settings_provider.dart';
 import 'user_profile_dialog.dart';
 import '../icons/lucide_adapter.dart' as lucide;
+import '../utils/sandbox_path_resolver.dart';
 
 /// A compact left rail for desktop with avatar, primary actions, and bottom system toggles.
 class DesktopNavRail extends StatelessWidget {
@@ -104,10 +105,16 @@ class _UserAvatarButtonState extends State<_UserAvatarButton> {
         }),
       );
     } else if (type == 'file' && value != null && value.isNotEmpty) {
-      // Local file path
-      avatar = ClipOval(
-        child: Image(image: FileImage(File(value)), width: 36, height: 36, fit: BoxFit.cover),
-      );
+      // Local file path (gracefully handle missing files from imported backups)
+      final fixed = SandboxPathResolver.fix(value);
+      final f = File(fixed);
+      if (f.existsSync()) {
+        avatar = ClipOval(
+          child: Image(image: FileImage(f), width: 36, height: 36, fit: BoxFit.cover),
+        );
+      } else {
+        avatar = _initialAvatar(up.name, cs);
+      }
     } else {
       avatar = _initialAvatar(up.name, cs);
     }
