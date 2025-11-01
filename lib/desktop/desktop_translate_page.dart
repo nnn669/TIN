@@ -409,29 +409,42 @@ class _LanguageDropdown extends StatelessWidget {
   }
 }
 
-class _TranslateButton extends StatelessWidget {
+class _TranslateButton extends StatefulWidget {
   const _TranslateButton({required this.translating, required this.onTranslate, required this.onStop});
   final bool translating;
   final VoidCallback onTranslate;
   final VoidCallback onStop;
 
   @override
+  State<_TranslateButton> createState() => _TranslateButtonState();
+}
+
+class _TranslateButtonState extends State<_TranslateButton> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final fg = isDark ? Colors.black : Colors.white;
-    final bg = Theme.of(context).colorScheme.primary;
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: translating ? onStop : onTranslate,
-        child: Padding(
+    final base = cs.primary;
+    final bg = _hover ? base.withOpacity(0.92) : base;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.translating ? widget.onStop : widget.onTranslate,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
-            child: translating
+            child: widget.translating
                 ? Row(
                     key: const ValueKey('stop'),
                     mainAxisSize: MainAxisSize.min,
@@ -521,7 +534,7 @@ class _PaneActionButtonState extends State<_PaneActionButton> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
         ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))
-        : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04));
+        : Colors.transparent;
     final fg = cs.onSurface.withOpacity(0.9);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -530,16 +543,17 @@ class _PaneActionButtonState extends State<_PaneActionButton> {
       child: Semantics(
         tooltip: widget.label,
         button: true,
-        child: Material(
-          color: bg,
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: widget.onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Icon(widget.icon, size: 16, color: fg),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: Icon(widget.icon, size: 16, color: fg),
           ),
         ),
       ),
