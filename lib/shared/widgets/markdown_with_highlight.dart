@@ -239,23 +239,22 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final headerBg = cs.primary.withOpacity(isDark ? 0.10 : 0.08);
         final headerStyle = (style).copyWith(fontWeight: FontWeight.w600);
 
+        // Count max columns to pad missing cells
         int maxCol = 0;
         for (final r in rows) {
           if (r.fields.length > maxCol) maxCol = r.fields.length;
         }
 
+        // Desktop platform detection (for selection + layout)
+        final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
+        // Common cell builder
         Widget cell(String text, TextAlign align, {bool header = false, bool lastCol = false, bool lastRow = false}) {
           // Render inline markdown (bold, code, links) inside table cells
           final innerCfg = cfg.copyWith(style: header ? headerStyle : style);
           final children = MarkdownComponent.generate(ctx, text, innerCfg, true);
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                right: lastCol ? BorderSide.none : BorderSide(color: borderColor, width: 0.5),
-                bottom: lastRow ? BorderSide.none : BorderSide(color: borderColor, width: 0.5),
-              ),
-            ),
             child: Align(
               alignment: () {
                 switch (align) {
@@ -267,61 +266,134 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                     return Alignment.centerLeft;
                 }
               }(),
-              child: RichText(
-                text: TextSpan(style: header ? headerStyle : style, children: children),
-                textAlign: align,
-                textScaler: MediaQuery.of(ctx).textScaler,
+              child: isDesktop
+                  ? SelectableText.rich(
+                      TextSpan(style: header ? headerStyle : style, children: children),
+                      textAlign: align,
+                      textScaler: MediaQuery.of(ctx).textScaler,
+                      maxLines: null,
+                    )
+                  : RichText(
+                      text: TextSpan(style: header ? headerStyle : style, children: children),
+                      textAlign: align,
+                      textScaler: MediaQuery.of(ctx).textScaler,
+                      softWrap: true,
+                      maxLines: null,
+                      overflow: TextOverflow.visible,
+                      textWidthBasis: TextWidthBasis.parent,
+                    ),
+            ),
+          );
+        }
+
+        // Build a horizontally scrollable table (mobile) or responsive wrapping table (desktop)
+        if (!isDesktop) {
+          // Mobile/tablet: keep horizontal scroll to preserve layout
+          final table = Table(
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            border: TableBorder(
+              horizontalInside: BorderSide(color: borderColor, width: 0.5),
+              verticalInside: BorderSide(color: borderColor, width: 0.5),
+            ),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              if (rows.isNotEmpty)
+                TableRow(
+                  decoration: BoxDecoration(color: headerBg),
+                  children: List.generate(maxCol, (i) {
+                    final f = i < rows.first.fields.length ? rows.first.fields[i] : null;
+                    final txt = f?.data ?? '';
+                    final align = f?.alignment ?? TextAlign.left;
+                    return cell(txt, align, header: true, lastCol: i == maxCol - 1, lastRow: false);
+                  }),
+                ),
+              for (int r = 1; r < rows.length; r++)
+                TableRow(
+                  children: List.generate(maxCol, (c) {
+                    final f = c < rows[r].fields.length ? rows[r].fields[c] : null;
+                    final txt = f?.data ?? '';
+                    final align = f?.alignment ?? TextAlign.left;
+                    return cell(txt, align, lastCol: c == maxCol - 1, lastRow: r == rows.length - 1);
+                  }),
+                ),
+            ],
+          );
+
+          return SelectionContainer.disabled(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              primary: false,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surface,
+                    border: Border.all(color: borderColor, width: 0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: table,
+                ),
               ),
             ),
           );
         }
 
-        final table = Table(
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: [
-            if (rows.isNotEmpty)
-              TableRow(
-                decoration: BoxDecoration(
-                  color: headerBg,
-                  border: Border(bottom: BorderSide(color: borderColor, width: 0.8)),
-                ),
-                children: List.generate(maxCol, (i) {
-                  final f = i < rows.first.fields.length ? rows.first.fields[i] : null;
-                  final txt = f?.data ?? '';
-                  final align = f?.alignment ?? TextAlign.left;
-                  return cell(txt, align, header: true, lastCol: i == maxCol - 1, lastRow: false);
-                }),
-              ),
-            for (int r = 1; r < rows.length; r++)
-              TableRow(
-                children: List.generate(maxCol, (c) {
-                  final f = c < rows[r].fields.length ? rows[r].fields[c] : null;
-                  final txt = f?.data ?? '';
-                  final align = f?.alignment ?? TextAlign.left;
-                  return cell(txt, align, lastCol: c == maxCol - 1, lastRow: r == rows.length - 1);
-                }),
-              ),
-          ],
-        );
+        // Desktop: fit within available width and wrap cell content.
+        // Do NOT add an inner SelectionArea here to allow selection to span
+        // across the entire message-level SelectionArea wrapper.
+        return LayoutBuilder(
+            builder: (context, constraints) {
+              // Use equal flex for all columns so table width == available width.
+              final Map<int, TableColumnWidth> columnWidths = {
+                for (int i = 0; i < maxCol; i++) i: const FlexColumnWidth(),
+              };
 
-        return SelectionContainer.disabled(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.surface,
-                  border: Border.all(color: borderColor, width: 0.8),
-                  borderRadius: BorderRadius.circular(12),
+              final table = Table(
+                defaultColumnWidth: const FlexColumnWidth(),
+                border: TableBorder(
+                  horizontalInside: BorderSide(color: borderColor, width: 0.5),
+                  verticalInside: BorderSide(color: borderColor, width: 0.5),
                 ),
-                child: table,
-              ),
-            ),
-          ),
-        );
+                columnWidths: columnWidths,
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
+                  if (rows.isNotEmpty)
+                    TableRow(
+                      decoration: BoxDecoration(color: headerBg),
+                      children: List.generate(maxCol, (i) {
+                        final f = i < rows.first.fields.length ? rows.first.fields[i] : null;
+                        final txt = f?.data ?? '';
+                        final align = f?.alignment ?? TextAlign.left;
+                        return cell(txt, align, header: true, lastCol: i == maxCol - 1, lastRow: false);
+                      }),
+                    ),
+                  for (int r = 1; r < rows.length; r++)
+                    TableRow(
+                      children: List.generate(maxCol, (c) {
+                        final f = c < rows[r].fields.length ? rows[r].fields[c] : null;
+                        final txt = f?.data ?? '';
+                        final align = f?.alignment ?? TextAlign.left;
+                        return cell(txt, align, lastCol: c == maxCol - 1, lastRow: r == rows.length - 1);
+                      }),
+                    ),
+                ],
+              );
+
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surface,
+                    border: Border.all(color: borderColor, width: 0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: table,
+                ),
+              );
+            },
+          );
       },
       // Inline `code` styling via highlightBuilder in gpt_markdown
       highlightBuilder: (ctx, inline, style) {
