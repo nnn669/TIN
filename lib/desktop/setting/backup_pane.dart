@@ -167,11 +167,11 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(
                       children: [
-                        Icon(lucide.Lucide.Network, size: 18, color: cs.onSurface.withOpacity(0.9)),
-                        const SizedBox(width: 8),
                         Expanded(
-                          child: Text(l10n.backupPageWebDavServerSettings,
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.95))),
+                          child: Text(
+                            l10n.backupPageWebDavServerSettings,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.95)),
+                          ),
                         ),
                       ],
                     ),
@@ -313,8 +313,6 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
               SliverToBoxAdapter(
                 child: _sectionCard(children: [
                   Row(children: [
-                    Icon(lucide.Lucide.Import2, size: 18, color: cs.onSurface.withOpacity(0.9)),
-                    const SizedBox(width: 8),
                     Expanded(child: Text(l10n.backupPageLocalBackup, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
                   ]),
                   const SizedBox(height: 6),
@@ -477,6 +475,15 @@ class _RemoteBackupsDialogState extends State<_RemoteBackupsDialog> {
     setState(() => _loading = true);
     try {
       final list = await context.read<BackupProvider>().listRemote();
+      // Sort by newest first (desc by lastModified), mimic mobile behavior
+      list.sort((a, b) {
+        final aTime = a.lastModified;
+        final bTime = b.lastModified;
+        if (aTime != null && bTime != null) return bTime.compareTo(aTime);
+        if (aTime == null && bTime == null) return b.displayName.compareTo(a.displayName);
+        if (aTime == null) return 1; // items with time go first
+        return -1;
+      });
       if (mounted) setState(() { _items = list; });
     } catch (_) {
       if (mounted) setState(() { _items = const []; });
@@ -545,6 +552,14 @@ class _RemoteBackupsDialogState extends State<_RemoteBackupsDialog> {
                                   }),
                                   onDelete: () async {
                                     final next = await context.read<BackupProvider>().deleteAndReload(it);
+                                    next.sort((a, b) {
+                                      final aTime = a.lastModified;
+                                      final bTime = b.lastModified;
+                                      if (aTime != null && bTime != null) return bTime.compareTo(aTime);
+                                      if (aTime == null && bTime == null) return b.displayName.compareTo(a.displayName);
+                                      if (aTime == null) return 1;
+                                      return -1;
+                                    });
                                     if (mounted) setState(() => _items = next);
                                   },
                                 );
@@ -619,9 +634,11 @@ class _RestoreModeDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: cs.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-        child: Column(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 320, maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -643,6 +660,7 @@ class _RestoreModeDialog extends StatelessWidget {
             const SizedBox(height: 12),
             Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.backupPageCancel))),
           ],
+          ),
         ),
       ),
     );
