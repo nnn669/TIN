@@ -1572,6 +1572,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultModelPageUseCurrentModel => 'Use current chat model';
 
   @override
+  String get translatePagePasteButton => 'Paste';
+
+  @override
+  String get translatePageCopyResult => 'Copy result';
+
+  @override
+  String get translatePageClearAll => 'Clear All';
+
+  @override
   String get modelDetailSheetAddModel => 'Add Model';
 
   @override

@@ -3011,6 +3011,24 @@ abstract class AppLocalizations {
   /// **'Use current chat model'**
   String get defaultModelPageUseCurrentModel;
 
+  /// No description provided for @translatePagePasteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get translatePagePasteButton;
+
+  /// No description provided for @translatePageCopyResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy result'**
+  String get translatePageCopyResult;
+
+  /// No description provided for @translatePageClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get translatePageClearAll;
+
   /// No description provided for @modelDetailSheetAddModel.
   ///
   /// In en, this message translates to:

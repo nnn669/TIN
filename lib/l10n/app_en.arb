@@ -704,6 +704,9 @@
     }
   },
   "defaultModelPageUseCurrentModel": "Use current chat model",
+  "translatePagePasteButton": "Paste",
+  "translatePageCopyResult": "Copy result",
+  "translatePageClearAll": "Clear All",
   "modelDetailSheetAddModel": "Add Model",
   "modelDetailSheetEditModel": "Edit Model",
   "modelDetailSheetBasicTab": "Basic",

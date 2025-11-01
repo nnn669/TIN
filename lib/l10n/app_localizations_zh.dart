@@ -1528,6 +1528,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageUseCurrentModel => '使用当前对话模型';
 
   @override
+  String get translatePagePasteButton => '粘贴';
+
+  @override
+  String get translatePageCopyResult => '复制结果';
+
+  @override
+  String get translatePageClearAll => '清空全部';
+
+  @override
   String get modelDetailSheetAddModel => '添加模型';
 
   @override
@@ -4203,6 +4212,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageUseCurrentModel => '使用当前对话模型';
 
   @override
+  String get translatePagePasteButton => '粘贴';
+
+  @override
+  String get translatePageCopyResult => '复制结果';
+
+  @override
+  String get translatePageClearAll => '清空全部';
+
+  @override
   String get modelDetailSheetAddModel => '添加模型';
 
   @override
@@ -6876,6 +6894,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get defaultModelPageUseCurrentModel => '使用目前對話模型';
+
+  @override
+  String get translatePagePasteButton => '貼上';
+
+  @override
+  String get translatePageCopyResult => '複製結果';
+
+  @override
+  String get translatePageClearAll => '清空全部';
 
   @override
   String get modelDetailSheetAddModel => '新增模型';
