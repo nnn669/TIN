@@ -30,7 +30,7 @@ const List<LanguageOption> supportedLanguages = [
   LanguageOption(code: 'fr', displayName: 'French', displayNameZh: 'Français', flag: '🇫🇷'),
   LanguageOption(code: 'de', displayName: 'German', displayNameZh: 'Deutsch', flag: '🇩🇪'),
   LanguageOption(code: 'it', displayName: 'Italian', displayNameZh: 'Italiano', flag: '🇮🇹'),
-  // LanguageOption(code: 'es', displayName: 'Spanish', displayNameZh: 'Español', flag: '🇪🇸'),
+  LanguageOption(code: 'es', displayName: 'Spanish', displayNameZh: 'Español', flag: '🇪🇸'),
   // LanguageOption(code: 'pt', displayName: 'Portuguese', displayNameZh: 'Português', flag: '🇵🇹'),
   // LanguageOption(code: 'ru', displayName: 'Russian', displayNameZh: 'Русский', flag: '🇷🇺'),
   // LanguageOption(code: 'ar', displayName: 'Arabic', displayNameZh: 'العربية', flag: '🇸🇦'),
@@ -57,6 +57,9 @@ String _displayNameFor(AppLocalizations l10n, String languageCode) {
       return l10n.languageDisplayGerman;
     case 'it':
       return l10n.languageDisplayItalian;
+    case 'es':
+      // Not in l10n yet; show native name
+      return 'Español';
     default:
       return languageCode;
   }
@@ -252,6 +255,9 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
         return l10n.languageDisplayGerman;
       case 'it':
         return l10n.languageDisplayItalian;
+      case 'es':
+        // Not in l10n yet; show native name
+        return 'Español';
       default:
         return languageCode;
     }
