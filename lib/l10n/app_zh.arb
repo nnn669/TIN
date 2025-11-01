@@ -537,6 +537,8 @@
   "translatePagePasteButton": "粘贴",
   "translatePageCopyResult": "复制结果",
   "translatePageClearAll": "清空全部",
+  "translatePageInputHint": "输入要翻译的内容…",
+  "translatePageOutputHint": "翻译结果会显示在这里…",
   "modelDetailSheetAddModel": "添加模型",
   "modelDetailSheetEditModel": "编辑模型",
   "modelDetailSheetBasicTab": "基本设置",

@@ -143,8 +143,13 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
 
       _subscription = stream.listen(
         (chunk) {
-          // live update
-          _output.text += chunk.content;
+          // live update; remove leading whitespace on first chunk to avoid top gap
+          final s = chunk.content;
+          if (_output.text.isEmpty) {
+            _output.text = s.replaceFirst(RegExp(r'^\s+'), '');
+          } else {
+            _output.text += s;
+          }
         },
         onDone: () {
           if (!mounted) return;
@@ -258,11 +263,11 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                                   keyboardType: TextInputType.multiline,
                                   maxLines: null,
                                   expands: true,
-                                  decoration: const InputDecoration(
-                                    hintText: '输入要翻译的内容…',
+                                  decoration: InputDecoration(
+                                    hintText: l10n.translatePageInputHint,
                                     border: InputBorder.none,
                                     isCollapsed: true,
-                                    contentPadding: EdgeInsets.all(14),
+                                    contentPadding: const EdgeInsets.all(14),
                                   ),
                                   style: const TextStyle(fontSize: 14.5, height: 1.4),
                                 ),
@@ -290,11 +295,11 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                                   keyboardType: TextInputType.multiline,
                                   maxLines: null,
                                   expands: true,
-                                  decoration: const InputDecoration(
-                                    hintText: '翻译结果会显示在这里…',
+                                  decoration: InputDecoration(
+                                    hintText: l10n.translatePageOutputHint,
                                     border: InputBorder.none,
                                     isCollapsed: true,
-                                    contentPadding: EdgeInsets.all(14),
+                                    contentPadding: const EdgeInsets.all(14),
                                   ),
                                   style: const TextStyle(fontSize: 14.5, height: 1.4),
                                 ),

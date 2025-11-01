@@ -707,6 +707,8 @@
   "translatePagePasteButton": "Paste",
   "translatePageCopyResult": "Copy result",
   "translatePageClearAll": "Clear All",
+  "translatePageInputHint": "Enter text to translate…",
+  "translatePageOutputHint": "Translated result appears here…",
   "modelDetailSheetAddModel": "Add Model",
   "modelDetailSheetEditModel": "Edit Model",
   "modelDetailSheetBasicTab": "Basic",

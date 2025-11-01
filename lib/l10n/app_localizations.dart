@@ -3029,6 +3029,18 @@ abstract class AppLocalizations {
   /// **'Clear All'**
   String get translatePageClearAll;
 
+  /// No description provided for @translatePageInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter text to translate…'**
+  String get translatePageInputHint;
+
+  /// No description provided for @translatePageOutputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated result appears here…'**
+  String get translatePageOutputHint;
+
   /// No description provided for @modelDetailSheetAddModel.
   ///
   /// In en, this message translates to:

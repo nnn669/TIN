@@ -1581,6 +1581,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get translatePageClearAll => 'Clear All';
 
   @override
+  String get translatePageInputHint => 'Enter text to translate…';
+
+  @override
+  String get translatePageOutputHint => 'Translated result appears here…';
+
+  @override
   String get modelDetailSheetAddModel => 'Add Model';
 
   @override

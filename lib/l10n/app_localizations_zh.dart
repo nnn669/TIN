@@ -1537,6 +1537,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get translatePageClearAll => '清空全部';
 
   @override
+  String get translatePageInputHint => '输入要翻译的内容…';
+
+  @override
+  String get translatePageOutputHint => '翻译结果会显示在这里…';
+
+  @override
   String get modelDetailSheetAddModel => '添加模型';
 
   @override
@@ -4221,6 +4227,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get translatePageClearAll => '清空全部';
 
   @override
+  String get translatePageInputHint => '输入要翻译的内容…';
+
+  @override
+  String get translatePageOutputHint => '翻译结果会显示在这里…';
+
+  @override
   String get modelDetailSheetAddModel => '添加模型';
 
   @override
@@ -6903,6 +6915,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get translatePageClearAll => '清空全部';
+
+  @override
+  String get translatePageInputHint => '輸入要翻譯的內容…';
+
+  @override
+  String get translatePageOutputHint => '翻譯結果會顯示在這裡…';
 
   @override
   String get modelDetailSheetAddModel => '新增模型';

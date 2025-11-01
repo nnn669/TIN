@@ -116,7 +116,14 @@ class _TranslatePageState extends State<TranslatePage> {
       );
       _sub = stream.listen(
         (chunk) {
-          _dst.text += chunk.content;
+          final s = chunk.content;
+          if (_dst.text.isEmpty) {
+            // Remove any leading whitespace/newlines from the first chunk to avoid top gap
+            final cleaned = s.replaceFirst(RegExp(r'^\s+'), '');
+            _dst.text = cleaned;
+          } else {
+            _dst.text += s;
+          }
         },
         onError: (e) {
           if (!mounted) return;
@@ -266,10 +273,10 @@ class _TranslatePageState extends State<TranslatePage> {
                     expands: true,
                     maxLines: null,
                     minLines: null,
-                    decoration: const InputDecoration(
-                      hintText: '输入要翻译的内容…',
+                    decoration: InputDecoration(
+                      hintText: l10n.translatePageInputHint,
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.fromLTRB(12, 8, 12, 12),
+                      contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     ),
                     contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
                     style: const TextStyle(fontSize: 15, height: 1.4),
@@ -280,7 +287,7 @@ class _TranslatePageState extends State<TranslatePage> {
             // Output
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                 child: _Card(
                   child: TextField(
                     controller: _dst,
@@ -288,10 +295,10 @@ class _TranslatePageState extends State<TranslatePage> {
                     keyboardType: TextInputType.multiline,
                     maxLines: null,
                     expands: true,
-                    decoration: const InputDecoration(
-                      hintText: '翻译结果会显示在这里…',
+                    decoration: InputDecoration(
+                      hintText: l10n.translatePageOutputHint,
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.fromLTRB(12, 6, 12, 12),
+                      contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     ),
                     enableInteractiveSelection: false,
                     contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
@@ -302,7 +309,7 @@ class _TranslatePageState extends State<TranslatePage> {
             ),
             // Bottom: language card + translate button
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -310,7 +317,7 @@ class _TranslatePageState extends State<TranslatePage> {
                       borderRadius: BorderRadius.circular(12),
                       baseColor: Theme.of(context).cardColor,
                       onTap: _pickLanguage,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       child: Row(
                         children: [
                           Text((_lang ?? supportedLanguages.first).flag, style: const TextStyle(fontSize: 18)),
@@ -335,7 +342,7 @@ class _TranslatePageState extends State<TranslatePage> {
                     baseColor: cs.primary,
                     pressedBlendStrength: isDark ? 0.08 : 0.06,
                     onTap: _loading ? _stop : _translate,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
                       transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),

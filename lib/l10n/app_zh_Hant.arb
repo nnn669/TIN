@@ -495,6 +495,8 @@
   "translatePagePasteButton": "貼上",
   "translatePageCopyResult": "複製結果",
   "translatePageClearAll": "清空全部",
+  "translatePageInputHint": "輸入要翻譯的內容…",
+  "translatePageOutputHint": "翻譯結果會顯示在這裡…",
   "modelDetailSheetAddModel": "新增模型",
   "modelDetailSheetEditModel": "編輯模型",
   "modelDetailSheetBasicTab": "基本設定",
