@@ -370,6 +370,12 @@ abstract class AppLocalizations {
   /// **'Italian'**
   String get languageDisplayItalian;
 
+  /// No description provided for @languageDisplaySpanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish'**
+  String get languageDisplaySpanish;
+
   /// No description provided for @languageSelectSheetTitle.
   ///
   /// In en, this message translates to:

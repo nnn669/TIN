@@ -146,6 +146,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageDisplayItalian => 'Italiano';
 
   @override
+  String get languageDisplaySpanish => 'Español';
+
+  @override
   String get languageSelectSheetTitle => '选择翻译语言';
 
   @override
@@ -2818,6 +2821,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get languageDisplayItalian => 'Italiano';
 
   @override
+  String get languageDisplaySpanish => 'Español';
+
+  @override
   String get languageSelectSheetTitle => '选择翻译语言';
 
   @override
@@ -5488,6 +5494,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get languageDisplayItalian => 'Italiano';
+
+  @override
+  String get languageDisplaySpanish => 'Español';
 
   @override
   String get languageSelectSheetTitle => '選擇翻譯語言';

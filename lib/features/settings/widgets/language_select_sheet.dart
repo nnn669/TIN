@@ -58,8 +58,7 @@ String _displayNameFor(AppLocalizations l10n, String languageCode) {
     case 'it':
       return l10n.languageDisplayItalian;
     case 'es':
-      // Not in l10n yet; show native name
-      return 'Español';
+      return l10n.languageDisplaySpanish;
     default:
       return languageCode;
   }
@@ -256,8 +255,7 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
       case 'it':
         return l10n.languageDisplayItalian;
       case 'es':
-        // Not in l10n yet; show native name
-        return 'Español';
+        return l10n.languageDisplaySpanish;
       default:
         return languageCode;
     }

@@ -147,6 +147,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageDisplayItalian => 'Italian';
 
   @override
+  String get languageDisplaySpanish => 'Spanish';
+
+  @override
   String get languageSelectSheetTitle => 'Select Translation Language';
 
   @override
