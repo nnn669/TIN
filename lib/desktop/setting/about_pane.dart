@@ -136,6 +136,12 @@ class _DesktopAboutPaneState extends State<DesktopAboutPane> {
                   ),
                   const _DeskRowDivider(),
                   _DeskNavRowSvg(
+                    svgAsset: 'assets/icons/tencent-qq.svg',
+                    label: l10n.aboutPageJoinQQGroup,
+                    onTap: () => _openUrl('https://qm.qq.com/q/OQaXetKssC'),
+                  ),
+                  const _DeskRowDivider(),
+                  _DeskNavRowSvg(
                     svgAsset: 'assets/icons/discord.svg',
                     label: l10n.aboutPageJoinDiscord,
                     onTap: () => _openUrl('https://discord.gg/Tb8DyvvV5T'),

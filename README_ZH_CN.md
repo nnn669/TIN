@@ -7,6 +7,9 @@
   <a href="https://discord.gg/Tb8DyvvV5T" target="_blank">
     <img src="https://img.shields.io/badge/Join%20our%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord"/>
   </a>
+  <a href="https://qm.qq.com/q/OQaXetKssC" target="_blank" style="margin-left: 6px;">
+    <img src="https://img.shields.io/badge/Join%20QQ%20Group-%2312B7F5?style=for-the-badge&logo=tencentqq&logoColor=white" alt="Join QQ Group"/>
+  </a>
 
 [English](README.md) | 简体中文
 </div>

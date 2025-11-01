@@ -2212,6 +2212,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutPageLicense => 'License';
 
   @override
+  String get aboutPageJoinQQGroup => 'Join our QQ Group';
+
+  @override
   String get aboutPageJoinDiscord => 'Join us on Discord';
 
   @override

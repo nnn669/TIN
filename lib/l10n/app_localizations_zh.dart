@@ -2153,6 +2153,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPageLicense => '许可证';
 
   @override
+  String get aboutPageJoinQQGroup => '加入QQ群';
+
+  @override
   String get aboutPageJoinDiscord => '在 Discord 中加入我们';
 
   @override
@@ -4843,6 +4846,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get aboutPageLicense => '许可证';
 
   @override
+  String get aboutPageJoinQQGroup => '加入QQ群';
+
+  @override
   String get aboutPageJoinDiscord => '在 Discord 中加入我们';
 
   @override
@@ -7530,6 +7536,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get aboutPageLicense => '授權';
+
+  @override
+  String get aboutPageJoinQQGroup => '加入 QQ 群';
 
   @override
   String get aboutPageJoinDiscord => '加入我們的 Discord';

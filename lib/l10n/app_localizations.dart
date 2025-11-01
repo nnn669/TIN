@@ -4241,6 +4241,12 @@ abstract class AppLocalizations {
   /// **'License'**
   String get aboutPageLicense;
 
+  /// No description provided for @aboutPageJoinQQGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Join our QQ Group'**
+  String get aboutPageJoinQQGroup;
+
   /// No description provided for @aboutPageJoinDiscord.
   ///
   /// In en, this message translates to:
