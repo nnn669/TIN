@@ -5918,6 +5918,16 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
           },
         ),
         DesktopContextMenuItem(
+          icon: Lucide.Link,
+          label: l10n.assistantEditAvatarEnterLink,
+          onTap: () async { await _inputAvatarUrl(context, a); },
+        ),
+        DesktopContextMenuItem(
+          svgAsset: 'assets/icons/tencent-qq.svg',
+          label: l10n.assistantEditAvatarImportQQ,
+          onTap: () async { await _inputQQAvatar(context, a); },
+        ),
+        DesktopContextMenuItem(
           icon: Lucide.RotateCw,
           label: l10n.desktopAvatarMenuReset,
           onTap: () async { await context.read<AssistantProvider>().updateAssistant(a.copyWith(clearAvatar: true)); },
@@ -6072,7 +6082,34 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
                 onChanged: (v) => setLocal(() => value = v),
               ),
               actions: [
-                TextButton(onPressed: () => setLocal(() => controller.text = randomQQ()), child: Text(l10n.assistantEditQQAvatarRandomButton)),
+                TextButton(
+                  onPressed: () async {
+                    const int maxTries = 20;
+                    bool applied = false;
+                    for (int i = 0; i < maxTries; i++) {
+                      final qq = randomQQ();
+                      final url = 'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=100';
+                      try {
+                        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+                        if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+                          await context.read<AssistantProvider>().updateAssistant(a.copyWith(avatar: url));
+                          applied = true;
+                          break;
+                        }
+                      } catch (_) {}
+                    }
+                    if (applied) {
+                      if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop(false);
+                    } else {
+                      showAppSnackBar(
+                        context,
+                        message: l10n.assistantEditQQAvatarFailedMessage,
+                        type: NotificationType.error,
+                      );
+                    }
+                  },
+                  child: Text(l10n.assistantEditQQAvatarRandomButton),
+                ),
                 TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantEditQQAvatarDialogCancel)),
                 TextButton(onPressed: valid(value) ? () => Navigator.of(ctx).pop(true) : null, child: Text(l10n.assistantEditQQAvatarDialogSave)),
               ],
@@ -6084,7 +6121,7 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
     if (ok == true) {
       final qq = controller.text.trim();
       if (qq.isNotEmpty) {
-        final url = 'https://q1.qlogo.cn/g?b=qq&nk=$qq&s=640';
+        final url = 'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=100';
         await context.read<AssistantProvider>().updateAssistant(a.copyWith(avatar: url));
       }
     }
