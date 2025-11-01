@@ -82,6 +82,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, RouteAware {
+  bool get _isDesktopPlatform =>
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux;
   // Inline bottom tools panel removed; using modal bottom sheet instead
   // Animation tuning
   static const Duration _scrollAnimateDuration = Duration(milliseconds: 300);
@@ -905,9 +909,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Before switching, persist any in-flight reasoning/content of current conversation
     try { await _flushCurrentConversationProgress(); } catch (_) {}
     if (_currentConversation?.id == id) return;
-    try {
-      await _convoFadeController.reverse();
-    } catch (_) {}
+    if (!_isDesktopPlatform) {
+      try {
+        await _convoFadeController.reverse();
+      } catch (_) {}
+    } else {
+      // Desktop: skip fade-out to switch instantly
+      try { _convoFadeController.stop(); _convoFadeController.value = 1.0; } catch (_) {}
+    }
     _chatService.setCurrentConversation(id);
     final convo = _chatService.getConversation(id);
     if (convo != null) {
@@ -924,7 +933,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _scrollToBottom();
       }
     }
-    if (mounted) {
+    if (mounted && !_isDesktopPlatform) {
       try { await _convoFadeController.forward(); } catch (_) {}
     }
   }
@@ -932,10 +941,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Future<void> _createNewConversationAnimated() async {
     // Flush current conversation progress before creating a new one
     try { await _flushCurrentConversationProgress(); } catch (_) {}
-    try { await _convoFadeController.reverse(); } catch (_) {}
+    if (!_isDesktopPlatform) {
+      try { await _convoFadeController.reverse(); } catch (_) {}
+    }
     await _createNewConversation();
-    if (mounted) {
-      // New conversation typically empty; still forward fade smoothly
+    if (mounted && !_isDesktopPlatform) {
+      // Mobile: keep smooth fade for new conversation
       try { await _convoFadeController.forward(); } catch (_) {}
     }
   }
@@ -3960,9 +3971,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       sourceMessages: selected,
                                       versionSelections: sel,
                                     );
-                                    // Switch to the new conversation with fade animation
+                                    // Switch to the new conversation; skip fade on desktop for instant switch
                                     if (!mounted) return;
-                                    await _convoFadeController.reverse();
+                                    if (!_isDesktopPlatform) {
+                                      await _convoFadeController.reverse();
+                                    }
                                     _chatService.setCurrentConversation(newConvo.id);
                                     final msgs = _chatService.getMessages(newConvo.id);
                                     if (!mounted) return;
@@ -3974,7 +3987,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     });
                                     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
                                     _scrollToBottom();
-                                    await _convoFadeController.forward();
+                                    if (!_isDesktopPlatform) {
+                                      await _convoFadeController.forward();
+                                    }
                                   }
                                 } else if (action == MessageMoreAction.share) {
                                   // Enter selection mode and preselect up to this message (inclusive)
@@ -4949,9 +4964,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                             sourceMessages: selected,
                                                             versionSelections: sel,
                                                           );
-                                    // Switch to the new conversation with fade animation
+                                    // Switch to the new conversation; skip fade on desktop for instant switch
                                     if (!mounted) return;
-                                    await _convoFadeController.reverse();
+                                    if (!_isDesktopPlatform) {
+                                      await _convoFadeController.reverse();
+                                    }
                                     _chatService.setCurrentConversation(newConvo.id);
                                     final msgs = _chatService.getMessages(newConvo.id);
                                     if (!mounted) return;
@@ -4963,7 +4980,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     });
                                     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
                                     _scrollToBottom();
-                                    await _convoFadeController.forward();
+                                    if (!_isDesktopPlatform) {
+                                      await _convoFadeController.forward();
+                                    }
                                                         }
                                                       } else if (action == MessageMoreAction.share) {
                                                         setState(() {
