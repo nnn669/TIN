@@ -32,6 +32,7 @@ import 'dart:async';
 import '../core/models/api_keys.dart';
 import 'package:file_picker/file_picker.dart';
 import 'desktop_context_menu.dart';
+import '../shared/widgets/snackbar.dart';
 import 'setting/default_model_pane.dart';
 import 'setting/search_services_pane.dart';
 import 'setting/mcp_pane.dart';
@@ -817,16 +818,32 @@ class _DesktopAssistantCardState extends State<_DesktopAssistantCard> {
                                 AppLocalizations.of(context)!.assistantSettingsDefaultTag,
                                 style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w700),
                               ),
-                            )
-                          else
-                            _DeleteAssistantIcon(
-                              onConfirm: () async {
-                                final ok = await _confirmDeleteDesktop(context);
-                                if (ok == true) {
-                                  await context.read<AssistantProvider>().deleteAssistant(widget.item.id);
-                                }
-                              },
                             ),
+                          _DeleteAssistantIcon(
+                            onConfirm: () async {
+                              final l10n = AppLocalizations.of(context)!;
+                              final count = context.read<AssistantProvider>().assistants.length;
+                              if (count <= 1) {
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.assistantSettingsAtLeastOneAssistantRequired,
+                                  type: NotificationType.warning,
+                                );
+                                return;
+                              }
+                              final ok = await _confirmDeleteDesktop(context);
+                              if (ok == true) {
+                                final success = await context.read<AssistantProvider>().deleteAssistant(widget.item.id);
+                                if (success != true) {
+                                  showAppSnackBar(
+                                    context,
+                                    message: l10n.assistantSettingsAtLeastOneAssistantRequired,
+                                    type: NotificationType.warning,
+                                  );
+                                }
+                              }
+                            },
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),

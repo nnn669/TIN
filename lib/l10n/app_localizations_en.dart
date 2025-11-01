@@ -687,6 +687,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantSettingsDeleteDialogConfirm => 'Delete';
 
   @override
+  String get assistantSettingsAtLeastOneAssistantRequired =>
+      'At least one assistant is required';
+
+  @override
   String get mcpAssistantSheetTitle => 'MCP Servers';
 
   @override

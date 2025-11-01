@@ -176,6 +176,7 @@
   "assistantSettingsDeleteDialogContent": "確定要刪除該助理嗎？此操作不可撤銷。",
   "assistantSettingsDeleteDialogCancel": "取消",
   "assistantSettingsDeleteDialogConfirm": "刪除",
+  "assistantSettingsAtLeastOneAssistantRequired": "至少需要保留一個助理",
   "desktopAssistantsListTitle": "助理列表",
   "assistantEditTemperatureTitle": "溫度",
   "assistantEditTopPTitle": "Top-p",

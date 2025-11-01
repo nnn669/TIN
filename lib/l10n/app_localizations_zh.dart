@@ -673,6 +673,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantSettingsDeleteDialogConfirm => '删除';
 
   @override
+  String get assistantSettingsAtLeastOneAssistantRequired => '至少需要保留一个助手';
+
+  @override
   String get mcpAssistantSheetTitle => 'MCP服务器';
 
   @override
@@ -3366,6 +3369,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantSettingsDeleteDialogConfirm => '删除';
 
   @override
+  String get assistantSettingsAtLeastOneAssistantRequired => '至少需要保留一个助手';
+
+  @override
   String get mcpAssistantSheetTitle => 'MCP服务器';
 
   @override
@@ -6057,6 +6063,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantSettingsDeleteDialogConfirm => '刪除';
+
+  @override
+  String get assistantSettingsAtLeastOneAssistantRequired => '至少需要保留一個助理';
 
   @override
   String get mcpAssistantSheetTitle => 'MCP伺服器';

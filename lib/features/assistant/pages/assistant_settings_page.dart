@@ -14,6 +14,7 @@ import '../../../utils/avatar_cache.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../core/services/haptics.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import '../../../shared/widgets/snackbar.dart';
 
 class AssistantSettingsPage extends StatelessWidget {
   const AssistantSettingsPage({super.key});
@@ -177,7 +178,6 @@ class _AssistantCard extends StatelessWidget {
       },
     );
 
-    if (!item.deletable) return content;
     return Slidable(
       key: ValueKey('slidable-assistant-${item.id}'),
       endActionPane: ActionPane(
@@ -188,9 +188,25 @@ class _AssistantCard extends StatelessWidget {
             autoClose: true,
             backgroundColor: Colors.transparent,
             onPressed: (_) async {
+              final count = context.read<AssistantProvider>().assistants.length;
+              if (count <= 1) {
+                showAppSnackBar(
+                  context,
+                  message: l10n.assistantSettingsAtLeastOneAssistantRequired,
+                  type: NotificationType.warning,
+                );
+                return;
+              }
               final ok = await _confirmDelete(context, l10n);
               if (ok == true) {
-                await context.read<AssistantProvider>().deleteAssistant(item.id);
+                final success = await context.read<AssistantProvider>().deleteAssistant(item.id);
+                if (success != true) {
+                  showAppSnackBar(
+                    context,
+                    message: l10n.assistantSettingsAtLeastOneAssistantRequired,
+                    type: NotificationType.warning,
+                  );
+                }
               }
             },
             child: Container(

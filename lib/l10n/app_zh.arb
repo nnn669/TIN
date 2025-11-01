@@ -207,6 +207,7 @@
   "assistantSettingsDeleteDialogContent": "确定要删除该助手吗？此操作不可撤销。",
   "assistantSettingsDeleteDialogCancel": "取消",
   "assistantSettingsDeleteDialogConfirm": "删除",
+  "assistantSettingsAtLeastOneAssistantRequired": "至少需要保留一个助手",
   "assistantProviderDefaultAssistantName": "默认助手",
   "assistantProviderSampleAssistantName": "示例助手",
   "assistantProviderNewAssistantName": "新助手",

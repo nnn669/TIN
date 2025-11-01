@@ -253,10 +253,11 @@ class AssistantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteAssistant(String id) async {
+  Future<bool> deleteAssistant(String id) async {
     final idx = _assistants.indexWhere((a) => a.id == id);
-    if (idx == -1) return;
-    if (!_assistants[idx].deletable) return; // default not deletable
+    if (idx == -1) return false;
+    // Do not allow deleting the last remaining assistant
+    if (_assistants.length <= 1) return false;
     final removingCurrent = _assistants[idx].id == _currentAssistantId;
     _assistants.removeAt(idx);
     if (removingCurrent) {
@@ -270,6 +271,7 @@ class AssistantProvider extends ChangeNotifier {
       await prefs.remove(_currentAssistantKey);
     }
     notifyListeners();
+    return true;
   }
 
   Future<void> reorderAssistants(int oldIndex, int newIndex) async {

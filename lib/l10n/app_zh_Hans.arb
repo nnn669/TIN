@@ -204,6 +204,7 @@
   "assistantSettingsDeleteDialogContent": "确定要删除该助手吗？此操作不可撤销。",
   "assistantSettingsDeleteDialogCancel": "取消",
   "assistantSettingsDeleteDialogConfirm": "删除",
+  "assistantSettingsAtLeastOneAssistantRequired": "至少需要保留一个助手",
   "desktopAssistantsListTitle": "助手列表",
   "assistantEditTemperatureTitle": "温度",
   "assistantEditTopPTitle": "Top-p",
