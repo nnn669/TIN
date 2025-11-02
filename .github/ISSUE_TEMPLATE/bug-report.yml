@@ -60,6 +60,7 @@ body:
         from the browser console or any other relevant information.
       value: |
         <details open><summary>Additional information</summary>
+        
         ```
         [Paste any logs or additional context here]
         ```
