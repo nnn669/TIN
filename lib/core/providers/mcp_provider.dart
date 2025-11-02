@@ -486,7 +486,7 @@ class McpProvider extends ChangeNotifier {
 
       // Start/refresh heartbeat for this connection
       _startHeartbeat(id);
-    } catch (e, st) {
+    } catch (e) {
       // debugPrint('[MCP/Error] connect failed for id=$id (${server.name})');
       // _logMcpException('connect', serverId: id, error: e, stack: st);
       _status[id] = McpStatus.error;
@@ -501,7 +501,7 @@ class McpProvider extends ChangeNotifier {
       // debugPrint('[MCP/Disconnect] id=$id ...');
       client?.disconnect();
       // debugPrint('[MCP/Disconnect] id=$id done');
-    } catch (e, st) {
+    } catch (e) {
       // debugPrint('[MCP/Error] disconnect failed for id=$id');
       // _logMcpException('disconnect', serverId: id, error: e, stack: st);
     }
