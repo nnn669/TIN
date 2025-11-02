@@ -383,6 +383,9 @@ class DataSync {
             'pinned_models_v1',    // Pinned models list
             'providers_order_v1',  // Provider order list
             'search_services_v1',  // Search services configuration
+            'assistant_tags_v1',         // Ordered tag list [{id,name}]
+            'assistant_tag_map_v1',      // assistantId -> tagId
+            'assistant_tag_collapsed_v1' // tagId -> bool
           };
           
           for (final entry in map.entries) {
@@ -496,6 +499,59 @@ class DataSync {
                 } catch (e) {
                   // If merge fails, keep existing
                 }
+              } else if (key == 'assistant_tags_v1') {
+                // Merge tag list by id; keep existing order, append new tags at end (incoming order)
+                try {
+                  final existingStr = (existing[key] ?? '') as String?;
+                  final newStr = (newValue ?? '') as String?;
+                  final existingList = (existingStr == null || existingStr.isEmpty) ? <dynamic>[] : (jsonDecode(existingStr) as List);
+                  final newList = (newStr == null || newStr.isEmpty) ? <dynamic>[] : (jsonDecode(newStr) as List);
+
+                  // Map existing by id and maintain order
+                  final existingOrder = <String>[];
+                  final tagById = <String, Map<String, dynamic>>{};
+                  for (final e in existingList) {
+                    if (e is Map && e['id'] != null) {
+                      final id = e['id'].toString();
+                      existingOrder.add(id);
+                      tagById[id] = Map<String, dynamic>.from(e as Map);
+                    }
+                  }
+                  // Add new tags that don't exist yet
+                  for (final e in newList) {
+                    if (e is Map && e['id'] != null) {
+                      final id = e['id'].toString();
+                      if (!tagById.containsKey(id)) {
+                        tagById[id] = Map<String, dynamic>.from(e as Map);
+                        existingOrder.add(id);
+                      }
+                    }
+                  }
+                  final merged = [for (final id in existingOrder) tagById[id]].whereType<Map<String, dynamic>>().toList();
+                  await prefs.restoreSingle(key, jsonEncode(merged));
+                } catch (_) {
+                  // If merge fails, fall back to existing (no action)
+                }
+              } else if (key == 'assistant_tag_map_v1') {
+                // Merge assistant->tag mapping; prefer existing on conflicts
+                try {
+                  final existingStr = (existing[key] ?? '') as String?;
+                  final newStr = (newValue ?? '') as String?;
+                  final existingMap = (existingStr == null || existingStr.isEmpty) ? <String, dynamic>{} : (jsonDecode(existingStr) as Map<String, dynamic>);
+                  final newMap = (newStr == null || newStr.isEmpty) ? <String, dynamic>{} : (jsonDecode(newStr) as Map<String, dynamic>);
+                  final merged = <String, dynamic>{...newMap, ...existingMap};
+                  await prefs.restoreSingle(key, jsonEncode(merged));
+                } catch (_) {}
+              } else if (key == 'assistant_tag_collapsed_v1') {
+                // Merge collapse states; prefer existing on conflicts
+                try {
+                  final existingStr = (existing[key] ?? '') as String?;
+                  final newStr = (newValue ?? '') as String?;
+                  final existingMap = (existingStr == null || existingStr.isEmpty) ? <String, dynamic>{} : (jsonDecode(existingStr) as Map<String, dynamic>);
+                  final newMap = (newStr == null || newStr.isEmpty) ? <String, dynamic>{} : (jsonDecode(newStr) as Map<String, dynamic>);
+                  final merged = <String, dynamic>{...newMap, ...existingMap};
+                  await prefs.restoreSingle(key, jsonEncode(merged));
+                } catch (_) {}
               } else if ((key == 'providers_order_v1' || key == 'search_services_v1') && existing.containsKey(key)) {
                 // For these lists, prefer the imported version if different
                 // This ensures new providers/services are properly ordered
