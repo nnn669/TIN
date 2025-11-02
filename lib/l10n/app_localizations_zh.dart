@@ -2459,6 +2459,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ttsServicesPageDoneButton => '完成';
 
   @override
+  String get ttsServicesPageNetworkSectionTitle => '网络 TTS';
+
+  @override
+  String get ttsServicesPageNoNetworkServices => '暂无网络语音服务，点 + 添加。';
+
+  @override
+  String get ttsServicesDialogAddTitle => '添加语音服务';
+
+  @override
+  String get ttsServicesDialogEditTitle => '编辑语音服务';
+
+  @override
+  String get ttsServicesDialogProviderType => '服务提供方';
+
+  @override
+  String get ttsServicesDialogCancelButton => '取消';
+
+  @override
+  String get ttsServicesDialogAddButton => '添加';
+
+  @override
+  String get ttsServicesDialogSaveButton => '保存';
+
+  @override
+  String get ttsServicesFieldNameLabel => '名称';
+
+  @override
+  String get ttsServicesFieldApiKeyLabel => 'API Key';
+
+  @override
+  String get ttsServicesFieldBaseUrlLabel => 'API 基址';
+
+  @override
+  String get ttsServicesFieldModelLabel => '模型';
+
+  @override
+  String get ttsServicesFieldVoiceLabel => '音色';
+
+  @override
+  String get ttsServicesFieldVoiceIdLabel => '音色 ID';
+
+  @override
+  String get ttsServicesFieldEmotionLabel => '情感';
+
+  @override
+  String get ttsServicesFieldSpeedLabel => '语速';
+
+  @override
+  String get ttsServicesViewDetailsButton => '查看详情';
+
+  @override
+  String get ttsServicesDialogErrorTitle => '错误详情';
+
+  @override
+  String get ttsServicesCloseButton => '关闭';
+
+  @override
   String imageViewerPageShareFailedOpenFile(String message) {
     return '无法分享，已尝试打开文件: $message';
   }
@@ -5221,6 +5278,63 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get ttsServicesPageDoneButton => '完成';
 
   @override
+  String get ttsServicesPageNetworkSectionTitle => '网络 TTS';
+
+  @override
+  String get ttsServicesPageNoNetworkServices => '暂无网络语音服务，点 + 添加。';
+
+  @override
+  String get ttsServicesDialogAddTitle => '添加语音服务';
+
+  @override
+  String get ttsServicesDialogEditTitle => '编辑语音服务';
+
+  @override
+  String get ttsServicesDialogProviderType => '服务提供方';
+
+  @override
+  String get ttsServicesDialogCancelButton => '取消';
+
+  @override
+  String get ttsServicesDialogAddButton => '添加';
+
+  @override
+  String get ttsServicesDialogSaveButton => '保存';
+
+  @override
+  String get ttsServicesFieldNameLabel => '名称';
+
+  @override
+  String get ttsServicesFieldApiKeyLabel => 'API Key';
+
+  @override
+  String get ttsServicesFieldBaseUrlLabel => 'API 基址';
+
+  @override
+  String get ttsServicesFieldModelLabel => '模型';
+
+  @override
+  String get ttsServicesFieldVoiceLabel => '音色';
+
+  @override
+  String get ttsServicesFieldVoiceIdLabel => '音色 ID';
+
+  @override
+  String get ttsServicesFieldEmotionLabel => '情感';
+
+  @override
+  String get ttsServicesFieldSpeedLabel => '语速';
+
+  @override
+  String get ttsServicesViewDetailsButton => '查看详情';
+
+  @override
+  String get ttsServicesDialogErrorTitle => '错误详情';
+
+  @override
+  String get ttsServicesCloseButton => '关闭';
+
+  @override
   String imageViewerPageShareFailedOpenFile(String message) {
     return '无法分享，已尝试打开文件: $message';
   }
@@ -7980,6 +8094,63 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get ttsServicesPageDoneButton => '完成';
+
+  @override
+  String get ttsServicesPageNetworkSectionTitle => '網路 TTS';
+
+  @override
+  String get ttsServicesPageNoNetworkServices => '暫無網路語音服務，點 + 新增。';
+
+  @override
+  String get ttsServicesDialogAddTitle => '新增語音服務';
+
+  @override
+  String get ttsServicesDialogEditTitle => '編輯語音服務';
+
+  @override
+  String get ttsServicesDialogProviderType => '服務提供者';
+
+  @override
+  String get ttsServicesDialogCancelButton => '取消';
+
+  @override
+  String get ttsServicesDialogAddButton => '新增';
+
+  @override
+  String get ttsServicesDialogSaveButton => '儲存';
+
+  @override
+  String get ttsServicesFieldNameLabel => '名稱';
+
+  @override
+  String get ttsServicesFieldApiKeyLabel => 'API Key';
+
+  @override
+  String get ttsServicesFieldBaseUrlLabel => 'API 基址';
+
+  @override
+  String get ttsServicesFieldModelLabel => '模型';
+
+  @override
+  String get ttsServicesFieldVoiceLabel => '音色';
+
+  @override
+  String get ttsServicesFieldVoiceIdLabel => '音色 ID';
+
+  @override
+  String get ttsServicesFieldEmotionLabel => '情感';
+
+  @override
+  String get ttsServicesFieldSpeedLabel => '語速';
+
+  @override
+  String get ttsServicesViewDetailsButton => '檢視詳細';
+
+  @override
+  String get ttsServicesDialogErrorTitle => '錯誤詳情';
+
+  @override
+  String get ttsServicesCloseButton => '關閉';
 
   @override
   String imageViewerPageShareFailedOpenFile(String message) {

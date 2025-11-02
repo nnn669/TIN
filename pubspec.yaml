@@ -69,6 +69,7 @@ dependencies:
   flutter_highlight: ^0.7.0
   syncfusion_flutter_sliders: ^30.2.6
   flutter_tts: ^4.2.3
+  audioplayers: ^6.5.1
   html: ^0.15.6
   animations: ^2.0.11
   flutter_animate: ^4.5.2

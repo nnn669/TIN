@@ -4,6 +4,9 @@ import '../../../core/providers/settings_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/tts_provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../utils/brand_assets.dart';
+import '../../../core/services/tts/network_tts.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
@@ -36,90 +39,121 @@ class TtsServicesPage extends StatelessWidget {
               icon: Lucide.Plus,
               color: cs.onSurface,
               size: 22,
-              onTap: () {
-                showAppSnackBar(
-                  context,
-                  message: l10n.ttsServicesPageAddNotImplemented,
-                  type: NotificationType.warning,
-                );
+              onTap: () async {
+                final created = await _showAddNetworkTtsSheet(context);
+                if (created != null) {
+                  final sp = context.read<SettingsProvider>();
+                  final list = List<TtsServiceOptions>.from(sp.ttsServices)..add(created);
+                  await sp.setTtsServices(list);
+                  if (sp.usingSystemTts) {
+                    await sp.setTtsServiceSelected(list.length - 1);
+                  }
+                }
               },
             ),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          _header(context, l10n.ttsServicesPageTitle, first: true),
-          Consumer<TtsProvider>(builder: (context, tts, _) {
-            final available = tts.isAvailable && (tts.error == null);
-            final titleText = l10n.ttsServicesPageSystemTtsTitle;
-            final subText = available
-                ? l10n.ttsServicesPageSystemTtsAvailableSubtitle
-                : l10n.ttsServicesPageSystemTtsUnavailableSubtitle(tts.error ?? l10n.ttsServicesPageSystemTtsUnavailableNotInitialized);
-            final letter = (titleText.trim().isEmpty ? '?' : titleText.trim().substring(0, 1)).toUpperCase();
-            return _iosSectionCard(children: [
-              _TactileRow(
-                pressedScale: 0.98,
-                haptics: false,
-                onTap: available ? () => _showSystemTtsConfig(context) : null,
-                builder: (pressed) {
-                  final cs = Theme.of(context).colorScheme;
-                  final base = cs.onSurface.withOpacity(0.9);
-                  return _AnimatedPressColor(
-                    pressed: pressed,
-                    base: base,
-                    builder: (c) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-                      // Light mode: white overlay; Dark mode: black overlay (per request)
-                      final overlay = pressed
-                          ? (isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.05))
-                          : Colors.transparent;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                        child: Row(
-                          children: [
-                            _AvatarBadge(letter: letter, overlay: overlay),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(titleText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 3),
-                                  Text(subText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.withOpacity(0.7))),
-                                ],
+      body: Consumer2<TtsProvider, SettingsProvider>(
+        builder: (context, tts, sp, _) {
+          final services = sp.ttsServices;
+          final available = tts.isAvailable && (tts.error == null);
+          final titleText = l10n.ttsServicesPageSystemTtsTitle;
+          final subText = available
+              ? l10n.ttsServicesPageSystemTtsAvailableSubtitle
+              : l10n.ttsServicesPageSystemTtsUnavailableSubtitle(tts.error ?? l10n.ttsServicesPageSystemTtsUnavailableNotInitialized);
+          final systemLetter = (titleText.trim().isEmpty ? '?' : titleText.trim().substring(0, 1)).toUpperCase();
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              _header(context, l10n.ttsServicesPageTitle, first: true),
+              _iosSectionCard(children: [
+                // System TTS as first row
+                _TactileRow(
+                  pressedScale: 0.98,
+                  haptics: false,
+                  onTap: available
+                      ? () async {
+                          try { await sp.setTtsServiceSelected(-1); } catch (_) {}
+                        }
+                      : null,
+                  builder: (pressed) {
+                    final cs2 = Theme.of(context).colorScheme;
+                    final base = cs2.onSurface.withOpacity(0.9);
+                    return _AnimatedPressColor(
+                      pressed: pressed,
+                      base: base,
+                      builder: (c) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final overlay = pressed
+                            ? (isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.05))
+                            : Colors.transparent;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                          child: Row(
+                            children: [
+                              _AvatarBadge(letter: systemLetter, overlay: overlay),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(titleText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 3),
+                                    Text(subText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.withOpacity(0.7))),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            _SmallTactileIcon(
-                              icon: tts.isSpeaking ? Lucide.CircleStop : Lucide.Volume2,
-                              baseColor: c,
-                              onTap: available
-                                  ? () async {
-                                      if (!tts.isSpeaking) {
+                              const SizedBox(width: 8),
+                              _SmallTactileIcon(
+                                icon: Lucide.Volume2,
+                                baseColor: c,
+                                onTap: available
+                                    ? () async {
                                         final demo = l10n.ttsServicesPageTestSpeechText;
-                                        await tts.speak(demo);
-                                      } else {
-                                        await tts.stop();
+                                        await tts.speakSystem(demo);
                                       }
-                                    }
-                                  : () {},
-                              enabled: available,
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(Lucide.ChevronRight, size: 16, color: c),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ]);
-          }),
-        ],
+                                    : () {},
+                                enabled: available,
+                              ),
+                              const SizedBox(width: 6),
+                              _SmallTactileIcon(
+                                icon: Lucide.Settings2,
+                                baseColor: c,
+                                onTap: available ? () => _showSystemTtsConfig(context) : () {},
+                                enabled: available,
+                              ),
+                              const SizedBox(width: 8),
+                              // right indicator: show check only when selected
+                              Builder(builder: (_) {
+                                final sp2 = context.watch<SettingsProvider>();
+                                final sel = sp2.usingSystemTts;
+                                return sel ? Icon(Lucide.Check, size: 16, color: c) : const SizedBox(width: 16);
+                              }),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (services.isNotEmpty) _iosDivider(context),
+                if (services.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: Text(l10n.ttsServicesPageNoNetworkServices, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+                  )
+                else ...[
+                  for (int i = 0; i < services.length; i++) ...[
+                    _NetworkTtsRowMobile(service: services[i], index: i),
+                    if (i != services.length - 1) _iosDivider(context),
+                  ]
+                ],
+              ]),
+            ],
+          );
+        },
       ),
     );
   }
@@ -271,7 +305,351 @@ class _AvatarBadge extends StatelessWidget {
   }
 }
 
+class _AvatarBrandBadge extends StatelessWidget {
+  const _AvatarBrandBadge({required this.name, required this.overlay});
+  final String name; final Color overlay;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseBg = isDark ? Colors.white10 : cs.primary.withOpacity(0.1);
+    final asset = BrandAssets.assetForName(name) ?? BrandAssets.assetForName(name.split(' ').first);
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(color: baseBg, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: asset == null
+              ? Text((name.isEmpty ? '?' : name[0]).toUpperCase(), style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: 14))
+              : (asset.endsWith('.svg')
+                  ? SvgPicture.asset(asset, width: 20, height: 20)
+                  : Image.asset(asset, width: 20, height: 20, fit: BoxFit.contain)),
+        ),
+        if (overlay != Colors.transparent)
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: overlay, shape: BoxShape.circle)),
+      ],
+    );
+  }
+}
+
+class _NetworkTtsRowMobile extends StatefulWidget {
+  const _NetworkTtsRowMobile({required this.service, required this.index});
+  final TtsServiceOptions service; final int index;
+  @override
+  State<_NetworkTtsRowMobile> createState() => _NetworkTtsRowMobileState();
+}
+
+class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
+  bool _testing = false;
+  String? _error;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final displayName = widget.service.name.trim().isEmpty ? networkTtsKindDisplayName(widget.service.kind) : widget.service.name.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TactileRow(
+          pressedScale: 0.98,
+          haptics: false,
+          onTap: () async => context.read<SettingsProvider>().setTtsServiceSelected(widget.index),
+          builder: (pressed) {
+            final base = cs.onSurface.withOpacity(0.9);
+            return _AnimatedPressColor(
+              pressed: pressed,
+              base: base,
+              builder: (c) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final overlay = pressed ? (isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.05)) : Colors.transparent;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                  child: Row(
+                    children: [
+                      _AvatarBrandBadge(name: displayName, overlay: overlay),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _SmallTactileIcon(
+                        icon: Lucide.Settings2,
+                        baseColor: c,
+                        onTap: () async {
+                          final updated = await _showEditNetworkTtsSheet(context, widget.service);
+                          if (updated != null) {
+                            final list = List<TtsServiceOptions>.from(context.read<SettingsProvider>().ttsServices);
+                            list[widget.index] = updated;
+                            await context.read<SettingsProvider>().setTtsServices(list);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _SmallTactileIcon(
+                        icon: _testing ? Lucide.Loader : Lucide.Volume2,
+                        baseColor: c,
+                        onTap: () async {
+                          setState(() { _testing = true; _error = null; });
+                          final demo = AppLocalizations.of(context)!.ttsServicesPageTestSpeechText;
+                          final err = await context.read<TtsProvider>().testNetworkService(widget.service, demo);
+                          if (!mounted) return;
+                          setState(() { _testing = false; _error = err; });
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _SmallTactileIcon(
+                        icon: Lucide.Trash2,
+                        baseColor: c,
+                        onTap: () async {
+                          final sp = context.read<SettingsProvider>();
+                          final list = List<TtsServiceOptions>.from(sp.ttsServices);
+                          list.removeAt(widget.index);
+                          await sp.setTtsServices(list);
+                          var idx = sp.ttsServiceSelected;
+                          if (idx >= list.length) idx = list.isEmpty ? -1 : list.length - 1;
+                          await sp.setTtsServiceSelected(idx);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(builder: (_) {
+                        final sp2 = context.watch<SettingsProvider>();
+                        final sel = (sp2.ttsServiceSelected == widget.index);
+                        return sel ? Icon(Lucide.Check, size: 16, color: c) : const SizedBox(width: 16);
+                      }),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        if (_error != null && _error!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          _ErrorInlineMobile(message: _error!),
+        ],
+      ],
+    );
+  }
+}
+
+class _ErrorInlineMobile extends StatelessWidget {
+  const _ErrorInlineMobile({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final oneLine = message.replaceAll('\n', ' ');
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.error.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.error.withOpacity(0.3), width: 0.6),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(oneLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: cs.error)),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => _showMobileErrorDetails(context, message),
+            child: Text(l10n.ttsServicesViewDetailsButton),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showMobileErrorDetails(BuildContext context, String message) {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: cs.surface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    builder: (ctx) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(l10n.ttsServicesDialogErrorTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 10),
+              SelectableText(message, style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13)),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(onPressed: () => Navigator.of(ctx).maybePop(), child: Text(l10n.ttsServicesCloseButton)),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 // Removed selected tag; background highlight indicates selection
+
+Future<TtsServiceOptions?> _showAddNetworkTtsSheet(BuildContext context) => _showNetworkTtsSheet(context, null);
+
+Future<TtsServiceOptions?> _showEditNetworkTtsSheet(BuildContext context, TtsServiceOptions initial) => _showNetworkTtsSheet(context, initial);
+
+Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsServiceOptions? initial) async {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  NetworkTtsKind kind = initial?.kind ?? NetworkTtsKind.openai;
+  final nameCtl = TextEditingController(text: initial?.name ?? '');
+  final apiKeyCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
+      ? initial.apiKey
+      : (initial is GeminiTtsOptions)
+          ? initial.apiKey
+          : (initial is MiniMaxTtsOptions)
+              ? initial.apiKey
+              : '');
+  final baseCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
+      ? initial.baseUrl
+      : (initial is GeminiTtsOptions)
+          ? initial.baseUrl
+          : (initial is MiniMaxTtsOptions)
+              ? initial.baseUrl
+              : '');
+  final modelCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
+      ? initial.model
+      : (initial is GeminiTtsOptions)
+          ? initial.model
+          : (initial is MiniMaxTtsOptions)
+              ? initial.model
+              : '');
+  final voiceCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
+      ? initial.voice
+      : (initial is GeminiTtsOptions)
+          ? initial.voiceName
+          : (initial is MiniMaxTtsOptions)
+              ? initial.voiceId
+              : '');
+  final emotionCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.emotion : 'calm');
+  final speedCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.speed.toString() : '1.0');
+
+  TtsServiceOptions? result;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: cs.surface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    builder: (ctx) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle + Header with only a Check on the right
+            const SizedBox(height: 6),
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+              child: Row(
+                children: [
+                  _TactileIconButton(icon: Lucide.X, color: cs.onSurface, size: 20, onTap: () => Navigator.of(ctx).maybePop()),
+                  Expanded(
+                    child: Center(
+                      child: Text(initial == null ? l10n.ttsServicesDialogAddTitle : l10n.ttsServicesDialogEditTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  _TactileIconButton(
+                    icon: Lucide.Check,
+                    color: cs.onSurface,
+                    size: 20,
+                    onTap: () {
+                      final name = (nameCtl.text.trim().isEmpty) ? networkTtsKindDisplayName(kind) : nameCtl.text.trim();
+                      final apiKey = apiKeyCtl.text.trim();
+                      final base = baseCtl.text.trim().isEmpty ? _defaultBaseUrl(kind) : baseCtl.text.trim();
+                      final model = modelCtl.text.trim().isEmpty ? _defaultModel(kind) : modelCtl.text.trim();
+                      final voice = voiceCtl.text.trim().isEmpty ? _defaultVoice(kind) : voiceCtl.text.trim();
+                      if (apiKey.isEmpty) { Navigator.of(ctx).maybePop(); return; }
+                      if (kind == NetworkTtsKind.openai) {
+                        result = OpenAiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voice: voice);
+                      } else if (kind == NetworkTtsKind.gemini) {
+                        result = GeminiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceName: voice);
+                      } else {
+                        final spd = double.tryParse(speedCtl.text.trim()) ?? 1.0;
+                        result = MiniMaxTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceId: voice, emotion: emotionCtl.text.trim().isEmpty ? 'calm' : emotionCtl.text.trim(), speed: spd);
+                      }
+                      Navigator.of(ctx).pop();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Content
+            Padding(
+              padding: EdgeInsets.only(left: 12, right: 12, bottom: MediaQuery.of(ctx).viewInsets.bottom + 12),
+              child: StatefulBuilder(
+                builder: (ctx2, setState) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _sheetSelectRow(
+                        ctx2,
+                        label: l10n.ttsServicesDialogProviderType,
+                        value: networkTtsKindDisplayName(kind),
+                        options: [
+                          networkTtsKindDisplayName(NetworkTtsKind.openai),
+                          networkTtsKindDisplayName(NetworkTtsKind.gemini),
+                          networkTtsKindDisplayName(NetworkTtsKind.minimax),
+                        ],
+                        onSelected: (picked) async {
+                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.openai)) kind = NetworkTtsKind.openai;
+                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.gemini)) kind = NetworkTtsKind.gemini;
+                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.minimax)) kind = NetworkTtsKind.minimax;
+                          (ctx as Element).markNeedsBuild();
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      _inputRowMobile(context, label: l10n.ttsServicesFieldNameLabel, controller: nameCtl, hint: networkTtsKindDisplayName(kind)),
+                      const SizedBox(height: 6),
+                      _inputRowMobile(context, label: l10n.ttsServicesFieldApiKeyLabel, controller: apiKeyCtl, obscure: true),
+                      const SizedBox(height: 6),
+                      _inputRowMobile(context, label: l10n.ttsServicesFieldBaseUrlLabel, controller: baseCtl, hint: _defaultBaseUrl(kind)),
+                      const SizedBox(height: 6),
+                      _inputRowMobile(context, label: l10n.ttsServicesFieldModelLabel, controller: modelCtl, hint: _defaultModel(kind)),
+                      const SizedBox(height: 6),
+                      _inputRowMobile(context, label: _voiceLabelFor(kind, l10n), controller: voiceCtl, hint: _defaultVoice(kind)),
+                      if (kind == NetworkTtsKind.minimax) ...[
+                        const SizedBox(height: 6),
+                        _inputRowMobile(context, label: l10n.ttsServicesFieldEmotionLabel, controller: emotionCtl, hint: 'calm'),
+                        const SizedBox(height: 6),
+                        _inputRowMobile(context, label: l10n.ttsServicesFieldSpeedLabel, controller: speedCtl, hint: '1.0'),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  return result;
+}
 
 Future<void> _showSystemTtsConfig(BuildContext context) async {
   final cs = Theme.of(context).colorScheme;
@@ -490,4 +868,71 @@ Widget _sheetOption(
 Widget _sheetDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
   return Divider(height: 1, thickness: 0.6, indent: 16, endIndent: 16, color: cs.outlineVariant.withOpacity(0.18));
+}
+
+Widget _inputRowMobile(BuildContext context, {required String label, required TextEditingController controller, String? hint, bool obscure = false}) {
+  final cs = Theme.of(context).colorScheme;
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          obscureText: obscure,
+          decoration: InputDecoration(
+            hintText: hint,
+            isDense: true,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _defaultBaseUrl(NetworkTtsKind k) {
+  switch (k) {
+    case NetworkTtsKind.openai:
+      return 'https://api.openai.com/v1';
+    case NetworkTtsKind.gemini:
+      return 'https://generativelanguage.googleapis.com/v1beta';
+    case NetworkTtsKind.minimax:
+      return 'https://api.minimaxi.com/v1';
+  }
+}
+
+String _defaultModel(NetworkTtsKind k) {
+  switch (k) {
+    case NetworkTtsKind.openai:
+      return 'gpt-4o-mini-tts';
+    case NetworkTtsKind.gemini:
+      return 'gemini-2.5-flash-preview-tts';
+    case NetworkTtsKind.minimax:
+      return 'speech-2.5-hd-preview';
+  }
+}
+
+String _defaultVoice(NetworkTtsKind k) {
+  switch (k) {
+    case NetworkTtsKind.openai:
+      return 'alloy';
+    case NetworkTtsKind.gemini:
+      return 'Kore';
+    case NetworkTtsKind.minimax:
+      return 'female-shaonv';
+  }
+}
+
+String _voiceLabelFor(NetworkTtsKind k, AppLocalizations l10n) {
+  switch (k) {
+    case NetworkTtsKind.openai:
+      return l10n.ttsServicesFieldVoiceLabel;
+    case NetworkTtsKind.gemini:
+      return l10n.ttsServicesFieldVoiceLabel; // same label
+    case NetworkTtsKind.minimax:
+      return l10n.ttsServicesFieldVoiceIdLabel;
+  }
 }

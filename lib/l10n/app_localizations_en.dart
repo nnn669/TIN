@@ -2544,6 +2544,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsServicesPageDoneButton => 'Done';
 
   @override
+  String get ttsServicesPageNetworkSectionTitle => 'Network TTS';
+
+  @override
+  String get ttsServicesPageNoNetworkServices =>
+      'No network TTS services. Tap + to add.';
+
+  @override
+  String get ttsServicesDialogAddTitle => 'Add TTS Service';
+
+  @override
+  String get ttsServicesDialogEditTitle => 'Edit TTS Service';
+
+  @override
+  String get ttsServicesDialogProviderType => 'Provider';
+
+  @override
+  String get ttsServicesDialogCancelButton => 'Cancel';
+
+  @override
+  String get ttsServicesDialogAddButton => 'Add';
+
+  @override
+  String get ttsServicesDialogSaveButton => 'Save';
+
+  @override
+  String get ttsServicesFieldNameLabel => 'Name';
+
+  @override
+  String get ttsServicesFieldApiKeyLabel => 'API Key';
+
+  @override
+  String get ttsServicesFieldBaseUrlLabel => 'API Base URL';
+
+  @override
+  String get ttsServicesFieldModelLabel => 'Model';
+
+  @override
+  String get ttsServicesFieldVoiceLabel => 'Voice';
+
+  @override
+  String get ttsServicesFieldVoiceIdLabel => 'Voice ID';
+
+  @override
+  String get ttsServicesFieldEmotionLabel => 'Emotion';
+
+  @override
+  String get ttsServicesFieldSpeedLabel => 'Speed';
+
+  @override
+  String get ttsServicesViewDetailsButton => 'View details';
+
+  @override
+  String get ttsServicesDialogErrorTitle => 'Error Details';
+
+  @override
+  String get ttsServicesCloseButton => 'Close';
+
+  @override
   String imageViewerPageShareFailedOpenFile(String message) {
     return 'Unable to share, tried to open file: $message';
   }

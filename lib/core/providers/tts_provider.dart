@@ -1,8 +1,15 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io' as io;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'dart:ui' as ui;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:audioplayers/audioplayers.dart';
+import '../services/tts/network_tts.dart';
 
 /// System TTS provider using flutter_tts.
 /// Keeps minimal state and simple chunked speaking for long text.
@@ -13,12 +20,16 @@ class TtsProvider extends ChangeNotifier {
   static const String _langKey = 'tts_language_v1';
 
   late FlutterTts _tts;
+  final AudioPlayer _player = AudioPlayer();
 
   bool _initialized = false;
   bool _engineReady = false;
   bool _isSpeaking = false;
   bool _isPaused = false;
   String? _error;
+  bool _usingNetwork = false;
+  bool get usingNetwork => _usingNetwork;
+  FutureOr<bool> Function()? _cancelFlag;
 
   // Settings
   double _speechRate = 0.5; // 0.0 - 1.0 (Android)
@@ -78,6 +89,13 @@ class TtsProvider extends ChangeNotifier {
       _tts.setErrorHandler((msg) {
         _error = msg;
         _stopInternal(updateState: true);
+      });
+
+      // Audio player completion for network playback
+      _player.onPlayerComplete.listen((event) {
+        _isSpeaking = false;
+        _isPaused = false;
+        notifyListeners();
       });
 
       // Nudge engine to bind and wait (with timeout)
@@ -264,6 +282,31 @@ class TtsProvider extends ChangeNotifier {
   /// Speak text via System TTS. If [flush] is true, stop current playback first.
   Future<void> speak(String text, {bool flush = true}) async {
     if (!_initialized) return;
+    // Prefer network TTS if configured
+    final selected = await _getSelectedNetworkService();
+    if (selected != null && selected.enabled) {
+      return _speakNetwork(text, selected, flush: flush);
+    }
+    // Fallback to system TTS
+    await _ensureBound();
+    if (flush) {
+      try { await _tts.stop(); } catch (_) {}
+      _stopInternal(updateState: false);
+    }
+    final content = _stripMarkdown(text).trim();
+    if (content.isEmpty) return;
+    _chunks
+      ..clear()
+      ..addAll(_chunkText(content, maxLen: 450));
+    _currentChunkIndex = 0;
+    _speakingCompleter = Completer<void>();
+    await _speakNext();
+    return _speakingCompleter!.future;
+  }
+
+  // Force speaking via system TTS (ignores network selection). Used by settings test.
+  Future<void> speakSystem(String text, {bool flush = true}) async {
+    if (!_initialized) return;
     await _ensureBound();
     if (flush) {
       try { await _tts.stop(); } catch (_) {}
@@ -310,10 +353,9 @@ class TtsProvider extends ChangeNotifier {
   }
 
   Future<void> stop() async {
-    await _ensureBound();
-    try {
-      await _tts.stop();
-    } catch (_) {}
+    // stop both network and system TTS safely
+    try { await _player.stop(); } catch (_) {}
+    try { await _tts.stop(); } catch (_) {}
     _stopInternal(updateState: true);
   }
 
@@ -437,6 +479,116 @@ class TtsProvider extends ChangeNotifier {
   @override
   void dispose() {
     _tts.stop();
+    try { _player.dispose(); } catch (_) {}
     super.dispose();
+  }
+
+  // ===== Network TTS integration =====
+
+  Future<void> _speakNetwork(String text, TtsServiceOptions service, {bool flush = true}) async {
+    if (flush) {
+      try { await _player.stop(); } catch (_) {}
+      _stopInternal(updateState: false);
+    }
+    final content = _stripMarkdown(text).trim();
+    if (content.isEmpty) return;
+    _isSpeaking = true;
+    _isPaused = false;
+    _usingNetwork = true;
+    notifyListeners();
+
+    final localCancel = Completer<void>();
+    var cancelled = false;
+    _cancelFlag = () async => cancelled;
+
+    Future<void> doFetch() async {
+      try {
+        final res = await NetworkTtsService.synthesize(options: service, text: content, cancelled: _cancelFlag);
+        if (cancelled) return;
+        await _playAudioBytes(res.bytes, mime: res.mime);
+      } catch (e) {
+        _error = e.toString();
+      } finally {
+        if (!localCancel.isCompleted) localCancel.complete();
+      }
+    }
+
+    await doFetch();
+    await localCancel.future;
+  }
+
+  // Expose for settings UI test/play
+  Future<void> speakWithNetworkService(TtsServiceOptions service, String text, {bool flush = true}) async {
+    await _speakNetwork(text, service, flush: flush);
+  }
+
+  /// Settings-only: test a network TTS service without touching global speaking state.
+  /// Returns null on success, or the error message on failure.
+  Future<String?> testNetworkService(TtsServiceOptions service, String text) async {
+    final content = _stripMarkdown(text).trim();
+    if (content.isEmpty) return null;
+    try {
+      final res = await NetworkTtsService.synthesize(options: service, text: content);
+      // Play bytes via temp file (Darwin-friendly)
+      try { await _player.stop(); } catch (_) {}
+      await _playAudioBytes(res.bytes, mime: res.mime);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<void> _playAudioBytes(Uint8List bytes, {String? mime}) async {
+    try {
+      await _player.stop();
+      // tiny delay to ensure AVPlayer releases prior item
+      await Future.delayed(const Duration(milliseconds: 20));
+    } catch (_) {}
+    try {
+      // On Darwin, playing raw bytes without a filename/mime may fail.
+      // Persist to a temp file with a proper extension for AVPlayer.
+      final ext = _extForMime(mime);
+      final dir = await getTemporaryDirectory();
+      final path = p.join(dir.path, 'kelivo_tts_${DateTime.now().millisecondsSinceEpoch}.$ext');
+      final f = io.File(path);
+      await f.writeAsBytes(bytes, flush: true);
+      await _player.play(DeviceFileSource(path));
+    } catch (e) {
+      _error = e.toString();
+      _isSpeaking = false;
+      notifyListeners();
+    }
+  }
+
+  String _extForMime(String? mime) {
+    switch ((mime ?? '').toLowerCase()) {
+      case 'audio/mpeg':
+      case 'audio/mp3':
+        return 'mp3';
+      case 'audio/wav':
+      case 'audio/x-wav':
+        return 'wav';
+      case 'audio/ogg':
+        return 'ogg';
+      default:
+        return 'mp3';
+    }
+  }
+
+  Future<TtsServiceOptions?> _getSelectedNetworkService() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final selected = prefs.getInt('tts_selected_v1') ?? -1;
+      if (selected < 0) return null;
+      final jsonStr = prefs.getString('tts_services_v1') ?? '';
+      if (jsonStr.isEmpty) return null;
+      final list = jsonDecode(jsonStr) as List;
+      if (selected >= list.length) return null;
+      final obj = list[selected]; 
+      final map = obj is Map<String, dynamic> ? obj : Map<String, dynamic>.from(obj as Map);
+      return TtsServiceOptions.fromJson(map);
+    } catch (_) {
+      return null;
+    }
   }
 }

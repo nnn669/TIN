@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../services/search/search_service.dart';
+import '../services/tts/network_tts.dart';
 import '../models/api_keys.dart';
 import '../models/backup.dart';
 import '../services/haptics.dart';
@@ -65,9 +66,22 @@ class SettingsProvider extends ChangeNotifier {
   static const String _searchSelectedKey = 'search_selected_v1';
   static const String _searchEnabledKey = 'search_enabled_v1';
   static const String _webDavConfigKey = 'webdav_config_v1';
+  // TTS services (network)
+  static const String _ttsServicesKey = 'tts_services_v1';
+  static const String _ttsSelectedKey = 'tts_selected_v1';
   // Desktop UI
   static const String _desktopSidebarWidthKey = 'desktop_sidebar_width_v1';
   static const String _desktopSidebarOpenKey = 'desktop_sidebar_open_v1';
+
+  // ===== Network TTS services =====
+  List<TtsServiceOptions> _ttsServices = const <TtsServiceOptions>[];
+  int _ttsServiceSelected = -1; // -1 => use System TTS
+  List<TtsServiceOptions> get ttsServices => _ttsServices;
+  int get ttsServiceSelected => _ttsServiceSelected;
+  bool get usingSystemTts => _ttsServiceSelected < 0;
+  TtsServiceOptions? get selectedTtsService => (_ttsServiceSelected >= 0 && _ttsServiceSelected < _ttsServices.length)
+      ? _ttsServices[_ttsServiceSelected]
+      : null;
 
   List<String> _providersOrder = const [];
   List<String> get providersOrder => _providersOrder;
@@ -254,6 +268,27 @@ class SettingsProvider extends ChangeNotifier {
     }
     _searchServiceSelected = prefs.getInt(_searchSelectedKey) ?? 0;
     _searchEnabled = prefs.getBool(_searchEnabledKey) ?? false;
+
+    // load network TTS services
+    try {
+      final ttsStr = prefs.getString(_ttsServicesKey) ?? '';
+      if (ttsStr.isNotEmpty) {
+        final list = jsonDecode(ttsStr) as List;
+        _ttsServices = [
+          for (final e in list)
+            if (e is Map<String, dynamic>) TtsServiceOptions.fromJson(e) else TtsServiceOptions.fromJson(Map<String, dynamic>.from(e as Map))
+        ];
+      } else {
+        _ttsServices = const <TtsServiceOptions>[];
+      }
+    } catch (_) {
+      _ttsServices = const <TtsServiceOptions>[];
+    }
+    _ttsServiceSelected = prefs.getInt(_ttsSelectedKey) ?? -1;
+    if (_ttsServiceSelected >= _ttsServices.length) {
+      _ttsServiceSelected = _ttsServices.isEmpty ? -1 : 0;
+      await prefs.setInt(_ttsSelectedKey, _ttsServiceSelected);
+    }
     // webdav config
     final webdavStr = prefs.getString(_webDavConfigKey);
     if (webdavStr != null && webdavStr.isNotEmpty) {
@@ -274,6 +309,25 @@ class SettingsProvider extends ChangeNotifier {
     await _reloadLocalFontsIfAny();
 
     notifyListeners();
+  }
+
+  Future<void> setTtsServices(List<TtsServiceOptions> v) async {
+    _ttsServices = List.unmodifiable(v);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final list = v.map((e) => e.toJson()).toList();
+    await prefs.setString(_ttsServicesKey, jsonEncode(list));
+    if (_ttsServiceSelected >= _ttsServices.length) {
+      _ttsServiceSelected = _ttsServices.isEmpty ? -1 : 0;
+      await prefs.setInt(_ttsSelectedKey, _ttsServiceSelected);
+    }
+  }
+
+  Future<void> setTtsServiceSelected(int index) async {
+    _ttsServiceSelected = index;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_ttsSelectedKey, _ttsServiceSelected);
   }
 
   // ===== User Font Settings =====

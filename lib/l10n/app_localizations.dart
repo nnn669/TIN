@@ -4841,6 +4841,120 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get ttsServicesPageDoneButton;
 
+  /// No description provided for @ttsServicesPageNetworkSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Network TTS'**
+  String get ttsServicesPageNetworkSectionTitle;
+
+  /// No description provided for @ttsServicesPageNoNetworkServices.
+  ///
+  /// In en, this message translates to:
+  /// **'No network TTS services. Tap + to add.'**
+  String get ttsServicesPageNoNetworkServices;
+
+  /// No description provided for @ttsServicesDialogAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add TTS Service'**
+  String get ttsServicesDialogAddTitle;
+
+  /// No description provided for @ttsServicesDialogEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit TTS Service'**
+  String get ttsServicesDialogEditTitle;
+
+  /// No description provided for @ttsServicesDialogProviderType.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get ttsServicesDialogProviderType;
+
+  /// No description provided for @ttsServicesDialogCancelButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get ttsServicesDialogCancelButton;
+
+  /// No description provided for @ttsServicesDialogAddButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get ttsServicesDialogAddButton;
+
+  /// No description provided for @ttsServicesDialogSaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get ttsServicesDialogSaveButton;
+
+  /// No description provided for @ttsServicesFieldNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get ttsServicesFieldNameLabel;
+
+  /// No description provided for @ttsServicesFieldApiKeyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get ttsServicesFieldApiKeyLabel;
+
+  /// No description provided for @ttsServicesFieldBaseUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API Base URL'**
+  String get ttsServicesFieldBaseUrlLabel;
+
+  /// No description provided for @ttsServicesFieldModelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get ttsServicesFieldModelLabel;
+
+  /// No description provided for @ttsServicesFieldVoiceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get ttsServicesFieldVoiceLabel;
+
+  /// No description provided for @ttsServicesFieldVoiceIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice ID'**
+  String get ttsServicesFieldVoiceIdLabel;
+
+  /// No description provided for @ttsServicesFieldEmotionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Emotion'**
+  String get ttsServicesFieldEmotionLabel;
+
+  /// No description provided for @ttsServicesFieldSpeedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get ttsServicesFieldSpeedLabel;
+
+  /// No description provided for @ttsServicesViewDetailsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get ttsServicesViewDetailsButton;
+
+  /// No description provided for @ttsServicesDialogErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Error Details'**
+  String get ttsServicesDialogErrorTitle;
+
+  /// No description provided for @ttsServicesCloseButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get ttsServicesCloseButton;
+
   /// No description provided for @imageViewerPageShareFailedOpenFile.
   ///
   /// In en, this message translates to:
