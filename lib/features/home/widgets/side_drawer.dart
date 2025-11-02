@@ -36,6 +36,9 @@ import '../../../core/services/haptics.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
+import '../../../core/providers/tag_provider.dart';
+import '../../assistant/pages/tags_manager_page.dart';
+import '../../assistant/widgets/tags_manager_dialog.dart';
 
 class SideDrawer extends StatefulWidget {
   const SideDrawer({
@@ -853,26 +856,59 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                                 final assistants = ap2.assistants;
                                 final isDark2 = Theme.of(context).brightness == Brightness.dark;
                                 final textBase2 = isDark2 ? Colors.white : Colors.black;
+                                final tp = context.watch<TagProvider>();
+                                final tags = tp.tags;
+                                // Ungrouped assistants first
+                                final ungrouped = assistants.where((a) => tp.tagOfAssistant(a.id) == null).toList();
+                                final groupedByTag = <String, List<Assistant>>{};
+                                for (final t in tags) {
+                                  final list = assistants.where((a) => tp.tagOfAssistant(a.id) == t.id).toList();
+                                  if (list.isNotEmpty) groupedByTag[t.id] = list;
+                                }
+
+                                Widget buildTile(Assistant a) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                    child: _AssistantInlineTile(
+                                      avatar: _assistantAvatar(context, a, size: 32),
+                                      name: a.name,
+                                      textColor: textBase2,
+                                      embedded: widget.embedded,
+                                      onTap: () => _handleSelectAssistant(a),
+                                      onEditTap: () => _openAssistantSettings(a.id),
+                                      onLongPress: () => _showAssistantItemMenuMobile(a),
+                                      onSecondaryTapDown: (pos) => _showAssistantItemMenuDesktop(a, pos),
+                                    ),
+                                  );
+                                }
+
                                 return Padding(
                                   padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
-                                  child: ListView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: assistants.length,
-                                    itemBuilder: (ctx, i) {
-                                      final a = assistants[i];
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                        child: _AssistantInlineTile(
-                                          avatar: _assistantAvatar(context, a, size: 32),
-                                          name: a.name,
-                                          textColor: textBase2,
-                                          embedded: widget.embedded,
-                                          onTap: () => _handleSelectAssistant(a),
-                                          onEditTap: () => _openAssistantSettings(a.id),
-                                        ),
-                                      );
-                                    },
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Ungrouped area (no header, not collapsible)
+                                      if (ungrouped.isNotEmpty)
+                                        ...ungrouped.map(buildTile),
+                                      // Grouped sections (with collapsible headers)
+                                      for (final t in tags)
+                                        if ((groupedByTag[t.id] ?? const <Assistant>[]).isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          _GroupHeader(
+                                            title: t.name,
+                                            collapsed: tp.isCollapsed(t.id),
+                                            onToggle: () => tp.toggleCollapsed(t.id),
+                                          ),
+                                          AnimatedSize(
+                                            duration: const Duration(milliseconds: 260),
+                                            curve: Curves.easeInOutCubic,
+                                            alignment: Alignment.topCenter,
+                                            child: tp.isCollapsed(t.id)
+                                                ? const SizedBox.shrink()
+                                                : Column(children: (groupedByTag[t.id] ?? const <Assistant>[]).map(buildTile).toList()),
+                                          ),
+                                        ],
+                                    ],
                                   ),
                                 );
                               },
@@ -1249,6 +1285,146 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
 }
 
 extension on _SideDrawerState {
+  Future<void> _showAssistantItemMenuDesktop(Assistant a, Offset globalPosition) async {
+    if (!_isDesktop) return;
+    final l10n = AppLocalizations.of(context)!;
+    final tp = context.read<TagProvider>();
+    final hasTag = tp.tagOfAssistant(a.id) != null;
+    await showDesktopContextMenuAt(
+      context,
+      globalPosition: globalPosition,
+      items: [
+        DesktopContextMenuItem(
+          icon: Lucide.Pencil,
+          label: l10n.assistantTagsContextMenuEditAssistant,
+          onTap: () => _openAssistantSettings(a.id),
+        ),
+        if (hasTag)
+          DesktopContextMenuItem(
+            icon: Lucide.Eraser,
+            label: l10n.assistantTagsClearTag,
+            onTap: () async {
+              await context.read<TagProvider>().unassignAssistant(a.id);
+            },
+          ),
+        DesktopContextMenuItem(
+          icon: Lucide.Bookmark,
+          label: l10n.assistantTagsContextMenuManageTags,
+          onTap: () async {
+            _closeAssistantPicker();
+            await showAssistantTagsManagerDialog(context, assistantId: a.id);
+          },
+        ),
+        DesktopContextMenuItem(
+          icon: Lucide.Trash2,
+          label: l10n.assistantTagsContextMenuDeleteAssistant,
+          danger: true,
+          onTap: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(l10n.assistantSettingsDeleteDialogTitle),
+                content: Text(l10n.assistantSettingsDeleteDialogContent),
+                actions: [
+                  TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantSettingsDeleteDialogCancel)),
+                  TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantSettingsDeleteDialogConfirm)),
+                ],
+              ),
+            );
+            if (confirmed != true) return;
+            final ok = await context.read<AssistantProvider>().deleteAssistant(a.id);
+            if (!ok) {
+              showAppSnackBar(context, message: l10n.assistantSettingsAtLeastOneAssistantRequired, type: NotificationType.warning);
+            } else {
+              try { await context.read<TagProvider>().unassignAssistant(a.id); } catch (_) {}
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showAssistantItemMenuMobile(Assistant a) async {
+    if (_isDesktop) return;
+    final l10n = AppLocalizations.of(context)!;
+    final tp = context.read<TagProvider>();
+    final hasTag = tp.tagOfAssistant(a.id) != null;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: false,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        Widget row(String text, IconData icon, VoidCallback onTap, {bool danger = false}) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: SizedBox(
+              height: 48,
+              child: IosCardPress(
+                borderRadius: BorderRadius.circular(14),
+                baseColor: cs.surface,
+                duration: const Duration(milliseconds: 220),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onTap();
+                },
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 18, color: danger ? cs.error : cs.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                row(l10n.assistantTagsContextMenuEditAssistant, Lucide.Pencil, () => _openAssistantSettings(a.id)),
+                if (hasTag)
+                  row(l10n.assistantTagsClearTag, Lucide.Eraser, () async {
+                    await context.read<TagProvider>().unassignAssistant(a.id);
+                  }),
+                row(l10n.assistantTagsContextMenuManageTags, Lucide.Bookmark, () async {
+                  // Navigate to manage tags page
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => TagsManagerPage(assistantId: a.id)));
+                }),
+                row(l10n.assistantTagsContextMenuDeleteAssistant, Lucide.Trash2, () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx2) => AlertDialog(
+                      title: Text(l10n.assistantSettingsDeleteDialogTitle),
+                      content: Text(l10n.assistantSettingsDeleteDialogContent),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(ctx2).pop(false), child: Text(l10n.assistantSettingsDeleteDialogCancel)),
+                        TextButton(onPressed: () => Navigator.of(ctx2).pop(true), child: Text(l10n.assistantSettingsDeleteDialogConfirm)),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                  final ok = await context.read<AssistantProvider>().deleteAssistant(a.id);
+                  if (!ok) {
+                    showAppSnackBar(context, message: l10n.assistantSettingsAtLeastOneAssistantRequired, type: NotificationType.warning);
+                  } else {
+                    try { await context.read<TagProvider>().unassignAssistant(a.id); } catch (_) {}
+                  }
+                }, danger: true),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _editAvatar(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     await showModalBottomSheet(
@@ -1938,6 +2114,50 @@ class _LoadingDotState extends State<_LoadingDot> with SingleTickerProviderState
   }
 }
 
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.title, required this.collapsed, required this.onToggle});
+  final String title;
+  final bool collapsed;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = cs.onSurface;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: collapsed ? 0.0 : 0.25, // right -> down
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Lucide.ChevronRight,
+                size: 16,
+                color: textBase.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textBase),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AssistantInlineTile extends StatefulWidget {
   const _AssistantInlineTile({
     required this.avatar,
@@ -1946,6 +2166,8 @@ class _AssistantInlineTile extends StatefulWidget {
     required this.embedded,
     required this.onTap,
     required this.onEditTap,
+    this.onLongPress,
+    this.onSecondaryTapDown,
   });
 
   final Widget avatar;
@@ -1954,6 +2176,8 @@ class _AssistantInlineTile extends StatefulWidget {
   final bool embedded;
   final VoidCallback onTap;
   final VoidCallback onEditTap;
+  final VoidCallback? onLongPress;
+  final void Function(Offset globalPosition)? onSecondaryTapDown;
 
   @override
   State<_AssistantInlineTile> createState() => _AssistantInlineTileState();
@@ -1970,7 +2194,7 @@ class _AssistantInlineTileState extends State<_AssistantInlineTile> {
     final Color bg = _isDesktop && _hovered
         ? (widget.embedded ? cs.primary.withOpacity(0.08) : cs.primary.withOpacity(0.9))
         : base;
-    return MouseRegion(
+    final content = MouseRegion(
       onEnter: (_) { if (_isDesktop) setState(() => _hovered = true); },
       onExit: (_) { if (_isDesktop) setState(() => _hovered = false); },
       cursor: _isDesktop ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -1979,6 +2203,7 @@ class _AssistantInlineTileState extends State<_AssistantInlineTile> {
         borderRadius: BorderRadius.circular(16),
         haptics: false,
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
         child: Row(
           children: [
@@ -2002,6 +2227,13 @@ class _AssistantInlineTileState extends State<_AssistantInlineTile> {
           ],
         ),
       ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onSecondaryTapDown: widget.onSecondaryTapDown == null
+          ? null
+          : (details) => widget.onSecondaryTapDown!(details.globalPosition),
+      child: content,
     );
   }
 }

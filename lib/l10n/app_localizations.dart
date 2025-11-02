@@ -473,6 +473,114 @@ abstract class AppLocalizations {
   /// **'Choose interface language'**
   String get displaySettingsPageLanguageSubtitle;
 
+  /// No description provided for @assistantTagsManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Tags'**
+  String get assistantTagsManageTitle;
+
+  /// No description provided for @assistantTagsCreateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get assistantTagsCreateButton;
+
+  /// No description provided for @assistantTagsCreateDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Tag'**
+  String get assistantTagsCreateDialogTitle;
+
+  /// No description provided for @assistantTagsCreateDialogOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get assistantTagsCreateDialogOk;
+
+  /// No description provided for @assistantTagsCreateDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get assistantTagsCreateDialogCancel;
+
+  /// No description provided for @assistantTagsNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag name'**
+  String get assistantTagsNameHint;
+
+  /// No description provided for @assistantTagsRenameButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get assistantTagsRenameButton;
+
+  /// No description provided for @assistantTagsRenameDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Tag'**
+  String get assistantTagsRenameDialogTitle;
+
+  /// No description provided for @assistantTagsRenameDialogOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get assistantTagsRenameDialogOk;
+
+  /// No description provided for @assistantTagsDeleteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get assistantTagsDeleteButton;
+
+  /// No description provided for @assistantTagsDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Tag'**
+  String get assistantTagsDeleteConfirmTitle;
+
+  /// No description provided for @assistantTagsDeleteConfirmContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this tag?'**
+  String get assistantTagsDeleteConfirmContent;
+
+  /// No description provided for @assistantTagsDeleteConfirmOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get assistantTagsDeleteConfirmOk;
+
+  /// No description provided for @assistantTagsDeleteConfirmCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get assistantTagsDeleteConfirmCancel;
+
+  /// No description provided for @assistantTagsContextMenuEditAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Assistant'**
+  String get assistantTagsContextMenuEditAssistant;
+
+  /// No description provided for @assistantTagsContextMenuManageTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Tags'**
+  String get assistantTagsContextMenuManageTags;
+
+  /// No description provided for @assistantTagsContextMenuDeleteAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Assistant'**
+  String get assistantTagsContextMenuDeleteAssistant;
+
+  /// No description provided for @assistantTagsClearTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Tag'**
+  String get assistantTagsClearTag;
+
   /// No description provided for @displaySettingsPageLanguageChineseLabel.
   ///
   /// In en, this message translates to:

@@ -205,6 +205,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageLanguageSubtitle => '选择界面语言';
 
   @override
+  String get assistantTagsManageTitle => '管理标签';
+
+  @override
+  String get assistantTagsCreateButton => '创建';
+
+  @override
+  String get assistantTagsCreateDialogTitle => '创建标签';
+
+  @override
+  String get assistantTagsCreateDialogOk => '创建';
+
+  @override
+  String get assistantTagsCreateDialogCancel => '取消';
+
+  @override
+  String get assistantTagsNameHint => '标签名称';
+
+  @override
+  String get assistantTagsRenameButton => '重命名';
+
+  @override
+  String get assistantTagsRenameDialogTitle => '重命名标签';
+
+  @override
+  String get assistantTagsRenameDialogOk => '重命名';
+
+  @override
+  String get assistantTagsDeleteButton => '删除';
+
+  @override
+  String get assistantTagsDeleteConfirmTitle => '删除标签';
+
+  @override
+  String get assistantTagsDeleteConfirmContent => '确定要删除该标签吗？';
+
+  @override
+  String get assistantTagsDeleteConfirmOk => '删除';
+
+  @override
+  String get assistantTagsDeleteConfirmCancel => '取消';
+
+  @override
+  String get assistantTagsContextMenuEditAssistant => '编辑助手';
+
+  @override
+  String get assistantTagsContextMenuManageTags => '管理标签';
+
+  @override
+  String get assistantTagsContextMenuDeleteAssistant => '删除助手';
+
+  @override
+  String get assistantTagsClearTag => '清除标签';
+
+  @override
   String get displaySettingsPageLanguageChineseLabel => '简体中文';
 
   @override
@@ -2913,6 +2967,60 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageLanguageSubtitle => '选择界面语言';
 
   @override
+  String get assistantTagsManageTitle => '管理标签';
+
+  @override
+  String get assistantTagsCreateButton => '创建';
+
+  @override
+  String get assistantTagsCreateDialogTitle => '创建标签';
+
+  @override
+  String get assistantTagsCreateDialogOk => '创建';
+
+  @override
+  String get assistantTagsCreateDialogCancel => '取消';
+
+  @override
+  String get assistantTagsNameHint => '标签名称';
+
+  @override
+  String get assistantTagsRenameButton => '重命名';
+
+  @override
+  String get assistantTagsRenameDialogTitle => '重命名标签';
+
+  @override
+  String get assistantTagsRenameDialogOk => '重命名';
+
+  @override
+  String get assistantTagsDeleteButton => '删除';
+
+  @override
+  String get assistantTagsDeleteConfirmTitle => '删除标签';
+
+  @override
+  String get assistantTagsDeleteConfirmContent => '确定要删除该标签吗？';
+
+  @override
+  String get assistantTagsDeleteConfirmOk => '删除';
+
+  @override
+  String get assistantTagsDeleteConfirmCancel => '取消';
+
+  @override
+  String get assistantTagsContextMenuEditAssistant => '编辑助手';
+
+  @override
+  String get assistantTagsContextMenuManageTags => '管理标签';
+
+  @override
+  String get assistantTagsContextMenuDeleteAssistant => '删除助手';
+
+  @override
+  String get assistantTagsClearTag => '清除标签';
+
+  @override
   String get displaySettingsPageLanguageChineseLabel => '简体中文';
 
   @override
@@ -5619,6 +5727,60 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageLanguageSubtitle => '選擇介面語言';
+
+  @override
+  String get assistantTagsManageTitle => '管理標籤';
+
+  @override
+  String get assistantTagsCreateButton => '建立';
+
+  @override
+  String get assistantTagsCreateDialogTitle => '建立標籤';
+
+  @override
+  String get assistantTagsCreateDialogOk => '建立';
+
+  @override
+  String get assistantTagsCreateDialogCancel => '取消';
+
+  @override
+  String get assistantTagsNameHint => '標籤名稱';
+
+  @override
+  String get assistantTagsRenameButton => '重新命名';
+
+  @override
+  String get assistantTagsRenameDialogTitle => '重新命名標籤';
+
+  @override
+  String get assistantTagsRenameDialogOk => '重新命名';
+
+  @override
+  String get assistantTagsDeleteButton => '刪除';
+
+  @override
+  String get assistantTagsDeleteConfirmTitle => '刪除標籤';
+
+  @override
+  String get assistantTagsDeleteConfirmContent => '確定要刪除該標籤嗎？';
+
+  @override
+  String get assistantTagsDeleteConfirmOk => '刪除';
+
+  @override
+  String get assistantTagsDeleteConfirmCancel => '取消';
+
+  @override
+  String get assistantTagsContextMenuEditAssistant => '編輯助理';
+
+  @override
+  String get assistantTagsContextMenuManageTags => '管理標籤';
+
+  @override
+  String get assistantTagsContextMenuDeleteAssistant => '刪除助理';
+
+  @override
+  String get assistantTagsClearTag => '清除標籤';
 
   @override
   String get displaySettingsPageLanguageChineseLabel => '简体中文';
