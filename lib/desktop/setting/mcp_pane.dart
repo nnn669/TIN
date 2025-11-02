@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../core/providers/mcp_provider.dart';
 import '../../shared/widgets/snackbar.dart';
 import 'mcp_edit_dialog.dart' show showDesktopMcpEditDialog;
+import 'mcp_json_edit_dialog.dart' show showDesktopMcpJsonEditDialog;
 
 class DesktopMcpPane extends StatelessWidget {
   const DesktopMcpPane({super.key});
@@ -39,6 +40,13 @@ class DesktopMcpPane extends StatelessWidget {
                           ),
                         ),
                       ),
+                      _SmallIconBtn(
+                        icon: lucide.Lucide.Edit,
+                        onTap: () async {
+                          await showDesktopMcpJsonEditDialog(context);
+                        },
+                      ),
+                      const SizedBox(width: 6),
                       _SmallIconBtn(
                         icon: lucide.Lucide.Plus,
                         onTap: () async {

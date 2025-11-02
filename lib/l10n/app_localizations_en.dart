@@ -2639,6 +2639,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickPhraseSaveButton => 'Save';
 
   @override
+  String get mcpJsonEditButtonTooltip => 'Edit JSON';
+
+  @override
+  String get mcpJsonEditTitle => 'Edit JSON';
+
+  @override
+  String get mcpJsonEditParseFailed => 'JSON parse failed';
+
+  @override
+  String get mcpJsonEditSavedApplied => 'Saved and applied';
+
+  @override
   String get quickPhraseEditButton => 'Edit';
 
   @override

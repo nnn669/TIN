@@ -203,6 +203,147 @@ class McpProvider extends ChangeNotifier {
     await prefs.setString(_prefsKey, jsonEncode(_servers.map((e) => e.toJson()).toList()));
   }
 
+  /// Export current MCP servers as a user-friendly JSON structure.
+  ///
+  /// Shape:
+  /// {
+  ///   "mcpServers": {
+  ///     "<id>": {
+  ///       "name": "...",
+  ///       "type": "streamableHttp" | "sse",
+  ///       "description": "",
+  ///       "isActive": true/false,
+  ///       "baseUrl": "...",
+  ///       "headers": { ... }
+  ///     },
+  ///     ...
+  ///   }
+  /// }
+  String exportServersAsUiJson() {
+    final map = <String, dynamic>{
+      'mcpServers': {
+        for (final s in _servers)
+          s.id: {
+            'name': s.name,
+            'type': s.transport == McpTransportType.http ? 'streamableHttp' : 'sse',
+            'description': '',
+            'isActive': s.enabled,
+            'baseUrl': s.url,
+            if (s.headers.isNotEmpty) 'headers': s.headers,
+          }
+      }
+    };
+    return const JsonEncoder.withIndent('  ').convert(map);
+  }
+
+  /// Replace all MCP servers from a JSON string.
+  /// Accepts either the UI JSON (with top-level `mcpServers`) or the internal list format.
+  Future<void> replaceAllFromJson(String rawJson) async {
+    dynamic data;
+    try {
+      data = jsonDecode(rawJson);
+    } catch (e) {
+      throw FormatException('Invalid JSON: ${e.toString()}');
+    }
+
+    List<McpServerConfig> next = [];
+    try {
+      if (data is Map && data.containsKey('mcpServers')) {
+        final serversMap = (data['mcpServers'] as Map).cast<String, dynamic>();
+        serversMap.forEach((id, cfgAny) {
+          if (cfgAny is! Map) return;
+          final cfg = cfgAny.cast<String, dynamic>();
+          final typeRaw = (cfg['type'] ?? '').toString().toLowerCase();
+          final transport = (typeRaw.contains('http')) ? McpTransportType.http : McpTransportType.sse;
+          final enabled = (cfg['isActive'] as bool?) ?? true;
+          final name = (cfg['name'] as String?)?.trim();
+          final url = (cfg['baseUrl'] as String?)?.trim();
+          final headersAny = cfg['headers'];
+          Map<String, String> headers = const {};
+          if (headersAny is Map) {
+            headers = headersAny.map((k, v) => MapEntry(k.toString(), v.toString()));
+          }
+          if ((url ?? '').isEmpty) {
+            // Skip invalid entries with empty URL
+            return;
+          }
+          next.add(McpServerConfig(
+            id: id,
+            enabled: enabled,
+            name: (name == null || name.isEmpty) ? 'MCP' : name,
+            transport: transport,
+            url: url!,
+            headers: headers,
+          ));
+        });
+      } else if (data is List) {
+        // Attempt to parse internal list format. Be tolerant to transport string variants.
+        for (final item in data) {
+          if (item is! Map) continue;
+          final m = item.cast<String, dynamic>();
+          final t = (m['transport'] ?? '').toString().toLowerCase();
+          if (t == 'streamablehttp' || t.contains('http')) {
+            m['transport'] = 'http';
+          } else if (t == 'sse') {
+            m['transport'] = 'sse';
+          }
+          try {
+            final s = McpServerConfig.fromJson(m);
+            if (s.url.trim().isEmpty) continue;
+            next.add(s);
+          } catch (_) {}
+        }
+      } else if (data is Map && data.containsKey('servers')) {
+        final list = data['servers'];
+        if (list is List) {
+          for (final item in list) {
+            if (item is! Map) continue;
+            final m = item.cast<String, dynamic>();
+            final t = (m['transport'] ?? '').toString().toLowerCase();
+            if (t == 'streamablehttp' || t.contains('http')) {
+              m['transport'] = 'http';
+            } else if (t == 'sse') {
+              m['transport'] = 'sse';
+            }
+            try {
+              final s = McpServerConfig.fromJson(m);
+              if (s.url.trim().isEmpty) continue;
+              next.add(s);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      throw FormatException('Unrecognized or invalid MCP JSON');
+    }
+
+    if (next.isEmpty) {
+      throw FormatException('No valid MCP servers found in JSON');
+    }
+
+    // Disconnect all current
+    for (final s in _servers) {
+      try { await disconnect(s.id); } catch (_) {}
+    }
+
+    // Replace and reset statuses
+    _servers = next;
+    _status.clear();
+    _errors.clear();
+    for (final s in _servers) {
+      _status[s.id] = McpStatus.idle;
+    }
+
+    await _persist();
+    notifyListeners();
+
+    // Auto-connect enabled servers
+    for (final s in _servers.where((e) => e.enabled)) {
+      // fire and forget
+      unawaited(connect(s.id));
+    }
+  }
+
   McpServerConfig? getById(String id) {
     for (final s in _servers) {
       if (s.id == id) return s;

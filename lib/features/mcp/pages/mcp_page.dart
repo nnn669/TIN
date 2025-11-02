@@ -7,6 +7,7 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../theme/design_tokens.dart';
 import '../widgets/mcp_server_edit_sheet.dart';
+import '../widgets/mcp_json_edit_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
@@ -135,6 +136,16 @@ class McpPage extends StatelessWidget {
         ),
         title: const Text('MCP'),
         actions: [
+          Tooltip(
+            message: AppLocalizations.of(context)!.mcpJsonEditButtonTooltip,
+            child: _TactileIconButton(
+              icon: Lucide.Edit,
+              color: cs.onSurface,
+              size: 22,
+              onTap: () async { await showMcpJsonEditSheet(context); },
+            ),
+          ),
+          const SizedBox(width: 12),
           Tooltip(
             message: l10n.mcpPageAddMcpTooltip,
             child: _TactileIconButton(

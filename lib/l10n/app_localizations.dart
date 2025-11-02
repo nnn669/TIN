@@ -4997,6 +4997,30 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get quickPhraseSaveButton;
 
+  /// No description provided for @mcpJsonEditButtonTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit JSON'**
+  String get mcpJsonEditButtonTooltip;
+
+  /// No description provided for @mcpJsonEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit JSON'**
+  String get mcpJsonEditTitle;
+
+  /// No description provided for @mcpJsonEditParseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON parse failed'**
+  String get mcpJsonEditParseFailed;
+
+  /// No description provided for @mcpJsonEditSavedApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved and applied'**
+  String get mcpJsonEditSavedApplied;
+
   /// No description provided for @quickPhraseEditButton.
   ///
   /// In en, this message translates to:

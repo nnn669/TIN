@@ -2550,6 +2550,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get quickPhraseSaveButton => '保存';
 
   @override
+  String get mcpJsonEditButtonTooltip => '编辑 JSON';
+
+  @override
+  String get mcpJsonEditTitle => '编辑json';
+
+  @override
+  String get mcpJsonEditParseFailed => 'JSON 解析失败';
+
+  @override
+  String get mcpJsonEditSavedApplied => '已保存并应用';
+
+  @override
   String get quickPhraseEditButton => '编辑';
 
   @override
@@ -5246,6 +5258,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get quickPhraseSaveButton => '保存';
 
   @override
+  String get mcpJsonEditButtonTooltip => '编辑 JSON';
+
+  @override
+  String get mcpJsonEditTitle => '编辑json';
+
+  @override
+  String get mcpJsonEditParseFailed => 'JSON 解析失败';
+
+  @override
+  String get mcpJsonEditSavedApplied => '已保存并应用';
+
+  @override
   String get quickPhraseEditButton => '编辑';
 
   @override
@@ -7940,6 +7964,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get quickPhraseSaveButton => '儲存';
+
+  @override
+  String get mcpJsonEditButtonTooltip => '編輯 JSON';
+
+  @override
+  String get mcpJsonEditTitle => '編輯 JSON';
+
+  @override
+  String get mcpJsonEditParseFailed => 'JSON 解析失敗';
+
+  @override
+  String get mcpJsonEditSavedApplied => '已儲存並套用';
 
   @override
   String get quickPhraseEditButton => '編輯';
