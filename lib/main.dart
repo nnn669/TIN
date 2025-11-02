@@ -29,6 +29,7 @@ import 'core/services/mcp/mcp_tool_service.dart';
 import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:system_fonts/system_fonts.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
@@ -39,6 +40,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
   await _initDesktopWindow();
+  // Preload system fonts on desktop so saved font selections render on launch
+  await _preloadDesktopSystemFonts();
   // Debug logging and global error handlers were enabled previously for diagnosis.
   // They are commented out now per request to reduce log noise.
   // FlutterError.onError = (FlutterErrorDetails details) { ... };
@@ -64,6 +67,21 @@ Future<void> _initDesktopWindow() async {
     await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
   } catch (_) {
     // Ignore on unsupported platforms.
+  }
+}
+
+Future<void> _preloadDesktopSystemFonts() async {
+  if (kIsWeb) return;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux;
+  if (!isDesktop) return;
+  try {
+    final sf = SystemFonts();
+    // Best-effort: ensure system font families are registered before first frame
+    await sf.loadAllFonts();
+  } catch (_) {
+    // Ignore failures; fallback fonts will still work
   }
 }
 
