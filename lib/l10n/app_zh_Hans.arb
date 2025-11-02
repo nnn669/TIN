@@ -964,5 +964,6 @@
   "assistantEditPresetEmpty": "暂无预设消息",
   "assistantEditPresetEditDialogTitle": "编辑预设消息",
   "assistantEditPresetRoleUser": "用户",
-  "assistantEditPresetRoleAssistant": "助手"
+  "assistantEditPresetRoleAssistant": "助手",
+  "desktopTtsPleaseAddProvider": "请先在设置中添加语音服务商"
 }

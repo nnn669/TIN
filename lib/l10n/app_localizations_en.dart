@@ -2917,4 +2917,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assistantEditPresetRoleAssistant => 'Assistant';
+
+  @override
+  String get desktopTtsPleaseAddProvider => 'Please add a TTS provider first';
 }

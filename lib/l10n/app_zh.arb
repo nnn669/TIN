@@ -966,5 +966,6 @@
   "assistantTagsContextMenuManageTags": "管理标签",
   "assistantTagsContextMenuDeleteAssistant": "删除助手"
   ,
-  "assistantTagsClearTag": "清除标签"
+  "assistantTagsClearTag": "清除标签",
+  "desktopTtsPleaseAddProvider": "请先在设置中添加语音服务商"
 }

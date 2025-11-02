@@ -5530,6 +5530,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assistant'**
   String get assistantEditPresetRoleAssistant;
+
+  /// No description provided for @desktopTtsPleaseAddProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Please add a TTS provider first'**
+  String get desktopTtsPleaseAddProvider;
 }
 
 class _AppLocalizationsDelegate

@@ -2821,6 +2821,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get assistantEditPresetRoleAssistant => '助手';
+
+  @override
+  String get desktopTtsPleaseAddProvider => '请先在设置中添加语音服务商';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -5640,6 +5643,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get assistantEditPresetRoleAssistant => '助手';
+
+  @override
+  String get desktopTtsPleaseAddProvider => '请先在设置中添加语音服务商';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -8460,4 +8466,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantEditPresetRoleAssistant => '助手';
+
+  @override
+  String get desktopTtsPleaseAddProvider => '請先在設定中新增語音服務商';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 
 import '../../icons/lucide_adapter.dart' as lucide;
 import '../../l10n/app_localizations.dart';
@@ -67,11 +68,8 @@ class _DesktopTtsServicesPaneState extends State<DesktopTtsServicesPane> {
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-              // System TTS card
-              SliverToBoxAdapter(
-                child: _SystemTtsCard(),
-              ),
-
+              // On desktop we do not provide System TTS (flutter_tts disabled)
+              // so we skip the System TTS card entirely.
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
               // Network TTS services list

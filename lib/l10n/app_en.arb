@@ -1185,5 +1185,6 @@
   "assistantEditPresetEmpty": "No preset messages yet",
   "assistantEditPresetEditDialogTitle": "Edit preset message",
   "assistantEditPresetRoleUser": "User",
-  "assistantEditPresetRoleAssistant": "Assistant"
+  "assistantEditPresetRoleAssistant": "Assistant",
+  "desktopTtsPleaseAddProvider": "Please add a TTS provider first"
 }

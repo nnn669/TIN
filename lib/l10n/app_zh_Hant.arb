@@ -960,5 +960,6 @@
   "assistantEditPresetEmpty": "暫無預設訊息",
   "assistantEditPresetEditDialogTitle": "編輯預設訊息",
   "assistantEditPresetRoleUser": "使用者",
-  "assistantEditPresetRoleAssistant": "助手"
+  "assistantEditPresetRoleAssistant": "助手",
+  "desktopTtsPleaseAddProvider": "請先在設定中新增語音服務商"
 }
