@@ -464,28 +464,42 @@ class _LanguageDropdownState extends State<_LanguageDropdown> {
                     ]
                   : null,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Stack(
+              alignment: Alignment.centerLeft,
               children: [
-                Text(selected.flag, style: const TextStyle(fontSize: 16, height: 1)),
-                const SizedBox(width: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 240),
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: cs.onSurface.withOpacity(0.88),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(selected.flag, style: const TextStyle(fontSize: 16, height: 1)),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: cs.onSurface.withOpacity(0.88),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                  ],
+                ),
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AnimatedRotation(
+                      turns: _open ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        lucide.Lucide.ChevronDown,
+                        size: 14,
+                        color: cs.onSurface.withOpacity(0.45),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                AnimatedRotation(
-                  turns: _open ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  child: Icon(lucide.Lucide.ChevronDown, size: 14, color: cs.onSurface.withOpacity(0.45)),
                 ),
               ],
             ),
