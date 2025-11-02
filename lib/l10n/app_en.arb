@@ -1038,7 +1038,7 @@
   "ttsServicesPageSettingsSavedMessage": "Settings saved.",
   "ttsServicesPageDoneButton": "Done",
   "ttsServicesPageNetworkSectionTitle": "Network TTS",
-  "ttsServicesPageNoNetworkServices": "No network TTS services. Tap + to add.",
+  "ttsServicesPageNoNetworkServices": "No TTS services.",
   "ttsServicesDialogAddTitle": "Add TTS Service",
   "ttsServicesDialogEditTitle": "Edit TTS Service",
   "ttsServicesDialogProviderType": "Provider",

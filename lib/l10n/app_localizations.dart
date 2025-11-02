@@ -4850,7 +4850,7 @@ abstract class AppLocalizations {
   /// No description provided for @ttsServicesPageNoNetworkServices.
   ///
   /// In en, this message translates to:
-  /// **'No network TTS services. Tap + to add.'**
+  /// **'No TTS services.'**
   String get ttsServicesPageNoNetworkServices;
 
   /// No description provided for @ttsServicesDialogAddTitle.

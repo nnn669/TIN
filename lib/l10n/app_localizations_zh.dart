@@ -2462,7 +2462,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ttsServicesPageNetworkSectionTitle => '网络 TTS';
 
   @override
-  String get ttsServicesPageNoNetworkServices => '暂无网络语音服务，点 + 添加。';
+  String get ttsServicesPageNoNetworkServices => '暂无语音服务';
 
   @override
   String get ttsServicesDialogAddTitle => '添加语音服务';
@@ -5284,7 +5284,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get ttsServicesPageNetworkSectionTitle => '网络 TTS';
 
   @override
-  String get ttsServicesPageNoNetworkServices => '暂无网络语音服务，点 + 添加。';
+  String get ttsServicesPageNoNetworkServices => '暂无语音服务';
 
   @override
   String get ttsServicesDialogAddTitle => '添加语音服务';
@@ -8105,7 +8105,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get ttsServicesPageNetworkSectionTitle => '網路 TTS';
 
   @override
-  String get ttsServicesPageNoNetworkServices => '暫無網路語音服務，點 + 新增。';
+  String get ttsServicesPageNoNetworkServices => '暫無語音服務';
 
   @override
   String get ttsServicesDialogAddTitle => '新增語音服務';

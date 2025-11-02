@@ -796,7 +796,7 @@
   "ttsServicesPageSettingsSavedMessage": "設定已儲存。",
   "ttsServicesPageDoneButton": "完成",
   "ttsServicesPageNetworkSectionTitle": "網路 TTS",
-  "ttsServicesPageNoNetworkServices": "暫無網路語音服務，點 + 新增。",
+  "ttsServicesPageNoNetworkServices": "暫無語音服務",
   "ttsServicesDialogAddTitle": "新增語音服務",
   "ttsServicesDialogEditTitle": "編輯語音服務",
   "ttsServicesDialogProviderType": "服務提供者",

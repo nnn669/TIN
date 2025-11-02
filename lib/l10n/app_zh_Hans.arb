@@ -838,7 +838,7 @@
   "ttsServicesPageSettingsSavedMessage": "设置已保存。",
   "ttsServicesPageDoneButton": "完成",
   "ttsServicesPageNetworkSectionTitle": "网络 TTS",
-  "ttsServicesPageNoNetworkServices": "暂无网络语音服务，点 + 添加。",
+  "ttsServicesPageNoNetworkServices": "暂无语音服务",
   "ttsServicesDialogAddTitle": "添加语音服务",
   "ttsServicesDialogEditTitle": "编辑语音服务",
   "ttsServicesDialogProviderType": "服务提供方",

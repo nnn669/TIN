@@ -90,7 +90,16 @@ class _NetworkTtsList extends StatelessWidget {
     final sp = context.watch<SettingsProvider>();
     final services = sp.ttsServices;
     if (services.isEmpty) {
-      return const SizedBox(height: 8);
+      final cs = Theme.of(context).colorScheme;
+      final l10n = AppLocalizations.of(context)!;
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        alignment: Alignment.center,
+        child: Text(
+          l10n.ttsServicesPageNoNetworkServices,
+          style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+        ),
+      );
     }
     return Column(
       children: [

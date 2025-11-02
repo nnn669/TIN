@@ -2547,8 +2547,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsServicesPageNetworkSectionTitle => 'Network TTS';
 
   @override
-  String get ttsServicesPageNoNetworkServices =>
-      'No network TTS services. Tap + to add.';
+  String get ttsServicesPageNoNetworkServices => 'No TTS services.';
 
   @override
   String get ttsServicesDialogAddTitle => 'Add TTS Service';
