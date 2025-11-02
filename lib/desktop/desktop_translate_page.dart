@@ -333,7 +333,7 @@ class _PaneContainer extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.25)),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.18)),
           ),
           clipBehavior: Clip.antiAlias,
           child: child,
@@ -429,7 +429,7 @@ class _LanguageDropdownState extends State<_LanguageDropdown> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final baseBorder = cs.outlineVariant.withOpacity(0.28);
+    final baseBorder = cs.outlineVariant.withOpacity(0.18);
     final hoverBorder = cs.primary; // hover/focus border
     final borderColor = _open || _hover ? hoverBorder : baseBorder;
 
