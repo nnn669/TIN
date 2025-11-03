@@ -134,8 +134,10 @@ class DataSync {
         for (final ent in entries) {
           if (ent is File) {
             final rel = p.relative(ent.path, from: uploadDir.path);
+            // ZIP entries must use forward slashes regardless of platform
+            final relPosix = rel.replaceAll('\\', '/');
             final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile(p.join('upload', rel), fileBytes.length, fileBytes);
+            final archiveFile = ArchiveFile('upload/$relPosix', fileBytes.length, fileBytes);
             archive.addFile(archiveFile);
           }
         }
@@ -148,8 +150,9 @@ class DataSync {
         for (final ent in entries) {
           if (ent is File) {
             final rel = p.relative(ent.path, from: avatarsDir.path);
+            final relPosix = rel.replaceAll('\\', '/');
             final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile(p.join('avatars', rel), fileBytes.length, fileBytes);
+            final archiveFile = ArchiveFile('avatars/$relPosix', fileBytes.length, fileBytes);
             archive.addFile(archiveFile);
           }
         }
@@ -162,8 +165,9 @@ class DataSync {
         for (final ent in entries) {
           if (ent is File) {
             final rel = p.relative(ent.path, from: imagesDir.path);
+            final relPosix = rel.replaceAll('\\', '/');
             final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile(p.join('images', rel), fileBytes.length, fileBytes);
+            final archiveFile = ArchiveFile('images/$relPosix', fileBytes.length, fileBytes);
             archive.addFile(archiveFile);
           }
         }
@@ -353,7 +357,13 @@ class DataSync {
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
     for (final entry in archive) {
-      final outPath = p.join(extractDir.path, entry.name);
+      // Normalize entry name to use forward slashes and remove traversal
+      final normalized = entry.name.replaceAll('\\', '/');
+      final parts = normalized
+          .split('/')
+          .where((seg) => seg.isNotEmpty && seg != '.' && seg != '..')
+          .toList();
+      final outPath = p.joinAll([extractDir.path, ...parts]);
       if (entry.isFile) {
         final outFile = File(outPath)..createSync(recursive: true);
         outFile.writeAsBytesSync(entry.content as List<int>);
