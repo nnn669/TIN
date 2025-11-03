@@ -995,6 +995,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                     reverse: false,
                     transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
                       return FadeThroughTransition(
+                        fillColor: Colors.transparent,
                         animation: CurvedAnimation(parent: primaryAnimation, curve: Curves.easeOutCubic),
                         secondaryAnimation: CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInCubic),
                         child: child,
@@ -1192,7 +1193,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     if (widget.embedded) {
       return ClipRect(
         child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Material(
             color: cs.surface.withOpacity(0.60),
             child: SizedBox(
