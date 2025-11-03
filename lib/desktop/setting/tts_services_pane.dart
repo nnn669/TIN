@@ -292,7 +292,15 @@ void _showErrorDialog(BuildContext context, String message) {
               const SizedBox(height: 10),
               _deskDivider(ctx),
               const SizedBox(height: 10),
-              SelectableText(message, style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13)),
+              // Make error content scrollable to avoid overflow
+              Flexible(
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    message,
+                    style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13),
+                  ),
+                ),
+              ),
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
