@@ -977,6 +977,30 @@ abstract class AppLocalizations {
   /// **'Reset'**
   String get assistantEditAvatarReset;
 
+  /// No description provided for @displaySettingsPageChatMessageBackgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat Message Background'**
+  String get displaySettingsPageChatMessageBackgroundTitle;
+
+  /// No description provided for @displaySettingsPageChatMessageBackgroundDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get displaySettingsPageChatMessageBackgroundDefault;
+
+  /// No description provided for @displaySettingsPageChatMessageBackgroundFrosted.
+  ///
+  /// In en, this message translates to:
+  /// **'Frosted Glass'**
+  String get displaySettingsPageChatMessageBackgroundFrosted;
+
+  /// No description provided for @displaySettingsPageChatMessageBackgroundSolid.
+  ///
+  /// In en, this message translates to:
+  /// **'Solid Color'**
+  String get displaySettingsPageChatMessageBackgroundSolid;
+
   /// No description provided for @assistantEditEmojiDialogTitle.
   ///
   /// In en, this message translates to:

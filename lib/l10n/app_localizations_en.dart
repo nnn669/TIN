@@ -471,6 +471,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantEditAvatarReset => 'Reset';
 
   @override
+  String get displaySettingsPageChatMessageBackgroundTitle =>
+      'Chat Message Background';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundDefault => 'Default';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundFrosted => 'Frosted Glass';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundSolid => 'Solid Color';
+
+  @override
   String get assistantEditEmojiDialogTitle => 'Choose Emoji';
 
   @override

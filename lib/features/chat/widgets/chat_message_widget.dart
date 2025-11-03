@@ -623,14 +623,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? cs.primary.withOpacity(0.15)
-                    : cs.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
+              child: _buildBubbleContainer(
+                context: context,
+                isUser: true,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                 if (parsed.text.isNotEmpty)
@@ -790,7 +786,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                   ),
                 ],
                 ],
-              ),
+              )),
             ),
           ),
           if (showUserActions || showVersionSwitcher) ...[
@@ -939,6 +935,64 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       final center = rb.localToGlobal(Offset(rb.size.width / 2, rb.size.height));
       DesktopMenuAnchor.setPosition(center);
     } catch (_) {}
+  }
+
+  Widget _buildBubbleContainer({required BuildContext context, required bool isUser, required Widget child}) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final style = context.watch<SettingsProvider>().chatMessageBackgroundStyle;
+    BorderRadius radius = BorderRadius.circular(16);
+    switch (style) {
+      case ChatMessageBackgroundStyle.frosted:
+        return ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF1C1C1E).withOpacity(0.66)
+                    : Colors.white.withOpacity(0.66),
+                borderRadius: radius,
+                border: Border.all(color: cs.outlineVariant.withOpacity(0.14), width: 0.8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: child,
+              ),
+            ),
+          ),
+        );
+      case ChatMessageBackgroundStyle.solid:
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: radius,
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.16), width: 0.8),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: child,
+        );
+      case ChatMessageBackgroundStyle.defaultStyle:
+      default:
+        // Default: keep original visual — user has a tinted bubble; assistant is bare
+        if (isUser) {
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? cs.primary.withOpacity(0.15) : cs.primary.withOpacity(0.08),
+              borderRadius: radius,
+            ),
+            child: child,
+          );
+        }
+        return child;
+    }
+  }
+
+  Widget _buildAssistantBubbleContainer({required BuildContext context, required Widget child}) {
+    // Reuse same styles, but flag as non-user for default fallthrough
+    return _buildBubbleContainer(context: context, isUser: false, child: child);
   }
 
   _ParsedUserContent _parseUserContent(String raw) {
@@ -1159,7 +1213,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           // Message content with markdown support (fill available width)
           Container(
             width: double.infinity,
-            child: widget.message.isStreaming && contentWithoutThink.isEmpty
+            child: _buildAssistantBubbleContainer(
+              context: context,
+              child: (widget.message.isStreaming && contentWithoutThink.isEmpty)
                 ? Row(
               children: [
                 _LoadingIndicator(),
@@ -1301,6 +1357,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                   ),
                 ],
               ],
+            ),
             ),
           ),
           // Sources summary card (tap to open full citations)

@@ -461,6 +461,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditAvatarReset => '重置';
 
   @override
+  String get displaySettingsPageChatMessageBackgroundTitle => '聊天消息背景';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundDefault => '默认';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundFrosted => '模糊';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -3286,6 +3298,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantEditAvatarReset => '重置';
 
   @override
+  String get displaySettingsPageChatMessageBackgroundTitle => '聊天消息背景';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundDefault => '默认';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundFrosted => '模糊';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -6109,6 +6133,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantEditAvatarReset => '重設';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundTitle => '聊天訊息背景';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundDefault => '預設';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundFrosted => '模糊';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundSolid => '純色';
 
   @override
   String get assistantEditEmojiDialogTitle => '選擇表情';

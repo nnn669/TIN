@@ -47,6 +47,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
+  static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
   // Fonts
   static const String _displayAppFontFamilyKey = 'display_app_font_family_v1';
   static const String _displayCodeFontFamilyKey = 'display_code_font_family_v1';
@@ -242,6 +243,18 @@ class SettingsProvider extends ChangeNotifier {
     _enableUserMarkdown = prefs.getBool(_displayEnableUserMarkdownKey) ?? true;
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
+    // Chat message background style (default | frosted | solid)
+    final bgStyleStr = prefs.getString(_displayChatMessageBackgroundStyleKey) ?? 'default';
+    switch (bgStyleStr) {
+      case 'frosted':
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.frosted;
+        break;
+      case 'solid':
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.solid;
+        break;
+      default:
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.defaultStyle;
+    }
     // desktop UI
     _desktopSidebarWidth = prefs.getDouble(_desktopSidebarWidthKey) ?? 300;
     _desktopSidebarOpen = prefs.getBool(_desktopSidebarOpenKey) ?? true;
@@ -671,6 +684,22 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_displayUsePureBackgroundKey, v);
+  }
+
+  // Display: chat message background style (affects user/assistant bubbles)
+  ChatMessageBackgroundStyle _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.defaultStyle;
+  ChatMessageBackgroundStyle get chatMessageBackgroundStyle => _chatMessageBackgroundStyle;
+  Future<void> setChatMessageBackgroundStyle(ChatMessageBackgroundStyle style) async {
+    if (_chatMessageBackgroundStyle == style) return;
+    _chatMessageBackgroundStyle = style;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final v = switch (style) {
+      ChatMessageBackgroundStyle.frosted => 'frosted',
+      ChatMessageBackgroundStyle.solid => 'solid',
+      ChatMessageBackgroundStyle.defaultStyle => 'default',
+    };
+    await prefs.setString(_displayChatMessageBackgroundStyleKey, v);
   }
 
   void setDynamicColorSupported(bool v) {
@@ -1277,11 +1306,15 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._enableReasoningMarkdown = _enableReasoningMarkdown;
     copy._showChatListDate = _showChatListDate;
     copy._usePureBackground = _usePureBackground;
+    copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;
     return copy;
   }
 }
 
 enum ProviderKind { openai, google, claude }
+
+// Background rendering mode for chat message bubbles
+enum ChatMessageBackgroundStyle { defaultStyle, frosted, solid }
 
 class ProviderConfig {
   final String id;
