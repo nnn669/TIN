@@ -689,7 +689,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                           decoration: InputDecoration(
                             hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
                             filled: true,
-                            fillColor: isDark ? Colors.white10 : Colors.grey.shade200,
+                            fillColor: isDark ? Colors.white10 : Colors.white.withOpacity(0.60),
                             isDense: true,
                             isCollapsed: true,
                             prefixIcon: Padding(
