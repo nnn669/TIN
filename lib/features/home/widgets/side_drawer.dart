@@ -689,7 +689,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                           decoration: InputDecoration(
                             hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
                             filled: true,
-                            fillColor: isDark ? Colors.white10 : Colors.white.withOpacity(0.60),
+                            fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
                             isDense: true,
                             isCollapsed: true,
                             prefixIcon: Padding(
@@ -725,11 +725,11 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                       const SizedBox(width: 8),
                       // 历史按钮（圆形，无水波纹）
                       SizedBox(
-                        width: 40,
-                        height: 40,
+                        width: _isDesktop ? 40 : 44,
+                        height: _isDesktop ? 40 : 44,
                         child: Center(
                           child: IosIconButton(
-                            size: 18,
+                            size: _isDesktop ? 18 : 20,
                             color: textBase,
                             icon: Lucide.History,
                             padding: const EdgeInsets.all(8),
