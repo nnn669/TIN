@@ -837,40 +837,51 @@ Future<TtsServiceOptions?> _showNetworkDialog(BuildContext context, TtsServiceOp
                     const SizedBox(height: 10),
                     _deskDivider(context),
                     const SizedBox(height: 10),
-                    // Provider kind
-                    _SelectRow(
-                      label: l10n.ttsServicesDialogProviderType,
-                      value: networkTtsKindDisplayName(kind),
-                      options: [
-                        networkTtsKindDisplayName(NetworkTtsKind.openai),
-                        networkTtsKindDisplayName(NetworkTtsKind.gemini),
-                        networkTtsKindDisplayName(NetworkTtsKind.minimax),
-                      ],
-                      onSelected: (picked) {
-                        setState(() {
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.openai)) kind = NetworkTtsKind.openai;
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.gemini)) kind = NetworkTtsKind.gemini;
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.minimax)) kind = NetworkTtsKind.minimax;
-                        });
-                      },
+                    // Scrollable form area
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Provider kind
+                            _SelectRow(
+                              label: l10n.ttsServicesDialogProviderType,
+                              value: networkTtsKindDisplayName(kind),
+                              options: [
+                                networkTtsKindDisplayName(NetworkTtsKind.openai),
+                                networkTtsKindDisplayName(NetworkTtsKind.gemini),
+                                networkTtsKindDisplayName(NetworkTtsKind.minimax),
+                              ],
+                              onSelected: (picked) {
+                                setState(() {
+                                  if (picked == networkTtsKindDisplayName(NetworkTtsKind.openai)) kind = NetworkTtsKind.openai;
+                                  if (picked == networkTtsKindDisplayName(NetworkTtsKind.gemini)) kind = NetworkTtsKind.gemini;
+                                  if (picked == networkTtsKindDisplayName(NetworkTtsKind.minimax)) kind = NetworkTtsKind.minimax;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 6),
+                            _InputRow(label: l10n.ttsServicesFieldNameLabel, controller: nameCtl, hint: networkTtsKindDisplayName(kind)),
+                            const SizedBox(height: 6),
+                            _InputRow(label: l10n.ttsServicesFieldApiKeyLabel, controller: apiKeyCtl, obscure: true),
+                            const SizedBox(height: 6),
+                            _InputRow(label: l10n.ttsServicesFieldBaseUrlLabel, controller: baseCtl, hint: _defaultBaseUrl(kind)),
+                            const SizedBox(height: 6),
+                            _InputRow(label: l10n.ttsServicesFieldModelLabel, controller: modelCtl, hint: _defaultModel(kind)),
+                            const SizedBox(height: 6),
+                            _InputRow(label: _voiceLabelFor(kind, l10n), controller: voiceCtl, hint: _defaultVoice(kind)),
+                            if (kind == NetworkTtsKind.minimax) ...[
+                              const SizedBox(height: 6),
+                              _InputRow(label: l10n.ttsServicesFieldEmotionLabel, controller: emotionCtl, hint: 'calm'),
+                              const SizedBox(height: 6),
+                              _InputRow(label: l10n.ttsServicesFieldSpeedLabel, controller: speedCtl, hint: '1.0'),
+                            ],
+                            const SizedBox(height: 14),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    _InputRow(label: l10n.ttsServicesFieldNameLabel, controller: nameCtl, hint: networkTtsKindDisplayName(kind)),
-                    const SizedBox(height: 6),
-                    _InputRow(label: l10n.ttsServicesFieldApiKeyLabel, controller: apiKeyCtl, obscure: true),
-                    const SizedBox(height: 6),
-                    _InputRow(label: l10n.ttsServicesFieldBaseUrlLabel, controller: baseCtl, hint: _defaultBaseUrl(kind)),
-                    const SizedBox(height: 6),
-                    _InputRow(label: l10n.ttsServicesFieldModelLabel, controller: modelCtl, hint: _defaultModel(kind)),
-                    const SizedBox(height: 6),
-                    _InputRow(label: _voiceLabelFor(kind, l10n), controller: voiceCtl, hint: _defaultVoice(kind)),
-                    if (kind == NetworkTtsKind.minimax) ...[
-                      const SizedBox(height: 6),
-                      _InputRow(label: l10n.ttsServicesFieldEmotionLabel, controller: emotionCtl, hint: 'calm'),
-                      const SizedBox(height: 6),
-                      _InputRow(label: l10n.ttsServicesFieldSpeedLabel, controller: speedCtl, hint: '1.0'),
-                    ],
-                    const SizedBox(height: 14),
+                    // Actions
                     Align(
                       alignment: Alignment.centerRight,
                       child: Row(
