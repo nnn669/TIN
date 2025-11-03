@@ -3293,6 +3293,12 @@ abstract class AppLocalizations {
   /// **'Custom Body'**
   String get modelDetailSheetCustomBodyTitle;
 
+  /// No description provided for @modelFetchInvertTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Invert'**
+  String get modelFetchInvertTooltip;
+
   /// No description provided for @modelDetailSheetAddBody.
   ///
   /// In en, this message translates to:

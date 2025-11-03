@@ -134,6 +134,19 @@ class _ModelFetchDialogBodyState extends State<_ModelFetchDialogBody> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
+    final settingsWatch = context.watch<SettingsProvider>();
+
+    // Compute header filtered list and selection state for toggle icon
+    final headerQuery = _searchCtrl.text.trim().toLowerCase();
+    final headerFiltered = <ModelInfo>[
+      for (final m in _items)
+        if (headerQuery.isEmpty || m.id.toLowerCase().contains(headerQuery) || m.displayName.toLowerCase().contains(headerQuery)) m,
+    ];
+    final headerSelectedSet = settingsWatch
+        .getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName)
+        .models
+        .toSet();
+    final bool allHeaderFilteredSelected = headerFiltered.isNotEmpty && headerFiltered.every((m) => headerSelectedSet.contains(m.id));
 
     final dialog = Center(
       child: ConstrainedBox(
@@ -198,6 +211,83 @@ class _ModelFetchDialogBodyState extends State<_ModelFetchDialogBody> {
                               filled: true,
                               fillColor: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
                               prefixIcon: Icon(lucide.Lucide.Search, size: 18, color: cs.onSurface.withOpacity(0.7)),
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Tooltip(
+                                    message: allHeaderFilteredSelected ? l10n.mcpAssistantSheetClearAll : l10n.mcpAssistantSheetSelectAll,
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 180),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      transitionBuilder: (child, anim) => FadeTransition(
+                                        opacity: anim,
+                                        child: ScaleTransition(scale: Tween<double>(begin: 0.92, end: 1).animate(anim), child: child),
+                                      ),
+                                      child: IconButton(
+                                        key: ValueKey(allHeaderFilteredSelected ? 'deselect-all' : 'select-all'),
+                                        icon: Icon(
+                                          allHeaderFilteredSelected ? lucide.Lucide.Square : lucide.Lucide.CheckSquare,
+                                          size: 18,
+                                          color: cs.onSurface.withOpacity(0.7),
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+                                        onPressed: () async {
+                                          final settings = context.read<SettingsProvider>();
+                                          final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+                                          final q = _searchCtrl.text.trim().toLowerCase();
+                                          final filtered = <ModelInfo>[
+                                            for (final m in _items)
+                                              if (q.isEmpty || m.id.toLowerCase().contains(q) || m.displayName.toLowerCase().contains(q)) m,
+                                          ];
+                                          if (filtered.isEmpty) return;
+                                          if (allHeaderFilteredSelected) {
+                                            // Deselect all filtered
+                                            final toRemove = filtered.map((m) => m.id).toSet();
+                                            final next = cfg.models.where((id) => !toRemove.contains(id)).toList();
+                                            await settings.setProviderConfig(widget.providerKey, cfg.copyWith(models: next));
+                                          } else {
+                                            // Select all filtered
+                                            final setIds = cfg.models.toSet();
+                                            setIds.addAll(filtered.map((m) => m.id));
+                                            await settings.setProviderConfig(widget.providerKey, cfg.copyWith(models: setIds.toList()));
+                                          }
+                                          if (mounted) setState(() {});
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    message: l10n.modelFetchInvertTooltip,
+                                    child: IconButton(
+                                      icon: Icon(lucide.Lucide.Repeat, size: 18, color: cs.onSurface.withOpacity(0.7)),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+                                      onPressed: () async {
+                                        final settings = context.read<SettingsProvider>();
+                                        final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+                                        final q = _searchCtrl.text.trim().toLowerCase();
+                                        final filtered = <ModelInfo>[
+                                          for (final m in _items)
+                                            if (q.isEmpty || m.id.toLowerCase().contains(q) || m.displayName.toLowerCase().contains(q)) m,
+                                        ];
+                                        if (filtered.isEmpty) return;
+                                        final current = cfg.models.toSet();
+                                        for (final m in filtered) {
+                                          if (current.contains(m.id)) {
+                                            current.remove(m.id);
+                                          } else {
+                                            current.add(m.id);
+                                          }
+                                        }
+                                        await settings.setProviderConfig(widget.providerKey, cfg.copyWith(models: current.toList()));
+                                        if (mounted) setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.primary.withOpacity(0.4))),

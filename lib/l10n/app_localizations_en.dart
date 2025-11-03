@@ -1719,6 +1719,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelDetailSheetCustomBodyTitle => 'Custom Body';
 
   @override
+  String get modelFetchInvertTooltip => 'Invert';
+
+  @override
   String get modelDetailSheetAddBody => 'Add Body';
 
   @override

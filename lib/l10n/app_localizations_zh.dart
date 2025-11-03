@@ -1672,6 +1672,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelDetailSheetCustomBodyTitle => '自定义 Body';
 
   @override
+  String get modelFetchInvertTooltip => '反选';
+
+  @override
   String get modelDetailSheetAddBody => '添加 Body';
 
   @override
@@ -4494,6 +4497,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get modelDetailSheetCustomBodyTitle => '自定义 Body';
 
   @override
+  String get modelFetchInvertTooltip => '反选';
+
+  @override
   String get modelDetailSheetAddBody => '添加 Body';
 
   @override
@@ -7314,6 +7320,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetCustomBodyTitle => '自訂 Body';
+
+  @override
+  String get modelFetchInvertTooltip => '反選';
 
   @override
   String get modelDetailSheetAddBody => '新增 Body';
