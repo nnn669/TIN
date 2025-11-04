@@ -1193,5 +1193,30 @@
   "assistantEditPresetEditDialogTitle": "Edit preset message",
   "assistantEditPresetRoleUser": "User",
   "assistantEditPresetRoleAssistant": "Assistant",
-  "desktopTtsPleaseAddProvider": "Please add a TTS provider first"
+  "desktopTtsPleaseAddProvider": "Please add a TTS provider first",
+  "settingsPageNetworkProxy": "Network Proxy",
+  "networkProxyEnableLabel": "Enable Proxy",
+  "networkProxySettingsHeader": "Proxy Settings",
+  "networkProxyType": "Proxy Type",
+  "networkProxyTypeHttp": "HTTP",
+  "networkProxyTypeHttps": "HTTPS",
+  "networkProxyTypeSocks5": "SOCKS5",
+  "networkProxyServerHost": "Server",
+  "networkProxyPort": "Port",
+  "networkProxyUsername": "Username",
+  "networkProxyPassword": "Password",
+  "networkProxyOptionalHint": "Optional",
+  "networkProxyTestHeader": "Connection Test",
+  "networkProxyTestUrlHint": "Test URL",
+  "networkProxyTestButton": "Test",
+  "networkProxyTesting": "Testing…",
+  "networkProxyTestSuccess": "Connection successful",
+  "networkProxyTestFailed": "Test failed: {error}",
+  "@networkProxyTestFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "networkProxyNoUrl": "Please enter a URL",
+  "networkProxyPriorityNote": "When both global and provider proxies are enabled, provider-level proxy takes priority."
 }

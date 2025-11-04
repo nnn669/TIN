@@ -33,7 +33,7 @@ dependencies:
   logging: ^1.2.0
   
   # Desktop window control (caption buttons, drag area, title bar style)
-  window_manager: ^0.4.3
+  window_manager: ^0.5.1
 
   # Localizations for Chinese/English UI strings
   flutter_localizations:

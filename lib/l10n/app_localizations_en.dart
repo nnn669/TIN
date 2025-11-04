@@ -2941,4 +2941,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopTtsPleaseAddProvider => 'Please add a TTS provider first';
+
+  @override
+  String get settingsPageNetworkProxy => 'Network Proxy';
+
+  @override
+  String get networkProxyEnableLabel => 'Enable Proxy';
+
+  @override
+  String get networkProxySettingsHeader => 'Proxy Settings';
+
+  @override
+  String get networkProxyType => 'Proxy Type';
+
+  @override
+  String get networkProxyTypeHttp => 'HTTP';
+
+  @override
+  String get networkProxyTypeHttps => 'HTTPS';
+
+  @override
+  String get networkProxyTypeSocks5 => 'SOCKS5';
+
+  @override
+  String get networkProxyServerHost => 'Server';
+
+  @override
+  String get networkProxyPort => 'Port';
+
+  @override
+  String get networkProxyUsername => 'Username';
+
+  @override
+  String get networkProxyPassword => 'Password';
+
+  @override
+  String get networkProxyOptionalHint => 'Optional';
+
+  @override
+  String get networkProxyTestHeader => 'Connection Test';
+
+  @override
+  String get networkProxyTestUrlHint => 'Test URL';
+
+  @override
+  String get networkProxyTestButton => 'Test';
+
+  @override
+  String get networkProxyTesting => 'Testing…';
+
+  @override
+  String get networkProxyTestSuccess => 'Connection successful';
+
+  @override
+  String networkProxyTestFailed(String error) {
+    return 'Test failed: $error';
+  }
+
+  @override
+  String get networkProxyNoUrl => 'Please enter a URL';
+
+  @override
+  String get networkProxyPriorityNote =>
+      'When both global and provider proxies are enabled, provider-level proxy takes priority.';
 }

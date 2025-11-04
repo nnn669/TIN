@@ -972,5 +972,28 @@
   "assistantEditPresetEditDialogTitle": "编辑预设消息",
   "assistantEditPresetRoleUser": "用户",
   "assistantEditPresetRoleAssistant": "助手",
-  "desktopTtsPleaseAddProvider": "请先在设置中添加语音服务商"
+  "desktopTtsPleaseAddProvider": "请先在设置中添加语音服务商",
+  "settingsPageNetworkProxy": "网络代理",
+  "networkProxyEnableLabel": "启动代理",
+  "networkProxySettingsHeader": "代理设置",
+  "networkProxyType": "代理类型",
+  "networkProxyTypeHttp": "HTTP",
+  "networkProxyTypeHttps": "HTTPS",
+  "networkProxyTypeSocks5": "SOCKS5",
+  "networkProxyServerHost": "服务器地址",
+  "networkProxyPort": "端口",
+  "networkProxyUsername": "用户名",
+  "networkProxyPassword": "密码",
+  "networkProxyOptionalHint": "可选",
+  "networkProxyTestHeader": "连接测试",
+  "networkProxyTestUrlHint": "测试地址",
+  "networkProxyTestButton": "测试",
+  "networkProxyTesting": "测试中…",
+  "networkProxyTestSuccess": "连接成功",
+  "networkProxyTestFailed": "测试失败：{error}",
+  "@networkProxyTestFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "networkProxyNoUrl": "请输入测试地址",
+  "networkProxyPriorityNote": "当同时开启全局代理与供应商代理时，将优先使用供应商代理。"
 }

@@ -968,5 +968,28 @@
   "assistantEditPresetEditDialogTitle": "編輯預設訊息",
   "assistantEditPresetRoleUser": "使用者",
   "assistantEditPresetRoleAssistant": "助手",
-  "desktopTtsPleaseAddProvider": "請先在設定中新增語音服務商"
+  "desktopTtsPleaseAddProvider": "請先在設定中新增語音服務商",
+  "settingsPageNetworkProxy": "網絡代理",
+  "networkProxyEnableLabel": "啟動代理",
+  "networkProxySettingsHeader": "代理設定",
+  "networkProxyType": "代理類型",
+  "networkProxyTypeHttp": "HTTP",
+  "networkProxyTypeHttps": "HTTPS",
+  "networkProxyTypeSocks5": "SOCKS5",
+  "networkProxyServerHost": "伺服器地址",
+  "networkProxyPort": "連接埠",
+  "networkProxyUsername": "使用者名稱",
+  "networkProxyPassword": "密碼",
+  "networkProxyOptionalHint": "可選",
+  "networkProxyTestHeader": "連線測試",
+  "networkProxyTestUrlHint": "測試地址",
+  "networkProxyTestButton": "測試",
+  "networkProxyTesting": "測試中…",
+  "networkProxyTestSuccess": "連線成功",
+  "networkProxyTestFailed": "測試失敗：{error}",
+  "@networkProxyTestFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "networkProxyNoUrl": "請輸入測試地址",
+  "networkProxyPriorityNote": "同時啟用全域代理與供應商代理時，將優先使用供應商代理。"
 }

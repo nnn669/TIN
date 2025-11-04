@@ -5578,6 +5578,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please add a TTS provider first'**
   String get desktopTtsPleaseAddProvider;
+
+  /// No description provided for @settingsPageNetworkProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Network Proxy'**
+  String get settingsPageNetworkProxy;
+
+  /// No description provided for @networkProxyEnableLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Proxy'**
+  String get networkProxyEnableLabel;
+
+  /// No description provided for @networkProxySettingsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy Settings'**
+  String get networkProxySettingsHeader;
+
+  /// No description provided for @networkProxyType.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy Type'**
+  String get networkProxyType;
+
+  /// No description provided for @networkProxyTypeHttp.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP'**
+  String get networkProxyTypeHttp;
+
+  /// No description provided for @networkProxyTypeHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTPS'**
+  String get networkProxyTypeHttps;
+
+  /// No description provided for @networkProxyTypeSocks5.
+  ///
+  /// In en, this message translates to:
+  /// **'SOCKS5'**
+  String get networkProxyTypeSocks5;
+
+  /// No description provided for @networkProxyServerHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get networkProxyServerHost;
+
+  /// No description provided for @networkProxyPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get networkProxyPort;
+
+  /// No description provided for @networkProxyUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get networkProxyUsername;
+
+  /// No description provided for @networkProxyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get networkProxyPassword;
+
+  /// No description provided for @networkProxyOptionalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get networkProxyOptionalHint;
+
+  /// No description provided for @networkProxyTestHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Test'**
+  String get networkProxyTestHeader;
+
+  /// No description provided for @networkProxyTestUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Test URL'**
+  String get networkProxyTestUrlHint;
+
+  /// No description provided for @networkProxyTestButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get networkProxyTestButton;
+
+  /// No description provided for @networkProxyTesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Testing…'**
+  String get networkProxyTesting;
+
+  /// No description provided for @networkProxyTestSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection successful'**
+  String get networkProxyTestSuccess;
+
+  /// No description provided for @networkProxyTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Test failed: {error}'**
+  String networkProxyTestFailed(String error);
+
+  /// No description provided for @networkProxyNoUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a URL'**
+  String get networkProxyNoUrl;
+
+  /// No description provided for @networkProxyPriorityNote.
+  ///
+  /// In en, this message translates to:
+  /// **'When both global and provider proxies are enabled, provider-level proxy takes priority.'**
+  String get networkProxyPriorityNote;
 }
 
 class _AppLocalizationsDelegate

@@ -67,6 +67,13 @@ class SettingsProvider extends ChangeNotifier {
   static const String _searchSelectedKey = 'search_selected_v1';
   static const String _searchEnabledKey = 'search_enabled_v1';
   static const String _webDavConfigKey = 'webdav_config_v1';
+  // Global network proxy
+  static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
+  static const String _globalProxyTypeKey = 'global_proxy_type_v1'; // http|https|socks5 (socks5 not yet supported)
+  static const String _globalProxyHostKey = 'global_proxy_host_v1';
+  static const String _globalProxyPortKey = 'global_proxy_port_v1';
+  static const String _globalProxyUsernameKey = 'global_proxy_username_v1';
+  static const String _globalProxyPasswordKey = 'global_proxy_password_v1';
   // TTS services (network)
   static const String _ttsServicesKey = 'tts_services_v1';
   static const String _ttsSelectedKey = 'tts_selected_v1';
@@ -141,6 +148,21 @@ class SettingsProvider extends ChangeNotifier {
   // Ephemeral connection test results: serviceId -> connected (true), failed (false), or null (not tested)
   final Map<String, bool?> _searchConnection = <String, bool?>{};
   Map<String, bool?> get searchConnection => Map.unmodifiable(_searchConnection);
+
+  // ===== Global Proxy Settings =====
+  bool _globalProxyEnabled = false;
+  String _globalProxyType = 'http';
+  String _globalProxyHost = '';
+  String _globalProxyPort = '8080';
+  String _globalProxyUsername = '';
+  String _globalProxyPassword = '';
+
+  bool get globalProxyEnabled => _globalProxyEnabled;
+  String get globalProxyType => _globalProxyType; // http|https|socks5
+  String get globalProxyHost => _globalProxyHost;
+  String get globalProxyPort => _globalProxyPort;
+  String get globalProxyUsername => _globalProxyUsername;
+  String get globalProxyPassword => _globalProxyPassword;
 
   SettingsProvider() {
     _load();
@@ -289,6 +311,14 @@ class SettingsProvider extends ChangeNotifier {
     _searchServiceSelected = prefs.getInt(_searchSelectedKey) ?? 0;
     _searchEnabled = prefs.getBool(_searchEnabledKey) ?? false;
 
+    // load global proxy
+    _globalProxyEnabled = prefs.getBool(_globalProxyEnabledKey) ?? false;
+    _globalProxyType = prefs.getString(_globalProxyTypeKey) ?? 'http';
+    _globalProxyHost = prefs.getString(_globalProxyHostKey) ?? '';
+    _globalProxyPort = prefs.getString(_globalProxyPortKey) ?? '8080';
+    _globalProxyUsername = prefs.getString(_globalProxyUsernameKey) ?? '';
+    _globalProxyPassword = prefs.getString(_globalProxyPasswordKey) ?? '';
+
     // load network TTS services
     try {
       final ttsStr = prefs.getString(_ttsServicesKey) ?? '';
@@ -329,6 +359,72 @@ class SettingsProvider extends ChangeNotifier {
     await _reloadLocalFontsIfAny();
 
     notifyListeners();
+  }
+
+  Future<void> setGlobalProxyEnabled(bool v) async {
+    _globalProxyEnabled = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_globalProxyEnabledKey, _globalProxyEnabled);
+  }
+
+  Future<void> setGlobalProxyType(String v) async {
+    _globalProxyType = v.trim().isEmpty ? 'http' : v.trim();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_globalProxyTypeKey, _globalProxyType);
+  }
+
+  Future<void> setGlobalProxyHost(String v) async {
+    _globalProxyHost = v.trim();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_globalProxyHostKey, _globalProxyHost);
+  }
+
+  Future<void> setGlobalProxyPort(String v) async {
+    _globalProxyPort = v.trim();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_globalProxyPortKey, _globalProxyPort);
+  }
+
+  Future<void> setGlobalProxyUsername(String v) async {
+    _globalProxyUsername = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_globalProxyUsernameKey, _globalProxyUsername);
+  }
+
+  Future<void> setGlobalProxyPassword(String v) async {
+    _globalProxyPassword = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_globalProxyPasswordKey, _globalProxyPassword);
+  }
+
+  // Apply global proxy to Dart IO layer; provider-level proxies take precedence at call sites.
+  String _lastProxySignature = '';
+  void applyGlobalProxyOverridesIfNeeded() {
+    try {
+      final enabled = _globalProxyEnabled;
+      final host = _globalProxyHost.trim();
+      final portStr = _globalProxyPort.trim();
+      final user = _globalProxyUsername.trim();
+      final pass = _globalProxyPassword;
+      final type = _globalProxyType; // reserved for future SOCKS5
+      final sig = [enabled, type, host, portStr, user, pass].join('|');
+      if (_lastProxySignature == sig) return;
+      _lastProxySignature = sig;
+      if (!enabled || host.isEmpty || portStr.isEmpty) {
+        HttpOverrides.global = null;
+        return;
+      }
+      final port = int.tryParse(portStr) ?? 8080;
+      HttpOverrides.global = _ProxyHttpOverrides(host: host, port: port, username: user.isEmpty ? null : user, password: pass);
+    } catch (_) {
+      // ignore
+    }
   }
 
   Future<void> setTtsServices(List<TtsServiceOptions> v) async {
@@ -1315,6 +1411,23 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._usePureBackground = _usePureBackground;
     copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;
     return copy;
+  }
+}
+
+class _ProxyHttpOverrides extends HttpOverrides {
+  final String host;
+  final int port;
+  final String? username;
+  final String? password;
+  _ProxyHttpOverrides({required this.host, required this.port, this.username, this.password});
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client = super.createHttpClient(context);
+    client.findProxy = (_) => 'PROXY $host:$port';
+    if (username != null && username!.isNotEmpty) {
+      client.addProxyCredentials(host, port, '', HttpClientBasicCredentials(username!, password ?? ''));
+    }
+    return client;
   }
 }
 

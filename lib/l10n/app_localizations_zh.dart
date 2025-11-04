@@ -2845,6 +2845,68 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get desktopTtsPleaseAddProvider => '请先在设置中添加语音服务商';
+
+  @override
+  String get settingsPageNetworkProxy => '网络代理';
+
+  @override
+  String get networkProxyEnableLabel => '启动代理';
+
+  @override
+  String get networkProxySettingsHeader => '代理设置';
+
+  @override
+  String get networkProxyType => '代理类型';
+
+  @override
+  String get networkProxyTypeHttp => 'HTTP';
+
+  @override
+  String get networkProxyTypeHttps => 'HTTPS';
+
+  @override
+  String get networkProxyTypeSocks5 => 'SOCKS5';
+
+  @override
+  String get networkProxyServerHost => '服务器地址';
+
+  @override
+  String get networkProxyPort => '端口';
+
+  @override
+  String get networkProxyUsername => '用户名';
+
+  @override
+  String get networkProxyPassword => '密码';
+
+  @override
+  String get networkProxyOptionalHint => '可选';
+
+  @override
+  String get networkProxyTestHeader => '连接测试';
+
+  @override
+  String get networkProxyTestUrlHint => '测试地址';
+
+  @override
+  String get networkProxyTestButton => '测试';
+
+  @override
+  String get networkProxyTesting => '测试中…';
+
+  @override
+  String get networkProxyTestSuccess => '连接成功';
+
+  @override
+  String networkProxyTestFailed(String error) {
+    return '测试失败：$error';
+  }
+
+  @override
+  String get networkProxyNoUrl => '请输入测试地址';
+
+  @override
+  String get networkProxyPriorityNote => '当同时开启全局代理与供应商代理时，将优先使用供应商代理。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -5688,6 +5750,68 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get desktopTtsPleaseAddProvider => '请先在设置中添加语音服务商';
+
+  @override
+  String get settingsPageNetworkProxy => '网络代理';
+
+  @override
+  String get networkProxyEnableLabel => '启动代理';
+
+  @override
+  String get networkProxySettingsHeader => '代理设置';
+
+  @override
+  String get networkProxyType => '代理类型';
+
+  @override
+  String get networkProxyTypeHttp => 'HTTP';
+
+  @override
+  String get networkProxyTypeHttps => 'HTTPS';
+
+  @override
+  String get networkProxyTypeSocks5 => 'SOCKS5';
+
+  @override
+  String get networkProxyServerHost => '服务器地址';
+
+  @override
+  String get networkProxyPort => '端口';
+
+  @override
+  String get networkProxyUsername => '用户名';
+
+  @override
+  String get networkProxyPassword => '密码';
+
+  @override
+  String get networkProxyOptionalHint => '可选';
+
+  @override
+  String get networkProxyTestHeader => '连接测试';
+
+  @override
+  String get networkProxyTestUrlHint => '测试地址';
+
+  @override
+  String get networkProxyTestButton => '测试';
+
+  @override
+  String get networkProxyTesting => '测试中…';
+
+  @override
+  String get networkProxyTestSuccess => '连接成功';
+
+  @override
+  String networkProxyTestFailed(String error) {
+    return '测试失败：$error';
+  }
+
+  @override
+  String get networkProxyNoUrl => '请输入测试地址';
+
+  @override
+  String get networkProxyPriorityNote => '当同时开启全局代理与供应商代理时，将优先使用供应商代理。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -8532,4 +8656,66 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopTtsPleaseAddProvider => '請先在設定中新增語音服務商';
+
+  @override
+  String get settingsPageNetworkProxy => '網絡代理';
+
+  @override
+  String get networkProxyEnableLabel => '啟動代理';
+
+  @override
+  String get networkProxySettingsHeader => '代理設定';
+
+  @override
+  String get networkProxyType => '代理類型';
+
+  @override
+  String get networkProxyTypeHttp => 'HTTP';
+
+  @override
+  String get networkProxyTypeHttps => 'HTTPS';
+
+  @override
+  String get networkProxyTypeSocks5 => 'SOCKS5';
+
+  @override
+  String get networkProxyServerHost => '伺服器地址';
+
+  @override
+  String get networkProxyPort => '連接埠';
+
+  @override
+  String get networkProxyUsername => '使用者名稱';
+
+  @override
+  String get networkProxyPassword => '密碼';
+
+  @override
+  String get networkProxyOptionalHint => '可選';
+
+  @override
+  String get networkProxyTestHeader => '連線測試';
+
+  @override
+  String get networkProxyTestUrlHint => '測試地址';
+
+  @override
+  String get networkProxyTestButton => '測試';
+
+  @override
+  String get networkProxyTesting => '測試中…';
+
+  @override
+  String get networkProxyTestSuccess => '連線成功';
+
+  @override
+  String networkProxyTestFailed(String error) {
+    return '測試失敗：$error';
+  }
+
+  @override
+  String get networkProxyNoUrl => '請輸入測試地址';
+
+  @override
+  String get networkProxyPriorityNote => '同時啟用全域代理與供應商代理時，將優先使用供應商代理。';
 }

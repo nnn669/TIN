@@ -31,6 +31,7 @@ import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:system_fonts/system_fonts.dart';
+import 'dart:io' show HttpOverrides; // kept for global override usage inside provider
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
@@ -115,6 +116,8 @@ class MyApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           final settings = context.watch<SettingsProvider>();
+          // Apply global proxy overrides when settings change
+          settings.applyGlobalProxyOverridesIfNeeded();
           // One-time app update check after first build
           if (settings.showAppUpdates && !_didCheckUpdates) {
             _didCheckUpdates = true;
@@ -282,3 +285,4 @@ Widget _selectHome() {
   return isDesktop ? const DesktopHomePage() : const HomePage();
 }
  
+// Overrides logic is implemented within SettingsProvider now.

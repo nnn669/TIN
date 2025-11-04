@@ -39,6 +39,7 @@ import 'setting/mcp_pane.dart';
 import 'setting/tts_services_pane.dart';
 import 'setting/quick_phrases_pane.dart';
 import 'setting/backup_pane.dart';
+import 'setting/network_proxy_pane.dart';
 import 'setting/about_pane.dart';
 import 'package:system_fonts/system_fonts.dart';
 import 'package:flutter/gestures.dart';
@@ -65,6 +66,7 @@ enum _SettingsMenuItem {
   mcp,
   quickPhrases,
   tts,
+  networkProxy,
   backup,
   about,
 }
@@ -105,6 +107,8 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
           return l10n.settingsPageQuickPhrase;
         case _SettingsMenuItem.tts:
           return l10n.settingsPageTts;
+        case _SettingsMenuItem.networkProxy:
+          return l10n.settingsPageNetworkProxy;
         case _SettingsMenuItem.backup:
           return l10n.settingsPageBackup;
         case _SettingsMenuItem.about:
@@ -170,6 +174,8 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                           return const DesktopSearchServicesPane(key: ValueKey('search'));
                         case _SettingsMenuItem.mcp:
                           return const DesktopMcpPane(key: ValueKey('mcp'));
+                        case _SettingsMenuItem.networkProxy:
+                          return const DesktopNetworkProxyPane(key: ValueKey('networkProxy'));
                         case _SettingsMenuItem.backup:
                           return const DesktopBackupPane(key: ValueKey('backup'));
                         case _SettingsMenuItem.quickPhrases:
@@ -215,6 +221,7 @@ class _SettingsMenu extends StatelessWidget {
       (_SettingsMenuItem.mcp, lucide.Lucide.Terminal, l10n.settingsPageMcp),
       (_SettingsMenuItem.quickPhrases, lucide.Lucide.Zap, l10n.settingsPageQuickPhrase),
       (_SettingsMenuItem.tts, lucide.Lucide.Volume2, l10n.settingsPageTts),
+      (_SettingsMenuItem.networkProxy, lucide.Lucide.Network, l10n.settingsPageNetworkProxy),
       (_SettingsMenuItem.backup, lucide.Lucide.Database, l10n.settingsPageBackup),
       (_SettingsMenuItem.about, lucide.Lucide.BadgeInfo, l10n.settingsPageAbout),
     ];
