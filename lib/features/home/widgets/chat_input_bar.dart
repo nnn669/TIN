@@ -885,7 +885,15 @@ class _CompactIconButton extends StatelessWidget {
       icon: child == null && childBuilder == null ? icon : null,
     );
 
-    return tooltip == null ? button : Semantics(tooltip: tooltip!, child: button);
+    if (tooltip == null) {
+      return button;
+    }
+
+    return Tooltip(
+      message: tooltip!,
+      waitDuration: const Duration(milliseconds: 350),
+      child: Semantics(tooltip: tooltip!, child: button),
+    );
   }
 }
 

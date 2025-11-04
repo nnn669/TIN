@@ -273,11 +273,20 @@ class _ServiceCardState extends State<_ServiceCard> {
                 ),
               ],
               const SizedBox(width: 8),
-              _SmallIconBtn(icon: lucide.Lucide.Settings2, onTap: widget.onEdit),
+              Tooltip(
+                message: l10n.searchServicesPageEditServiceTooltip,
+                child: _SmallIconBtn(icon: lucide.Lucide.Settings2, onTap: widget.onEdit),
+              ),
               const SizedBox(width: 6),
-              _SmallIconBtn(icon: lucide.Lucide.HeartPulse, onTap: widget.onTest),
+              Tooltip(
+                message: l10n.searchServicesPageTestConnectionTooltip,
+                child: _SmallIconBtn(icon: lucide.Lucide.HeartPulse, onTap: widget.onTest),
+              ),
               const SizedBox(width: 6),
-              _SmallIconBtn(icon: lucide.Lucide.Trash2, onTap: widget.onDelete),
+              Tooltip(
+                message: l10n.searchServicesPageDeleteServiceTooltip,
+                child: _SmallIconBtn(icon: lucide.Lucide.Trash2, onTap: widget.onDelete),
+              ),
             ],
           ),
         ),

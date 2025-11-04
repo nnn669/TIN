@@ -4115,11 +4115,23 @@ abstract class AppLocalizations {
   /// **'Not tested'**
   String get searchServicesPageNotTestedStatus;
 
+  /// No description provided for @searchServicesPageEditServiceTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Service'**
+  String get searchServicesPageEditServiceTooltip;
+
   /// No description provided for @searchServicesPageTestConnectionTooltip.
   ///
   /// In en, this message translates to:
   /// **'Test Connection'**
   String get searchServicesPageTestConnectionTooltip;
+
+  /// No description provided for @searchServicesPageDeleteServiceTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Service'**
+  String get searchServicesPageDeleteServiceTooltip;
 
   /// No description provided for @searchServicesPageConfiguredStatus.
   ///
