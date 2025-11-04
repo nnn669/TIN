@@ -236,7 +236,14 @@ class SettingsProvider extends ChangeNotifier {
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
     _autoScrollIdleSeconds = prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
     _chatBackgroundMaskStrength = prefs.getDouble(_displayChatBackgroundMaskStrengthKey) ?? 1.0;
-    _usePureBackground = prefs.getBool(_displayUsePureBackgroundKey) ?? false;
+    final pureBgPref = prefs.getBool(_displayUsePureBackgroundKey);
+    if (pureBgPref == null) {
+      final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      _usePureBackground = isDesktop;
+      await prefs.setBool(_displayUsePureBackgroundKey, _usePureBackground);
+    } else {
+      _usePureBackground = pureBgPref;
+    }
     // display: markdown/math rendering
     _enableDollarLatex = prefs.getBool(_displayEnableDollarLatexKey) ?? true;
     _enableMathRendering = prefs.getBool(_displayEnableMathRenderingKey) ?? true;
