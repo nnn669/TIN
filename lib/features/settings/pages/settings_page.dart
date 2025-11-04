@@ -236,7 +236,7 @@ class SettingsPage extends StatelessWidget {
             _iosDivider(context),
             _iosNavRow(
               context,
-              icon: Lucide.Network,
+              icon: Lucide.EthernetPort,
               label: l10n.settingsPageNetworkProxy,
               onTap: () {
                 Navigator.of(context).push(

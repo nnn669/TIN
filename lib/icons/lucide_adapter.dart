@@ -133,4 +133,5 @@ class Lucide {
   static const IconData RotateCcw = lucide.LucideIcons.rotateCcw;
   static const IconData Loader = lucide.LucideIcons.loader;
   static const IconData Repeat = lucide.LucideIcons.repeat;
+  static const IconData EthernetPort = lucide.LucideIcons.ethernetPort;
 }

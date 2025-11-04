@@ -221,7 +221,7 @@ class _SettingsMenu extends StatelessWidget {
       (_SettingsMenuItem.mcp, lucide.Lucide.Terminal, l10n.settingsPageMcp),
       (_SettingsMenuItem.quickPhrases, lucide.Lucide.Zap, l10n.settingsPageQuickPhrase),
       (_SettingsMenuItem.tts, lucide.Lucide.Volume2, l10n.settingsPageTts),
-      (_SettingsMenuItem.networkProxy, lucide.Lucide.Network, l10n.settingsPageNetworkProxy),
+      (_SettingsMenuItem.networkProxy, lucide.Lucide.EthernetPort, l10n.settingsPageNetworkProxy),
       (_SettingsMenuItem.backup, lucide.Lucide.Database, l10n.settingsPageBackup),
       (_SettingsMenuItem.about, lucide.Lucide.BadgeInfo, l10n.settingsPageAbout),
     ];
