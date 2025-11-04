@@ -139,12 +139,7 @@ class TtsServicesPage extends StatelessWidget {
                   },
                 ),
                 if (services.isNotEmpty) _iosDivider(context),
-                if (services.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    child: Text(l10n.ttsServicesPageNoNetworkServices, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-                  )
-                else ...[
+                if (services.isNotEmpty) ...[
                   for (int i = 0; i < services.length; i++) ...[
                     _NetworkTtsRowMobile(service: services[i], index: i),
                     if (i != services.length - 1) _iosDivider(context),
