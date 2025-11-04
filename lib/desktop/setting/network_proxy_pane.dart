@@ -136,8 +136,8 @@ class _DesktopNetworkProxyPaneState extends State<DesktopNetworkProxyPane> {
                 _rowDivider(context),
                 _ItemRow(
                   label: l10n.networkProxyPort,
-                  trailing: SizedBox(
-                    width: 140,
+                  trailing: ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 140, maxWidth: 420),
                     child: TextField(
                       controller: _portCtl,
                       focusNode: _portFn,
@@ -193,7 +193,6 @@ class _DesktopNetworkProxyPaneState extends State<DesktopNetworkProxyPane> {
                     ),
                   ),
                 ),
-                _rowDivider(context),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Align(
