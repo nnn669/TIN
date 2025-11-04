@@ -1,3 +1,5 @@
+import 'dart:math';
+
 enum ApiKeyStatus { active, disabled, error, rateLimited }
 
 class ApiKeyUsage {
@@ -137,10 +139,16 @@ class ApiKeyConfig {
     );
   }
 
+  // Ensure high probability of uniqueness even under fast batch inserts
+  static final Random _rng = Random();
+  static int _ctr = 0;
   static String _generateKeyId() {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    final rnd = (DateTime.now().microsecondsSinceEpoch % 1000000000).toRadixString(36);
-    return 'key_${ts}_$rnd';
+    final ts = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    final r = _rng.nextInt(0x7fffffff).toRadixString(36);
+    // Monotonic counter to guard against same-timestamp collisions
+    _ctr = (_ctr + 1) & 0x7fffffff;
+    final c = _ctr.toRadixString(36);
+    return 'key_${ts}_${r}_$c';
   }
 
   static ApiKeyConfig create(String key, {String? name, int priority = 5}) {

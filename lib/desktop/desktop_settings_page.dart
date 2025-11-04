@@ -2138,20 +2138,222 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
           final km = (old.keyManagement ?? const KeyManagementConfig()).copyWith(strategy: s);
           await sp.setProviderConfig(widget.providerKey, old.copyWith(keyManagement: km));
         }
+        // addKeys defined below after detection helpers
+        // Persisted state across inner StatefulBuilder rebuilds
+        String? detectModelId;
+        bool detecting = false;
+        StateSetter? _setDRef;
+
+        Future<void> _pickDetectModel(BuildContext dctx) async {
+          final sel = await showModelSelector(dctx, limitProviderKey: widget.providerKey);
+          if (sel != null) {
+            detectModelId = sel.modelId;
+            _setDRef?.call(() {});
+          }
+        }
+
+        Future<void> _testSingleKey(ProviderConfig baseCfg, String modelId, ApiKeyConfig key) async {
+          // Force using the specific key by disabling multi-key selection
+          final cfg2 = baseCfg.copyWith(apiKey: key.key, multiKeyEnabled: false, apiKeys: const []);
+          await ProviderManager.testConnection(cfg2, modelId);
+        }
+
+        Future<void> _testKeysAndSave(BuildContext dctx, List<ApiKeyConfig> fullList, List<ApiKeyConfig> toTest, String modelId) async {
+          final settings = dctx.read<SettingsProvider>();
+          final base = settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+          final out = List<ApiKeyConfig>.from(fullList);
+          for (int i = 0; i < toTest.length; i++) {
+            final k = toTest[i];
+            bool ok = true;
+            try {
+              await _testSingleKey(base, modelId, k);
+            } catch (_) { ok = false; }
+            final idx = out.indexWhere((e) => e.id == k.id);
+            if (idx >= 0) out[idx] = k.copyWith(
+              status: ok ? ApiKeyStatus.active : ApiKeyStatus.error,
+              usage: k.usage.copyWith(
+                totalRequests: k.usage.totalRequests + 1,
+                successfulRequests: k.usage.successfulRequests + (ok ? 1 : 0),
+                failedRequests: k.usage.failedRequests + (ok ? 0 : 1),
+                consecutiveFailures: ok ? 0 : (k.usage.consecutiveFailures + 1),
+                lastUsed: DateTime.now().millisecondsSinceEpoch,
+              ),
+              lastError: ok ? null : 'Test failed',
+              updatedAt: DateTime.now().millisecondsSinceEpoch,
+            );
+            await Future.delayed(const Duration(milliseconds: 120));
+          }
+          await settings.setProviderConfig(widget.providerKey, base.copyWith(apiKeys: out));
+        }
+
+        Future<void> _detectAll(BuildContext dctx) async {
+          if (detecting) return;
+          final settings = dctx.read<SettingsProvider>();
+          final cfgX = settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+          final models = cfgX.models;
+          if (detectModelId == null) {
+            if (models.isEmpty) {
+              showAppSnackBar(dctx, message: AppLocalizations.of(dctx)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+              return;
+            }
+            detectModelId = models.first;
+          }
+          detecting = true; _setDRef?.call(() {});
+          try {
+            final list = List<ApiKeyConfig>.from(cfgX.apiKeys ?? const <ApiKeyConfig>[]);
+            await _testKeysAndSave(dctx, list, list, detectModelId!);
+          } finally { detecting = false; _setDRef?.call(() {}); }
+        }
+
+        Future<void> _detectOnly(BuildContext dctx, List<String> keys) async {
+          final settings = dctx.read<SettingsProvider>();
+          final cfgX = settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+          final models = cfgX.models;
+          if (detectModelId == null) {
+            if (models.isEmpty) {
+              showAppSnackBar(dctx, message: AppLocalizations.of(dctx)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+              return;
+            }
+            detectModelId = models.first;
+          }
+          final list = List<ApiKeyConfig>.from(cfgX.apiKeys ?? const <ApiKeyConfig>[]);
+          final toTest = list.where((e) => keys.contains(e.key)).toList();
+          await _testKeysAndSave(dctx, list, toTest, detectModelId!);
+        }
+
+        Future<void> _deleteAllErrorKeys(BuildContext dctx) async {
+          final settings = dctx.read<SettingsProvider>();
+          final cfgX = settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+          final keys = List<ApiKeyConfig>.from(cfgX.apiKeys ?? const <ApiKeyConfig>[]);
+          final errorKeys = keys.where((e) => e.status == ApiKeyStatus.error).toList();
+          if (errorKeys.isEmpty) return;
+          final l10nX = AppLocalizations.of(dctx)!;
+          final csX = Theme.of(dctx).colorScheme;
+          final ok = await showDialog<bool>(
+            context: dctx,
+            builder: (ctx2) => AlertDialog(
+              title: Text(l10nX.multiKeyPageDeleteErrorsConfirmTitle),
+              content: Text(l10nX.multiKeyPageDeleteErrorsConfirmContent),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx2).pop(false), child: Text(l10nX.multiKeyPageCancel)),
+                TextButton(onPressed: () => Navigator.of(ctx2).pop(true), style: TextButton.styleFrom(foregroundColor: csX.error), child: Text(l10nX.multiKeyPageDelete)),
+              ],
+            ),
+          );
+          if (ok != true) return;
+          final remain = keys.where((e) => e.status != ApiKeyStatus.error).toList();
+          await settings.setProviderConfig(widget.providerKey, cfgX.copyWith(apiKeys: remain));
+          showAppSnackBar(dctx, message: l10nX.multiKeyPageDeletedErrorsSnackbar(errorKeys.length), type: NotificationType.success);
+          _setDRef?.call(() {});
+        }
+
+        Future<ApiKeyConfig?> _showEditKeyDialog(BuildContext dctx, ApiKeyConfig k) async {
+          final cs2 = Theme.of(dctx).colorScheme;
+          final l10n2 = AppLocalizations.of(dctx)!;
+          final aliasCtrl = TextEditingController(text: k.name ?? '');
+          final keyCtrl = TextEditingController(text: k.key);
+          final priCtrl = TextEditingController(text: k.priority.toString());
+          final res = await showDialog<ApiKeyConfig?>(
+            context: dctx,
+            barrierDismissible: true,
+            builder: (c2) => Dialog(
+              backgroundColor: cs2.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: StatefulBuilder(builder: (cc, setCC) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 44,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(l10n2.multiKeyPageEdit, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+                              _IconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(c2).maybePop()),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Divider(height: 1, thickness: 0.5, color: cs2.outlineVariant.withOpacity(0.12)),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _sectionLabel(cc, l10n2.multiKeyPageAlias),
+                            const SizedBox(height: 6),
+                            TextField(controller: aliasCtrl, style: const TextStyle(fontSize: 13), decoration: _inputDecoration(cc)),
+                            const SizedBox(height: 12),
+                            _sectionLabel(cc, l10n2.multiKeyPageKey),
+                            const SizedBox(height: 6),
+                            TextField(controller: keyCtrl, style: const TextStyle(fontSize: 13), decoration: _inputDecoration(cc)),
+                            const SizedBox(height: 12),
+                            _sectionLabel(cc, l10n2.multiKeyPagePriority),
+                            const SizedBox(height: 6),
+                            TextField(controller: priCtrl, style: const TextStyle(fontSize: 13), decoration: _inputDecoration(cc).copyWith(hintText: '1-10')),
+                            const SizedBox(height: 14),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _DeskIosButton(
+                                label: l10n2.multiKeyPageEdit,
+                                filled: true,
+                                onTap: () {
+                                  final p = int.tryParse(priCtrl.text.trim()) ?? k.priority;
+                                  final clamped = p.clamp(1, 10) as int;
+                                  Navigator.of(c2).pop(
+                                    k.copyWith(
+                                      name: aliasCtrl.text.trim().isEmpty ? null : aliasCtrl.text.trim(),
+                                      key: keyCtrl.text.trim(),
+                                      priority: clamped,
+                                      updatedAt: DateTime.now().millisecondsSinceEpoch,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ),
+          );
+          return res;
+        }
+
+        // Define addKeys now that helpers are in scope
         Future<void> addKeys(BuildContext c) async {
           final text = await _inputDialog(c, title: l10n.multiKeyPageAdd, hint: l10n.multiKeyPageAddHint);
           if (text == null || text.trim().isEmpty) return;
-          final parts = text.split(RegExp(r'[\s,]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
+          final parts = text.split(RegExp(r'[\s,]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
           if (parts.isEmpty) return;
           final existing = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName).apiKeys ?? const <ApiKeyConfig>[];
-          final existingSet = existing.map((e) => e.key).toSet();
+          final existingSet = existing.map((e) => e.key.trim()).toSet();
           final list = List<ApiKeyConfig>.from(existing);
+          final uniqueAdded = <String>[];
           for (final k in parts) {
-            if (!existingSet.contains(k)) list.add(ApiKeyConfig.create(k));
+            if (!existingSet.contains(k)) {
+              list.add(ApiKeyConfig.create(k));
+              uniqueAdded.add(k);
+            }
           }
           final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
-          await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
+          await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list, multiKeyEnabled: true));
+          if (uniqueAdded.isNotEmpty) {
+            showAppSnackBar(c, message: l10n.multiKeyPageImportedSnackbar(uniqueAdded.length), type: NotificationType.success);
+            await _detectOnly(c, uniqueAdded);
+          } else {
+            showAppSnackBar(c, message: l10n.multiKeyPageImportedSnackbar(0));
+          }
         }
+
         return Dialog(
           backgroundColor: cs.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -2159,6 +2361,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680, maxHeight: 620),
             child: StatefulBuilder(builder: (dctx, setD) {
+              _setDRef = setD;
               ProviderConfig cfg2 = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
               final keyList = List<ApiKeyConfig>.from(cfg2.apiKeys ?? const <ApiKeyConfig>[]);
               final currentStrat = cfg2.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
@@ -2173,6 +2376,24 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                       child: Row(
                         children: [
                           Expanded(child: Text(l10n.multiKeyPageTitle, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+                          // Delete all error keys
+                          Tooltip(
+                            message: l10n.multiKeyPageDeleteErrorsTooltip,
+                            child: _IconBtn(icon: lucide.Lucide.Trash2, onTap: () => _deleteAllErrorKeys(dctx)),
+                          ),
+                          const SizedBox(width: 4),
+                          // Detect / test all keys
+                          if (detecting)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
+                            )
+                          else
+                            Tooltip(
+                              message: l10n.multiKeyPageDetect,
+                              child: _IconBtn(icon: lucide.Lucide.HeartPulse, onTap: () => _detectAll(dctx), onLongPress: () => _pickDetectModel(dctx)),
+                            ),
+                          const SizedBox(width: 6),
                           _IconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(ctx).maybePop()),
                         ],
                       ),
@@ -2192,32 +2413,60 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                     child: Scrollbar(
                       thumbVisibility: true,
                       controller: listCtrl,
-                      child: ListView.separated(
+                      child: ListView(
                         controller: listCtrl,
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemBuilder: (c, i) {
-                          final ak = keyList[i];
-                          return _ApiKeyRow(
-                            keyConfig: ak,
-                            onToggle: (v) async {
-                              final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
-                              final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
-                              final idx = list.indexWhere((e) => e.id == ak.id);
-                              if (idx >= 0) list[idx] = ak.copyWith(isEnabled: v, updatedAt: DateTime.now().millisecondsSinceEpoch);
-                              await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
-                              setD(() {});
-                            },
-                            onDelete: () async {
-                              final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
-                              final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
-                              list.removeWhere((e) => e.id == ak.id);
-                              await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
-                              setD(() {});
-                            },
-                          );
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemCount: keyList.length,
+                        children: [
+                          _DesktopIosSectionCard(
+                            children: [
+                              if (keyList.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  child: Center(child: Text(AppLocalizations.of(context)!.multiKeyPageNoKeys)),
+                                )
+                              else
+                                for (int i = 0; i < keyList.length; i++)
+                                  _DesktopKeyRow(
+                                    keyConfig: keyList[i],
+                                    showDivider: false,
+                                    onToggle: (v) async {
+                                      final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+                                      final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
+                                      final idx = list.indexWhere((e) => e.id == keyList[i].id);
+                                      if (idx >= 0) list[idx] = keyList[i].copyWith(isEnabled: v, updatedAt: DateTime.now().millisecondsSinceEpoch);
+                                      await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
+                                      setD(() {});
+                                    },
+                                    onEdit: () async {
+                                      final updated = await _showEditKeyDialog(dctx, keyList[i]);
+                                      if (updated == null) return;
+                                      // Prevent duplicate keys
+                                      final latest = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+                                      final list = List<ApiKeyConfig>.from(latest.apiKeys ?? const <ApiKeyConfig>[]);
+                                      final dup = list.any((e) => e.id != keyList[i].id && e.key.trim() == updated.key.trim());
+                                      if (dup) {
+                                        showAppSnackBar(dctx, message: AppLocalizations.of(dctx)!.multiKeyPageDuplicateKeyWarning, type: NotificationType.warning);
+                                        return;
+                                      }
+                                      final idx = list.indexWhere((e) => e.id == keyList[i].id);
+                                      if (idx >= 0) list[idx] = updated;
+                                      await sp.setProviderConfig(widget.providerKey, latest.copyWith(apiKeys: list));
+                                      setD(() {});
+                                    },
+                                    onDelete: () async {
+                                      final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+                                      final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
+                                      final idx = list.indexWhere((e) => e.id == keyList[i].id);
+                                      if (idx >= 0) {
+                                        list.removeAt(idx);
+                                        await sp.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
+                                        setD(() {});
+                                      }
+                                    },
+                                  ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -2629,9 +2878,11 @@ class _GreyCapsule extends StatelessWidget {
 }
 
 class _IconBtn extends StatefulWidget {
-  const _IconBtn({super.key, required this.icon, required this.onTap});
+  const _IconBtn({super.key, required this.icon, required this.onTap, this.onLongPress, this.color});
   final IconData icon;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final Color? color;
   @override
   State<_IconBtn> createState() => _IconBtnState();
 }
@@ -2649,12 +2900,13 @@ class _IconBtnState extends State<_IconBtn> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: Container(
           width: 28,
           height: 28,
           decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
           alignment: Alignment.center,
-          child: Icon(widget.icon, size: 18, color: cs.onSurface),
+          child: Icon(widget.icon, size: 18, color: widget.color ?? cs.onSurface),
         ),
       ),
     );
@@ -2815,35 +3067,110 @@ class _AddFullWidthButtonState extends State<_AddFullWidthButton> {
   }
 }
 
-class _ApiKeyRow extends StatelessWidget {
-  const _ApiKeyRow({required this.keyConfig, required this.onToggle, required this.onDelete});
+class _DesktopIosSectionCard extends StatelessWidget {
+  const _DesktopIosSectionCard({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final Color base = cs.surface;
+    final Color bg = isDark
+        ? Color.lerp(base, Colors.white, 0.06)!
+        : const Color(0xFFF7F7F9);
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+  }
+}
+
+class _DesktopKeyRow extends StatelessWidget {
+  const _DesktopKeyRow({
+    required this.keyConfig,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onEdit,
+    this.showDivider = false,
+  });
   final ApiKeyConfig keyConfig;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
+  final bool showDivider;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     String label;
-    if ((keyConfig.name ?? '').trim().isNotEmpty) label = keyConfig.name!.trim(); else {
+    if ((keyConfig.name ?? '').trim().isNotEmpty) {
+      label = keyConfig.name!.trim();
+    } else {
       final s = keyConfig.key.trim();
       label = s.length <= 8 ? '••••' : '${s.substring(0, 4)}••••${s.substring(s.length - 4)}';
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.02) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.14), width: 0.6),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
-          const SizedBox(width: 10),
-          IosSwitch(value: keyConfig.isEnabled, onChanged: onToggle),
-          const SizedBox(width: 6),
-          _IconBtn(icon: lucide.Lucide.Minus, onTap: onDelete),
-        ],
-      ),
+    Color statusColor(ApiKeyStatus st) {
+      switch (st) {
+        case ApiKeyStatus.active:
+          return Colors.green;
+        case ApiKeyStatus.disabled:
+          return cs.onSurface.withOpacity(0.6);
+        case ApiKeyStatus.error:
+          return cs.error;
+        case ApiKeyStatus.rateLimited:
+          return cs.tertiary;
+      }
+    }
+    String statusText(ApiKeyStatus st) {
+      switch (st) {
+        case ApiKeyStatus.active:
+          return l10n.multiKeyPageStatusActive;
+        case ApiKeyStatus.disabled:
+          return l10n.multiKeyPageStatusDisabled;
+        case ApiKeyStatus.error:
+          return l10n.multiKeyPageStatusError;
+        case ApiKeyStatus.rateLimited:
+          return l10n.multiKeyPageStatusRateLimited;
+      }
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              // Status capsule
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: statusColor(keyConfig.status).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusText(keyConfig.status),
+                  style: TextStyle(color: statusColor(keyConfig.status), fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+              const SizedBox(width: 8),
+              IosSwitch(value: keyConfig.isEnabled, onChanged: onToggle, width: 46, height: 28),
+              const SizedBox(width: 6),
+              _IconBtn(icon: lucide.Lucide.Pencil, onTap: onEdit, color: cs.primary),
+              const SizedBox(width: 4),
+              _IconBtn(icon: lucide.Lucide.Trash2, onTap: onDelete, color: cs.error),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Container(height: 0.6, color: cs.outlineVariant.withOpacity(0.25)),
+      ],
     );
   }
 }
