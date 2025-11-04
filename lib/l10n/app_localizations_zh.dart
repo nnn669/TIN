@@ -2090,7 +2090,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchServicesPageNotTestedStatus => '未测试';
 
   @override
+  String get searchServicesPageEditServiceTooltip => '编辑服务';
+
+  @override
   String get searchServicesPageTestConnectionTooltip => '测试连接';
+
+  @override
+  String get searchServicesPageDeleteServiceTooltip => '删除服务';
 
   @override
   String get searchServicesPageConfiguredStatus => '已配置';
@@ -4927,7 +4933,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get searchServicesPageNotTestedStatus => '未测试';
 
   @override
+  String get searchServicesPageEditServiceTooltip => '编辑服务';
+
+  @override
   String get searchServicesPageTestConnectionTooltip => '测试连接';
+
+  @override
+  String get searchServicesPageDeleteServiceTooltip => '删除服务';
 
   @override
   String get searchServicesPageConfiguredStatus => '已配置';
@@ -7763,7 +7775,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get searchServicesPageNotTestedStatus => '未測試';
 
   @override
+  String get searchServicesPageEditServiceTooltip => '編輯服務';
+
+  @override
   String get searchServicesPageTestConnectionTooltip => '測試連線';
+
+  @override
+  String get searchServicesPageDeleteServiceTooltip => '刪除服務';
 
   @override
   String get searchServicesPageConfiguredStatus => '已設定';

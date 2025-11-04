@@ -2146,7 +2146,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchServicesPageNotTestedStatus => 'Not tested';
 
   @override
+  String get searchServicesPageEditServiceTooltip => 'Edit Service';
+
+  @override
   String get searchServicesPageTestConnectionTooltip => 'Test Connection';
+
+  @override
+  String get searchServicesPageDeleteServiceTooltip => 'Delete Service';
 
   @override
   String get searchServicesPageConfiguredStatus => 'Configured';
