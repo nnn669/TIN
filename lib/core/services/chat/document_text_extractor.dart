@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 import 'package:xml/xml.dart';
 import 'package:flutter/services.dart';
 import 'package:read_pdf_text/read_pdf_text.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 
 class DocumentTextExtractor {
@@ -13,6 +14,22 @@ class DocumentTextExtractor {
       // Remap old iOS sandbox path if needed
       final fixedPath = SandboxPathResolver.fix(path);
       if (mime == 'application/pdf') {
+        // Desktop: use Syncfusion for PDF text extraction
+        if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+          try {
+            final file = File(fixedPath);
+            final bytes = await file.readAsBytes();
+            final document = PdfDocument(inputBytes: bytes);
+            final extractor = PdfTextExtractor(document);
+            final text = extractor.extractText();
+            document.dispose();
+            if (text.trim().isNotEmpty) return text;
+            return '[PDF] Unable to extract text from file.';
+          } catch (e) {
+            return '[[Failed to read PDF: $e]]';
+          }
+        }
+        // Mobile: fall back to read_pdf_text plugin
         try {
           final text = await ReadPdfText.getPDFtext(fixedPath);
           if (text.trim().isNotEmpty) return text;

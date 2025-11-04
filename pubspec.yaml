@@ -69,7 +69,8 @@ dependencies:
   mobile_scanner: ^7.0.1
   mcp_client: ^1.0.2
   flutter_highlight: ^0.7.0
-  syncfusion_flutter_sliders: ^30.2.6
+  syncfusion_flutter_sliders: ^31.2.5
+  syncfusion_flutter_pdf: ^31.2.5
   audioplayers: ^6.5.1
   html: ^0.15.6
   animations: ^2.0.11
