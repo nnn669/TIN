@@ -5540,7 +5540,8 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
             Tooltip(
               message: help,
               decoration: BoxDecoration(color: cs.surfaceVariant, borderRadius: BorderRadius.circular(8)),
-              textStyle: TextStyle(color: cs.onSurface, fontSize: 12),
+              // Use themed text to respect user-selected fonts
+              textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
               waitDuration: const Duration(milliseconds: 300),
               child: Icon(Icons.help_outline, size: 16, color: cs.onSurface.withOpacity(0.7)),
             ),
