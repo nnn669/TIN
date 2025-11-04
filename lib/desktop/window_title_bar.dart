@@ -68,32 +68,36 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
         //   ),
         // ),
       ),
-      child: DragToMoveArea(
-        child: Row(
-          children: [
-            const SizedBox(width: 6),
-            ...widget.leftChildren,
-            const Spacer(),
-            WindowCaptionButton.minimize(
-              brightness: brightness,
-              onPressed: () => windowManager.minimize(),
+      child: Row(
+        children: [
+          const SizedBox(width: 6),
+          ...widget.leftChildren,
+          // https://github.com/leanflutter/window_manager/issues/136
+          // Only the middle area should be draggable, not the buttons.
+          Expanded(
+            child: DragToMoveArea(
+              child: const SizedBox.expand(),
             ),
-            if (_isMaximized)
-              WindowCaptionButton.unmaximize(
-                brightness: brightness,
-                onPressed: () => windowManager.unmaximize(),
-              )
-            else
-              WindowCaptionButton.maximize(
-                brightness: brightness,
-                onPressed: () => windowManager.maximize(),
-              ),
-            WindowCaptionButton.close(
+          ),
+          WindowCaptionButton.minimize(
+            brightness: brightness,
+            onPressed: () => windowManager.minimize(),
+          ),
+          if (_isMaximized)
+            WindowCaptionButton.unmaximize(
               brightness: brightness,
-              onPressed: () => windowManager.close(),
+              onPressed: () => windowManager.unmaximize(),
+            )
+          else
+            WindowCaptionButton.maximize(
+              brightness: brightness,
+              onPressed: () => windowManager.maximize(),
             ),
-          ],
-        ),
+          WindowCaptionButton.close(
+            brightness: brightness,
+            onPressed: () => windowManager.close(),
+          ),
+        ],
       ),
     );
   }
