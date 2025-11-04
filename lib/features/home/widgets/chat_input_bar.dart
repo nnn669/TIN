@@ -292,16 +292,32 @@ class _ChatInputBarState extends State<ChatInputBar> {
   }
 
   Future<void> _handlePasteFromClipboard() async {
-    // Try image first via platform channel
-    final paths = await ClipboardImages.getImagePaths();
-    if (paths.isNotEmpty) {
-      final persisted = await _persistClipboardImages(paths);
+    // 1) Try images via platform channel (temp files created by platform)
+    final imageTempPaths = await ClipboardImages.getImagePaths();
+    if (imageTempPaths.isNotEmpty) {
+      final persisted = await _persistClipboardImages(imageTempPaths);
       if (persisted.isNotEmpty) {
         _addImages(persisted);
       }
       return;
     }
-    // Fallback: paste text
+
+    // 2) Try files via platform channel on desktop (Finder/Explorer copies)
+    bool handledFiles = false;
+    try {
+      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+        final filePaths = await ClipboardImages.getFilePaths();
+        if (filePaths.isNotEmpty) {
+          final saved = await _copyFilesToUpload(filePaths);
+          if (saved.images.isNotEmpty) _addImages(saved.images);
+          if (saved.docs.isNotEmpty) _addFiles(saved.docs);
+          handledFiles = saved.images.isNotEmpty || saved.docs.isNotEmpty;
+        }
+      }
+    } catch (_) {}
+    if (handledFiles) return;
+
+    // 3) Fallback: paste text
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text ?? '';
@@ -323,6 +339,72 @@ class _ChatInputBarState extends State<ChatInputBar> {
       }
       setState(() {});
     } catch (_) {}
+  }
+
+  // Copy arbitrary files to upload directory (without deleting the source),
+  // split into images and document attachments.
+  Future<({List<String> images, List<DocumentAttachment> docs})> _copyFilesToUpload(List<String> srcPaths) async {
+    final images = <String>[];
+    final docs = <DocumentAttachment>[];
+    try {
+      final dir = await AppDirectories.getUploadDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      for (final raw in srcPaths) {
+        try {
+          final src = raw.startsWith('file://') ? raw.substring(7) : raw;
+          final from = File(src);
+          if (!await from.exists()) continue;
+          final baseName = p.basename(src);
+          String destPath = p.join(dir.path, baseName);
+          // Avoid overwriting existing files
+          if (await File(destPath).exists()) {
+            final name = p.basenameWithoutExtension(baseName);
+            final ext = p.extension(baseName);
+            destPath = p.join(dir.path, '${name}_${DateTime.now().millisecondsSinceEpoch}$ext');
+          }
+          await File(destPath).writeAsBytes(await from.readAsBytes());
+          if (_isImageExtension(baseName)) {
+            images.add(destPath);
+          } else {
+            final mime = _inferMimeByExtension(baseName);
+            docs.add(DocumentAttachment(path: destPath, fileName: baseName, mime: mime));
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return (images: images, docs: docs);
+  }
+
+  String _inferMimeByExtension(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (lower.endsWith('.json')) return 'application/json';
+    if (lower.endsWith('.js')) return 'application/javascript';
+    if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.mdx')) return 'text/plain';
+    if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html';
+    if (lower.endsWith('.xml')) return 'application/xml';
+    if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return 'application/x-yaml';
+    if (lower.endsWith('.py')) return 'text/x-python';
+    if (lower.endsWith('.java')) return 'text/x-java-source';
+    if (lower.endsWith('.kt') || lower.endsWith('.kts')) return 'text/x-kotlin';
+    if (lower.endsWith('.dart')) return 'text/x-dart';
+    if (lower.endsWith('.ts')) return 'text/typescript';
+    if (lower.endsWith('.tsx')) return 'text/tsx';
+    return 'application/octet-stream';
+  }
+
+  bool _isImageExtension(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.heic') ||
+        lower.endsWith('.heif');
   }
 
   Future<List<String>> _persistClipboardImages(List<String> srcPaths) async {

@@ -24,4 +24,16 @@ class ClipboardImages {
       return false;
     }
   }
+
+  // Get file paths from system clipboard (desktop only).
+  // Returns absolute file system paths for items copied in Finder/Explorer/Files.
+  static Future<List<String>> getFilePaths() async {
+    try {
+      final res = await _channel.invokeMethod<List<dynamic>>('getClipboardFiles');
+      if (res == null) return const [];
+      return res.map((e) => e.toString()).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 }

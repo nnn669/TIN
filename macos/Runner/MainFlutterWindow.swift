@@ -89,6 +89,17 @@ class MainFlutterWindow: NSWindow {
           }
         }
         result(paths)
+      } else if call.method == "getClipboardFiles" {
+        var files: [String] = []
+        let pb = NSPasteboard.general
+        if let items = pb.pasteboardItems {
+          for item in items {
+            if let urlString = item.string(forType: .fileURL), let url = URL(string: urlString) {
+              files.append(url.path)
+            }
+          }
+        }
+        result(files)
       } else if call.method == "setClipboardImage" {
         guard let args = call.arguments as? String else {
           result(false)

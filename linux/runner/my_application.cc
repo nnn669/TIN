@@ -1,6 +1,7 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#include <gio/gio.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
@@ -83,6 +84,36 @@ static void my_application_activate(GApplication* application) {
         g_clear_error(&err);
         g_free(filename);
         g_object_unref(pixbuf);
+      }
+      g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_success_response_new(list));
+      fl_method_call_respond(method_call, response, nullptr);
+    } else if (g_strcmp0(name, "getClipboardFiles") == 0) {
+      FlValue* list = fl_value_new_list();
+      GtkClipboard* cb = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+      gchar* text = gtk_clipboard_wait_for_text(cb);
+      if (text != nullptr) {
+        // Common formats: "x-special/gnome-copied-files" content like:
+        //   copy\nfile:///path1\nfile:///path2
+        // or plain "text/uri-list" with file:// URIs per line.
+        gchar** lines = g_strsplit(text, "\n", -1);
+        for (gchar** it = lines; it != nullptr && *it != nullptr; ++it) {
+          const gchar* line = *it;
+          if (line == nullptr || *line == '\0') continue;
+          if (g_strcmp0(line, "copy") == 0) continue; // GNOME prefix
+          if (g_str_has_prefix(line, "file://")) {
+            GFile* gf = g_file_new_for_uri(line);
+            if (gf != nullptr) {
+              char* path = g_file_get_path(gf);
+              if (path != nullptr) {
+                fl_value_append_take(list, fl_value_new_string(path));
+                g_free(path);
+              }
+              g_object_unref(gf);
+            }
+          }
+        }
+        g_strfreev(lines);
+        g_free(text);
       }
       g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_success_response_new(list));
       fl_method_call_respond(method_call, response, nullptr);

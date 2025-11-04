@@ -6,6 +6,7 @@
 #include <string>
 #include <wincodec.h>
 #include <objbase.h>  // CoInitializeEx / CoUninitialize
+#include <shellapi.h>  // CF_HDROP / DragQueryFile
 
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
@@ -146,6 +147,38 @@ bool FlutterWindow::OnCreate() {
           if (SUCCEEDED(co_hr)) {
             CoUninitialize();
           }
+          return;
+        } else if (call.method_name() == "getClipboardFiles") {
+          std::vector<std::string> paths;
+          if (OpenClipboard(nullptr)) {
+            if (IsClipboardFormatAvailable(CF_HDROP)) {
+              HANDLE hData = GetClipboardData(CF_HDROP);
+              if (hData) {
+                HDROP hDrop = static_cast<HDROP>(hData);
+                UINT count = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+                for (UINT i = 0; i < count; ++i) {
+                  UINT len = DragQueryFileW(hDrop, i, nullptr, 0);
+                  std::wstring wpath;
+                  wpath.resize(static_cast<size_t>(len) + 1); // include space for NUL
+                  DragQueryFileW(hDrop, i, wpath.data(), len + 1);
+                  // Trim trailing NUL
+                  if (!wpath.empty() && wpath.back() == L'\0') {
+                    wpath.pop_back();
+                  }
+                  int u8len = WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                  if (u8len > 0) {
+                    std::string utf8(static_cast<size_t>(u8len - 1), '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), -1, utf8.data(), u8len, nullptr, nullptr);
+                    paths.push_back(utf8);
+                  }
+                }
+              }
+            }
+            CloseClipboard();
+          }
+          flutter::EncodableList list;
+          for (auto& p : paths) list.emplace_back(p);
+          result->Success(list);
           return;
         } else if (call.method_name() == "setClipboardImage") {
           // Decode image from file and place as CF_DIB on clipboard
