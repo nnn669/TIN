@@ -58,6 +58,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../core/services/learning_mode_store.dart';
@@ -87,6 +88,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux;
+  // Desktop drag-and-drop state
+  bool _isDragHovering = false;
   // Inline bottom tools panel removed; using modal bottom sheet instead
   // Animation tuning
   static const Duration _scrollAnimateDuration = Duration(milliseconds: 300);
@@ -1107,6 +1110,87 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _scrollToBottomSoon();
       }
     } catch (_) {}
+  }
+
+  // Handle files dropped on desktop (macOS/Windows/Linux)
+  Future<void> _onFilesDroppedDesktop(List<XFile> files) async {
+    if (files.isEmpty) return;
+    try {
+      final images = <String>[];
+      final docs = <DocumentAttachment>[];
+      // Preserve order: copy all, then classify by original names
+      final toCopy = <XFile>[];
+      final kinds = <bool>[]; // true=image, false=document
+      final names = <String>[];
+      for (final f in files) {
+        final name = (f.name.isNotEmpty ? f.name : (f.path.split(Platform.pathSeparator).last));
+        toCopy.add(f);
+        kinds.add(_isImageExtension(name));
+        names.add(name);
+      }
+
+      final saved = await _copyPickedFiles(toCopy);
+      for (int i = 0; i < saved.length; i++) {
+        final savedPath = saved[i];
+        final isImage = kinds[i];
+        if (isImage) {
+          images.add(savedPath);
+        } else {
+          final name = names[i];
+          final mime = _inferMimeByExtension(name);
+          docs.add(DocumentAttachment(path: savedPath, fileName: name, mime: mime));
+        }
+      }
+      if (images.isNotEmpty) _mediaController.addImages(images);
+      if (docs.isNotEmpty) _mediaController.addFiles(docs);
+      if (images.isNotEmpty || docs.isNotEmpty) _scrollToBottomSoon();
+    } catch (_) {}
+  }
+
+  // Wraps a widget with desktop DropTarget to accept drag-and-drop files
+  Widget _wrapWithDropTarget(Widget child) {
+    if (!_isDesktopPlatform) return child;
+    return DropTarget(
+      onDragEntered: (_) {
+        setState(() => _isDragHovering = true);
+      },
+      onDragExited: (_) {
+        setState(() => _isDragHovering = false);
+      },
+      onDragDone: (details) async {
+        setState(() => _isDragHovering = false);
+        try {
+          final files = details.files; // List<XFile>
+          await _onFilesDroppedDesktop(files);
+        } catch (_) {}
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          if (_isDragHovering)
+            IgnorePointer(
+              child: Container(
+                color: Colors.black.withOpacity(0.12),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.4), width: 2),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)!.homePageDropToUpload,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _createNewConversation() async {
@@ -3611,7 +3695,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           // Move the right spacer between mini map and new-topic per request
         ],
       ),
-      body: Stack(
+      body: _wrapWithDropTarget(Stack(
           children: [
             // Assistant-specific chat background + gradient overlay to improve readability
             Builder(
@@ -4447,7 +4531,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           }),
         ],
         ),
-      ),
+      )),
       );
   }
 
@@ -4681,7 +4765,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 const SizedBox(width: 6),
               ],
             ),
-            body: Stack(
+            body: _wrapWithDropTarget(Stack(
               children: [
 
                 Padding(
@@ -5458,7 +5542,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   );
                 }),
               ],
-            ),
+            )),
           ),
         ),
       ],

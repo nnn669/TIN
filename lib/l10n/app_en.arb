@@ -141,6 +141,7 @@
   "homePageDelete": "Delete",
   "homePageSelectMessagesToShare": "Please select messages to share",
   "homePageDone": "Done",
+  "homePageDropToUpload": "Drop files to upload",
   "assistantEditPageTitle": "Assistant",
   "assistantEditPageNotFound": "Assistant not found",
   "assistantEditPageBasicTab": "Basic",

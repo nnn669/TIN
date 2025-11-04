@@ -303,6 +303,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homePageDone => '完成';
 
   @override
+  String get homePageDropToUpload => '将文件拖拽到此处上传';
+
+  @override
   String get assistantEditPageTitle => '助手';
 
   @override
@@ -3208,6 +3211,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get homePageDone => '完成';
 
   @override
+  String get homePageDropToUpload => '将文件拖拽到此处上传';
+
+  @override
   String get assistantEditPageTitle => '助手';
 
   @override
@@ -6111,6 +6117,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get homePageDone => '完成';
+
+  @override
+  String get homePageDropToUpload => '將檔案拖曳到此處以上傳';
 
   @override
   String get assistantEditPageTitle => '助理';

@@ -665,6 +665,12 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get homePageDone;
 
+  /// No description provided for @homePageDropToUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop files to upload'**
+  String get homePageDropToUpload;
+
   /// No description provided for @assistantEditPageTitle.
   ///
   /// In en, this message translates to:

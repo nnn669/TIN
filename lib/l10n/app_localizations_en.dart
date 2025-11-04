@@ -307,6 +307,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homePageDone => 'Done';
 
   @override
+  String get homePageDropToUpload => 'Drop files to upload';
+
+  @override
   String get assistantEditPageTitle => 'Assistant';
 
   @override
