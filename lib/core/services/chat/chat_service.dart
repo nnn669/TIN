@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../models/chat_message.dart';
 import '../../models/conversation.dart';
 import '../../../utils/sandbox_path_resolver.dart';
+import '../../../utils/app_directories.dart';
 
 class ChatService extends ChangeNotifier {
   static const String _conversationsBoxName = 'conversations';
@@ -35,8 +36,10 @@ class ChatService extends ChangeNotifier {
   Future<void> init() async {
     if (_initialized) return;
 
-    await Hive.initFlutter();
-    
+    // Initialize Hive with platform-specific directory
+    final appDataDir = await AppDirectories.getAppDataDirectory();
+    await Hive.initFlutter(appDataDir.path);
+
     // Register adapters if not already registered
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(ChatMessageAdapter());

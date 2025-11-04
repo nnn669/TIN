@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
+import './app_directories.dart';
 
 class AvatarCache {
   AvatarCache._();
@@ -9,12 +9,7 @@ class AvatarCache {
   static final Map<String, String?> _memo = <String, String?>{};
 
   static Future<Directory> _cacheDir() async {
-    final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory('${docs.path}/cache/avatars');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir;
+    return await AppDirectories.getAvatarCacheDirectory();
   }
 
   static String _safeName(String url) {
@@ -44,6 +39,9 @@ class AvatarCache {
     if (_memo.containsKey(url)) return _memo[url];
     try {
       final dir = await _cacheDir();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final name = _safeName(url);
       final file = File('${dir.path}/$name');
       if (await file.exists()) {
@@ -65,6 +63,7 @@ class AvatarCache {
   static Future<void> evict(String url) async {
     try {
       final dir = await _cacheDir();
+      if (!await dir.exists()) return;
       final name = _safeName(url);
       final file = File('${dir.path}/$name');
       if (await file.exists()) await file.delete();

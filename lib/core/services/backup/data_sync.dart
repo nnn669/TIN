@@ -14,6 +14,7 @@ import '../../models/backup.dart';
 import '../../models/chat_message.dart';
 import '../../models/conversation.dart';
 import '../chat/chat_service.dart';
+import '../../../utils/app_directories.dart';
 
 class DataSync {
   final ChatService chatService;
@@ -303,18 +304,15 @@ class DataSync {
   }
 
   Future<Directory> _getUploadDir() async {
-    final docs = await getApplicationDocumentsDirectory();
-    return Directory(p.join(docs.path, 'upload'));
+    return await AppDirectories.getUploadDirectory();
   }
 
   Future<Directory> _getImagesDir() async {
-    final docs = await getApplicationDocumentsDirectory();
-    return Directory(p.join(docs.path, 'images'));
+    return await AppDirectories.getImagesDirectory();
   }
 
   Future<Directory> _getAvatarsDir() async {
-    final docs = await getApplicationDocumentsDirectory();
-    return Directory(p.join(docs.path, 'avatars'));
+    return await AppDirectories.getAvatarsDirectory();
   }
 
   Future<String> _exportSettingsJson() async {
