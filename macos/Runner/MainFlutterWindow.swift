@@ -89,6 +89,29 @@ class MainFlutterWindow: NSWindow {
           }
         }
         result(paths)
+      } else if call.method == "setClipboardImage" {
+        guard let args = call.arguments as? String else {
+          result(false)
+          return
+        }
+        let url = URL(fileURLWithPath: args)
+        do {
+          var data = try Data(contentsOf: url)
+          // Ensure PNG data; if not PNG, transcode to PNG
+          if data.count < 8 || !(data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47) {
+            if let img = NSImage(contentsOf: url) {
+              if let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
+                data = png
+              }
+            }
+          }
+          let pb = NSPasteboard.general
+          pb.clearContents()
+          pb.setData(data, forType: .png)
+          result(true)
+        } catch {
+          result(false)
+        }
       } else {
         result(FlutterMethodNotImplemented)
       }

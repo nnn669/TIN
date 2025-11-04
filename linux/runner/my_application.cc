@@ -86,6 +86,35 @@ static void my_application_activate(GApplication* application) {
       }
       g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_success_response_new(list));
       fl_method_call_respond(method_call, response, nullptr);
+    } else if (g_strcmp0(name, "setClipboardImage") == 0) {
+      // Expect a file path string argument
+      FlValue* args = fl_method_call_get_args(method_call);
+      const gchar* path = nullptr;
+      if (args != nullptr) {
+        if (fl_value_get_type(args) == FL_VALUE_TYPE_STRING) {
+          path = fl_value_get_string(args);
+        } else if (fl_value_get_type(args) == FL_VALUE_TYPE_MAP) {
+          FlValue* v = fl_value_lookup_string(args, "path");
+          if (v && fl_value_get_type(v) == FL_VALUE_TYPE_STRING) {
+            path = fl_value_get_string(v);
+          }
+        }
+      }
+      gboolean ok = FALSE;
+      if (path != nullptr) {
+        GError* err = nullptr;
+        GdkPixbuf* pix = gdk_pixbuf_new_from_file(path, &err);
+        if (pix != nullptr) {
+          GtkClipboard* cb = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+          gtk_clipboard_set_image(cb, pix);
+          gtk_clipboard_store(cb);
+          ok = TRUE;
+          g_object_unref(pix);
+        }
+        g_clear_error(&err);
+      }
+      g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_success_response_new(fl_value_new_bool(ok)));
+      fl_method_call_respond(method_call, response, nullptr);
     } else {
       g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
       fl_method_call_respond(method_call, response, nullptr);

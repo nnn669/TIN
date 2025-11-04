@@ -13,5 +13,15 @@ class ClipboardImages {
       return const [];
     }
   }
-}
 
+  // Set an image to the system clipboard from a file path (desktop only).
+  static Future<bool> setImagePath(String path) async {
+    try {
+      final res = await _channel.invokeMethod<dynamic>('setClipboardImage', path);
+      if (res is bool) return res;
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+}

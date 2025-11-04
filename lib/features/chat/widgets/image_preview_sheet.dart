@@ -12,6 +12,7 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
+import '../../../utils/clipboard_images.dart';
 
 Future<void> showImagePreviewSheet(BuildContext context, {required File file}) async {
   // On desktop platforms, show a custom dialog instead of bottom sheet
@@ -139,6 +140,26 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
     }
   }
 
+  Future<void> _onCopy() async {
+    final ok = await ClipboardImages.setImagePath(widget.file.path);
+    final l10n = AppLocalizations.of(context)!;
+    if (!mounted) return;
+    if (ok) {
+      showAppSnackBar(
+        context,
+        message: l10n.chatMessageWidgetCopiedToClipboard,
+        type: NotificationType.success,
+      );
+    } else {
+      // Reuse export failed message to avoid adding new l10n
+      showAppSnackBar(
+        context,
+        message: l10n.messageExportSheetExportFailed('copy-failed'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   @override
   void dispose() {
     _scrollCtrl.dispose();
@@ -169,22 +190,30 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
                     children: [
                       Text(l10n.assistantEditPreviewTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       const Spacer(),
-                      IconButton(
-                        tooltip: l10n.settingsPageShare,
-                        icon: const Icon(Icons.share_outlined),
-                        onPressed: () => _onShare(context),
+                      _DesktopIconButton(
+                        tooltip: l10n.shareProviderSheetCopyButton,
+                        onTap: _onCopy,
+                        icon: const Icon(Icons.copy_outlined, size: 18),
                       ),
-                      IconButton(
+                      const SizedBox(width: 6),
+                      _DesktopIconButton(
+                        tooltip: l10n.settingsPageShare,
+                        onTap: () => _onShare(context),
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                      ),
+                      const SizedBox(width: 6),
+                      _DesktopIconButton(
                         tooltip: l10n.imageViewerPageSaveButton,
+                        onTap: _saving ? null : _onSaveDesktop,
                         icon: _saving
                             ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 9))
-                            : const Icon(Icons.download_outlined),
-                        onPressed: _saving ? null : _onSaveDesktop,
+                            : const Icon(Icons.download_outlined, size: 18),
                       ),
-                      IconButton(
+                      const SizedBox(width: 6),
+                      _DesktopIconButton(
                         tooltip: l10n.sideDrawerCancel,
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onTap: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.close, size: 18),
                       ),
                     ],
                   ),
@@ -228,6 +257,92 @@ class _ImagePreviewSheet extends StatefulWidget {
 
   @override
   State<_ImagePreviewSheet> createState() => _ImagePreviewSheetState();
+}
+
+class _DesktopIconButton extends StatefulWidget {
+  const _DesktopIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.size = 36,
+  });
+
+  final Widget icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final double size;
+
+  @override
+  State<_DesktopIconButton> createState() => _DesktopIconButtonState();
+}
+
+class _DesktopIconButtonState extends State<_DesktopIconButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  void _setHovered(bool v) {
+    if (_hovered == v) return;
+    setState(() => _hovered = v);
+  }
+
+  void _setPressed(bool v) {
+    if (_pressed == v) return;
+    setState(() => _pressed = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bool disabled = widget.onTap == null;
+    final Color baseBorder = cs.outline.withOpacity(0.16);
+    final Color hoverFill = cs.onSurface.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06);
+    final Color bg = _hovered ? hoverFill : Colors.transparent;
+    final Color border = _hovered ? baseBorder : Colors.transparent;
+
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) {
+          _setHovered(false);
+          _setPressed(false);
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _setPressed(true),
+          onTapUp: (_) => _setPressed(false),
+          onTapCancel: () => _setPressed(false),
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 80),
+            curve: Curves.easeOutCubic,
+            scale: _pressed ? 0.96 : 1.0,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOutCubic,
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: disabled ? Colors.transparent : bg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: disabled ? Colors.transparent : border, width: 0.75),
+              ),
+              child: Center(
+                child: IconTheme(
+                  data: IconTheme.of(context).copyWith(
+                    color: cs.onSurface.withOpacity(disabled ? 0.4 : 0.9),
+                  ),
+                  child: widget.icon,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {

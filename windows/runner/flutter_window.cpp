@@ -147,6 +147,94 @@ bool FlutterWindow::OnCreate() {
             CoUninitialize();
           }
           return;
+        } else if (call.method_name() == "setClipboardImage") {
+          // Decode image from file and place as CF_DIB on clipboard
+          std::string path;
+          if (call.arguments()) {
+            if (std::holds_alternative<std::string>(*call.arguments())) {
+              path = std::get<std::string>(*call.arguments());
+            } else if (std::holds_alternative<flutter::EncodableMap>(*call.arguments())) {
+              const auto& m = std::get<flutter::EncodableMap>(*call.arguments());
+              auto it = m.find(flutter::EncodableValue("path"));
+              if (it != m.end() && std::holds_alternative<std::string>(it->second)) {
+                path = std::get<std::string>(it->second);
+              }
+            }
+          }
+
+          auto Utf8ToWide = [](const std::string& s) -> std::wstring {
+            int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
+            if (len <= 0) return std::wstring();
+            std::wstring w(static_cast<size_t>(len - 1), L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, w.data(), len);
+            return w;
+          };
+
+          bool ok = false;
+          if (!path.empty()) {
+            const HRESULT co_hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+            IWICImagingFactory* factory = nullptr;
+            if (SUCCEEDED(CoCreateInstance(
+                    CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
+                    IID_PPV_ARGS(&factory)))) {
+              IWICBitmapDecoder* decoder = nullptr;
+              std::wstring wpath = Utf8ToWide(path);
+              if (!wpath.empty() && SUCCEEDED(factory->CreateDecoderFromFilename(
+                                   wpath.c_str(), nullptr, GENERIC_READ,
+                                   WICDecodeMetadataCacheOnLoad, &decoder))) {
+                IWICBitmapFrameDecode* frame = nullptr;
+                if (SUCCEEDED(decoder->GetFrame(0, &frame))) {
+                  IWICFormatConverter* converter = nullptr;
+                  if (SUCCEEDED(factory->CreateFormatConverter(&converter)) &&
+                      SUCCEEDED(converter->Initialize(frame, GUID_WICPixelFormat32bppBGRA,
+                                                     WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom))) {
+                    UINT w = 0, h = 0;
+                    if (SUCCEEDED(converter->GetSize(&w, &h)) && w > 0 && h > 0) {
+                      UINT stride = w * 4;
+                      size_t imageSize = static_cast<size_t>(stride) * static_cast<size_t>(h);
+                      SIZE_T totalSize = sizeof(BITMAPINFOHEADER) + imageSize;
+                      HGLOBAL hMem = GlobalAlloc(GHND | GMEM_SHARE, totalSize);
+                      if (hMem) {
+                        void* p = GlobalLock(hMem);
+                        if (p) {
+                          BITMAPINFOHEADER* bmi = reinterpret_cast<BITMAPINFOHEADER*>(p);
+                          ZeroMemory(bmi, sizeof(BITMAPINFOHEADER));
+                          bmi->biSize = sizeof(BITMAPINFOHEADER);
+                          bmi->biWidth = static_cast<LONG>(w);
+                          bmi->biHeight = -static_cast<LONG>(h); // top-down
+                          bmi->biPlanes = 1;
+                          bmi->biBitCount = 32;
+                          bmi->biCompression = BI_RGB;
+                          bmi->biSizeImage = static_cast<DWORD>(imageSize);
+                          BYTE* bits = reinterpret_cast<BYTE*>(bmi) + sizeof(BITMAPINFOHEADER);
+                          if (SUCCEEDED(converter->CopyPixels(nullptr, stride, static_cast<UINT>(imageSize), bits))) {
+                            if (OpenClipboard(nullptr)) {
+                              EmptyClipboard();
+                              SetClipboardData(CF_DIB, hMem);
+                              CloseClipboard();
+                              ok = true;
+                              // Clipboard owns the memory now; don't free.
+                              hMem = nullptr;
+                            }
+                          }
+                          GlobalUnlock(hMem);
+                        }
+                        if (hMem) GlobalFree(hMem);
+                      }
+                    }
+                  }
+                  if (converter) converter->Release();
+                }
+                if (frame) frame->Release();
+              }
+              if (decoder) decoder->Release();
+            }
+            if (factory) factory->Release();
+            if (SUCCEEDED(co_hr)) CoUninitialize();
+          }
+
+          result->Success(flutter::EncodableValue(ok));
+          return;
         }
 
         result->NotImplemented();
