@@ -255,15 +255,26 @@ class ChatService extends ChangeNotifier {
       if (!await uploadDir.exists()) return;
 
       // Build the set of all referenced paths across all messages
-      final referenced = <String>{};
-      for (final m in _messagesBox.values) {
-        referenced.addAll(_extractAttachmentPaths(m.content));
+      String _canon(String pth) {
+        // Normalize separators and resolve redundant segments to enable
+        // reliable equality checks across platforms (esp. Windows).
+        final normalized = p.normalize(pth);
+        // On Windows, paths are case-insensitive; compare in lowercase.
+        return Platform.isWindows ? normalized.toLowerCase() : normalized;
       }
 
-      final entries = uploadDir.listSync();
+      final referenced = <String>{};
+      for (final m in _messagesBox.values) {
+        for (final pth in _extractAttachmentPaths(m.content)) {
+          referenced.add(_canon(pth));
+        }
+      }
+
+      // Walk upload directory recursively to consider all files
+      final entries = uploadDir.listSync(recursive: true, followLinks: false);
       for (final ent in entries) {
         if (ent is File) {
-          final filePath = ent.path;
+          final filePath = _canon(ent.path);
           if (!referenced.contains(filePath)) {
             try { await ent.delete(); } catch (_) {}
           }
