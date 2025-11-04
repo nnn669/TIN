@@ -5,6 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
@@ -12,6 +14,16 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 
 Future<void> showImagePreviewSheet(BuildContext context, {required File file}) async {
+  // On desktop platforms, show a custom dialog instead of bottom sheet
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => _ImagePreviewDesktopDialog(file: file),
+    );
+    return;
+  }
+
   final cs = Theme.of(context).colorScheme;
   await showModalBottomSheet<void>(
     context: context,
@@ -25,6 +37,189 @@ Future<void> showImagePreviewSheet(BuildContext context, {required File file}) a
       child: _ImagePreviewSheet(file: file),
     ),
   );
+}
+
+class _ImagePreviewDesktopDialog extends StatefulWidget {
+  const _ImagePreviewDesktopDialog({required this.file});
+  final File file;
+
+  @override
+  State<_ImagePreviewDesktopDialog> createState() => _ImagePreviewDesktopDialogState();
+}
+
+class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> {
+  bool _saving = false;
+  final ScrollController _scrollCtrl = ScrollController();
+
+  Rect _shareAnchorRect(BuildContext context) {
+    try {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+        final offset = box.localToGlobal(Offset.zero);
+        return offset & box.size;
+      }
+    } catch (_) {}
+    final size = MediaQuery.of(context).size;
+    final center = Offset(size.width / 2, size.height / 2);
+    return Rect.fromCenter(center: center, width: 1, height: 1);
+  }
+
+  Future<void> _onShare(BuildContext context) async {
+    final filename = widget.file.uri.pathSegments.isNotEmpty
+        ? widget.file.uri.pathSegments.last
+        : 'image.png';
+    try {
+      final result = await Share.shareXFiles(
+        [XFile(widget.file.path, mimeType: 'image/png', name: filename)],
+        sharePositionOrigin: _shareAnchorRect(context),
+      );
+      if (result.status == ShareResultStatus.success && mounted) {
+        Navigator.of(context).maybePop();
+      }
+    } catch (e) {
+      final l10n = AppLocalizations.of(context)!;
+      showAppSnackBar(
+        context,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  Future<void> _onSaveDesktop() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final l10n = AppLocalizations.of(context)!;
+      final Uint8List bytes = await widget.file.readAsBytes();
+      if (bytes.isEmpty) {
+        showAppSnackBar(
+          context,
+          message: l10n.imageViewerPageSaveFailed('empty-bytes'),
+          type: NotificationType.error,
+        );
+        return;
+      }
+
+      final ext = p.extension(widget.file.path).isNotEmpty
+          ? p.extension(widget.file.path)
+          : '.png';
+      final defaultName = 'kelivo-${DateTime.now().millisecondsSinceEpoch}$ext';
+      final allowed = [ext.replaceFirst('.', '').toLowerCase()];
+      final String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: l10n.imageViewerPageSaveButton,
+        fileName: defaultName,
+        type: FileType.custom,
+        allowedExtensions: allowed,
+      );
+      if (savePath == null) {
+        return; // cancelled
+      }
+
+      await File(savePath).parent.create(recursive: true);
+      await File(savePath).writeAsBytes(bytes);
+
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.imageViewerPageSaveSuccess,
+        type: NotificationType.success,
+      );
+      Navigator.of(context).maybePop();
+    } catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      showAppSnackBar(
+        context,
+        message: l10n.imageViewerPageSaveFailed(e.toString()),
+        type: NotificationType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    return Dialog(
+      elevation: 12,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720, minWidth: 520, maxHeight: 720),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Material(
+            color: cs.surface,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                  child: Row(
+                    children: [
+                      Text(l10n.assistantEditPreviewTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: l10n.settingsPageShare,
+                        icon: const Icon(Icons.share_outlined),
+                        onPressed: () => _onShare(context),
+                      ),
+                      IconButton(
+                        tooltip: l10n.imageViewerPageSaveButton,
+                        icon: _saving
+                            ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 9))
+                            : const Icon(Icons.download_outlined),
+                        onPressed: _saving ? null : _onSaveDesktop,
+                      ),
+                      IconButton(
+                        tooltip: l10n.sideDrawerCancel,
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Expanded(
+                  child: Scrollbar(
+                    controller: _scrollCtrl,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: Card(
+                          elevation: 0,
+                          color: cs.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: cs.outline.withOpacity(0.08)),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.file(widget.file, fit: BoxFit.contain),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ImagePreviewSheet extends StatefulWidget {
