@@ -13,6 +13,8 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'image_preview_sheet.dart';
 
 import '../../../icons/lucide_adapter.dart';
@@ -596,15 +598,58 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
         buf.writeln('\n---\n');
       }
 
-      final tmp = await getTemporaryDirectory();
       final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.md';
-      final file = File('${tmp.path}/$filename');
-      await file.writeAsString(buf.toString());
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'text/markdown', name: filename)],
-        text: title,
-        sharePositionOrigin: _shareAnchorRect(context),
-      );
+
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        // Desktop: choose save location
+        final l10n = AppLocalizations.of(context)!;
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: l10n.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['md'],
+        );
+        if (savePath == null) {
+          return; // user cancelled
+        }
+        try {
+          await File(savePath).parent.create(recursive: true);
+          await File(savePath).writeAsString(buf.toString());
+        } catch (e) {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportFailed('$e'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+            type: NotificationType.success,
+          );
+        }
+      } else {
+        // Mobile: share
+        final tmp = await getTemporaryDirectory();
+        final file = File('${tmp.path}/$filename');
+        await file.writeAsString(buf.toString());
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'text/markdown', name: filename)],
+          text: title,
+          sharePositionOrigin: _shareAnchorRect(context),
+        );
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportedAs(filename),
+            type: NotificationType.success,
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -827,24 +872,46 @@ class _ExportSheetState extends State<_ExportSheet> {
         buf.writeln('- ${d.fileName}  `(${d.mime})`');
       }
 
-      final tmp = await getTemporaryDirectory();
       final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.md';
-      final file = File('${tmp.path}/$filename');
-      await file.writeAsString(buf.toString());
 
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'text/markdown', name: filename)],
-        text: title,
-        sharePositionOrigin: _shareAnchorRect(context),
-      );
-
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        showAppSnackBar(
-          context,
-          message: l10n.messageExportSheetExportedAs(filename),
-          type: NotificationType.success,
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        // Desktop: choose save location
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: AppLocalizations.of(context)!.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['md'],
         );
+        if (savePath != null) {
+          await File(savePath).parent.create(recursive: true);
+          await File(savePath).writeAsString(buf.toString());
+          if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            showAppSnackBar(
+              context,
+              message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+              type: NotificationType.success,
+            );
+          }
+        }
+      } else {
+        // Mobile: share
+        final tmp = await getTemporaryDirectory();
+        final file = File('${tmp.path}/$filename');
+        await file.writeAsString(buf.toString());
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'text/markdown', name: filename)],
+          text: title,
+          sharePositionOrigin: _shareAnchorRect(context),
+        );
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportedAs(filename),
+            type: NotificationType.success,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
