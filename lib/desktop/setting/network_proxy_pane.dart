@@ -475,7 +475,7 @@ class _ProxyTypeDropdownState extends State<_ProxyTypeDropdown> {
                       turns: _open ? 0.5 : 0.0,
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      child: Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: cs.onSurface.withOpacity(0.88)),
+                      child: Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: cs.onSurface.withOpacity(0.6)),
                     ),
                   ),
                 ),
