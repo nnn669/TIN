@@ -19,6 +19,7 @@ import '../../../core/providers/assistant_provider.dart';
 import '../../../core/services/search/search_service.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
+import '../../../utils/app_directories.dart';
 
 class ChatInputBarController {
   _ChatInputBarState? _state;
@@ -326,8 +327,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   Future<List<String>> _persistClipboardImages(List<String> srcPaths) async {
     try {
-      final docs = await getApplicationDocumentsDirectory();
-      final dir = Directory(p.join(docs.path, 'upload'));
+      final dir = await AppDirectories.getUploadDirectory();
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }
@@ -337,8 +337,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
         try {
           // Normalize path (strip file:// if present)
           final src = raw.startsWith('file://') ? raw.substring(7) : raw;
-          // If already under Documents/upload, just keep it
-          if (src.contains('/Documents/upload/')) {
+          // If already under upload directory, just keep it
+          if (src.contains('/upload/') || src.contains('\\upload\\')) {
             out.add(src);
             continue;
           }

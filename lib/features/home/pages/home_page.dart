@@ -72,6 +72,7 @@ import '../../quick_phrase/widgets/quick_phrase_menu.dart';
 import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
+import '../../../utils/app_directories.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -964,8 +965,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<List<String>> _copyPickedFiles(List<XFile> files) async {
-    final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory("${docs.path}/upload");
+    final dir = await AppDirectories.getUploadDirectory();
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }

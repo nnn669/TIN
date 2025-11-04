@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/backup.dart';
 import '../../models/chat_message.dart';
 import '../../models/conversation.dart';
-import '../../providers/assistant_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../chat/chat_service.dart';
+import '../../../utils/app_directories.dart';
 
 class CherryImportResult {
   final int providers;
@@ -507,8 +505,7 @@ class CherryImporter {
     Set<String> usedIds, {
     File? backupArchive,
   }) async {
-    final docs = await getApplicationDocumentsDirectory();
-    final uploadDir = Directory(p.join(docs.path, 'upload'));
+    final uploadDir = await AppDirectories.getUploadDirectory();
     if (!await uploadDir.exists()) await uploadDir.create(recursive: true);
 
     // If a ZIP is provided, index entries under common folders for quick lookup
@@ -967,8 +964,7 @@ class CherryImporter {
 
   static Future<String?> _saveDataUrlToUpload(String dataUrl) async {
     try {
-      final docs = await getApplicationDocumentsDirectory();
-      final upload = Directory(p.join(docs.path, 'upload'));
+      final upload = await AppDirectories.getUploadDirectory();
       if (!await upload.exists()) await upload.create(recursive: true);
       // Extract mime and data
       String mime = 'image/png';

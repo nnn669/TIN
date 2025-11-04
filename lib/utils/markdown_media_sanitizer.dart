@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import './app_directories.dart';
 
 class MarkdownMediaSanitizer {
   static final Uuid _uuid = const Uuid();
@@ -22,8 +22,7 @@ class MarkdownMediaSanitizer {
     if (matches.isEmpty) return markdown;
 
     // Ensure target directory
-    final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory('${docs.path}/images');
+    final dir = await AppDirectories.getImagesDirectory();
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }

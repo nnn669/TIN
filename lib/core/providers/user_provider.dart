@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../../utils/sandbox_path_resolver.dart';
 import '../../utils/avatar_cache.dart';
+import '../../utils/app_directories.dart';
 
 class UserProvider extends ChangeNotifier {
   static const String _prefsUserNameKey = 'user_name';
@@ -96,8 +96,7 @@ class UserProvider extends ChangeNotifier {
     try {
       final src = File(fixedInput);
       if (!await src.exists()) return;
-      final dir = await getApplicationDocumentsDirectory();
-      final avatars = Directory('${dir.path}/avatars');
+      final avatars = await AppDirectories.getAvatarsDirectory();
       if (!await avatars.exists()) {
         await avatars.create(recursive: true);
       }
@@ -118,7 +117,7 @@ class UserProvider extends ChangeNotifier {
       if (_avatarType == 'file' && _avatarValue != null) {
         try {
           final old = File(_avatarValue!);
-          if (old.path.contains('/avatars/') && await old.exists()) {
+          if ((old.path.contains('/avatars/') || old.path.contains('\\avatars\\')) && await old.exists()) {
             await old.delete();
           }
         } catch (_) {}

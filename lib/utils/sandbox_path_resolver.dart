@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform;
+import './app_directories.dart';
 
 /// Resolves persisted absolute file paths that include the iOS sandbox UUID
 /// to the current app container path after an app update.
@@ -24,7 +25,8 @@ class SandboxPathResolver {
   /// Call once during app startup to cache the current Documents directory.
   static Future<void> init() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      // Use the platform-specific app data directory
+      final dir = await AppDirectories.getAppDataDirectory();
       _docsDir = dir.path;
       try {
         final sup = await getApplicationSupportDirectory();
@@ -62,6 +64,7 @@ class SandboxPathResolver {
     // Cases we support:
     // - iOS/macOS: .../Documents/<subdir>/...
     // - Android: .../app_flutter/<subdir>/... or .../files/<subdir>/...
+    // - Windows: .../AppData/Local/Kelivo/<subdir>/... or .../Kelivo/<subdir>/...
     const subdirs = ['avatars', 'images', 'upload'];
     String? tail; // starts with '/'
     String rootType = 'unknown';
@@ -73,6 +76,18 @@ class SandboxPathResolver {
       if (subdirs.any((s) => candidateTail.startsWith('/$s/'))) {
         tail = candidateTail;
         rootType = 'documents';
+      }
+    }
+
+    // Try to match Windows AppData paths (exported from Windows, imported elsewhere)
+    if (tail == null) {
+      final int kelivoIdx = raw.indexOf('/kelivo/');
+      if (kelivoIdx != -1) {
+        final candidateTail = raw.substring(kelivoIdx + '/kelivo'.length); // includes leading '/'
+        if (subdirs.any((s) => candidateTail.startsWith('/$s/'))) {
+          tail = candidateTail;
+          rootType = 'windows_kelivo';
+        }
       }
     }
 
@@ -91,7 +106,7 @@ class SandboxPathResolver {
     }
 
     if (tail == null) {
-      if (debug) debugPrint('[SandboxPathResolver.fix] input=$path -> skipped (no known subdir under Documents/app_flutter/files)');
+      if (debug) debugPrint('[SandboxPathResolver.fix] input=$path -> skipped (no known subdir pattern found)');
       return raw;
     }
 

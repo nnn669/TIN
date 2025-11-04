@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../../utils/sandbox_path_resolver.dart';
 import '../models/assistant.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/avatar_cache.dart';
+import '../../utils/app_directories.dart';
 
 class AssistantProvider extends ChangeNotifier {
   static const String _assistantsKey = 'assistants_v1';
@@ -182,12 +182,11 @@ class AssistantProvider extends ChangeNotifier {
       final changed = raw != prevRaw;
       final isLocalPath = raw.isNotEmpty && (raw.startsWith('/') || raw.contains(':')) && !raw.startsWith('http');
       // Skip if it's already under our avatars folder
-      if (changed && isLocalPath && !raw.contains('/avatars/')) {
+      if (changed && isLocalPath && !raw.contains('/avatars/') && !raw.contains('\\avatars\\')) {
         final fixedInput = SandboxPathResolver.fix(raw);
         final src = File(fixedInput);
         if (await src.exists()) {
-          final docs = await getApplicationDocumentsDirectory();
-          final avatarsDir = Directory('${docs.path}/avatars');
+          final avatarsDir = await AppDirectories.getAvatarsDirectory();
           if (!await avatarsDir.exists()) {
             await avatarsDir.create(recursive: true);
           }
@@ -204,7 +203,7 @@ class AssistantProvider extends ChangeNotifier {
           await src.copy(dest.path);
 
           // Optionally remove old stored avatar if it lives in our avatars folder
-          if (prevRaw.isNotEmpty && prevRaw.contains('/avatars/')) {
+          if (prevRaw.isNotEmpty && (prevRaw.contains('/avatars/') || prevRaw.contains('\\avatars\\'))) {
             try {
               final old = File(prevRaw);
               if (await old.exists() && old.path != dest.path) {
@@ -227,12 +226,11 @@ class AssistantProvider extends ChangeNotifier {
       final prevBgRaw = (prev.background ?? '').trim();
       final bgChanged = bgRaw != prevBgRaw;
       final bgIsLocal = bgRaw.isNotEmpty && (bgRaw.startsWith('/') || bgRaw.contains(':')) && !bgRaw.startsWith('http');
-      if (bgChanged && bgIsLocal && !bgRaw.contains('/images/')) {
+      if (bgChanged && bgIsLocal && !bgRaw.contains('/images/') && !bgRaw.contains('\\images\\')) {
         final fixedBg = SandboxPathResolver.fix(bgRaw);
         final srcBg = File(fixedBg);
         if (await srcBg.exists()) {
-          final docs = await getApplicationDocumentsDirectory();
-          final imagesDir = Directory('${docs.path}/images');
+          final imagesDir = await AppDirectories.getImagesDirectory();
           if (!await imagesDir.exists()) {
             await imagesDir.create(recursive: true);
           }
@@ -249,7 +247,7 @@ class AssistantProvider extends ChangeNotifier {
           await srcBg.copy(destBg.path);
 
           // Clean old stored background if it lived in images/
-          if (prevBgRaw.isNotEmpty && prevBgRaw.contains('/images/')) {
+          if (prevBgRaw.isNotEmpty && (prevBgRaw.contains('/images/') || prevBgRaw.contains('\\images\\'))) {
             try {
               final oldBg = File(prevBgRaw);
               if (await oldBg.exists() && oldBg.path != destBg.path) {
