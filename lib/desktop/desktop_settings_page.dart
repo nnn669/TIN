@@ -208,8 +208,8 @@ class _SettingsMenu extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final items = [
       (_SettingsMenuItem.display, lucide.Lucide.Monitor, l10n.settingsPageDisplay),
-      (_SettingsMenuItem.assistant, lucide.Lucide.Bot, l10n.settingsPageAssistant),
       (_SettingsMenuItem.providers, lucide.Lucide.Boxes, l10n.settingsPageProviders),
+      (_SettingsMenuItem.assistant, lucide.Lucide.Bot, l10n.settingsPageAssistant),
       (_SettingsMenuItem.defaultModel, lucide.Lucide.Heart, l10n.settingsPageDefaultModel),
       (_SettingsMenuItem.search, lucide.Lucide.Earth, l10n.settingsPageSearch),
       (_SettingsMenuItem.mcp, lucide.Lucide.Terminal, l10n.settingsPageMcp),
