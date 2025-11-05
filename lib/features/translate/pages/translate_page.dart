@@ -71,6 +71,8 @@ class _TranslatePageState extends State<TranslatePage> {
         _providerKey = sel.providerKey;
         _modelId = sel.modelId;
       });
+      // Persist translate model selection so it’s remembered next time
+      await context.read<SettingsProvider>().setTranslateModel(sel.providerKey, sel.modelId);
     }
   }
 

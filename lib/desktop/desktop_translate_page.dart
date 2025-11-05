@@ -103,6 +103,8 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
         _modelProviderKey = sel.providerKey;
         _modelId = sel.modelId;
       });
+      // Persist translate model selection so it’s remembered next time
+      await context.read<SettingsProvider>().setTranslateModel(sel.providerKey, sel.modelId);
     }
   }
 
