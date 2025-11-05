@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'window_size_manager.dart';
+import 'dart:async';
 
 /// Handles desktop window initialization and persistence (size/position/maximized).
 class DesktopWindowController with WindowListener {
@@ -11,6 +12,10 @@ class DesktopWindowController with WindowListener {
 
   final WindowSizeManager _sizeMgr = const WindowSizeManager();
   bool _attached = false;
+  // Debounce timers to avoid frequent disk writes during drag/resize
+  Timer? _moveDebounce;
+  Timer? _resizeDebounce;
+  static const _debounceDuration = Duration(milliseconds: 400);
 
   Future<void> initializeAndShow({String? title}) async {
     if (kIsWeb) return;
@@ -60,22 +65,29 @@ class DesktopWindowController with WindowListener {
 
   @override
   void onWindowResize() async {
-    try {
-      final isMax = await windowManager.isMaximized();
-      // Avoid saving full-screen/maximized size; keep last restored size.
-      if (!isMax) {
-        final s = await windowManager.getSize();
-        await _sizeMgr.setSize(s);
-      }
-    } catch (_) {}
+    // Throttle saves while resizing to reduce jank
+    _resizeDebounce?.cancel();
+    _resizeDebounce = Timer(_debounceDuration, () async {
+      try {
+        final isMax = await windowManager.isMaximized();
+        if (!isMax) {
+          final s = await windowManager.getSize();
+          await _sizeMgr.setSize(s);
+        }
+      } catch (_) {}
+    });
   }
 
   @override
   void onWindowMove() async {
-    try {
-      final offset = await windowManager.getPosition();
-      await _sizeMgr.setPosition(offset);
-    } catch (_) {}
+    // Debounce position persistence during drag to avoid main-isolate IO on every move
+    _moveDebounce?.cancel();
+    _moveDebounce = Timer(_debounceDuration, () async {
+      try {
+        final offset = await windowManager.getPosition();
+        await _sizeMgr.setPosition(offset);
+      } catch (_) {}
+    });
   }
 
   @override
