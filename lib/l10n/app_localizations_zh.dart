@@ -2370,6 +2370,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
+  String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -5320,6 +5323,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
+  String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -8267,6 +8273,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageNewChatOnLaunchTitle => '啟動時新建對話';
+
+  @override
+  String get displaySettingsPageAutoSwitchTopicsTitle => '自動切換話題';
 
   @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '應用程式啟動時自動建立新對話';

@@ -48,6 +48,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableUserMarkdownKey = 'display_enable_user_markdown_v1';
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
+  static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
   // Fonts
@@ -275,6 +276,7 @@ class SettingsProvider extends ChangeNotifier {
     _enableUserMarkdown = prefs.getBool(_displayEnableUserMarkdownKey) ?? true;
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
+    _desktopAutoSwitchTopics = prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
     // Chat message background style (default | frosted | solid)
     final bgStyleStr = prefs.getString(_displayChatMessageBackgroundStyleKey) ?? 'default';
     switch (bgStyleStr) {
@@ -1248,6 +1250,17 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_displayShowChatListDateKey, v);
+  }
+
+  // Desktop-only: auto switch to Topics tab when changing assistant
+  bool _desktopAutoSwitchTopics = false;
+  bool get desktopAutoSwitchTopics => _desktopAutoSwitchTopics;
+  Future<void> setDesktopAutoSwitchTopics(bool v) async {
+    if (_desktopAutoSwitchTopics == v) return;
+    _desktopAutoSwitchTopics = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayDesktopAutoSwitchTopicsKey, v);
   }
 
   // Display: haptics on message generation

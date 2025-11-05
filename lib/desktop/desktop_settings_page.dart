@@ -3484,6 +3484,8 @@ class _DisplaySettingsBody extends StatelessWidget {
               _SettingsCard(
                 title: l10n.displaySettingsPageBehaviorStartupTitle,
                 children: const [
+                  _ToggleRowAutoSwitchTopicsDesktop(),
+                  _RowDivider(),
                   _ToggleRowAutoCollapseThinking(),
                   _RowDivider(),
                   _ToggleRowShowUpdates(),
@@ -5206,6 +5208,20 @@ class _ToggleRowShowUpdates extends StatelessWidget {
       label: l10n.displaySettingsPageShowUpdatesTitle,
       value: sp.showAppUpdates,
       onChanged: (v) => context.read<SettingsProvider>().setShowAppUpdates(v),
+    );
+  }
+}
+
+class _ToggleRowAutoSwitchTopicsDesktop extends StatelessWidget {
+  const _ToggleRowAutoSwitchTopicsDesktop();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageAutoSwitchTopicsTitle,
+      value: sp.desktopAutoSwitchTopics,
+      onChanged: (v) => context.read<SettingsProvider>().setDesktopAutoSwitchTopics(v),
     );
   }
 }

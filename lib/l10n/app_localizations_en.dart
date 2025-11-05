@@ -2450,6 +2450,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageNewChatOnLaunchTitle => 'New Chat on Launch';
 
   @override
+  String get displaySettingsPageAutoSwitchTopicsTitle =>
+      'Auto switch to Topics';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle =>
       'Automatically create a new chat on launch';
 

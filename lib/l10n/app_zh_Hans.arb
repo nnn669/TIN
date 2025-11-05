@@ -807,6 +807,7 @@
   "displaySettingsPageHapticsOnGenerateTitle": "消息生成触觉反馈",
   "displaySettingsPageHapticsOnGenerateSubtitle": "生成消息时启用触觉反馈",
   "displaySettingsPageNewChatOnLaunchTitle": "启动时新建对话",
+  "displaySettingsPageAutoSwitchTopicsTitle": "自动切换话题",
   "displaySettingsPageNewChatOnLaunchSubtitle": "应用启动时自动创建新对话",
   "displaySettingsPageChatFontSizeTitle": "聊天字体大小",
   "displaySettingsPageAutoScrollIdleTitle": "自动回到底部延迟",

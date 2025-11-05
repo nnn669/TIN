@@ -1090,6 +1090,13 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     _closeAssistantPicker();
     final ap = context.read<AssistantProvider>();
     await ap.setCurrentAssistant(assistant.id);
+    // Desktop: optionally switch to Topics tab per user preference
+    try {
+      final sp = context.read<SettingsProvider>();
+      if (_isDesktop && widget.embedded && widget.useDesktopTabs && sp.desktopAutoSwitchTopics) {
+        _tabController?.animateTo(1, duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic);
+      }
+    } catch (_) {}
     if (!mounted) return;
     // Jump to the most recent conversation for this assistant if any,
     // otherwise create a new conversation.
@@ -2285,14 +2292,14 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                 children: [
                   // Selection knob
                   AnimatedPositioned(
-                    duration: const Duration(milliseconds: 260),
+                    duration: const Duration(milliseconds: 140),
                     curve: Curves.easeOutCubic,
                     left: pad + (idx == 0 ? 0 : segW),
                     top: pad,
                     bottom: pad,
                     width: segW,
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 260),
+                      duration: const Duration(milliseconds: 140),
                       curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: cs.primary.withOpacity(isDark ? 0.16 : 0.12),
@@ -2310,12 +2317,12 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => widget.controller.animateTo(0),
+                            onTap: () => widget.controller.animateTo(0, duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic),
                             child: Stack(
                               children: [
                                 // Hover wash
                                 AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 160),
+                                  duration: const Duration(milliseconds: 120),
                                   curve: Curves.easeOutCubic,
                                   opacity: _hoverLeft && idx != 0 ? 1 : 0,
                                   child: Container(
@@ -2329,7 +2336,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                                 // Label
                                 Center(
                                   child: AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 140),
                                     curve: Curves.easeOutCubic,
                                     style: (Theme.of(context).textTheme.titleSmall ?? const TextStyle()).copyWith(
                                       fontSize: 13.5,
@@ -2351,11 +2358,11 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => widget.controller.animateTo(1),
+                            onTap: () => widget.controller.animateTo(1, duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic),
                             child: Stack(
                               children: [
                                 AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 160),
+                                  duration: const Duration(milliseconds: 120),
                                   curve: Curves.easeOutCubic,
                                   opacity: _hoverRight && idx != 1 ? 1 : 0,
                                   child: Container(
@@ -2368,7 +2375,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                                 ),
                                 Center(
                                   child: AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 140),
                                     curve: Curves.easeOutCubic,
                                     style: (Theme.of(context).textTheme.titleSmall ?? const TextStyle()).copyWith(
                                       fontSize: 13.5,

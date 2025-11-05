@@ -4667,6 +4667,12 @@ abstract class AppLocalizations {
   /// **'New Chat on Launch'**
   String get displaySettingsPageNewChatOnLaunchTitle;
 
+  /// No description provided for @displaySettingsPageAutoSwitchTopicsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto switch to Topics'**
+  String get displaySettingsPageAutoSwitchTopicsTitle;
+
   /// No description provided for @displaySettingsPageNewChatOnLaunchSubtitle.
   ///
   /// In en, this message translates to:

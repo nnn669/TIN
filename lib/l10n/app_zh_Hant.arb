@@ -765,6 +765,7 @@
   "displaySettingsPageHapticsOnGenerateTitle": "訊息生成觸覺回饋",
   "displaySettingsPageHapticsOnGenerateSubtitle": "生成訊息時啟用觸覺回饋",
   "displaySettingsPageNewChatOnLaunchTitle": "啟動時新建對話",
+  "displaySettingsPageAutoSwitchTopicsTitle": "自動切換話題",
   "displaySettingsPageNewChatOnLaunchSubtitle": "應用程式啟動時自動建立新對話",
   "displaySettingsPageChatFontSizeTitle": "聊天字體大小",
   "displaySettingsPageAutoScrollIdleTitle": "自動回到底部延遲",
