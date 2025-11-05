@@ -13,6 +13,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/clipboard_images.dart';
+import 'package:super_clipboard/super_clipboard.dart';
+import 'dart:ui' as ui;
 
 Future<void> showImagePreviewSheet(BuildContext context, {required File file}) async {
   // On desktop platforms, show a custom dialog instead of bottom sheet
@@ -141,7 +143,71 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
   }
 
   Future<void> _onCopy() async {
-    final ok = await ClipboardImages.setImagePath(widget.file.path);
+    // Prefer super_clipboard for robust cross-platform image copy
+    bool ok = false;
+    try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard != null) {
+        final path = widget.file.path;
+        final bytes = await File(path).readAsBytes();
+        if (bytes.isNotEmpty) {
+          final ext = p.extension(path).toLowerCase();
+          String format = 'png';
+          Uint8List outBytes = bytes;
+          if (ext == '.png') {
+            format = 'png';
+          } else if (ext == '.jpg' || ext == '.jpeg') {
+            format = 'jpeg';
+          } else if (ext == '.gif') {
+            format = 'gif';
+          } else if (ext == '.webp') {
+            format = 'webp';
+          } else {
+            // Convert unknown formats to PNG via image codec
+            try {
+              final codec = await ui.instantiateImageCodec(bytes);
+              final frame = await codec.getNextFrame();
+              final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+              if (data != null) {
+                outBytes = data.buffer.asUint8List();
+                format = 'png';
+              }
+            } catch (_) {}
+          }
+
+          // Build clipboard item with suggested name
+          String suggestedName = p.basename(path);
+          if (format == 'png' && !suggestedName.toLowerCase().endsWith('.png')) {
+            suggestedName = p.setExtension(suggestedName, '.png');
+          }
+          final item = DataWriterItem(suggestedName: suggestedName);
+          switch (format) {
+            case 'png':
+              item.add(Formats.png(outBytes));
+              break;
+            case 'jpeg':
+              item.add(Formats.jpeg(outBytes));
+              break;
+            case 'gif':
+              item.add(Formats.gif(outBytes));
+              break;
+            case 'webp':
+              item.add(Formats.webp(outBytes));
+              break;
+          }
+          await clipboard.write([item]);
+          ok = true;
+        }
+      }
+    } catch (_) {
+      ok = false;
+    }
+    // Fallback to legacy platform channel if needed
+    if (!ok) {
+      try {
+        ok = await ClipboardImages.setImagePath(widget.file.path);
+      } catch (_) {}
+    }
     final l10n = AppLocalizations.of(context)!;
     if (!mounted) return;
     if (ok) {
