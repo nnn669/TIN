@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
-enum NetworkTtsKind { openai, gemini, minimax }
+enum NetworkTtsKind { openai, gemini, minimax, elevenlabs }
 
 String networkTtsKindDisplayName(NetworkTtsKind k) {
   switch (k) {
@@ -15,6 +15,8 @@ String networkTtsKindDisplayName(NetworkTtsKind k) {
       return 'Gemini';
     case NetworkTtsKind.minimax:
       return 'MiniMax';
+    case NetworkTtsKind.elevenlabs:
+      return 'ElevenLabs';
   }
 }
 
@@ -70,6 +72,17 @@ abstract class TtsServiceOptions {
           voiceId: (json['voiceId'] ?? 'female-shaonv').toString(),
           emotion: (json['emotion'] ?? 'calm').toString(),
           speed: _toDouble(json['speed'], 1.0),
+        );
+      case 'elevenlabs':
+        return ElevenLabsTtsOptions(
+          id: id.isEmpty ? null : id,
+          enabled: enabled,
+          name: name.isEmpty ? 'ElevenLabs TTS' : name,
+          apiKey: (json['apiKey'] ?? '').toString(),
+          baseUrl: (json['baseUrl'] ?? 'https://api.elevenlabs.io').toString(),
+          modelId: (json['modelId'] ?? 'eleven_multilingual_v2').toString(),
+          voiceId: (json['voiceId'] ?? '').toString(),
+          outputFormat: (json['outputFormat'] ?? 'mp3_44100_128').toString(),
         );
       default:
         // Fallback to OpenAI shape to avoid crash if kind missing
@@ -182,6 +195,38 @@ class MiniMaxTtsOptions extends TtsServiceOptions {
       };
 }
 
+class ElevenLabsTtsOptions extends TtsServiceOptions {
+  final String apiKey;
+  final String baseUrl;
+  final String modelId;
+  final String voiceId;
+  final String outputFormat; // e.g. mp3_44100_128
+
+  ElevenLabsTtsOptions({
+    super.id,
+    required super.enabled,
+    required super.name,
+    required this.apiKey,
+    required this.baseUrl,
+    required this.modelId,
+    required this.voiceId,
+    this.outputFormat = 'mp3_44100_128',
+  }) : super(kind: NetworkTtsKind.elevenlabs);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'enabled': enabled,
+        'name': name,
+        'kind': 'elevenlabs',
+        'apiKey': apiKey,
+        'baseUrl': baseUrl,
+        'modelId': modelId,
+        'voiceId': voiceId,
+        'outputFormat': outputFormat,
+      };
+}
+
 class NetworkTtsResult {
   final Uint8List bytes;
   final String mime; // e.g. audio/mpeg or audio/wav
@@ -205,6 +250,8 @@ class NetworkTtsService {
           return _geminiSpeech(options as GeminiTtsOptions, text, c, cancelled);
         case NetworkTtsKind.minimax:
           return _miniMaxSpeech(options as MiniMaxTtsOptions, text, c, cancelled);
+        case NetworkTtsKind.elevenlabs:
+          return _elevenLabsSpeech(options as ElevenLabsTtsOptions, text, c, cancelled);
       }
     } finally {
       if (client == null) {
@@ -363,6 +410,39 @@ class NetworkTtsService {
 
     final bytes = buf.takeBytes();
     return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: 'audio/mpeg', sampleRate: 32000);
+  }
+
+  static Future<NetworkTtsResult> _elevenLabsSpeech(ElevenLabsTtsOptions opt, String text, http.Client c, FutureOr<bool> Function()? cancelled) async {
+    final base = opt.baseUrl.endsWith('/') ? opt.baseUrl.substring(0, opt.baseUrl.length - 1) : opt.baseUrl;
+    final outputFmt = (opt.outputFormat.isEmpty) ? 'mp3_44100_128' : opt.outputFormat;
+    final uri = Uri.parse('$base/v1/text-to-speech/${opt.voiceId}?output_format=$outputFmt');
+    final body = jsonEncode({
+      'text': text,
+      'model_id': opt.modelId,
+    });
+    final req = http.Request('POST', uri)
+      ..headers['xi-api-key'] = opt.apiKey
+      ..headers['Content-Type'] = 'application/json'
+      ..body = body;
+    final resp = await c.send(req);
+    if (cancelled != null && await cancelled()) {
+      throw _Cancelled();
+    }
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      final txt = await resp.stream.bytesToString();
+      throw Exception('ElevenLabs TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $txt');
+    }
+    final bytes = await resp.stream.toBytes();
+    // Determine mime based on output format
+    final lower = outputFmt.toLowerCase();
+    final mime = lower.startsWith('mp3_')
+        ? 'audio/mpeg'
+        : lower.startsWith('pcm_')
+            ? 'audio/wav' // we don't convert PCM to WAV here; default to mp3
+            : lower.startsWith('opus_')
+                ? 'audio/ogg'
+                : 'application/octet-stream';
+    return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: mime);
   }
 }
 

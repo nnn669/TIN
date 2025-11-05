@@ -518,28 +518,36 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
           ? initial.apiKey
           : (initial is MiniMaxTtsOptions)
               ? initial.apiKey
-              : '');
+              : (initial is ElevenLabsTtsOptions)
+                  ? initial.apiKey
+                  : '');
   final baseCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
       ? initial.baseUrl
       : (initial is GeminiTtsOptions)
           ? initial.baseUrl
           : (initial is MiniMaxTtsOptions)
               ? initial.baseUrl
-              : '');
+              : (initial is ElevenLabsTtsOptions)
+                  ? initial.baseUrl
+                  : '');
   final modelCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
       ? initial.model
       : (initial is GeminiTtsOptions)
           ? initial.model
           : (initial is MiniMaxTtsOptions)
               ? initial.model
-              : '');
+              : (initial is ElevenLabsTtsOptions)
+                  ? initial.modelId
+                  : '');
   final voiceCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
       ? initial.voice
       : (initial is GeminiTtsOptions)
           ? initial.voiceName
           : (initial is MiniMaxTtsOptions)
               ? initial.voiceId
-              : '');
+              : (initial is ElevenLabsTtsOptions)
+                  ? initial.voiceId
+                  : '');
   final emotionCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.emotion : 'calm');
   final speedCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.speed.toString() : '1.0');
 
@@ -582,9 +590,12 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
                         result = OpenAiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voice: voice);
                       } else if (kind == NetworkTtsKind.gemini) {
                         result = GeminiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceName: voice);
-                      } else {
+                      } else if (kind == NetworkTtsKind.minimax) {
                         final spd = double.tryParse(speedCtl.text.trim()) ?? 1.0;
                         result = MiniMaxTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceId: voice, emotion: emotionCtl.text.trim().isEmpty ? 'calm' : emotionCtl.text.trim(), speed: spd);
+                      } else {
+                        // ElevenLabs
+                        result = ElevenLabsTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, modelId: model.isEmpty ? _defaultModel(kind) : model, voiceId: voice);
                       }
                       Navigator.of(ctx).pop();
                     },
@@ -609,11 +620,13 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
                           networkTtsKindDisplayName(NetworkTtsKind.openai),
                           networkTtsKindDisplayName(NetworkTtsKind.gemini),
                           networkTtsKindDisplayName(NetworkTtsKind.minimax),
+                          networkTtsKindDisplayName(NetworkTtsKind.elevenlabs),
                         ],
                         onSelected: (picked) async {
                           if (picked == networkTtsKindDisplayName(NetworkTtsKind.openai)) kind = NetworkTtsKind.openai;
                           if (picked == networkTtsKindDisplayName(NetworkTtsKind.gemini)) kind = NetworkTtsKind.gemini;
                           if (picked == networkTtsKindDisplayName(NetworkTtsKind.minimax)) kind = NetworkTtsKind.minimax;
+                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.elevenlabs)) kind = NetworkTtsKind.elevenlabs;
                           (ctx as Element).markNeedsBuild();
                         },
                       ),
@@ -896,6 +909,8 @@ String _defaultBaseUrl(NetworkTtsKind k) {
       return 'https://generativelanguage.googleapis.com/v1beta';
     case NetworkTtsKind.minimax:
       return 'https://api.minimaxi.com/v1';
+    case NetworkTtsKind.elevenlabs:
+      return 'https://api.elevenlabs.io';
   }
 }
 
@@ -907,6 +922,8 @@ String _defaultModel(NetworkTtsKind k) {
       return 'gemini-2.5-flash-preview-tts';
     case NetworkTtsKind.minimax:
       return 'speech-2.5-hd-preview';
+    case NetworkTtsKind.elevenlabs:
+      return 'eleven_multilingual_v2';
   }
 }
 
@@ -918,6 +935,8 @@ String _defaultVoice(NetworkTtsKind k) {
       return 'Kore';
     case NetworkTtsKind.minimax:
       return 'female-shaonv';
+    case NetworkTtsKind.elevenlabs:
+      return '';
   }
 }
 
@@ -928,6 +947,8 @@ String _voiceLabelFor(NetworkTtsKind k, AppLocalizations l10n) {
     case NetworkTtsKind.gemini:
       return l10n.ttsServicesFieldVoiceLabel; // same label
     case NetworkTtsKind.minimax:
+      return l10n.ttsServicesFieldVoiceIdLabel;
+    case NetworkTtsKind.elevenlabs:
       return l10n.ttsServicesFieldVoiceIdLabel;
   }
 }
