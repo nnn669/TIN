@@ -468,6 +468,25 @@ Future<File?> _renderAndSavePagedOld(
 
 Future<void> showMessageExportSheet(BuildContext context, ChatMessage message) async {
   final cs = Theme.of(context).colorScheme;
+  try {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // Desktop: show centered dialog
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => Dialog(
+          elevation: 12,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: _ExportDialog(message: message, parentContext: context),
+        ),
+      );
+      return;
+    }
+  } catch (_) {
+    // Fallback to bottom sheet below
+  }
+  // Mobile: keep bottom sheet
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -490,6 +509,24 @@ Future<void> showChatExportSheet(
   required List<ChatMessage> selectedMessages,
 }) async {
   final cs = Theme.of(context).colorScheme;
+  try {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // Desktop: show centered dialog
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => Dialog(
+          elevation: 12,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: _BatchExportDialog(conversation: conversation, messages: selectedMessages, parentContext: context),
+        ),
+      );
+      return;
+    }
+  } catch (_) {
+    // Fallback to bottom sheet below
+  }
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -504,6 +541,493 @@ Future<void> showChatExportSheet(
       );
     },
   );
+}
+
+// Desktop dialog: single message export
+class _ExportDialog extends StatefulWidget {
+  const _ExportDialog({required this.message, required this.parentContext});
+  final ChatMessage message;
+  final BuildContext parentContext;
+
+  @override
+  State<_ExportDialog> createState() => _ExportDialogState();
+}
+
+class _ExportDialogState extends State<_ExportDialog> {
+  bool _exporting = false;
+  bool _showThinkingAndToolCards = false;
+  bool _expandThinkingContent = false;
+
+  String _formatTime(BuildContext context, DateTime time) {
+    final l10n = AppLocalizations.of(context)!;
+    final fmt = DateFormat(l10n.messageExportSheetDateTimeWithSecondsPattern);
+    return fmt.format(time);
+  }
+
+  Future<void> _onExportMarkdown() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      final pctx = widget.parentContext;
+      final msg = widget.message;
+      final service = pctx.read<ChatService>();
+      final convo = service.getConversation(msg.conversationId);
+      final l10n = AppLocalizations.of(pctx)!;
+      final title = ((convo?.title ?? '').trim().isNotEmpty) ? (convo?.title ?? '') : l10n.messageExportSheetDefaultTitle;
+      final time = _formatTime(pctx, msg.timestamp);
+
+      final parsed = _parseContent(msg.content);
+
+      final buf = StringBuffer();
+      buf.writeln('# $title');
+      buf.writeln('');
+      buf.writeln('> $time · ${_getRoleName(pctx, msg)}');
+      buf.writeln('');
+      if (parsed.text.isNotEmpty) {
+        buf.writeln(parsed.text);
+        buf.writeln('');
+      }
+      for (final p in parsed.images) {
+        final fixed = SandboxPathResolver.fix(p);
+        try {
+          final f = File(fixed);
+          if (await f.exists()) {
+            final bytes = await f.readAsBytes();
+            final b64 = base64Encode(bytes);
+            final mime = _guessImageMime(fixed);
+            buf.writeln('![](data:$mime;base64,$b64)');
+          } else {
+            buf.writeln('![image]($fixed)');
+          }
+        } catch (_) {
+          buf.writeln('![image]($fixed)');
+        }
+        buf.writeln('');
+      }
+      for (final d in parsed.docs) {
+        buf.writeln('- ${d.fileName}  `(${d.mime})`');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.md';
+      // Desktop save
+      final String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: AppLocalizations.of(pctx)!.backupPageExportToFile,
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: const ['md'],
+      );
+      if (savePath != null) {
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsString(buf.toString());
+        final l10n = AppLocalizations.of(pctx)!;
+        showAppSnackBar(
+          pctx,
+          message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+          type: NotificationType.success,
+        );
+      }
+    } catch (e) {
+      final pctx = widget.parentContext;
+      final l10n = AppLocalizations.of(pctx)!;
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  Future<void> _onExportImage() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      File? file;
+      await _runWithExportingOverlay(widget.parentContext, () async {
+        file = await _renderAndSaveMessageImage(
+          widget.parentContext,
+          widget.message,
+          showThinkingAndToolCards: _showThinkingAndToolCards,
+          expandThinkingContent: _expandThinkingContent,
+        );
+      });
+      if (file == null) throw 'render error';
+      await showImagePreviewSheet(widget.parentContext, file: file!);
+      return;
+    } catch (e) {
+      final l10n = AppLocalizations.of(widget.parentContext)!;
+      showAppSnackBar(
+        widget.parentContext,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 420, maxWidth: 640, maxHeight: 640),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: cs.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    IconButton(
+                      tooltip: l10n.mcpPageClose,
+                      icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Body
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Scrollbar(
+                    child: ListView(
+                      children: [
+                        _ExportOptionTile(
+                          icon: Lucide.BookOpenText,
+                          title: l10n.messageExportSheetMarkdown,
+                          subtitle: l10n.messageExportSheetSingleMarkdownSubtitle,
+                          onTap: _exporting ? null : _onExportMarkdown,
+                        ),
+                        _ExportOptionTile(
+                          icon: Lucide.Image,
+                          title: l10n.messageExportSheetExportImage,
+                          subtitle: l10n.messageExportSheetSingleExportImageSubtitle,
+                          onTap: _exporting ? null : _onExportImage,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            children: [
+                              _buildSwitchRow(
+                                context,
+                                title: l10n.messageExportSheetShowThinkingAndToolCards,
+                                value: _showThinkingAndToolCards,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _showThinkingAndToolCards = v;
+                                    if (!v) _expandThinkingContent = false;
+                                  });
+                                },
+                              ),
+                              _buildSwitchRow(
+                                context,
+                                title: l10n.messageExportSheetShowThinkingContent,
+                                value: _expandThinkingContent,
+                                onChanged: _showThinkingAndToolCards
+                                    ? (v) => setState(() => _expandThinkingContent = v)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow(BuildContext context, {
+    required String title,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isEnabled = onChanged != null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: isEnabled ? cs.onSurface : cs.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ),
+          IosSwitch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: cs.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Desktop dialog: batch export
+class _BatchExportDialog extends StatefulWidget {
+  const _BatchExportDialog({required this.conversation, required this.messages, required this.parentContext});
+  final Conversation conversation;
+  final List<ChatMessage> messages;
+  final BuildContext parentContext;
+
+  @override
+  State<_BatchExportDialog> createState() => _BatchExportDialogState();
+}
+
+class _BatchExportDialogState extends State<_BatchExportDialog> {
+  bool _exporting = false;
+  bool _showThinkingAndToolCards = false;
+  bool _expandThinkingContent = false;
+
+  String _formatTime(BuildContext context, DateTime time) {
+    final l10n = AppLocalizations.of(context)!;
+    final fmt = DateFormat(l10n.messageExportSheetDateTimeWithSecondsPattern);
+    return fmt.format(time);
+  }
+
+  Future<void> _onExportMarkdown() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      final pctx = widget.parentContext;
+      final conv = widget.conversation;
+      final l10n = AppLocalizations.of(pctx)!;
+      final title = (conv.title.trim().isNotEmpty) ? conv.title : l10n.messageExportSheetDefaultTitle;
+      final buf = StringBuffer();
+      buf.writeln('# $title');
+      buf.writeln('');
+      for (final msg in widget.messages) {
+        final time = _formatTime(pctx, msg.timestamp);
+        buf.writeln('> $time · ${_getRoleName(pctx, msg)}');
+        buf.writeln('');
+        final parsed = _parseContent(msg.content);
+        if (parsed.text.isNotEmpty) {
+          buf.writeln(parsed.text);
+          buf.writeln('');
+        }
+        for (final p in parsed.images) {
+          final fixed = SandboxPathResolver.fix(p);
+          try {
+            final f = File(fixed);
+            if (await f.exists()) {
+              final bytes = await f.readAsBytes();
+              final b64 = base64Encode(bytes);
+              final mime = _guessImageMime(fixed);
+              buf.writeln('![](data:$mime;base64,$b64)');
+            } else {
+              buf.writeln('![image]($fixed)');
+            }
+          } catch (_) {
+            buf.writeln('![image]($fixed)');
+          }
+          buf.writeln('');
+        }
+        for (final d in parsed.docs) {
+          buf.writeln('- ${d.fileName}  `(${d.mime})`');
+        }
+        buf.writeln('\n---\n');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.md';
+      final String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: AppLocalizations.of(pctx)!.backupPageExportToFile,
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: const ['md'],
+      );
+      if (savePath == null) {
+        return; // user cancelled
+      }
+      try {
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsString(buf.toString());
+      } catch (e) {
+        showAppSnackBar(
+          pctx,
+          message: l10n.messageExportSheetExportFailed('$e'),
+          type: NotificationType.error,
+        );
+        return;
+      }
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+        type: NotificationType.success,
+      );
+    } catch (e) {
+      final pctx = widget.parentContext;
+      final l10n = AppLocalizations.of(pctx)!;
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  Future<void> _onExportImage() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      File? file;
+      await _runWithExportingOverlay(widget.parentContext, () async {
+        file = await _renderAndSaveChatImage(
+          widget.parentContext,
+          widget.conversation,
+          widget.messages,
+          showThinkingAndToolCards: _showThinkingAndToolCards,
+          expandThinkingContent: _expandThinkingContent,
+        );
+      });
+      if (file == null) throw 'render error';
+      await showImagePreviewSheet(widget.parentContext, file: file!);
+      return;
+    } catch (e) {
+      final l10n = AppLocalizations.of(widget.parentContext)!;
+      showAppSnackBar(
+        widget.parentContext,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 480, maxWidth: 720, maxHeight: 460),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: cs.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    IconButton(
+                      tooltip: l10n.mcpPageClose,
+                      icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Body
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Scrollbar(
+                    child: ListView(
+                      children: [
+                        _ExportOptionTile(
+                          icon: Lucide.BookOpenText,
+                          title: l10n.messageExportSheetMarkdown,
+                          subtitle: l10n.messageExportSheetBatchMarkdownSubtitle,
+                          onTap: _exporting ? null : _onExportMarkdown,
+                        ),
+                        _ExportOptionTile(
+                          icon: Lucide.Image,
+                          title: l10n.messageExportSheetExportImage,
+                          subtitle: l10n.messageExportSheetBatchExportImageSubtitle,
+                          onTap: _exporting ? null : _onExportImage,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            children: [
+                              _buildSwitchRow(
+                                context,
+                                title: l10n.messageExportSheetShowThinkingAndToolCards,
+                                value: _showThinkingAndToolCards,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _showThinkingAndToolCards = v;
+                                    if (!v) _expandThinkingContent = false;
+                                  });
+                                },
+                              ),
+                              _buildSwitchRow(
+                                context,
+                                title: l10n.messageExportSheetShowThinkingContent,
+                                value: _expandThinkingContent,
+                                onChanged: _showThinkingAndToolCards
+                                    ? (v) => setState(() => _expandThinkingContent = v)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow(BuildContext context, {
+    required String title,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isEnabled = onChanged != null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: isEnabled ? cs.onSurface : cs.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ),
+          IosSwitch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: cs.primary,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ExportSheet extends StatefulWidget {
