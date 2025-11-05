@@ -775,6 +775,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopAssistantsListTitle => 'Assistants';
 
   @override
+  String get desktopSidebarTabAssistants => 'Assistants';
+
+  @override
+  String get desktopSidebarTabTopics => 'Topics';
+
+  @override
   String get assistantEditTemperatureTitle => 'Temperature';
 
   @override

@@ -1559,6 +1559,18 @@ abstract class AppLocalizations {
   /// **'Assistants'**
   String get desktopAssistantsListTitle;
 
+  /// No description provided for @desktopSidebarTabAssistants.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistants'**
+  String get desktopSidebarTabAssistants;
+
+  /// No description provided for @desktopSidebarTabTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'Topics'**
+  String get desktopSidebarTabTopics;
+
   /// No description provided for @assistantEditTemperatureTitle.
   ///
   /// In en, this message translates to:

@@ -205,6 +205,8 @@
   "assistantSettingsAddSheetCancel": "取消",
   "assistantSettingsAddSheetSave": "保存",
   "desktopAssistantsListTitle": "助手列表",
+  "desktopSidebarTabAssistants": "助手",
+  "desktopSidebarTabTopics": "话题",
   "assistantEditTemperatureTitle": "温度",
   "assistantEditTopPTitle": "Top-p",
   "assistantSettingsDeleteDialogTitle": "删除助手",

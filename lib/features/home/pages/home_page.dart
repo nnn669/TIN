@@ -814,6 +814,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildTabletSidebar(BuildContext context) {
+    final bool _isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
     final sidebar = SideDrawer(
       embedded: true,
       embeddedWidth: _embeddedSidebarWidth,
@@ -826,6 +829,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       })(),
       closePickerTicker: _assistantPickerCloseTick,
       loadingConversationIds: _loadingConversationIds,
+      useDesktopTabs: _isDesktop,
         onSelectConversation: (id) {
           _switchConversationAnimated(id);
         },

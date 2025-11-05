@@ -210,6 +210,8 @@
   "assistantSettingsDeleteDialogConfirm": "删除",
   "assistantSettingsAtLeastOneAssistantRequired": "至少需要保留一个助手",
   "desktopAssistantsListTitle": "助手列表",
+  "desktopSidebarTabAssistants": "助手",
+  "desktopSidebarTabTopics": "话题",
   "assistantTagsManageTitle": "管理标签",
   "assistantTagsCreateButton": "创建",
   "assistantTagsCreateDialogTitle": "创建标签",

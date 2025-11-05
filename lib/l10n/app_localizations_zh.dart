@@ -757,6 +757,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopAssistantsListTitle => '助手列表';
 
   @override
+  String get desktopSidebarTabAssistants => '助手';
+
+  @override
+  String get desktopSidebarTabTopics => '话题';
+
+  @override
   String get assistantEditTemperatureTitle => '温度';
 
   @override
@@ -3701,6 +3707,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopAssistantsListTitle => '助手列表';
 
   @override
+  String get desktopSidebarTabAssistants => '助手';
+
+  @override
+  String get desktopSidebarTabTopics => '话题';
+
+  @override
   String get assistantEditTemperatureTitle => '温度';
 
   @override
@@ -6643,6 +6655,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopAssistantsListTitle => '助理列表';
+
+  @override
+  String get desktopSidebarTabAssistants => '助理';
+
+  @override
+  String get desktopSidebarTabTopics => '主題';
 
   @override
   String get assistantEditTemperatureTitle => '溫度';

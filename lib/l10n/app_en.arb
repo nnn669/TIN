@@ -307,6 +307,8 @@
   "assistantSettingsAddSheetCancel": "Cancel",
   "assistantSettingsAddSheetSave": "Save",
   "desktopAssistantsListTitle": "Assistants",
+  "desktopSidebarTabAssistants": "Assistants",
+  "desktopSidebarTabTopics": "Topics",
   "assistantEditTemperatureTitle": "Temperature",
   "assistantEditTopPTitle": "Top-p",
   "assistantSettingsDeleteDialogTitle": "Delete Assistant",
