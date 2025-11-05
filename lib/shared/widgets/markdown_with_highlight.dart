@@ -155,12 +155,18 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
             builder: (context, constraints) {
               return ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image(
-                  image: provider,
-                  width: constraints.maxWidth,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stack) => const Icon(Icons.broken_image),
-                ),
+                child: () {
+                  if (provider == null) {
+                    // Missing or unsupported source: show a broken image indicator
+                    return const Icon(Icons.broken_image);
+                  }
+                  return Image(
+                    image: provider,
+                    width: constraints.maxWidth,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stack) => const Icon(Icons.broken_image),
+                  );
+                }(),
               );
             },
           ),
@@ -645,7 +651,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         .toList();
   }
 
-  static ImageProvider _imageProviderFor(String src) {
+  static ImageProvider? _imageProviderFor(String src) {
     if (src.startsWith('http://') || src.startsWith('https://')) {
       return NetworkImage(src);
     }
@@ -658,14 +664,15 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           return MemoryImage(base64Decode(b64));
         }
       } catch (_) {}
+      return null;
     }
     final fixed = SandboxPathResolver.fix(src);
     final f = File(fixed);
     if (f.existsSync()) {
       return FileImage(f);
     }
-    // Fallback to a harmless placeholder to avoid codec exceptions on missing files
-    return const AssetImage('assets/app_icon.png');
+    // Missing local file or unsupported scheme
+    return null;
   }
 }
 
