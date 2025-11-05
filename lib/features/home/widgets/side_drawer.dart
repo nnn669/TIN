@@ -1897,12 +1897,65 @@ extension on _SideDrawerState {
       );
     }
 
+    // Desktop: enable drag-reorder within each group; Mobile/tablet: keep static list
+    final bool enableReorder = _isDesktop;
+
+    Widget buildReorderable(List<Assistant> list, {required List<String> subsetIds}) {
+      if (!enableReorder) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: list.map(buildTile).toList());
+      }
+      return ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        proxyDecorator: (child, index, animation) {
+          // Remove default shadow/elevation and clip to rounded card only.
+          return AnimatedBuilder(
+            animation: animation,
+            builder: (context, _) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: child,
+                ),
+              );
+            },
+          );
+        },
+        onReorder: (oldIndex, newIndex) async {
+          if (newIndex > oldIndex) newIndex -= 1;
+          try {
+            await context.read<AssistantProvider>().reorderAssistantsWithin(
+              subsetIds: subsetIds,
+              oldIndex: oldIndex,
+              newIndex: newIndex,
+            );
+          } catch (_) {}
+        },
+        itemCount: list.length,
+        itemBuilder: (ctx, index) {
+          final a = list[index];
+          final tile = buildTile(a);
+          return KeyedSubtree(
+            key: ValueKey('assistant-${a.id}'),
+            child: ReorderableDragStartListener(
+              index: index,
+              enabled: enableReorder,
+              child: tile,
+            ),
+          );
+        },
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (ungrouped.isNotEmpty) ...ungrouped.map(buildTile),
+          if (ungrouped.isNotEmpty)
+            buildReorderable(ungrouped, subsetIds: ungrouped.map((a) => a.id).toList()),
           for (final t in tags)
             if ((groupedByTag[t.id] ?? const <Assistant>[]).isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -1917,7 +1970,10 @@ extension on _SideDrawerState {
                 alignment: Alignment.topCenter,
                 child: tp.isCollapsed(t.id)
                     ? const SizedBox.shrink()
-                    : Column(children: (groupedByTag[t.id] ?? const <Assistant>[]).map(buildTile).toList()),
+                    : buildReorderable(
+                        groupedByTag[t.id]!,
+                        subsetIds: (groupedByTag[t.id] ?? const <Assistant>[]) .map((a) => a.id).toList(),
+                      ),
               ),
             ],
         ],
