@@ -2419,29 +2419,6 @@ class _SourcesSummaryCard extends StatelessWidget {
   }
 }
 
-ImageProvider _imageProviderFor(String src) {
-  if (src.startsWith('http://') || src.startsWith('https://')) {
-    return NetworkImage(src);
-  }
-  if (src.startsWith('data:')) {
-    try {
-      final base64Marker = 'base64,';
-      final idx = src.indexOf(base64Marker);
-      if (idx != -1) {
-        final b64 = src.substring(idx + base64Marker.length);
-        return MemoryImage(base64Decode(b64));
-      }
-    } catch (_) {}
-  }
-  final fixed = SandboxPathResolver.fix(src);
-  final f = File(fixed);
-  if (f.existsSync()) {
-    return FileImage(f);
-  }
-  // Fallback to a placeholder to avoid codec exceptions
-  return const AssetImage('assets/app_icon.png');
-}
-
 class _ReasoningSection extends StatefulWidget {
   const _ReasoningSection({
     required this.text,
