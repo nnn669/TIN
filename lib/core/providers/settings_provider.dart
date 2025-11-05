@@ -31,6 +31,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayShowUserMessageActionsKey = 'display_show_user_message_actions_v1';
   static const String _displayAutoCollapseThinkingKey = 'display_auto_collapse_thinking_v1';
   static const String _displayShowMessageNavKey = 'display_show_message_nav_v1';
+  static const String _displayShowProviderInModelCapsuleKey = 'display_show_provider_in_model_capsule_v1';
   static const String _displayHapticsOnGenerateKey = 'display_haptics_on_generate_v1';
   static const String _displayHapticsOnDrawerKey = 'display_haptics_on_drawer_v1';
   static const String _displayHapticsGlobalEnabledKey = 'display_haptics_global_enabled_v1';
@@ -246,6 +247,7 @@ class SettingsProvider extends ChangeNotifier {
     _showUserMessageActions = prefs.getBool(_displayShowUserMessageActionsKey) ?? true;
     _autoCollapseThinking = prefs.getBool(_displayAutoCollapseThinkingKey) ?? true;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
+    _showProviderInModelCapsule = prefs.getBool(_displayShowProviderInModelCapsuleKey) ?? true;
     _hapticsOnGenerate = prefs.getBool(_displayHapticsOnGenerateKey) ?? false;
     _hapticsOnDrawer = prefs.getBool(_displayHapticsOnDrawerKey) ?? true;
     _hapticsGlobalEnabled = prefs.getBool(_displayHapticsGlobalEnabledKey) ?? true;
@@ -1135,6 +1137,17 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowMessageNavKey, v);
   }
 
+  // Display: show provider name in model capsule (desktop header)
+  bool _showProviderInModelCapsule = true;
+  bool get showProviderInModelCapsule => _showProviderInModelCapsule;
+  Future<void> setShowProviderInModelCapsule(bool v) async {
+    if (_showProviderInModelCapsule == v) return;
+    _showProviderInModelCapsule = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowProviderInModelCapsuleKey, v);
+  }
+
   // Display: create a new chat on app launch
   bool _newChatOnLaunch = true;
   bool get newChatOnLaunch => _newChatOnLaunch;
@@ -1398,6 +1411,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._showUserMessageActions = _showUserMessageActions;
     copy._autoCollapseThinking = _autoCollapseThinking;
     copy._showMessageNavButtons = _showMessageNavButtons;
+    copy._showProviderInModelCapsule = _showProviderInModelCapsule;
     copy._hapticsOnGenerate = _hapticsOnGenerate;
     copy._hapticsOnDrawer = _hapticsOnDrawer;
     copy._hapticsGlobalEnabled = _hapticsGlobalEnabled;

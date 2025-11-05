@@ -4634,7 +4634,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 Widget? capsule;
                 String? capsuleLabel;
                 if (providerName != null && modelDisplay != null) {
-                  capsuleLabel = '$modelDisplay'; // · $providerName';
+                  final showProv = context.watch<SettingsProvider>().showProviderInModelCapsule;
+                  capsuleLabel = showProv ? '$modelDisplay | $providerName' : '$modelDisplay';
                   final Widget brandIcon = AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: ScaleTransition(scale: anim, child: child)),

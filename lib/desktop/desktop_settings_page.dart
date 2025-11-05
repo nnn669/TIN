@@ -3452,6 +3452,8 @@ class _DisplaySettingsBody extends StatelessWidget {
               _SettingsCard(
                 title: l10n.displaySettingsPageChatItemDisplayTitle,
                 children: const [
+                  _ToggleRowShowProviderInCapsule(),
+                  _RowDivider(),
                   _ToggleRowShowUserAvatar(),
                   _RowDivider(),
                   _ToggleRowShowUserNameTs(),
@@ -5106,6 +5108,20 @@ class _ToggleRowShowTokenStats extends StatelessWidget {
       label: l10n.displaySettingsPageShowTokenStatsTitle,
       value: sp.showTokenStats,
       onChanged: (v) => context.read<SettingsProvider>().setShowTokenStats(v),
+    );
+  }
+}
+
+class _ToggleRowShowProviderInCapsule extends StatelessWidget {
+  const _ToggleRowShowProviderInCapsule();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.desktopShowProviderInModelCapsule,
+      value: sp.showProviderInModelCapsule,
+      onChanged: (v) => context.read<SettingsProvider>().setShowProviderInModelCapsule(v),
     );
   }
 }

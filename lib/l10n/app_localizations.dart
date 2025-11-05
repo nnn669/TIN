@@ -5770,6 +5770,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When both global and provider proxies are enabled, provider-level proxy takes priority.'**
   String get networkProxyPriorityNote;
+
+  /// No description provided for @desktopShowProviderInModelCapsule.
+  ///
+  /// In en, this message translates to:
+  /// **'Show provider in model capsule'**
+  String get desktopShowProviderInModelCapsule;
 }
 
 class _AppLocalizationsDelegate

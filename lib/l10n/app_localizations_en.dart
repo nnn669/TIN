@@ -3043,4 +3043,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get networkProxyPriorityNote =>
       'When both global and provider proxies are enabled, provider-level proxy takes priority.';
+
+  @override
+  String get desktopShowProviderInModelCapsule =>
+      'Show provider in model capsule';
 }

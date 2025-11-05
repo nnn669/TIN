@@ -1003,5 +1003,6 @@
     "placeholders": { "error": { "type": "String" } }
   },
   "networkProxyNoUrl": "請輸入測試地址",
-  "networkProxyPriorityNote": "同時啟用全域代理與供應商代理時，將優先使用供應商代理。"
+  "networkProxyPriorityNote": "同時啟用全域代理與供應商代理時，將優先使用供應商代理。",
+  "desktopShowProviderInModelCapsule": "模型膠囊顯示供應商"
 }

@@ -2943,6 +2943,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkProxyPriorityNote => '当同时开启全局代理与供应商代理时，将优先使用供应商代理。';
+
+  @override
+  String get desktopShowProviderInModelCapsule => '模型胶囊显示供应商';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -5884,6 +5887,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get networkProxyPriorityNote => '当同时开启全局代理与供应商代理时，将优先使用供应商代理。';
+
+  @override
+  String get desktopShowProviderInModelCapsule => '模型胶囊显示供应商';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -8826,4 +8832,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get networkProxyPriorityNote => '同時啟用全域代理與供應商代理時，將優先使用供應商代理。';
+
+  @override
+  String get desktopShowProviderInModelCapsule => '模型膠囊顯示供應商';
 }
