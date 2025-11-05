@@ -569,6 +569,72 @@ abstract class AppLocalizations {
   /// **'Manage Tags'**
   String get assistantTagsContextMenuManageTags;
 
+  /// No description provided for @mcpTransportOptionStdio.
+  ///
+  /// In en, this message translates to:
+  /// **'STDIO'**
+  String get mcpTransportOptionStdio;
+
+  /// No description provided for @mcpTransportTagStdio.
+  ///
+  /// In en, this message translates to:
+  /// **'STDIO'**
+  String get mcpTransportTagStdio;
+
+  /// No description provided for @mcpServerEditSheetStdioOnlyDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'STDIO is only available on desktop'**
+  String get mcpServerEditSheetStdioOnlyDesktop;
+
+  /// No description provided for @mcpServerEditSheetStdioCommandLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get mcpServerEditSheetStdioCommandLabel;
+
+  /// No description provided for @mcpServerEditSheetStdioArgumentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments'**
+  String get mcpServerEditSheetStdioArgumentsLabel;
+
+  /// No description provided for @mcpServerEditSheetStdioWorkingDirectoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Working Directory (optional)'**
+  String get mcpServerEditSheetStdioWorkingDirectoryLabel;
+
+  /// No description provided for @mcpServerEditSheetStdioEnvironmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get mcpServerEditSheetStdioEnvironmentTitle;
+
+  /// No description provided for @mcpServerEditSheetStdioEnvNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcpServerEditSheetStdioEnvNameLabel;
+
+  /// No description provided for @mcpServerEditSheetStdioEnvValueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get mcpServerEditSheetStdioEnvValueLabel;
+
+  /// No description provided for @mcpServerEditSheetStdioAddEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Env'**
+  String get mcpServerEditSheetStdioAddEnv;
+
+  /// No description provided for @mcpServerEditSheetStdioCommandRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Command is required for STDIO'**
+  String get mcpServerEditSheetStdioCommandRequired;
+
   /// No description provided for @assistantTagsContextMenuDeleteAssistant.
   ///
   /// In en, this message translates to:

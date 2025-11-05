@@ -255,6 +255,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantTagsContextMenuManageTags => 'Manage Tags';
 
   @override
+  String get mcpTransportOptionStdio => 'STDIO';
+
+  @override
+  String get mcpTransportTagStdio => 'STDIO';
+
+  @override
+  String get mcpServerEditSheetStdioOnlyDesktop =>
+      'STDIO is only available on desktop';
+
+  @override
+  String get mcpServerEditSheetStdioCommandLabel => 'Command';
+
+  @override
+  String get mcpServerEditSheetStdioArgumentsLabel => 'Arguments';
+
+  @override
+  String get mcpServerEditSheetStdioWorkingDirectoryLabel =>
+      'Working Directory (optional)';
+
+  @override
+  String get mcpServerEditSheetStdioEnvironmentTitle => 'Environment';
+
+  @override
+  String get mcpServerEditSheetStdioEnvNameLabel => 'Name';
+
+  @override
+  String get mcpServerEditSheetStdioEnvValueLabel => 'Value';
+
+  @override
+  String get mcpServerEditSheetStdioAddEnv => 'Add Env';
+
+  @override
+  String get mcpServerEditSheetStdioCommandRequired =>
+      'Command is required for STDIO';
+
+  @override
   String get assistantTagsContextMenuDeleteAssistant => 'Delete Assistant';
 
   @override

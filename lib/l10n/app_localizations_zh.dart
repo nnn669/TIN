@@ -253,6 +253,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantTagsContextMenuManageTags => '管理标签';
 
   @override
+  String get mcpTransportOptionStdio => 'STDIO';
+
+  @override
+  String get mcpTransportTagStdio => 'STDIO';
+
+  @override
+  String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 仅在桌面端可用';
+
+  @override
+  String get mcpServerEditSheetStdioCommandLabel => '命令';
+
+  @override
+  String get mcpServerEditSheetStdioArgumentsLabel => '参数';
+
+  @override
+  String get mcpServerEditSheetStdioWorkingDirectoryLabel => '工作目录（可选）';
+
+  @override
+  String get mcpServerEditSheetStdioEnvironmentTitle => '环境变量';
+
+  @override
+  String get mcpServerEditSheetStdioEnvNameLabel => '名称';
+
+  @override
+  String get mcpServerEditSheetStdioEnvValueLabel => '值';
+
+  @override
+  String get mcpServerEditSheetStdioAddEnv => '添加环境变量';
+
+  @override
+  String get mcpServerEditSheetStdioCommandRequired => 'STDIO 需要填写命令';
+
+  @override
   String get assistantTagsContextMenuDeleteAssistant => '删除助手';
 
   @override
@@ -3161,6 +3194,39 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantTagsContextMenuManageTags => '管理标签';
 
   @override
+  String get mcpTransportOptionStdio => 'STDIO';
+
+  @override
+  String get mcpTransportTagStdio => 'STDIO';
+
+  @override
+  String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 仅在桌面端可用';
+
+  @override
+  String get mcpServerEditSheetStdioCommandLabel => '命令';
+
+  @override
+  String get mcpServerEditSheetStdioArgumentsLabel => '参数';
+
+  @override
+  String get mcpServerEditSheetStdioWorkingDirectoryLabel => '工作目录（可选）';
+
+  @override
+  String get mcpServerEditSheetStdioEnvironmentTitle => '环境变量';
+
+  @override
+  String get mcpServerEditSheetStdioEnvNameLabel => '名称';
+
+  @override
+  String get mcpServerEditSheetStdioEnvValueLabel => '值';
+
+  @override
+  String get mcpServerEditSheetStdioAddEnv => '添加环境变量';
+
+  @override
+  String get mcpServerEditSheetStdioCommandRequired => 'STDIO 需要填写命令';
+
+  @override
   String get assistantTagsContextMenuDeleteAssistant => '删除助手';
 
   @override
@@ -6067,6 +6133,39 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantTagsContextMenuManageTags => '管理標籤';
+
+  @override
+  String get mcpTransportOptionStdio => 'STDIO';
+
+  @override
+  String get mcpTransportTagStdio => 'STDIO';
+
+  @override
+  String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 僅在桌面端可用';
+
+  @override
+  String get mcpServerEditSheetStdioCommandLabel => '命令';
+
+  @override
+  String get mcpServerEditSheetStdioArgumentsLabel => '參數';
+
+  @override
+  String get mcpServerEditSheetStdioWorkingDirectoryLabel => '工作目錄（可選）';
+
+  @override
+  String get mcpServerEditSheetStdioEnvironmentTitle => '環境變數';
+
+  @override
+  String get mcpServerEditSheetStdioEnvNameLabel => '名稱';
+
+  @override
+  String get mcpServerEditSheetStdioEnvValueLabel => '值';
+
+  @override
+  String get mcpServerEditSheetStdioAddEnv => '新增環境變數';
+
+  @override
+  String get mcpServerEditSheetStdioCommandRequired => 'STDIO 需要填寫命令';
 
   @override
   String get assistantTagsContextMenuDeleteAssistant => '刪除助理';
