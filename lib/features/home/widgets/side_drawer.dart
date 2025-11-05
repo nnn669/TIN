@@ -690,73 +690,137 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // 1. 搜索框 + 历史按钮（固定头部）
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
-                            filled: true,
-                            fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
-                            isDense: true,
-                            isCollapsed: true,
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(left: 10, right: 4),
-                              child: Icon(
-                                Lucide.Search,
-                                size: 16,
-                                color: textBase.withOpacity(0.6),
+                  if (_isDesktop)
+                    // 桌面端：搜索框拉满且与下方 Tab 对齐；历史按钮作为后缀放入输入框右侧
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
+                                filled: true,
+                                fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
+                                isDense: true,
+                                isCollapsed: true,
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 10, right: 4),
+                                  child: Icon(
+                                    Lucide.Search,
+                                    size: 16,
+                                    color: textBase.withOpacity(0.6),
+                                  ),
+                                ),
+                                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                                // 历史按钮放入后缀区域
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: IosIconButton(
+                                    size: 16,
+                                    color: textBase,
+                                    icon: Lucide.History,
+                                    padding: const EdgeInsets.all(4),
+                                    onTap: () async {
+                                      final selectedId = await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId);
+                                      if (selectedId != null && selectedId.isNotEmpty) {
+                                        widget.onSelectConversation?.call(selectedId);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 11,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Colors.transparent),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Colors.transparent),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Colors.transparent),
+                                ),
+                              ),
+                              textAlignVertical: TextAlignVertical.center,
+                              style: TextStyle(color: textBase, fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
+                              filled: true,
+                              fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
+                              isDense: true,
+                              isCollapsed: true,
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.only(left: 10, right: 4),
+                                child: Icon(
+                                  Lucide.Search,
+                                  size: 16,
+                                  color: textBase.withOpacity(0.6),
+                                ),
+                              ),
+                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
                               ),
                             ),
-                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: _isDesktop ? 11 : 10,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Colors.transparent),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Colors.transparent),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Colors.transparent),
-                            ),
-                          ),
-                          textAlignVertical: TextAlignVertical.center,
-                          style: TextStyle(color: textBase, fontSize: 14),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // 历史按钮（圆形，无水波纹）
-                      SizedBox(
-                        width: _isDesktop ? 40 : 44,
-                        height: _isDesktop ? 40 : 44,
-                        child: Center(
-                          child: IosIconButton(
-                            size: _isDesktop ? 18 : 20,
-                            color: textBase,
-                            icon: Lucide.History,
-                            padding: const EdgeInsets.all(8),
-                            onTap: () async {
-                              final selectedId = _isDesktop
-                                  ? await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId)
-                                  : await Navigator.of(context).push<String>(
-                                      MaterialPageRoute(builder: (_) => ChatHistoryPage(assistantId: currentAssistantId)),
-                                    );
-                              if (selectedId != null && selectedId.isNotEmpty) {
-                                widget.onSelectConversation?.call(selectedId);
-                              }
-                            },
+                            textAlignVertical: TextAlignVertical.center,
+                            style: TextStyle(color: textBase, fontSize: 14),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        // 历史按钮（圆形，无水波纹）
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 20,
+                              color: textBase,
+                              icon: Lucide.History,
+                              padding: const EdgeInsets.all(8),
+                              onTap: () async {
+                                final selectedId = await Navigator.of(context).push<String>(
+                                  MaterialPageRoute(builder: (_) => ChatHistoryPage(assistantId: currentAssistantId)),
+                                );
+                                if (selectedId != null && selectedId.isNotEmpty) {
+                                  widget.onSelectConversation?.call(selectedId);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
                   SizedBox(height: _isDesktop ? 8 : 12),
                   
@@ -2215,7 +2279,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
             return Container(
               decoration: BoxDecoration(
                 color: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Stack(
                 children: [
@@ -2232,11 +2296,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                       curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: cs.primary.withOpacity(isDark ? 0.16 : 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: cs.primary.withOpacity(isDark ? 0.22 : 0.18),
-                          width: 1,
-                        ),
+                        borderRadius: BorderRadius.circular(13),
                       ),
                     ),
                   ),
@@ -2262,7 +2322,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                                     margin: EdgeInsets.all(pad),
                                     decoration: BoxDecoration(
                                       color: cs.primary.withOpacity(0.06),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(13),
                                     ),
                                   ),
                                 ),
@@ -2302,7 +2362,7 @@ class _DesktopSidebarTabsState extends State<_DesktopSidebarTabs> {
                                     margin: EdgeInsets.all(pad),
                                     decoration: BoxDecoration(
                                       color: cs.primary.withOpacity(0.06),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(13),
                                     ),
                                   ),
                                 ),
