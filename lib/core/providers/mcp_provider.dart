@@ -6,8 +6,8 @@ import 'package:mcp_client/mcp_client.dart' as mcp;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-/// Transport type supported on mobile: SSE and Streamable HTTP.
-enum McpTransportType { sse, http }
+/// Transport type: SSE, Streamable HTTP, and STDIO (desktop-only).
+enum McpTransportType { sse, http, stdio }
 
 /// Connection status for an MCP server.
 enum McpStatus { idle, connecting, connected, error }
@@ -92,18 +92,28 @@ class McpServerConfig {
   final bool enabled;
   final String name;
   final McpTransportType transport;
+  // For SSE/HTTP
   final String url; // SSE endpoint or HTTP base URL
   final List<McpToolConfig> tools;
   final Map<String, String> headers; // custom HTTP headers
+  // For STDIO (desktop-only)
+  final String? command;
+  final List<String> args;
+  final Map<String, String> env;
+  final String? workingDirectory;
 
   McpServerConfig({
     required this.id,
     required this.enabled,
     required this.name,
     required this.transport,
-    required this.url,
+    this.url = '',
     this.tools = const [],
     this.headers = const {},
+    this.command,
+    this.args = const [],
+    this.env = const {},
+    this.workingDirectory,
   });
 
   McpServerConfig copyWith({
@@ -114,6 +124,11 @@ class McpServerConfig {
     String? url,
     List<McpToolConfig>? tools,
     Map<String, String>? headers,
+    String? command,
+    List<String>? args,
+    Map<String, String>? env,
+    String? workingDirectory,
+    bool clearWorkingDirectory = false,
   }) =>
       McpServerConfig(
         id: id ?? this.id,
@@ -123,6 +138,10 @@ class McpServerConfig {
         url: url ?? this.url,
         tools: tools ?? this.tools,
         headers: headers ?? this.headers,
+        command: command ?? this.command,
+        args: args ?? this.args,
+        env: env ?? this.env,
+        workingDirectory: clearWorkingDirectory ? null : (workingDirectory ?? this.workingDirectory),
       );
 
   Map<String, dynamic> toJson() => {
@@ -130,23 +149,50 @@ class McpServerConfig {
     'enabled': enabled,
     'name': name,
     'transport': transport.name,
-    'url': url,
+    if (transport != McpTransportType.stdio) 'url': url,
     'tools': tools.map((e) => e.toJson()).toList(),
-    'headers': headers,
+    if (transport != McpTransportType.stdio) 'headers': headers,
+    if (transport == McpTransportType.stdio) 'command': command,
+    if (transport == McpTransportType.stdio) 'args': args,
+    if (transport == McpTransportType.stdio) 'env': env,
+    if (transport == McpTransportType.stdio && workingDirectory != null) 'workingDirectory': workingDirectory,
   };
 
-  factory McpServerConfig.fromJson(Map<String, dynamic> json) => McpServerConfig(
-    id: json['id'] as String? ?? const Uuid().v4(),
-    enabled: json['enabled'] as bool? ?? true,
-    name: json['name'] as String? ?? '',
-    transport: (json['transport'] as String?) == 'http' ? McpTransportType.http : McpTransportType.sse,
-    url: json['url'] as String? ?? '',
-    tools: (json['tools'] as List?)
+  factory McpServerConfig.fromJson(Map<String, dynamic> json) {
+    final tRaw = (json['transport'] as String?) ?? '';
+    final t = tRaw == 'http'
+        ? McpTransportType.http
+        : (tRaw == 'stdio' ? McpTransportType.stdio : McpTransportType.sse);
+    final tools = (json['tools'] as List?)
         ?.map((e) => McpToolConfig.fromJson((e as Map).cast<String, dynamic>()))
         .toList() ??
-        const [],
-    headers: ((json['headers'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString()))) ?? const {},
-  );
+        const <McpToolConfig>[];
+    if (t == McpTransportType.stdio) {
+      final argsAny = json['args'];
+      final envAny = json['env'];
+      return McpServerConfig(
+        id: json['id'] as String? ?? const Uuid().v4(),
+        enabled: json['enabled'] as bool? ?? true,
+        name: json['name'] as String? ?? '',
+        transport: McpTransportType.stdio,
+        tools: tools,
+        command: (json['command'] as String?)?.trim(),
+        args: argsAny is List ? argsAny.map((e) => e.toString()).toList() : const <String>[],
+        env: envAny is Map ? envAny.map((k, v) => MapEntry(k.toString(), v.toString())) : const <String, String>{},
+        workingDirectory: (json['workingDirectory'] as String?)?.trim(),
+      );
+    } else {
+      return McpServerConfig(
+        id: json['id'] as String? ?? const Uuid().v4(),
+        enabled: json['enabled'] as bool? ?? true,
+        name: json['name'] as String? ?? '',
+        transport: t,
+        url: json['url'] as String? ?? '',
+        tools: tools,
+        headers: ((json['headers'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString()))) ?? const {},
+      );
+    }
+  }
 }
 
 class McpProvider extends ChangeNotifier {
@@ -220,17 +266,33 @@ class McpProvider extends ChangeNotifier {
   ///   }
   /// }
   String exportServersAsUiJson() {
+    // On mobile, skip stdio entries in exported JSON.
+    final isDesktop = _isDesktopPlatform();
     final map = <String, dynamic>{
       'mcpServers': {
         for (final s in _servers)
-          s.id: {
-            'name': s.name,
-            'type': s.transport == McpTransportType.http ? 'streamableHttp' : 'sse',
-            'description': '',
-            'isActive': s.enabled,
-            'baseUrl': s.url,
-            if (s.headers.isNotEmpty) 'headers': s.headers,
-          }
+          if (s.transport != McpTransportType.stdio || isDesktop)
+            s.id: {
+              'name': s.name,
+              if (s.transport == McpTransportType.http) 'type': 'streamableHttp',
+              if (s.transport == McpTransportType.sse) 'type': 'sse',
+              'description': '',
+              'isActive': s.enabled,
+              if (s.transport != McpTransportType.stdio) 'baseUrl': s.url,
+              if (s.transport != McpTransportType.stdio && s.headers.isNotEmpty) 'headers': s.headers,
+              // For stdio, include an optional type for compatibility
+              if (s.transport == McpTransportType.stdio) 'type': 'stdio',
+              // Include command/args/env
+              if (s.transport == McpTransportType.stdio && (s.command ?? '').isNotEmpty) 'command': s.command,
+              if (s.transport == McpTransportType.stdio && s.args.isNotEmpty) 'args': s.args,
+              if (s.transport == McpTransportType.stdio && s.env.isNotEmpty) 'env': s.env,
+              if (s.transport == McpTransportType.stdio)
+                ...() {
+                  final reg = s.env['NPM_CONFIG_REGISTRY'] ?? s.env['npm_config_registry'];
+                  return reg != null && reg.isNotEmpty ? {'registryUrl': reg} : <String, dynamic>{};
+                }(),
+              if (s.transport == McpTransportType.stdio && (s.workingDirectory ?? '').isNotEmpty) 'workingDirectory': s.workingDirectory,
+            }
       }
     };
     return const JsonEncoder.withIndent('  ').convert(map);
@@ -248,11 +310,58 @@ class McpProvider extends ChangeNotifier {
 
     List<McpServerConfig> next = [];
     try {
+      Map<String, dynamic>? serversFromMap;
       if (data is Map && data.containsKey('mcpServers')) {
-        final serversMap = (data['mcpServers'] as Map).cast<String, dynamic>();
-        serversMap.forEach((id, cfgAny) {
+        serversFromMap = (data['mcpServers'] as Map).cast<String, dynamic>();
+      } else if (data is Map && data.isNotEmpty) {
+        // Allow raw map format: { id: { ... } }
+        // Heuristically treat it as mcpServers format when values are maps.
+        final ok = data.values.every((v) => v is Map);
+        if (ok) serversFromMap = data.cast<String, dynamic>();
+      }
+
+      if (serversFromMap != null) {
+        final isDesktop = _isDesktopPlatform();
+        serversFromMap.forEach((id, cfgAny) {
           if (cfgAny is! Map) return;
           final cfg = cfgAny.cast<String, dynamic>();
+          final hasStdioShape = cfg.containsKey('command') || cfg.containsKey('args') || cfg.containsKey('env') || (cfg['type']?.toString().toLowerCase() == 'stdio');
+          if (hasStdioShape) {
+            if (!isDesktop) {
+              // Mobile: skip stdio entries entirely
+              return;
+            }
+            final enabled = (cfg['isActive'] as bool?) ?? true;
+            final name = (cfg['name'] as String?)?.trim();
+            final cmd = (cfg['command'] as String?)?.trim();
+            if (cmd == null || cmd.isEmpty) {
+              // invalid stdio entry without command
+              return;
+            }
+            final argsAny = cfg['args'];
+            final envAny = cfg['env'];
+            final wd = (cfg['workingDirectory'] as String?)?.trim();
+            final registryUrl = (cfg['registryUrl'] as String?)?.trim();
+            Map<String, String> env = envAny is Map ? envAny.map((k, v) => MapEntry(k.toString(), v.toString())) : const <String, String>{};
+            if ((registryUrl != null) && registryUrl.isNotEmpty) {
+              if (!env.containsKey('NPM_CONFIG_REGISTRY') && !env.containsKey('npm_config_registry')) {
+                env = {...env, 'NPM_CONFIG_REGISTRY': registryUrl};
+              }
+            }
+            next.add(McpServerConfig(
+              id: id,
+              enabled: enabled,
+              name: (name == null || name.isEmpty) ? id : name,
+              transport: McpTransportType.stdio,
+              command: cmd,
+              args: argsAny is List ? argsAny.map((e) => e.toString()).toList() : const <String>[],
+              env: env,
+              workingDirectory: (wd != null && wd.isNotEmpty) ? wd : null,
+            ));
+            return;
+          }
+
+          // SSE/HTTP branch using legacy fields
           final typeRaw = (cfg['type'] ?? '').toString().toLowerCase();
           final transport = (typeRaw.contains('http')) ? McpTransportType.http : McpTransportType.sse;
           final enabled = (cfg['isActive'] as bool?) ?? true;
@@ -270,7 +379,7 @@ class McpProvider extends ChangeNotifier {
           next.add(McpServerConfig(
             id: id,
             enabled: enabled,
-            name: (name == null || name.isEmpty) ? 'MCP' : name,
+            name: (name == null || name.isEmpty) ? id : name,
             transport: transport,
             url: url!,
             headers: headers,
@@ -286,10 +395,12 @@ class McpProvider extends ChangeNotifier {
             m['transport'] = 'http';
           } else if (t == 'sse') {
             m['transport'] = 'sse';
+          } else if (t == 'stdio') {
+            m['transport'] = 'stdio';
           }
           try {
             final s = McpServerConfig.fromJson(m);
-            if (s.url.trim().isEmpty) continue;
+            if (s.transport != McpTransportType.stdio && s.url.trim().isEmpty) continue;
             next.add(s);
           } catch (_) {}
         }
@@ -304,10 +415,12 @@ class McpProvider extends ChangeNotifier {
               m['transport'] = 'http';
             } else if (t == 'sse') {
               m['transport'] = 'sse';
+            } else if (t == 'stdio') {
+              m['transport'] = 'stdio';
             }
             try {
               final s = McpServerConfig.fromJson(m);
-              if (s.url.trim().isEmpty) continue;
+              if (s.transport != McpTransportType.stdio && s.url.trim().isEmpty) continue;
               next.add(s);
             } catch (_) {}
           }
@@ -355,8 +468,12 @@ class McpProvider extends ChangeNotifier {
     required bool enabled,
     required String name,
     required McpTransportType transport,
-    required String url,
+    String url = '',
     Map<String, String> headers = const {},
+    String? command,
+    List<String> args = const <String>[],
+    Map<String, String> env = const <String, String>{},
+    String? workingDirectory,
   }) async {
     final id = const Uuid().v4();
     final cfg = McpServerConfig(
@@ -366,6 +483,10 @@ class McpProvider extends ChangeNotifier {
       transport: transport,
       url: url.trim(),
       headers: headers,
+      command: command?.trim(),
+      args: args,
+      env: env,
+      workingDirectory: (workingDirectory?.trim().isNotEmpty ?? false) ? workingDirectory!.trim() : null,
     );
     _servers = [..._servers, cfg];
     _status[id] = McpStatus.idle;
@@ -456,15 +577,34 @@ class McpProvider extends ChangeNotifier {
       );
 
       final mergedHeaders = <String, String>{...server.headers};
-      final transportConfig = server.transport == McpTransportType.sse
-          ? mcp.TransportConfig.sse(
-        serverUrl: server.url,
-        headers: mergedHeaders.isEmpty ? null : mergedHeaders,
-      )
-          : mcp.TransportConfig.streamableHttp(
-        baseUrl: server.url,
-        headers: mergedHeaders.isEmpty ? null : mergedHeaders,
-      );
+      final transportConfig = () {
+        if (server.transport == McpTransportType.sse) {
+          return mcp.TransportConfig.sse(
+            serverUrl: server.url,
+            headers: mergedHeaders.isEmpty ? null : mergedHeaders,
+          );
+        } else if (server.transport == McpTransportType.http) {
+          return mcp.TransportConfig.streamableHttp(
+            baseUrl: server.url,
+            headers: mergedHeaders.isEmpty ? null : mergedHeaders,
+          );
+        } else {
+          // STDIO; only supported on desktop
+          if (!_isDesktopPlatform()) {
+            throw StateError('STDIO transport not supported on this platform');
+          }
+          final cmd = server.command;
+          if (cmd == null || cmd.isEmpty) {
+            throw StateError('STDIO command is empty');
+          }
+          return mcp.TransportConfig.stdio(
+            command: cmd,
+            arguments: server.args,
+            workingDirectory: server.workingDirectory,
+            environment: server.env.isEmpty ? null : server.env,
+          );
+        }
+      }();
 
       // debugPrint('[MCP/Connect] creating client (enableDebugLogging=true) ...');
       final clientResult = await mcp.McpClient.createAndConnect(
@@ -1038,5 +1178,12 @@ class McpProvider extends ChangeNotifier {
     }
     _heartbeats.clear();
     super.dispose();
+  }
+
+  bool _isDesktopPlatform() {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
   }
 }

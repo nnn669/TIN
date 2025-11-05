@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,11 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
   McpTransportType _transport = McpTransportType.http;
   final _urlCtrl = TextEditingController();
   final List<_HeaderEntry> _headers = [];
+  // STDIO fields (desktop only)
+  final _cmdCtrl = TextEditingController();
+  final _argsCtrl = TextEditingController(); // space-separated args
+  final _cwdCtrl = TextEditingController();
+  final List<_HeaderEntry> _env = [];
 
   @override
   void initState() {
@@ -56,6 +62,14 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       server.headers.forEach((k, v) {
         _headers.add(_HeaderEntry(TextEditingController(text: k), TextEditingController(text: v)));
       });
+      if (server.transport == McpTransportType.stdio) {
+        _cmdCtrl.text = server.command ?? '';
+        _argsCtrl.text = server.args.join(' ');
+        _cwdCtrl.text = server.workingDirectory ?? '';
+        server.env.forEach((k, v) {
+          _env.add(_HeaderEntry(TextEditingController(text: k), TextEditingController(text: v)));
+        });
+      }
     }
   }
 
@@ -65,6 +79,10 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     _nameCtrl.dispose();
     _urlCtrl.dispose();
     for (final h in _headers) { h.dispose(); }
+    _cmdCtrl.dispose();
+    _argsCtrl.dispose();
+    _cwdCtrl.dispose();
+    for (final e in _env) { e.dispose(); }
     super.dispose();
   }
 
@@ -72,17 +90,58 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     final l10n = AppLocalizations.of(context)!;
     final mcp = context.read<McpProvider>();
     final name = _nameCtrl.text.trim().isEmpty ? 'MCP' : _nameCtrl.text.trim();
-    final url = _urlCtrl.text.trim();
-    if (url.isEmpty) {
-      showAppSnackBar(context, message: l10n.mcpServerEditSheetUrlRequired, type: NotificationType.warning);
-      return;
-    }
     final headers = <String, String>{ for (final h in _headers) if (h.key.text.trim().isNotEmpty) h.key.text.trim(): h.value.text.trim() };
-    if (isEdit) {
-      final old = mcp.getById(widget.serverId!)!;
-      await mcp.updateServer(old.copyWith(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers));
+    if (_transport == McpTransportType.stdio) {
+      if (!_isDesktopPlatform()) {
+        showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpServerEditSheetStdioOnlyDesktop, type: NotificationType.warning);
+        return;
+      }
+      final cmd = _cmdCtrl.text.trim();
+      if (cmd.isEmpty) {
+        showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpServerEditSheetStdioCommandRequired, type: NotificationType.warning);
+        return;
+      }
+      final args = _parseArgs(_argsCtrl.text.trim());
+      final env = <String, String>{ for (final e in _env) if (e.key.text.trim().isNotEmpty) e.key.text.trim(): e.value.text.trim() };
+      final cwd = _cwdCtrl.text.trim();
+      if (isEdit) {
+        final old = mcp.getById(widget.serverId!)!;
+        final clearing = cwd.isEmpty;
+        await mcp.updateServer(old.copyWith(
+          enabled: _enabled,
+          name: name,
+          transport: McpTransportType.stdio,
+          url: '',
+          headers: const {},
+          command: cmd,
+          args: args,
+          env: env,
+          workingDirectory: clearing ? null : cwd,
+          clearWorkingDirectory: clearing,
+        ));
+      } else {
+        await mcp.addServer(
+          enabled: _enabled,
+          name: name,
+          transport: McpTransportType.stdio,
+          command: cmd,
+          args: args,
+          env: env,
+          workingDirectory: cwd.isEmpty ? null : cwd,
+        );
+      }
     } else {
-      await mcp.addServer(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers);
+      final url = _urlCtrl.text.trim();
+      if (url.isEmpty) {
+        showAppSnackBar(context, message: l10n.mcpServerEditSheetUrlRequired, type: NotificationType.warning);
+        return;
+      }
+      if (isEdit) {
+        final old = mcp.getById(widget.serverId!)!;
+        await mcp.updateServer(old.copyWith(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers));
+      } else {
+        await mcp.addServer(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers);
+      }
     }
     if (mounted) Navigator.of(context).maybePop();
   }
@@ -147,41 +206,65 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
         const SizedBox(height: 10),
         Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
         const SizedBox(height: 6),
-        _SegChoiceBar(
-          labels: const ['Streamable HTTP', 'SSE'],
-          selectedIndex: _transport == McpTransportType.http ? 0 : 1,
-          onSelected: (i) => setState(() => _transport = i == 0 ? McpTransportType.http : McpTransportType.sse),
-        ),
+        Builder(builder: (context) {
+          final isDesktop = _isDesktopPlatform();
+          final labels = isDesktop ? ['Streamable HTTP', 'SSE', l10n.mcpTransportOptionStdio] : ['Streamable HTTP', 'SSE'];
+          int selectedIdx;
+          if (_transport == McpTransportType.http) selectedIdx = 0;
+          else if (_transport == McpTransportType.sse) selectedIdx = 1;
+          else selectedIdx = isDesktop ? 2 : 0;
+          return _SegChoiceBar(
+            labels: labels,
+            selectedIndex: selectedIdx,
+            onSelected: (i) {
+              setState(() {
+                if (isDesktop && i == 2) {
+                  _transport = McpTransportType.stdio;
+                } else if (i == 0) {
+                  _transport = McpTransportType.http;
+                } else {
+                  _transport = McpTransportType.sse;
+                }
+              });
+            },
+          );
+        }),
         const SizedBox(height: 10),
         if (_transport == McpTransportType.sse)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
           ),
-        _labeledField(
-          label: l10n.mcpServerEditSheetUrlLabel,
-          controller: _urlCtrl,
-          hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000', bold: true,
-        ),
-        const SizedBox(height: 16),
-        Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Column(
-          children: [
-            for (int i = 0; i < _headers.length; i++) ...[
+        if (_transport != McpTransportType.stdio)
+          _labeledField(
+            label: l10n.mcpServerEditSheetUrlLabel,
+            controller: _urlCtrl,
+            hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000', bold: true,
+          ),
+        if (_transport == McpTransportType.stdio) ...[
+          _labeledField(label: l10n.mcpServerEditSheetStdioCommandLabel, controller: _cmdCtrl, hint: 'npx', bold: false),
+          const SizedBox(height: 10),
+          _labeledField(label: l10n.mcpServerEditSheetStdioArgumentsLabel, controller: _argsCtrl, hint: "-y @modelcontextprotocol/server-filesystem", bold: false),
+          const SizedBox(height: 10),
+          _labeledField(label: l10n.mcpServerEditSheetStdioWorkingDirectoryLabel, controller: _cwdCtrl, hint: '', bold: false),
+          const SizedBox(height: 16),
+          Text(l10n.mcpServerEditSheetStdioEnvironmentTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Column(children: [
+            for (int i = 0; i < _env.length; i++) ...[
               _card(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _labeledField(label: l10n.mcpServerEditSheetHeaderNameLabel, controller: _headers[i].key, hint: l10n.mcpServerEditSheetHeaderNameHint, bold: false),
+                    _labeledField(label: l10n.mcpServerEditSheetStdioEnvNameLabel, controller: _env[i].key, hint: 'ENV_NAME', bold: false),
                     const SizedBox(height: 10),
-                    _labeledField(label: l10n.mcpServerEditSheetHeaderValueLabel, controller: _headers[i].value, hint: l10n.mcpServerEditSheetHeaderValueHint, bold: false),
+                    _labeledField(label: l10n.mcpServerEditSheetStdioEnvValueLabel, controller: _env[i].value, hint: 'value', bold: false),
                     Align(
                       alignment: Alignment.centerRight,
                       child: _SmallIconBtn(
                         icon: lucide.Lucide.Trash2,
                         tooltip: l10n.mcpServerEditSheetRemoveHeaderTooltip,
-                        onTap: () => setState(() => _headers.removeAt(i)),
+                        onTap: () => setState(() => _env.removeAt(i)),
                       ),
                     ),
                   ],
@@ -192,7 +275,7 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 icon: const Icon(lucide.Lucide.Plus, size: 16),
-                label: Text(l10n.mcpServerEditSheetAddHeader),
+                label: Text(l10n.mcpServerEditSheetStdioAddEnv),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -206,11 +289,61 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                     return Colors.transparent;
                   }),
                 ),
-                onPressed: () => setState(() => _headers.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
+                onPressed: () => setState(() => _env.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
               ),
             ),
-          ],
-        ),
+          ]),
+        ],
+        const SizedBox(height: 16),
+        if (_transport != McpTransportType.stdio) ...[
+          Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Column(
+            children: [
+              for (int i = 0; i < _headers.length; i++) ...[
+                _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _labeledField(label: l10n.mcpServerEditSheetHeaderNameLabel, controller: _headers[i].key, hint: l10n.mcpServerEditSheetHeaderNameHint, bold: false),
+                      const SizedBox(height: 10),
+                      _labeledField(label: l10n.mcpServerEditSheetHeaderValueLabel, controller: _headers[i].value, hint: l10n.mcpServerEditSheetHeaderValueHint, bold: false),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _SmallIconBtn(
+                          icon: lucide.Lucide.Trash2,
+                          tooltip: l10n.mcpServerEditSheetRemoveHeaderTooltip,
+                          onTap: () => setState(() => _headers.removeAt(i)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  icon: const Icon(lucide.Lucide.Plus, size: 16),
+                  label: Text(l10n.mcpServerEditSheetAddHeader),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ).copyWith(
+                    splashFactory: NoSplash.splashFactory,
+                    overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+                    backgroundColor: MaterialStateProperty.resolveWith((states) {
+                      if (states.contains(MaterialState.hovered)) {
+                        return isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
+                      }
+                      return Colors.transparent;
+                    }),
+                  ),
+                  onPressed: () => setState(() => _headers.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
       ],
     );
@@ -279,6 +412,20 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
         const SizedBox(height: 8),
       ],
     );
+  }
+
+  bool _isDesktopPlatform() {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux;
+  }
+
+  List<String> _parseArgs(String text) {
+    if (text.isEmpty) return const <String>[];
+    // Simple whitespace split; users can provide quoted args as a single token for now.
+    // For advanced quoting, consider a shell-like parser later.
+    return text.split(RegExp(r"\s+")).where((e) => e.isNotEmpty).toList();
   }
 
   @override

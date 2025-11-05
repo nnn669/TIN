@@ -206,7 +206,18 @@ class _ServerCardState extends State<_ServerCard> {
       );
     }
 
-    final transportText = widget.transport == McpTransportType.sse ? 'SSE' : 'HTTP';
+    String transportText;
+    switch (widget.transport) {
+      case McpTransportType.sse:
+        transportText = 'SSE';
+        break;
+      case McpTransportType.http:
+        transportText = 'HTTP';
+        break;
+      case McpTransportType.stdio:
+        transportText = AppLocalizations.of(context)!.mcpTransportTagStdio;
+        break;
+    }
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -362,66 +373,70 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
 Future<void> _showErrorDetails(BuildContext context, {required String name, String? message}) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
-  await showModalBottomSheet<void>(
+  await showDialog<void>(
     context: context,
-    backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
+    barrierDismissible: true,
     builder: (ctx) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.mcpPageErrorDialogTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Text(name, style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+      return Dialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.mcpPageErrorDialogTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text(name, style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
+                        ],
+                      ),
+                    ),
+                    _SmallIconBtn(
+                      icon: lucide.Lucide.X,
+                      onTap: () => Navigator.of(ctx).maybePop(),
+                    ),
+                  ],
                 ),
-                child: Text(message?.isNotEmpty == true ? message! : l10n.mcpPageErrorNoDetails),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Builder(builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-                      final baseBg = isDark ? Colors.white10 : const Color(0xFFF2F3F5);
-                      return OutlinedButton.icon(
-                        onPressed: () => Navigator.of(ctx).maybePop(),
-                        icon: Icon(lucide.Lucide.X, size: 16, color: cs.primary),
-                        label: Text(l10n.mcpPageClose, style: TextStyle(color: cs.primary)),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
-                          backgroundColor: baseBg,
-                          side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ).copyWith(
-                          splashFactory: NoSplash.splashFactory,
-                          overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                          backgroundColor: MaterialStateProperty.resolveWith((states) {
-                            if (states.contains(MaterialState.hovered)) {
-                              return isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04);
-                            }
-                            return baseBg;
-                          }),
-                        ),
-                      );
-                    }),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
                   ),
-                ],
-              ),
-            ],
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      (message?.isNotEmpty == true ? message! : l10n.mcpPageErrorNoDetails),
+                      style: (Theme.of(ctx).textTheme.bodyMedium ?? const TextStyle())
+                          .copyWith(fontSize: 13.0, height: 1.35),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(ctx).maybePop(),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(l10n.mcpPageClose),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
