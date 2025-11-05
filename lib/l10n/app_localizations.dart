@@ -2651,6 +2651,12 @@ abstract class AppLocalizations {
   /// **'Search chat history'**
   String get sideDrawerSearchHint;
 
+  /// No description provided for @sideDrawerSearchAssistantsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search assistants'**
+  String get sideDrawerSearchAssistantsHint;
+
   /// No description provided for @sideDrawerUpdateTitle.
   ///
   /// In en, this message translates to:

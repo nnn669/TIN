@@ -212,6 +212,12 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     // Update check moved to app startup (main.dart)
     // Prepare desktop tabs controller (available when useDesktopTabs)
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _tabController!.addListener(_onDesktopTabChanged);
+  }
+
+  void _onDesktopTabChanged() {
+    if (!mounted) return;
+    setState(() {}); // update search hint when switching tabs
   }
 
   void _showChatMenu(BuildContext context, ChatItem chat, {Offset? anchor}) async {
@@ -479,6 +485,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     _closeTicker?.removeListener(_handleCloseTick);
     _searchController.dispose();
     _listController.dispose();
+    _tabController?.removeListener(_onDesktopTabChanged);
     _tabController?.dispose();
     super.dispose();
   }
@@ -691,16 +698,33 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                 children: [
                   // 1. 搜索框 + 历史按钮（固定头部）
                   if (_isDesktop)
-                    // 桌面端：搜索框拉满且与下方 Tab 对齐；历史按钮作为后缀放入输入框右侧
+                    // 桌面端
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Row(
-                        children: [
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 240),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                        child: Row(
+                          key: ValueKey<String>((() {
+                            final l10n = AppLocalizations.of(context)!;
+                            final hint = (_useTabs && (_tabController?.index ?? 0) == 0)
+                                ? l10n.sideDrawerSearchAssistantsHint
+                                : l10n.sideDrawerSearchHint;
+                            return hint;
+                          })()),
+                          children: [
                           Expanded(
                             child: TextField(
                               controller: _searchController,
                               decoration: InputDecoration(
-                                hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
+                                hintText: (() {
+                                  final l10n = AppLocalizations.of(context)!;
+                                  return (_useTabs && (_tabController?.index ?? 0) == 0)
+                                      ? l10n.sideDrawerSearchAssistantsHint
+                                      : l10n.sideDrawerSearchHint;
+                                })(),
                                 filled: true,
                                 fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
                                 isDense: true,
@@ -753,6 +777,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                             ),
                           ),
                         ],
+                      ),
                       ),
                     )
                   else

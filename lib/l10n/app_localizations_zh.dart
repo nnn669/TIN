@@ -1334,6 +1334,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sideDrawerSearchHint => '搜索聊天记录';
 
   @override
+  String get sideDrawerSearchAssistantsHint => '搜索助手';
+
+  @override
   String sideDrawerUpdateTitle(String version) {
     return '发现新版本：$version';
   }
@@ -4287,6 +4290,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sideDrawerSearchHint => '搜索聊天记录';
 
   @override
+  String get sideDrawerSearchAssistantsHint => '搜索助手';
+
+  @override
   String sideDrawerUpdateTitle(String version) {
     return '发现新版本：$version';
   }
@@ -7238,6 +7244,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get sideDrawerSearchHint => '搜尋聊天記錄';
+
+  @override
+  String get sideDrawerSearchAssistantsHint => '搜尋助理';
 
   @override
   String sideDrawerUpdateTitle(String version) {

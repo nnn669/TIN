@@ -587,6 +587,7 @@
   "sideDrawerDateShortPattern": "MMM d",
   "sideDrawerDateFullPattern": "MMM d, yyyy",
   "sideDrawerSearchHint": "Search chat history",
+  "sideDrawerSearchAssistantsHint": "Search assistants",
   "sideDrawerUpdateTitle": "New version: {version}",
   "@sideDrawerUpdateTitle": {
     "placeholders": {

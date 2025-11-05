@@ -445,6 +445,7 @@
   "sideDrawerDateShortPattern": "M月d日",
   "sideDrawerDateFullPattern": "yyyy年M月d日",
   "sideDrawerSearchHint": "搜索聊天记录",
+  "sideDrawerSearchAssistantsHint": "搜索助手",
   "sideDrawerUpdateTitle": "发现新版本：{version}",
   "sideDrawerUpdateTitleWithBuild": "发现新版本：{version} ({build})",
   "sideDrawerLinkCopied": "已复制下载链接",

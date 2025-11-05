@@ -1376,6 +1376,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sideDrawerSearchHint => 'Search chat history';
 
   @override
+  String get sideDrawerSearchAssistantsHint => 'Search assistants';
+
+  @override
   String sideDrawerUpdateTitle(String version) {
     return 'New version: $version';
   }
