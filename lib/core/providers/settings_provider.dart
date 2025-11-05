@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'package:socks5_proxy/socks_client.dart' as socks;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -412,7 +413,7 @@ class SettingsProvider extends ChangeNotifier {
       final portStr = _globalProxyPort.trim();
       final user = _globalProxyUsername.trim();
       final pass = _globalProxyPassword;
-      final type = _globalProxyType; // reserved for future SOCKS5
+      final type = _globalProxyType;
       final sig = [enabled, type, host, portStr, user, pass].join('|');
       if (_lastProxySignature == sig) return;
       _lastProxySignature = sig;
@@ -421,7 +422,11 @@ class SettingsProvider extends ChangeNotifier {
         return;
       }
       final port = int.tryParse(portStr) ?? 8080;
-      HttpOverrides.global = _ProxyHttpOverrides(host: host, port: port, username: user.isEmpty ? null : user, password: pass);
+      if (type == 'socks5') {
+        HttpOverrides.global = _SocksProxyHttpOverrides(host: host, port: port, username: user.isEmpty ? null : user, password: pass);
+      } else {
+        HttpOverrides.global = _ProxyHttpOverrides(host: host, port: port, username: user.isEmpty ? null : user, password: pass);
+      }
     } catch (_) {
       // ignore
     }
@@ -1427,6 +1432,25 @@ class _ProxyHttpOverrides extends HttpOverrides {
     if (username != null && username!.isNotEmpty) {
       client.addProxyCredentials(host, port, '', HttpClientBasicCredentials(username!, password ?? ''));
     }
+    return client;
+  }
+}
+class _SocksProxyHttpOverrides extends HttpOverrides {
+  final String host;
+  final int port;
+  final String? username;
+  final String? password;
+  _SocksProxyHttpOverrides({required this.host, required this.port, this.username, this.password});
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client = super.createHttpClient(context);
+    try {
+      final List<socks.ProxySettings> proxies = [
+        socks.ProxySettings(InternetAddress(host), port,
+            username: username, password: password),
+      ];
+      socks.SocksTCPClient.assignToHttpClient(client, proxies);
+    } catch (_) {}
     return client;
   }
 }

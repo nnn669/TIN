@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:socks5_proxy/socks_client.dart' as socks;
 import 'package:provider/provider.dart';
 import '../../shared/widgets/ios_switch.dart';
 
@@ -232,17 +233,24 @@ class _DesktopNetworkProxyPaneState extends State<DesktopNetworkProxyPane> {
     }
     setState(() { _testing = true; _testOk = null; _testError = null; });
     try {
-      if (_type == 'socks5') {
-        throw UnsupportedError('SOCKS5 not supported');
-      }
       final host = _hostCtl.text.trim();
       final port = int.tryParse(_portCtl.text.trim()) ?? 8080;
       final user = _userCtl.text.trim();
       final pass = _passCtl.text;
       final io = HttpClient();
-      io.findProxy = (_) => 'PROXY $host:$port';
-      if (user.isNotEmpty) {
-        io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
+      if (_type == 'socks5') {
+        try {
+          final proxies = <socks.ProxySettings>[
+            socks.ProxySettings(InternetAddress(host), port,
+                username: user.isNotEmpty ? user : null, password: pass),
+          ];
+          socks.SocksTCPClient.assignToHttpClient(io, proxies);
+        } catch (_) {}
+      } else {
+        io.findProxy = (_) => 'PROXY $host:$port';
+        if (user.isNotEmpty) {
+          io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
+        }
       }
       final client = IOClient(io);
       final uri = Uri.parse(url);

@@ -46,7 +46,8 @@ dependencies:
   shared_preferences: ^2.2.3
   image_picker: 1.1.2
   flutter_svg: ^2.2.1
-  http: ^1.2.1
+  http: ^1.5.0
+  socks5_proxy: ^2.1.1
   jose: ^0.3.4
   reorderable_grid_view: ^2.2.8
   flutter_slidable: ^3.0.1
