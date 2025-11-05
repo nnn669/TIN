@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../../shared/responsive/breakpoints.dart';
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'dart:io';
 import '../../../core/models/chat_input_data.dart';
@@ -20,6 +21,7 @@ import '../../../core/services/search/search_service.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/app_directories.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 class ChatInputBarController {
   _ChatInputBarState? _state;
@@ -292,7 +294,139 @@ class _ChatInputBarState extends State<ChatInputBar> {
   }
 
   Future<void> _handlePasteFromClipboard() async {
-    // 1) Try images via platform channel (temp files created by platform)
+    // 1) Prefer reading via super_clipboard for better Windows support
+    try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard != null) {
+        final reader = await clipboard.read();
+
+        // Helper: read bytes for a given file format from DataReader (ClipboardReader or item)
+        Future<Uint8List?> _readFileBytes(DataReader dataReader, FileFormat format) async {
+          try {
+            final completer = Completer<Uint8List?>();
+            final progress = dataReader.getFile(
+              format,
+              (file) async {
+                try {
+                  final bytes = await file.readAll();
+                  if (!completer.isCompleted) completer.complete(bytes);
+                } catch (e) {
+                  if (!completer.isCompleted) completer.completeError(e);
+                }
+              },
+              onError: (e) {
+                if (!completer.isCompleted) completer.completeError(e);
+              },
+            );
+            if (progress == null) {
+              if (!completer.isCompleted) completer.complete(null);
+            }
+            return await completer.future;
+          } catch (_) {
+            return null;
+          }
+        }
+
+        // Helper: persist bytes as a file under upload directory
+        Future<String?> _saveImageBytes(String format, Uint8List bytes) async {
+          try {
+            final dir = await AppDirectories.getUploadDirectory();
+            if (!await dir.exists()) {
+              await dir.create(recursive: true);
+            }
+            final ts = DateTime.now().millisecondsSinceEpoch;
+            final ext = format.toLowerCase();
+            String name = 'paste_${ts}.${ext == 'jpeg' ? 'jpg' : ext}';
+            String destPath = p.join(dir.path, name);
+            if (await File(destPath).exists()) {
+              name = 'paste_${ts}_${DateTime.now().microsecondsSinceEpoch}.${ext == 'jpeg' ? 'jpg' : ext}';
+              destPath = p.join(dir.path, name);
+            }
+            await File(destPath).writeAsBytes(bytes, flush: true);
+            return destPath;
+          } catch (_) {
+            return null;
+          }
+        }
+
+        // Try aggregated formats in priority: png > jpeg > gif > webp
+        Uint8List? bytes;
+        String? fmt;
+        if (reader.canProvide(Formats.png)) {
+          bytes = await _readFileBytes(reader, Formats.png);
+          fmt = 'png';
+        }
+        bytes ??= reader.canProvide(Formats.jpeg) ? await _readFileBytes(reader, Formats.jpeg) : null;
+        fmt = (bytes != null && fmt == null) ? 'jpeg' : fmt;
+        if (bytes == null && reader.canProvide(Formats.gif)) {
+          bytes = await _readFileBytes(reader, Formats.gif);
+          fmt = 'gif';
+        }
+        if (bytes == null && reader.canProvide(Formats.webp)) {
+          bytes = await _readFileBytes(reader, Formats.webp);
+          fmt = 'webp';
+        }
+
+        if (bytes == null) {
+          // Try per-item formats
+          for (final item in reader.items) {
+            if (bytes == null && item.canProvide(Formats.png)) {
+              bytes = await _readFileBytes(item, Formats.png);
+              fmt = 'png';
+            }
+            if (bytes == null && item.canProvide(Formats.jpeg)) {
+              bytes = await _readFileBytes(item, Formats.jpeg);
+              fmt = 'jpeg';
+            }
+            if (bytes == null && item.canProvide(Formats.gif)) {
+              bytes = await _readFileBytes(item, Formats.gif);
+              fmt = 'gif';
+            }
+            if (bytes == null && item.canProvide(Formats.webp)) {
+              bytes = await _readFileBytes(item, Formats.webp);
+              fmt = 'webp';
+            }
+            if (bytes != null) break;
+          }
+        }
+
+        if (bytes != null && bytes.isNotEmpty && fmt != null) {
+          final savedPath = await _saveImageBytes(fmt, bytes);
+          if (savedPath != null) {
+            _addImages([savedPath]);
+            return;
+          }
+        }
+
+        // If clipboard has plain text via super_clipboard, paste it
+        if (reader.canProvide(Formats.plainText)) {
+          try {
+            final String? text = await reader.readValue(Formats.plainText);
+            if (text != null && text.isNotEmpty) {
+              final value = _controller.value;
+              final sel = value.selection;
+              if (!sel.isValid) {
+                _controller.text = value.text + text;
+                _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+              } else {
+                final start = sel.start;
+                final end = sel.end;
+                final newText = value.text.replaceRange(start, end, text);
+                _controller.value = value.copyWith(
+                  text: newText,
+                  selection: TextSelection.collapsed(offset: start + text.length),
+                  composing: TextRange.empty,
+                );
+              }
+              setState(() {});
+              return;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    // 2) Fallback: legacy platform channel image handling
     final imageTempPaths = await ClipboardImages.getImagePaths();
     if (imageTempPaths.isNotEmpty) {
       final persisted = await _persistClipboardImages(imageTempPaths);
@@ -302,7 +436,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
       return;
     }
 
-    // 2) Try files via platform channel on desktop (Finder/Explorer copies)
+    // 3) Try files via platform channel on desktop (Finder/Explorer copies)
     bool handledFiles = false;
     try {
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
@@ -317,7 +451,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     } catch (_) {}
     if (handledFiles) return;
 
-    // 3) Fallback: paste text
+    // 4) Last resort: paste text via Flutter Clipboard API
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text ?? '';

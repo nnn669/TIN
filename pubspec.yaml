@@ -82,6 +82,7 @@ dependencies:
   haptic_feedback: ^0.5.1+1
   system_fonts: ^1.0.1
   google_fonts: ^6.3.2
+  super_clipboard: ^0.9.1
   flutter_tts:
     path: ./dependencies/flutter_tts
 
