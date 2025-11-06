@@ -640,7 +640,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                     if (settings.enableUserMarkdown) {
                       content = DefaultTextStyle.merge(
                         style: TextStyle(fontSize: baseUser, height: 1.45),
-                        child: MarkdownWithCodeHighlight(text: parsed.text),
+                        child: MarkdownWithCodeHighlight(
+                          text: parsed.text,
+                          baseStyle: TextStyle(fontSize: baseUser, height: 1.45),
+                        ),
                       );
                     } else {
                       content = Text(
@@ -1244,6 +1247,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                       child: MarkdownWithCodeHighlight(
                         text: contentWithoutThink,
                         onCitationTap: (id) => _handleCitationTap(id),
+                        baseStyle: TextStyle(fontSize: baseAssistant, height: 1.5),
                       ),
                     ),
                   );
@@ -1345,6 +1349,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                       child: MarkdownWithCodeHighlight(
                                         text: widget.message.translation!,
                                         onCitationTap: (id) => _handleCitationTap(id),
+                                        baseStyle: TextStyle(fontSize: baseTranslation, height: 1.4),
                                       ),
                                     );
                                   }),

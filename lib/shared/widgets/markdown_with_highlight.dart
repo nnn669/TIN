@@ -9,6 +9,7 @@ import 'package:flutter_highlight/themes/atom-one-dark-reasonable.dart';
 import '../../icons/lucide_adapter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:convert';
 import '../../utils/sandbox_path_resolver.dart';
 import '../../features/chat/pages/image_viewer_page.dart';
@@ -34,6 +35,12 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
   final String text;
   final void Function(String id)? onCitationTap;
   final TextStyle? baseStyle; // optional override for base markdown text style
+
+  // Tunable: list scaling compensation exponent.
+  // When chat scale s != 1.0, lists often feel slightly off compared to body.
+  // We apply s^(1-k) instead of s to the list rows to gently normalize.
+  // Increase k if lists still look larger at small scales; decrease if too small at large scales.
+  static const double kMarkdownListScaleCompensation = 0.84;
 
   @override
   Widget build(BuildContext context) {
@@ -214,30 +221,69 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
             decoration: TextDecoration.none,
           ),
           textAlign: TextAlign.start,
-          textScaler: MediaQuery.of(ctx).textScaler,
-          textHeightBehavior: const TextHeightBehavior(
-            applyHeightToFirstAscent: false,
-            applyHeightToLastDescent: false,
-          ),
         );
       },
       orderedListBuilder: (ctx, no, child, cfg) {
         final style = (cfg.style ?? const TextStyle()).copyWith(
-          fontWeight: FontWeight.w400, // normal weight
+          fontWeight: FontWeight.w400,
         );
-        return Directionality(
-          textDirection: cfg.textDirection,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            textBaseline: TextBaseline.alphabetic,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            children: [
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 6, end: 6),
-                child: Text("$no.", style: style),
-              ),
-              Flexible(child: child),
-            ],
+        // Apply a soft compensation so when chat scale != 100%,
+        // list items don't visually feel larger/smaller than body text.
+        final double kListComp = MarkdownWithCodeHighlight.kMarkdownListScaleCompensation;
+        final double s = MediaQuery.of(ctx).textScaleFactor;
+        final double comp = math.pow(s == 0 ? 1.0 : s, -kListComp).toDouble();
+        final double newScale = (s * comp).clamp(0.5, 3.0);
+        return MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(textScaleFactor: newScale),
+          child: Directionality(
+            textDirection: cfg.textDirection,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              children: [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 6, end: 6),
+                  child: Text(
+                    "$no.",
+                    style: style,
+                  ),
+                ),
+                // Keep child as-is so it inherits context MediaQuery scaling once
+                Flexible(child: child),
+              ],
+            ),
+          ),
+        );
+      },
+      // Note: property name is unOrderedListBuilder (camel-cased with capital O)
+      // Signature in gpt_markdown 1.1.4: (BuildContext ctx, Widget child, GptMarkdownConfig cfg) -> Widget
+      // We compose the bullet + content here to control scaling/spacing.
+      unOrderedListBuilder: (ctx, child, cfg) {
+        final style = (cfg.style ?? const TextStyle()).copyWith(
+          fontWeight: FontWeight.w400,
+        );
+        final double kListComp = MarkdownWithCodeHighlight.kMarkdownListScaleCompensation;
+        final double s = MediaQuery.of(ctx).textScaleFactor;
+        final double comp = math.pow(s == 0 ? 1.0 : s, -kListComp).toDouble();
+        final double newScale = (s * comp).clamp(0.5, 3.0);
+        return MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(textScaleFactor: newScale),
+          child: Directionality(
+            textDirection: cfg.textDirection,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              children: [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 6, end: 6),
+                  child: Text('•', style: style),
+                ),
+                // Keep child untouched to follow context scaling exactly once
+                Flexible(child: child),
+              ],
+            ),
           ),
         );
       },
@@ -279,13 +325,11 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   ? SelectableText.rich(
                       TextSpan(style: header ? headerStyle : style, children: children),
                       textAlign: align,
-                      textScaler: MediaQuery.of(ctx).textScaler,
                       maxLines: null,
                     )
                   : RichText(
                       text: TextSpan(style: header ? headerStyle : style, children: children),
                       textAlign: align,
-                      textScaler: MediaQuery.of(ctx).textScaler,
                       softWrap: true,
                       maxLines: null,
                       overflow: TextOverflow.visible,
@@ -1544,36 +1588,40 @@ class LabelValueLineMd extends InlineMd {
   bool get inline => false;
 
   @override
-  // Match either "**标签:** 值" (冒号在加粗内) 或 "**标签**: 值"（冒号在加粗外），支持全角/半角冒号
-  RegExp get exp => RegExp(r"(?:(?:^|\n)\*\*([^*]+?)\*\*\s*:\s*.+$)", multiLine: true);
+  // 同时匹配两种写法：
+  // 1) **标签:** 值   （冒号在加粗内）
+  // 2) **标签**: 值   （冒号在加粗外）
+  // 支持半角/全角冒号
+  RegExp get exp => RegExp(
+        r"(?:(?:^|\n)\*\*([^*]+?)\*\*\s*[：:]?\s+(.+)$)",
+        multiLine: true,
+      );
 
   @override
   InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
     final match = exp.firstMatch(text);
     if (match == null) return TextSpan(text: text, style: config.style);
-    final label = (match.group(1) ?? '').trim();
-    // Note: list item markers are stripped by the list renderer before
-    // this runs, so a list line like "- **Label**: value [citation](1:abc)"
-    // becomes "**Label**: value [citation](1:abc)", which we intentionally
-    // match here.
+
+    // 提取并规范化标签与值
+    var rawLabel = (match.group(1) ?? '').trim();
+    final value = (match.group(2) ?? '').trim();
+    // 如果标签末尾自带冒号，去掉以避免重复
+    rawLabel = rawLabel.replaceFirst(RegExp(r"[：:]+$"), '');
 
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    // Inherit base markdown style (letterSpacing/height) to keep visual consistency
+    // 继承基础样式，确保字间距/行高一致
     final base = (config.style ?? t.bodyMedium ?? const TextStyle(fontSize: 14));
     final labelStyle = base.copyWith(
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w700, // 与 ** 加粗视觉一致
       color: cs.onSurface,
     );
     final valueStyle = base.copyWith(
       fontWeight: FontWeight.w400,
       color: cs.onSurface.withOpacity(0.92),
     );
-       // Split into label/value while preserving the rest of the line
-    final colonIndex = text.indexOf(':');
-    final prefix = text.substring(0, colonIndex + 1);
-    final value = text.substring(colonIndex + 1).trim();
-    // Parse the value part as markdown so links/citations render correctly
+
+    // 将值部分继续按 markdown 解析，保证链接/引用等语法正常
     final valueChildren = MarkdownComponent.generate(
       context,
       value,
@@ -1581,22 +1629,14 @@ class LabelValueLineMd extends InlineMd {
       true,
     );
 
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: RichText(
-          text: TextSpan(children: [
-            TextSpan(text: prefix.replaceAll('**', ''), style: labelStyle),
-            const TextSpan(text: ' '),
-            ...valueChildren,
-          ]),
-          textScaler: MediaQuery.of(context).textScaler,
-        ),
-      ),
-    );
+    // 返回 TextSpan（而非 WidgetSpan）以保证在外层 RichText/SelectionArea 中可选择复制
+    return TextSpan(children: [
+      TextSpan(text: rawLabel, style: labelStyle),
+      const TextSpan(text: '： '),
+      ...valueChildren,
+    ]);
   }
+
 }
 
 // Modern, app-styled block quote with soft background and accent border
