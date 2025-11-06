@@ -222,6 +222,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
   final DraggableScrollableController _sheetCtrl = DraggableScrollableController();
   static const double _initialSize = 0.8;
   static const double _maxSize = 0.8;
+  String _lastQuery = '';
   // ScrollablePositionedList controllers
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
@@ -357,6 +358,14 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
   }
 
   Future<void> _jumpToCurrentSelection() async {
+    // If user has entered a search query, decouple from previous selection
+    // and jump to the first matching provider group instead.
+    final currentQuery = _search.text.trim();
+    if (currentQuery.isNotEmpty) {
+      await _scrollToFirstSearchGroup(initial: true);
+      return;
+    }
+
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
     
@@ -414,6 +423,46 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
         });
       }
     }
+  }
+
+  // Scroll to the first matching provider group when searching.
+  Future<void> _scrollToFirstSearchGroup({bool initial = false}) async {
+    // Expand a bit for better context
+    await _expandSheetIfNeeded(_initialSize.clamp(0.0, _maxSize), duration: const Duration(milliseconds: 200));
+
+    if (!_itemScrollController.isAttached) {
+      Future.delayed(const Duration(milliseconds: 60), () {
+        if (mounted) {
+          _scrollToFirstSearchGroup(initial: initial);
+        }
+      });
+      return;
+    }
+
+    int? targetIndex;
+    // Prefer favorites section when it exists in current filtered rows
+    targetIndex = _headerIndexMap['__fav__'];
+    // Otherwise, use the first provider section (per ordered keys) that exists in current rows
+    if (targetIndex == null) {
+      for (final pk in _orderedKeys) {
+        final idx = _headerIndexMap[pk];
+        if (idx != null) {
+          targetIndex = idx;
+          break;
+        }
+      }
+    }
+
+    if (targetIndex == null) return;
+
+    try {
+      await _itemScrollController.scrollTo(
+        index: targetIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+      if (initial) _autoScrolled = true;
+    } catch (_) {}
   }
 
   @override
@@ -478,7 +527,18 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
                         child: TextField(
                           controller: _search,
                           enabled: !_isLoading,
-                          onChanged: (_) => setState(() {}),
+                          onChanged: (_) {
+                            final q = _search.text.trim();
+                            final enteringSearch = _lastQuery.isEmpty && q.isNotEmpty;
+                            setState(() {});
+                            if (enteringSearch) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                                if (!mounted) return;
+                                await _scrollToFirstSearchGroup();
+                              });
+                            }
+                            _lastQuery = q;
+                          },
                           // Ensure high-contrast input text in both themes
                           style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
                           cursorColor: cs.primary,
@@ -788,13 +848,6 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
   Future<void> _jumpToProvider(String pk) async {
     // Expand sheet first if needed
     await _expandSheetIfNeeded(_maxSize);
-
-    // Clear search if needed to ensure provider is visible
-    if (_search.text.isNotEmpty) {
-      setState(() => _search.clear());
-      // Wait for the widget tree to rebuild and all widgets to be rendered
-      await Future.delayed(const Duration(milliseconds: 150));
-    }
 
     // Use precise index jump via ScrollablePositionedList
     final idx = _headerIndexMap[pk];
