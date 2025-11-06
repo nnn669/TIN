@@ -2639,6 +2639,18 @@ class _AssistantInlineTileState extends State<_AssistantInlineTile> {
                 style: TextStyle(fontSize: _isDesktop ? 14 : 15, fontWeight: FontWeight.w600, color: widget.textColor),
               ),
             ),
+            if (!_isDesktop) ...[
+              const SizedBox(width: 8),
+              IosIconButton(
+                icon: Lucide.Pencil,
+                size: 18,
+                color: cs.onSurface,
+                padding: const EdgeInsets.all(8),
+                minSize: 36,
+                onTap: widget.onEditTap,
+                semanticLabel: 'Edit assistant',
+              ),
+            ],
           ],
         ),
       ),
