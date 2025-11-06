@@ -69,7 +69,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     final rbIdx = components.indexWhere((c) => c is RadioButtonMd);
     if (rbIdx != -1) components[rbIdx] = ModernRadioMd();
     // Prepend custom renderers in priority order (fence first)
-    components.insert(0, LabelValueLineMd());
+    // Temporarily disable custom bold label line transformer to avoid
+    // interfering with block parsing for complex documents.
+    // components.insert(0, LabelValueLineMd());
     // Ensure backslash-escaped punctuation renders literally (e.g., \*, \`, \[)
     // Must run before emphasis/links/code parsing to neutralize markers.
     components.insert(0, BackslashEscapeMd());
@@ -87,7 +89,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       }
     }
     components.insert(0, AtxHeadingMd());
-    components.insert(0, FencedCodeBlockMd());
+    // components.insert(0, FencedCodeBlockMd());
+    // codeBuilder handles rendering. A custom BlockMd for fences can
+    // interfere with block segmentation in some cases.
     // Resolve user preferred code font family (default to monospace)
     String resolveCodeFont() {
       final fam = settings.codeFontFamily;
@@ -1585,6 +1589,8 @@ class SetextHeadingMd extends BlockMd {
 // Label-value strong lines like "**作者:** 张三" should not render as heading-sized text
 class LabelValueLineMd extends InlineMd {
   @override
+  // Treat this as an inline transform so it only affects the matched
+  // line segment and does not interfere with block parsing.
   bool get inline => false;
 
   @override
