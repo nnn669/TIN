@@ -11,6 +11,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   screen_retriever_linux
   super_native_extensions
   url_launcher_linux
+  webview_all_cef
   window_manager
 )
 

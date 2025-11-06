@@ -12,6 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   share_plus
   super_native_extensions
   url_launcher_windows
+  webview_windows
   window_manager
 )
 
