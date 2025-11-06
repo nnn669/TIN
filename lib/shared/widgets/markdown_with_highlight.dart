@@ -124,7 +124,11 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     }
     final appFontFamily = resolveAppFont();
 
+    // Force rebuild of the markdown when key theme colors change to avoid stale styles
     final markdownWidget = GptMarkdown(
+      key: ValueKey(
+        '${Theme.of(context).brightness.index}-${cs.surface.value}-${cs.onSurface.value}-${cs.primary.value}-${cs.outlineVariant.value}',
+      ),
       normalized,
       style: baseTextStyle,
       followLinkColor: true,
@@ -295,8 +299,20 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final cs = Theme.of(ctx).colorScheme;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.22 : 0.28);
-        final headerBg = cs.primary.withOpacity(isDark ? 0.10 : 0.08);
-        final headerStyle = (style).copyWith(fontWeight: FontWeight.w600);
+        // Blend header background with surface so it matches current theme tone
+        final headerBg = Color.alphaBlend(
+          cs.primary.withOpacity(isDark ? 0.14 : 0.08),
+          cs.surface,
+        );
+        final headerStyle = (style).copyWith(
+          fontWeight: FontWeight.w600,
+          // Ensure header text adapts to theme changes
+          color: cs.onSurface,
+        );
+        final cellStyle = (style).copyWith(
+          // Ensure cell text adapts to theme changes
+          color: cs.onSurface,
+        );
 
         // Count max columns to pad missing cells
         int maxCol = 0;
@@ -310,7 +326,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         // Common cell builder
         Widget cell(String text, TextAlign align, {bool header = false, bool lastCol = false, bool lastRow = false}) {
           // Render inline markdown (bold, code, links) inside table cells
-          final innerCfg = cfg.copyWith(style: header ? headerStyle : style);
+          final innerCfg = cfg.copyWith(style: header ? headerStyle : cellStyle);
           final children = MarkdownComponent.generate(ctx, text, innerCfg, true);
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -327,12 +343,12 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
               }(),
               child: isDesktop
                   ? SelectableText.rich(
-                      TextSpan(style: header ? headerStyle : style, children: children),
+                      TextSpan(style: header ? headerStyle : cellStyle, children: children),
                       textAlign: align,
                       maxLines: null,
                     )
                   : RichText(
-                      text: TextSpan(style: header ? headerStyle : style, children: children),
+                      text: TextSpan(style: header ? headerStyle : cellStyle, children: children),
                       textAlign: align,
                       softWrap: true,
                       maxLines: null,
@@ -388,7 +404,11 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                     border: Border.all(color: borderColor, width: 0.8),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: table,
+                  child: DefaultTextStyle.merge(
+                    // Ensure any nested spans fallback to current onSurface instead of stale defaults
+                    style: TextStyle(color: cs.onSurface),
+                    child: table,
+                  ),
                 ),
               ),
             ),
@@ -446,7 +466,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                     border: Border.all(color: borderColor, width: 0.8),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: table,
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(color: cs.onSurface),
+                    child: table,
+                  ),
                 ),
               );
             },
@@ -455,13 +478,15 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       // Inline `code` styling via highlightBuilder in gpt_markdown
       highlightBuilder: (ctx, inline, style) {
         String softened = _softBreakInline(inline);
-        final bg = isDark ? Colors.white12 : const Color(0xFFF1F3F5);
+        final bool isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
+        final csCtx = Theme.of(ctx).colorScheme;
+        final bg = isDarkCtx ? Colors.white12 : const Color(0xFFF1F3F5);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: cs.outlineVariant.withOpacity(0.22)),
+            border: Border.all(color: csCtx.outlineVariant.withOpacity(0.22)),
           ),
           child: Text(
             softened,
@@ -469,7 +494,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
               fontFamily: codeFontFamily,
               fontSize: 13,
               height: 1.4,
-            ).copyWith(color: Theme.of(context).colorScheme.onSurface),
+            ).copyWith(color: csCtx.onSurface),
             softWrap: true,
             overflow: TextOverflow.visible,
           ),
