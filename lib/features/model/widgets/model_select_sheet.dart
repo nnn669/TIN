@@ -662,7 +662,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
 
     return Padding(
       // SafeArea already applies bottom inset; avoid doubling it here.
-      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 10),
+      padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: providerTabs),
