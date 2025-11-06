@@ -3819,8 +3819,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           );
                           final gid = (message.groupId ?? message.id);
                           final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()..sort((a,b)=>a.version.compareTo(b.version));
-                          final selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
+                          int selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
                           final total = vers.length;
+                          if (selectedIdx < 0) selectedIdx = 0;
+                          if (total > 0 && selectedIdx > total - 1) selectedIdx = total - 1;
                           final showMsgNav = context.watch<SettingsProvider>().showMessageNavButtons;
                           final effectiveTotal = showMsgNav ? total : 1;
                           final effectiveIndex = showMsgNav ? selectedIdx : 0;
@@ -3976,13 +3978,37 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     );
                                     if (confirm == true) {
                                       final id = message.id;
+                                      final gid = (message.groupId ?? message.id);
+                                      // Compute selection adjustment before removal
+                                      final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                      final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                      final delIndex = versBefore.indexWhere((m) => m.id == id);
                                       setState(() {
                                         _messages.removeWhere((m) => m.id == id);
                                         _reasoning.remove(id);
                                         _translations.remove(id);
                                         _toolParts.remove(id);
                                         _reasoningSegments.remove(id);
+                                        // Adjust selected version index for this group
+                                        final newTotal = versBefore.length - 1;
+                                        if (newTotal <= 0) {
+                                          _versionSelections.remove(gid);
+                                        } else {
+                                          int newSel = oldSel;
+                                          if (delIndex >= 0) {
+                                            if (delIndex < oldSel) newSel = oldSel - 1;
+                                            else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                          }
+                                          if (newSel < 0) newSel = 0;
+                                          if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                          _versionSelections[gid] = newSel;
+                                        }
                                       });
+                                      // Persist updated selection if group still exists
+                                      final sel = _versionSelections[gid];
+                                      if (sel != null && _currentConversation != null) {
+                                        try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                      }
                                       await _chatService.deleteMessage(id);
                                     }
                                   } : null,
@@ -4010,13 +4036,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   );
                                   if (confirm == true) {
                                     final id = message.id;
+                                    final gid = (message.groupId ?? message.id);
+                                    final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                    final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                    final delIndex = versBefore.indexWhere((m) => m.id == id);
                                     setState(() {
                                       _messages.removeWhere((m) => m.id == id);
                                       _reasoning.remove(id);
                                       _translations.remove(id);
                                       _toolParts.remove(id);
                                       _reasoningSegments.remove(id);
+                                      final newTotal = versBefore.length - 1;
+                                      if (newTotal <= 0) {
+                                        _versionSelections.remove(gid);
+                                      } else {
+                                        int newSel = oldSel;
+                                        if (delIndex >= 0) {
+                                          if (delIndex < oldSel) newSel = oldSel - 1;
+                                          else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                        }
+                                        if (newSel < 0) newSel = 0;
+                                        if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                        _versionSelections[gid] = newSel;
+                                      }
                                     });
+                                    final sel = _versionSelections[gid];
+                                    if (sel != null && _currentConversation != null) {
+                                      try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                    }
                                     await _chatService.deleteMessage(id);
                                   }
                                 } else if (action == MessageMoreAction.edit) {
@@ -4836,8 +4883,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       );
                                       final gid = (message.groupId ?? message.id);
                                       final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()..sort((a,b)=>a.version.compareTo(b.version));
-                                      final selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
+                                      int selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
                                       final total = vers.length;
+                                      if (selectedIdx < 0) selectedIdx = 0;
+                                      if (total > 0 && selectedIdx > total - 1) selectedIdx = total - 1;
                                       final showMsgNav = context.watch<SettingsProvider>().showMessageNavButtons;
                                       final effectiveTotal = showMsgNav ? total : 1;
                                       final effectiveIndex = showMsgNav ? selectedIdx : 0;
@@ -4990,13 +5039,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                             );
                                                             if (confirm == true) {
                                                               final id = message.id;
+                                                              final gid = (message.groupId ?? message.id);
+                                                              final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                                              final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                                              final delIndex = versBefore.indexWhere((m) => m.id == id);
                                                               setState(() {
                                                                 _messages.removeWhere((m) => m.id == id);
                                                                 _reasoning.remove(id);
                                                                 _translations.remove(id);
                                                                 _toolParts.remove(id);
                                                                 _reasoningSegments.remove(id);
+                                                                final newTotal = versBefore.length - 1;
+                                                                if (newTotal <= 0) {
+                                                                  _versionSelections.remove(gid);
+                                                                } else {
+                                                                  int newSel = oldSel;
+                                                                  if (delIndex >= 0) {
+                                                                    if (delIndex < oldSel) newSel = oldSel - 1;
+                                                                    else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                                                  }
+                                                                  if (newSel < 0) newSel = 0;
+                                                                  if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                                                  _versionSelections[gid] = newSel;
+                                                                }
                                                               });
+                                                              final sel = _versionSelections[gid];
+                                                              if (sel != null && _currentConversation != null) {
+                                                                try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                                              }
                                                               await _chatService.deleteMessage(id);
                                                             }
                                                           }
@@ -5019,13 +5089,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                         );
                                                         if (confirm == true) {
                                                           final id = message.id;
+                                                          final gid = (message.groupId ?? message.id);
+                                                          final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                                          final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                                          final delIndex = versBefore.indexWhere((m) => m.id == id);
                                                           setState(() {
                                                             _messages.removeWhere((m) => m.id == id);
                                                             _reasoning.remove(id);
                                                             _translations.remove(id);
                                                             _toolParts.remove(id);
                                                             _reasoningSegments.remove(id);
+                                                            final newTotal = versBefore.length - 1;
+                                                            if (newTotal <= 0) {
+                                                              _versionSelections.remove(gid);
+                                                            } else {
+                                                              int newSel = oldSel;
+                                                              if (delIndex >= 0) {
+                                                                if (delIndex < oldSel) newSel = oldSel - 1;
+                                                                else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                                              }
+                                                              if (newSel < 0) newSel = 0;
+                                                              if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                                              _versionSelections[gid] = newSel;
+                                                            }
                                                           });
+                                                          final sel = _versionSelections[gid];
+                                                          if (sel != null && _currentConversation != null) {
+                                                            try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                                          }
                                                           await _chatService.deleteMessage(id);
                                                         }
                                                       } else if (action == MessageMoreAction.edit) {
