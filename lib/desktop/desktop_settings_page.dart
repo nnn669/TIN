@@ -3974,7 +3974,7 @@ class _BackgroundStyleDropdownState extends State<_BackgroundStyleDropdown> {
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-            constraints: const BoxConstraints(minWidth: 90, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 100, minHeight: 34),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF141414) : Colors.white,
               borderRadius: BorderRadius.circular(10),
