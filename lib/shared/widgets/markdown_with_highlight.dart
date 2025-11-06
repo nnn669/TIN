@@ -922,7 +922,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                         scrollDirection: Axis.horizontal,
                         primary: false,
                         child: HighlightView(
-                          widget.code,
+                          _trimTrailingNewlines(widget.code),
                           language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
                             isDark ? atomOneDarkReasonableTheme : githubTheme,
@@ -942,6 +942,21 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
           ],
       ),
     );
+  }
+
+  // Remove trailing newlines to avoid rendering an extra empty line at the bottom
+  String _trimTrailingNewlines(String s) {
+    if (s.isEmpty) return s;
+    int end = s.length;
+    while (end > 0) {
+      final ch = s.codeUnitAt(end - 1);
+      if (ch == 0x0A /* \n */ || ch == 0x0D /* \r */) {
+        end--;
+        continue;
+      }
+      break;
+    }
+    return end == s.length ? s : s.substring(0, end);
   }
 }
 
