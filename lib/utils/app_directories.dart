@@ -4,21 +4,26 @@ import 'package:path_provider/path_provider.dart';
 
 /// Platform-specific application data directory utilities.
 ///
-/// On Windows: Uses AppData/Local for all application data
-/// On other platforms: Uses Documents directory (existing behavior)
+/// - Windows/macOS/Linux: use the Application Support (app data) directory
+///   provided by `path_provider`.
+/// - Android/iOS: keep using the Application Documents directory.
 class AppDirectories {
   AppDirectories._();
 
   /// Gets the root directory for application data storage.
   ///
-  /// - Windows: AppData\Local\Kelivo
-  /// - Other platforms: Documents directory
+  /// - Windows/macOS/Linux: Application Support directory
+  /// - Android/iOS: Application Documents directory
   static Future<Directory> getAppDataDirectory() async {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      final appSupport = await getApplicationSupportDirectory();
-      return appSupport;
-    } else {
-      return await getApplicationDocumentsDirectory();
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.windows:
+      case TargetPlatform.macOS:
+      case TargetPlatform.linux:
+        return await getApplicationSupportDirectory();
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        return await getApplicationDocumentsDirectory();
     }
   }
 

@@ -45,7 +45,7 @@ class SandboxPathResolver {
   }
 
   /// Synchronously map an old absolute path to the current container's path
-  /// when it points under Documents/upload or Documents/avatars.
+  /// when it points under our managed subfolders (upload/images/avatars).
   /// If mapping succeeds and the target exists, returns the mapped path;
   /// otherwise returns [path] unchanged.
   static String fix(String path) {
@@ -101,6 +101,18 @@ class SandboxPathResolver {
             rootType = androidRoot.replaceAll('/', '');
             break;
           }
+        }
+      }
+    }
+
+    // Final generic fallback: detect '/avatars/' '/images/' '/upload/' anywhere in the path
+    if (tail == null) {
+      for (final s in subdirs) {
+        final i = raw.indexOf('/$s/');
+        if (i != -1) {
+          tail = raw.substring(i); // includes leading '/'
+          rootType = 'generic_subdir';
+          break;
         }
       }
     }

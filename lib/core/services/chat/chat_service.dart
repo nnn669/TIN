@@ -253,8 +253,7 @@ class ChatService extends ChangeNotifier {
 
   Future<void> _cleanupOrphanUploads() async {
     try {
-      final docs = await getApplicationDocumentsDirectory();
-      final uploadDir = Directory(p.join(docs.path, 'upload'));
+      final uploadDir = await AppDirectories.getUploadDirectory();
       if (!await uploadDir.exists()) return;
 
       // Build the set of all referenced paths across all messages
@@ -772,8 +771,7 @@ class ChatService extends ChangeNotifier {
     _currentConversationId = null;
     // Remove uploads directory completely
     try {
-      final docs = await getApplicationDocumentsDirectory();
-      final uploadDir = Directory(p.join(docs.path, 'upload'));
+      final uploadDir = await AppDirectories.getUploadDirectory();
       if (await uploadDir.exists()) {
         await uploadDir.delete(recursive: true);
       }
@@ -784,8 +782,7 @@ class ChatService extends ChangeNotifier {
   // Uploads stats: count and total size of files under app documents/upload
   Future<UploadStats> getUploadStats() async {
     try {
-      final docs = await getApplicationDocumentsDirectory();
-      final uploadDir = Directory(p.join(docs.path, 'upload'));
+      final uploadDir = await AppDirectories.getUploadDirectory();
       if (!await uploadDir.exists()) {
         return const UploadStats(fileCount: 0, totalBytes: 0);
       }
