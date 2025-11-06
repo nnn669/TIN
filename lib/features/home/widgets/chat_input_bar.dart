@@ -22,6 +22,10 @@ import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/app_directories.dart';
 import 'package:super_clipboard/super_clipboard.dart';
+import '../../../desktop/desktop_context_menu.dart';
+
+// Desktop context menu actions for right-click on the input field
+enum _DesktopTextMenuAction { paste, cut, copy, selectAll }
 
 class ChatInputBarController {
   _ChatInputBarState? _state;
@@ -756,50 +760,132 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xxs, AppSpacing.md, AppSpacing.xs),
                     child: Focus(
                       onKey: (node, event) => _handleKeyEvent(node, event),
-                      child: TextField(
-                      controller: _controller,
-                      focusNode: widget.focusNode,
-                      onChanged: (_) => setState(() {}),
-                      minLines: 1,
-                      maxLines: 5,
-                      // On iOS, show "Send" on the return key and submit on tap.
-                      // Still keep multiline so pasted text preserves line breaks.
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
-                      onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
-                      contextMenuBuilder: Platform.isIOS
-                          ? (BuildContext context, EditableTextState state) {
-                              final l10n = AppLocalizations.of(context)!;
-                              return AdaptiveTextSelectionToolbar.buttonItems(
-                                anchors: state.contextMenuAnchors,
-                                buttonItems: <ContextMenuButtonItem>[
+                      child: Builder(
+                        builder: (ctx) {
+                          // Desktop: show a right-click context menu with paste/cut/copy/select all
+                          // Future<void> _showDesktopContextMenu(Offset globalPos) async {
+                          //   bool isDesktop = false;
+                          //   try { isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux; } catch (_) {}
+                          //   if (!isDesktop) return;
+                          //   // Ensure input has focus so operations apply correctly
+                          //   try { widget.focusNode?.requestFocus(); } catch (_) {}
+                          //
+                          //   final sel = _controller.selection;
+                          //   final hasSelection = sel.isValid && !sel.isCollapsed;
+                          //   final hasText = _controller.text.isNotEmpty;
+                          //
+                          //   final l10n = MaterialLocalizations.of(ctx);
+                          //   await showDesktopContextMenuAt(
+                          //     ctx,
+                          //     globalPosition: globalPos,
+                          //     items: [
+                          //       DesktopContextMenuItem(
+                          //         icon: Lucide.Clipboard,
+                          //         label: l10n.pasteButtonLabel,
+                          //         onTap: () async {
+                          //           await _handlePasteFromClipboard();
+                          //         },
+                          //       ),
+                          //       DesktopContextMenuItem(
+                          //         icon: Lucide.Cut,
+                          //         label: l10n.cutButtonLabel,
+                          //         onTap: () async {
+                          //           final s = _controller.selection;
+                          //           if (s.isValid && !s.isCollapsed) {
+                          //             final text = _controller.text.substring(s.start, s.end);
+                          //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
+                          //             final newText = _controller.text.replaceRange(s.start, s.end, '');
+                          //             _controller.value = TextEditingValue(
+                          //               text: newText,
+                          //               selection: TextSelection.collapsed(offset: s.start),
+                          //             );
+                          //             setState(() {});
+                          //           }
+                          //         },
+                          //       ),
+                          //       DesktopContextMenuItem(
+                          //         icon: Lucide.Copy,
+                          //         label: l10n.copyButtonLabel,
+                          //         onTap: () async {
+                          //           final s2 = _controller.selection;
+                          //           if (s2.isValid && !s2.isCollapsed) {
+                          //             final text = _controller.text.substring(s2.start, s2.end);
+                          //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
+                          //           }
+                          //         },
+                          //       ),
+                          //       // DesktopContextMenuItem(
+                          //       //   // icon: Lucide.TextSelect,
+                          //       //   label: l10n.selectAllButtonLabel,
+                          //       //   onTap: () {
+                          //       //     if (hasText) {
+                          //       //       _controller.selection = TextSelection(baseOffset: 0, extentOffset: _controller.text.length);
+                          //       //       setState(() {});
+                          //       //     }
+                          //       //   },
+                          //       // ),
+                          //     ],
+                          //   );
+                          // }
+
+                          return GestureDetector(
+                            behavior: HitTestBehavior.deferToChild,
+                            // onSecondaryTapDown: (details) {
+                            //   // _showDesktopContextMenu(details.globalPosition);
+                            // },
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: widget.focusNode,
+                              onChanged: (_) => setState(() {}),
+                              minLines: 1,
+                              maxLines: 5,
+                              // On iOS, show "Send" on the return key and submit on tap.
+                              // Still keep multiline so pasted text preserves line breaks.
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
+                              onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
+                              // Unify context menu across platforms; add extra item on iOS only.
+                              contextMenuBuilder: (BuildContext context, EditableTextState state) {
+                                final items = <ContextMenuButtonItem>[
                                   ...state.contextMenuButtonItems,
-                                  ContextMenuButtonItem(
-                                    onPressed: () {
-                                      // Insert a newline at current caret or replace selection
-                                      _insertNewlineAtCursor();
-                                      state.hideToolbar();
-                                    },
-                                    label: l10n.chatInputBarInsertNewline,
-                                  ),
-                                ],
-                              );
-                            }
-                          : null,
-                      autofocus: false,
-                      decoration: InputDecoration(
-                        hintText: _hint(context),
-                        hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.45)),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                                ];
+                                try {
+                                  if (Platform.isIOS) {
+                                    final l10n = AppLocalizations.of(context)!;
+                                    items.add(
+                                      ContextMenuButtonItem(
+                                        onPressed: () {
+                                          _insertNewlineAtCursor();
+                                          state.hideToolbar();
+                                        },
+                                        label: l10n.chatInputBarInsertNewline,
+                                      ),
+                                    );
+                                  }
+                                } catch (_) {}
+                                return AdaptiveTextSelectionToolbar.buttonItems(
+                                  anchors: state.contextMenuAnchors,
+                                  buttonItems: items,
+                                );
+                              },
+                              autofocus: false,
+                              decoration: InputDecoration(
+                                hintText: _hint(context),
+                                hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.45)),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                              ),
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontSize: (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ? 14 : 15,
+                              ),
+                              cursorColor: theme.colorScheme.primary,
+                            ),
+                          );
+                        },
                       ),
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ? 14 : 15,
-                      ),
-                      cursorColor: theme.colorScheme.primary,
                     ),
-                  ),
+                  
                   ),
                   // Bottom buttons row (no divider)
                   Padding(
@@ -1042,11 +1128,13 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   ),
                 ],
               ),
-                )),)],
-
+            ),
+          ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+);
   }
 }
 
