@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show rootBundle, PlatformException, MissingPluginException;
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_all/webview_all.dart' as webview_all;
 import 'package:webview_windows/webview_windows.dart' as winweb;
 import 'mermaid_cache.dart';
 import 'package:path_provider/path_provider.dart';
@@ -332,13 +331,9 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
     return MermaidViewHandle(widget: widget, exportPng: doExport, exportPngBytes: doExportBytes);
   }
 
-  // Linux: keep using webview_all for rendering (no export yet).
+  // Linux: downgrade to plain code block (no WebView, no export)
   if (Platform.isLinux) {
-    final usedKey = viewKey ?? GlobalKey<_MermaidInlineAllViewState>();
-    final widget = _MermaidInlineAllView(key: usedKey, code: code, dark: dark, themeVars: themeVars);
-    Future<bool> doExport() async => false;
-    Future<Uint8List?> doExportBytes() async => null;
-    return MermaidViewHandle(widget: widget, exportPng: doExport, exportPngBytes: doExportBytes);
+    return null;
   }
 
   // Other platforms keep using webview_flutter (unchanged behavior).
@@ -365,116 +360,7 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
   return MermaidViewHandle(widget: widget, exportPng: doExport, exportPngBytes: doExportBytes);
 }
 
-class _MermaidInlineAllView extends StatefulWidget {
-  final String code;
-  final bool dark;
-  final Map<String, String>? themeVars;
-  const _MermaidInlineAllView({Key? key, required this.code, required this.dark, this.themeVars}) : super(key: key);
-
-  @override
-  State<_MermaidInlineAllView> createState() => _MermaidInlineAllViewState();
-}
-
-class _MermaidInlineAllViewState extends State<_MermaidInlineAllView> {
-  // Use cached height if present to reduce layout jump; otherwise a reasonable default.
-  double _height = 200;
-  String? _htmlDataUrl;
-  String? _lastThemeVarsSig;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      final cached = MermaidHeightCache.get(widget.code);
-      if (cached != null) _height = cached;
-    } catch (_) {}
-    _prepareHtml();
-  }
-
-  @override
-  void didUpdateWidget(covariant _MermaidInlineAllView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final themeSig = _themeVarsSignature(widget.themeVars);
-    final themeChanged = _lastThemeVarsSig != themeSig;
-    if (oldWidget.code != widget.code || oldWidget.dark != widget.dark || themeChanged) {
-      _prepareHtml();
-    }
-  }
-
-  Future<void> _prepareHtml() async {
-    // Load mermaid script from assets and inline it, then convert to data URI.
-    final mermaidJs = await rootBundle.loadString('assets/mermaid.min.js');
-    final html = _buildHtml(widget.code, widget.dark, mermaidJs, widget.themeVars);
-    final uri = Uri.dataFromString(html, mimeType: 'text/html', encoding: utf8);
-    setState(() {
-      _htmlDataUrl = uri.toString();
-      _lastThemeVarsSig = _themeVarsSignature(widget.themeVars);
-      // We cannot auto-measure height via JS channel on webview_all path; keep cached or default height.
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeInOutCubic,
-      width: double.infinity,
-      height: _height,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: _htmlDataUrl == null
-            ? const SizedBox.shrink()
-            : webview_all.Webview(url: _htmlDataUrl!),
-      ),
-    );
-  }
-
-  String _themeVarsSignature(Map<String, String>? vars) {
-    if (vars == null || vars.isEmpty) return '';
-    final entries = vars.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
-    return entries.map((e) => '${e.key}=${e.value}').join('&');
-  }
-
-  String _buildHtml(String code, bool dark, String mermaidJs, Map<String, String>? themeVars) {
-    final bg = dark ? '#111111' : '#ffffff';
-    final fg = dark ? '#eaeaea' : '#222222';
-    final escaped = code
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-    // Build themeVariables JSON
-    String themeVarsJson = '{}';
-    if (themeVars != null && themeVars.isNotEmpty) {
-      final entries = themeVars.entries.map((e) => '"${e.key}": "${e.value}"').join(',');
-      themeVarsJson = '{' + entries + '}';
-    }
-    return '''
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
-    <title>Mermaid</title>
-    <script>${mermaidJs}</script>
-    <style>
-      html,body{margin:0;padding:0;background:${bg};color:${fg};}
-      .wrap{padding:8px;}
-      .mermaid{width:100%; text-align:center;}
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="mermaid">${escaped}</div>
-    </div>
-    <script>
-      mermaid.initialize({ startOnLoad:false, theme: '${dark ? 'dark' : 'default'}', securityLevel:'loose', fontFamily: 'inherit', themeVariables: ${themeVarsJson} });
-      mermaid.run({ querySelector: '.mermaid' });
-    </script>
-  </body>
-  </html>
-''';
-  }
-}
+// (Linux-only view removed; Linux now falls back to code block via null handle.)
 
 class _MermaidInlineWebView extends StatefulWidget {
   final String code;
