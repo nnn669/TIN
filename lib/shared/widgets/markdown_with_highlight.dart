@@ -89,7 +89,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       }
     }
     components.insert(0, AtxHeadingMd());
-    // components.insert(0, FencedCodeBlockMd());
+    // Ensure fenced code blocks take precedence over headings and other blocks
+    // so lines like "# comment" inside code fences are not parsed as headings.
+    components.insert(0, FencedCodeBlockMd());
     // codeBuilder handles rendering. A custom BlockMd for fences can
     // interfere with block segmentation in some cases.
     // Resolve user preferred code font family (default to monospace)
