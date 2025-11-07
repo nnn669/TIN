@@ -536,6 +536,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationChatCompletedBody => '助手回复已生成';
 
   @override
+  String get androidBackgroundNotificationTitle => 'Kelivo 正在运行';
+
+  @override
+  String get androidBackgroundNotificationText => '后台保持聊天生成';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -3519,6 +3525,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get notificationChatCompletedBody => '助手回复已生成';
 
   @override
+  String get androidBackgroundNotificationTitle => 'Kelivo 正在运行';
+
+  @override
+  String get androidBackgroundNotificationText => '后台保持聊天生成';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -6500,6 +6512,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get notificationChatCompletedBody => '助手回覆已生成';
+
+  @override
+  String get androidBackgroundNotificationTitle => 'Kelivo 正在運行';
+
+  @override
+  String get androidBackgroundNotificationText => '後台保持聊天生成';
 
   @override
   String get assistantEditEmojiDialogTitle => '選擇表情';

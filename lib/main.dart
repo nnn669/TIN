@@ -159,8 +159,8 @@ class MyApp extends StatelessWidget {
                         final already = await AndroidBackgroundManager.isEnabled();
                         if (!already) {
                           await AndroidBackgroundManager.ensureInitialized(
-                            notificationTitle: 'Kelivo 正在运行',
-                            notificationText: '后台保持聊天生成',
+                            notificationTitle: AppLocalizations.of(context)!.androidBackgroundNotificationTitle,
+                            notificationText: AppLocalizations.of(context)!.androidBackgroundNotificationText,
                           );
                           await AndroidBackgroundManager.setEnabled(true);
                         }

@@ -393,8 +393,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         await sp.setAndroidBackgroundChatMode(AndroidBackgroundChatMode.onNotify);
         try {
           await AndroidBackgroundManager.ensureInitialized(
-            notificationTitle: AppLocalizations.of(context)!.displaySettingsPageAndroidBackgroundChatTitle,
-            notificationText: AppLocalizations.of(context)!.androidBackgroundStatusOn,
+            notificationTitle: AppLocalizations.of(context)!.androidBackgroundNotificationTitle,
+            notificationText: AppLocalizations.of(context)!.androidBackgroundNotificationText,
           );
           await AndroidBackgroundManager.setEnabled(true);
           await NotificationService.ensureInitialized();
@@ -405,8 +405,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         await sp.setAndroidBackgroundChatMode(AndroidBackgroundChatMode.on);
         try {
           await AndroidBackgroundManager.ensureInitialized(
-            notificationTitle: AppLocalizations.of(context)!.displaySettingsPageAndroidBackgroundChatTitle,
-            notificationText: AppLocalizations.of(context)!.androidBackgroundStatusOn,
+            notificationTitle: AppLocalizations.of(context)!.androidBackgroundNotificationTitle,
+            notificationText: AppLocalizations.of(context)!.androidBackgroundNotificationText,
           );
           await AndroidBackgroundManager.setEnabled(true);
           // Prepare notification channel as well to avoid FGS notification issues on some ROMs

@@ -112,6 +112,8 @@
   "androidBackgroundOptionOff": "关闭",
   "notificationChatCompletedTitle": "生成完成",
   "notificationChatCompletedBody": "助手回复已生成",
+  "androidBackgroundNotificationTitle": "Kelivo 正在运行",
+  "androidBackgroundNotificationText": "后台保持聊天生成",
   "assistantEditEmojiDialogTitle": "选择表情",
   "assistantEditEmojiDialogHint": "输入或粘贴任意表情",
   "assistantEditEmojiDialogCancel": "取消",

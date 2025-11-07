@@ -552,6 +552,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Assistant reply has been generated';
 
   @override
+  String get androidBackgroundNotificationTitle => 'Kelivo is running';
+
+  @override
+  String get androidBackgroundNotificationText =>
+      'Keeping chat generation alive in background';
+
+  @override
   String get assistantEditEmojiDialogTitle => 'Choose Emoji';
 
   @override

@@ -1127,6 +1127,18 @@ abstract class AppLocalizations {
   /// **'Assistant reply has been generated'**
   String get notificationChatCompletedBody;
 
+  /// No description provided for @androidBackgroundNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kelivo is running'**
+  String get androidBackgroundNotificationTitle;
+
+  /// No description provided for @androidBackgroundNotificationText.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeping chat generation alive in background'**
+  String get androidBackgroundNotificationText;
+
   /// No description provided for @assistantEditEmojiDialogTitle.
   ///
   /// In en, this message translates to:
