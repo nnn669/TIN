@@ -3,11 +3,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:mcp_client/mcp_client.dart' as mcp;
+import '../services/mcp/kelivo_fetch/kelivo_fetch_server.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 /// Transport type: SSE, Streamable HTTP, and STDIO (desktop-only).
-enum McpTransportType { sse, http, stdio }
+enum McpTransportType { sse, http, stdio, inmemory }
 
 /// Connection status for an MCP server.
 enum McpStatus { idle, connecting, connected, error }
@@ -149,9 +150,9 @@ class McpServerConfig {
     'enabled': enabled,
     'name': name,
     'transport': transport.name,
-    if (transport != McpTransportType.stdio) 'url': url,
+    if (transport != McpTransportType.stdio && transport != McpTransportType.inmemory) 'url': url,
     'tools': tools.map((e) => e.toJson()).toList(),
-    if (transport != McpTransportType.stdio) 'headers': headers,
+    if (transport != McpTransportType.stdio && transport != McpTransportType.inmemory) 'headers': headers,
     if (transport == McpTransportType.stdio) 'command': command,
     if (transport == McpTransportType.stdio) 'args': args,
     if (transport == McpTransportType.stdio) 'env': env,
@@ -162,7 +163,7 @@ class McpServerConfig {
     final tRaw = (json['transport'] as String?) ?? '';
     final t = tRaw == 'http'
         ? McpTransportType.http
-        : (tRaw == 'stdio' ? McpTransportType.stdio : McpTransportType.sse);
+        : (tRaw == 'stdio' ? McpTransportType.stdio : (tRaw == 'inmemory' ? McpTransportType.inmemory : McpTransportType.sse));
     final tools = (json['tools'] as List?)
         ?.map((e) => McpToolConfig.fromJson((e as Map).cast<String, dynamic>()))
         .toList() ??
@@ -180,6 +181,14 @@ class McpServerConfig {
         args: argsAny is List ? argsAny.map((e) => e.toString()).toList() : const <String>[],
         env: envAny is Map ? envAny.map((k, v) => MapEntry(k.toString(), v.toString())) : const <String, String>{},
         workingDirectory: (json['workingDirectory'] as String?)?.trim(),
+      );
+    } else if (t == McpTransportType.inmemory) {
+      return McpServerConfig(
+        id: json['id'] as String? ?? const Uuid().v4(),
+        enabled: json['enabled'] as bool? ?? true,
+        name: json['name'] as String? ?? '',
+        transport: McpTransportType.inmemory,
+        tools: tools,
       );
     } else {
       return McpServerConfig(
@@ -230,6 +239,8 @@ class McpProvider extends ChangeNotifier {
         _servers = list;
       } catch (_) {}
     }
+    // Ensure built-in @kelivo/fetch is present by default
+    _ensureBuiltinFetchServerPresent();
     // initialize statuses
     for (final s in _servers) {
       _status[s.id] = McpStatus.idle;
@@ -242,6 +253,19 @@ class McpProvider extends ChangeNotifier {
       // fire and forget
       unawaited(connect(s.id));
     }
+  }
+
+  void _ensureBuiltinFetchServerPresent() {
+    final exists = _servers.any((s) => s.transport == McpTransportType.inmemory || s.name == '@kelivo/fetch' || s.id == 'kelivo_fetch');
+    if (exists) return;
+    final cfg = McpServerConfig(
+      id: 'kelivo_fetch',
+      enabled: true,
+      name: '@kelivo/fetch',
+      transport: McpTransportType.inmemory,
+      tools: const <McpToolConfig>[], // will refresh on connect
+    );
+    _servers = [..._servers, cfg];
   }
 
   Future<void> _persist() async {
@@ -276,10 +300,11 @@ class McpProvider extends ChangeNotifier {
               'name': s.name,
               if (s.transport == McpTransportType.http) 'type': 'streamableHttp',
               if (s.transport == McpTransportType.sse) 'type': 'sse',
+              if (s.transport == McpTransportType.inmemory) 'type': 'inmemory',
               'description': '',
               'isActive': s.enabled,
-              if (s.transport != McpTransportType.stdio) 'baseUrl': s.url,
-              if (s.transport != McpTransportType.stdio && s.headers.isNotEmpty) 'headers': s.headers,
+              if (s.transport != McpTransportType.stdio && s.transport != McpTransportType.inmemory) 'baseUrl': s.url,
+              if (s.transport != McpTransportType.stdio && s.transport != McpTransportType.inmemory && s.headers.isNotEmpty) 'headers': s.headers,
               // For stdio, include an optional type for compatibility
               if (s.transport == McpTransportType.stdio) 'type': 'stdio',
               // Include command/args/env
@@ -400,7 +425,7 @@ class McpProvider extends ChangeNotifier {
           }
           try {
             final s = McpServerConfig.fromJson(m);
-            if (s.transport != McpTransportType.stdio && s.url.trim().isEmpty) continue;
+            if (s.transport != McpTransportType.stdio && s.transport != McpTransportType.inmemory && s.url.trim().isEmpty) continue;
             next.add(s);
           } catch (_) {}
         }
@@ -420,7 +445,7 @@ class McpProvider extends ChangeNotifier {
             }
             try {
               final s = McpServerConfig.fromJson(m);
-              if (s.transport != McpTransportType.stdio && s.url.trim().isEmpty) continue;
+              if (s.transport != McpTransportType.stdio && s.transport != McpTransportType.inmemory && s.url.trim().isEmpty) continue;
               next.add(s);
             } catch (_) {}
           }
@@ -575,6 +600,21 @@ class McpProvider extends ChangeNotifier {
         // Turn on library-internal verbose logs
         enableDebugLogging: false,
       );
+
+      // In-memory builtin server path
+      if (server.transport == McpTransportType.inmemory) {
+        final engine = KelivoFetchMcpServerEngine();
+        final transport = KelivoInMemoryClientTransport(engine);
+        final client = mcp.McpClient.createClient(clientConfig);
+        await client.connect(transport);
+        _clients[id] = client;
+        _status[id] = McpStatus.connected;
+        _errors.remove(id);
+        notifyListeners();
+        await refreshTools(id);
+        _startHeartbeat(id);
+        return;
+      }
 
       final mergedHeaders = <String, String>{...server.headers};
       final transportConfig = () {

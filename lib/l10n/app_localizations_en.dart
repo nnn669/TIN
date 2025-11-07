@@ -261,6 +261,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpTransportTagStdio => 'STDIO';
 
   @override
+  String get mcpTransportTagInmemory => 'Built-in';
+
+  @override
   String get mcpServerEditSheetStdioOnlyDesktop =>
       'STDIO is only available on desktop';
 

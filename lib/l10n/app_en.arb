@@ -120,6 +120,7 @@
   "assistantTagsContextMenuManageTags": "Manage Tags",
   "mcpTransportOptionStdio": "STDIO",
   "mcpTransportTagStdio": "STDIO",
+  "mcpTransportTagInmemory": "Built-in",
   "mcpServerEditSheetStdioOnlyDesktop": "STDIO is only available on desktop",
   "mcpServerEditSheetStdioCommandLabel": "Command",
   "mcpServerEditSheetStdioArgumentsLabel": "Arguments",

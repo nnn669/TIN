@@ -243,6 +243,7 @@
   "assistantTagsContextMenuManageTags": "管理标签",
   "mcpTransportOptionStdio": "STDIO",
   "mcpTransportTagStdio": "STDIO",
+  "mcpTransportTagInmemory": "内置",
   "mcpServerEditSheetStdioOnlyDesktop": "STDIO 仅在桌面端可用",
   "mcpServerEditSheetStdioCommandLabel": "命令",
   "mcpServerEditSheetStdioArgumentsLabel": "参数",

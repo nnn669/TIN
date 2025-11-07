@@ -581,6 +581,12 @@ abstract class AppLocalizations {
   /// **'STDIO'**
   String get mcpTransportTagStdio;
 
+  /// No description provided for @mcpTransportTagInmemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get mcpTransportTagInmemory;
+
   /// No description provided for @mcpServerEditSheetStdioOnlyDesktop.
   ///
   /// In en, this message translates to:

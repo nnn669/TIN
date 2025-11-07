@@ -173,7 +173,11 @@ class _ConversationMcpSheet extends StatelessWidget {
                                                   children: [
                                                     tag(l10n.mcpConversationSheetConnected),
                                                     tag(l10n.mcpConversationSheetToolsCount(enabledTools, tools.length)),
-                                                    tag(s.transport == McpTransportType.sse ? 'SSE' : 'HTTP'),
+                                                    tag(
+                                                      s.transport == McpTransportType.inmemory
+                                                          ? l10n.mcpTransportTagInmemory
+                                                          : (s.transport == McpTransportType.sse ? 'SSE' : 'HTTP'),
+                                                    ),
                                                   ],
                                                 ),
                                               ],

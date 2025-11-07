@@ -272,7 +272,11 @@ class McpPage extends StatelessWidget {
                                           color: st == McpStatus.connected
                                               ? Colors.green
                                               : (st == McpStatus.connecting ? cs.primary : Colors.redAccent)),
-                                      tagStyled(s.transport == McpTransportType.sse ? 'SSE' : 'HTTP'),
+                                      tagStyled(
+                                        s.transport == McpTransportType.inmemory
+                                            ? l10n.mcpTransportTagInmemory
+                                            : (s.transport == McpTransportType.sse ? 'SSE' : 'HTTP'),
+                                      ),
                                       tagStyled(l10n.mcpPageToolsCount(s.tools.where((t) => t.enabled).length, s.tools.length)),
                                       if (!s.enabled) tagStyled(l10n.mcpPageStatusDisabled, color: cs.onSurface.withOpacity(0.7)),
                                     ],
