@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
+import '../../../core/services/android_background.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../icons/lucide_adapter.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
@@ -120,6 +123,42 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HapticsSettingsPage())),
             ),
             _iosDivider(context),
+            if (Platform.isAndroid) _iosNavRow(
+              context,
+              icon: Lucide.Monitor,
+              label: l10n.displaySettingsPageAndroidBackgroundChatTitle,
+              detailBuilder: (ctx) {
+                final sp = ctx.watch<SettingsProvider>();
+                switch (sp.androidBackgroundChatMode) {
+                  case AndroidBackgroundChatMode.off:
+                    return Text(
+                      l10n.androidBackgroundStatusOff,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13),
+                    );
+                  case AndroidBackgroundChatMode.on:
+                    return Text(
+                      l10n.androidBackgroundStatusOn,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13),
+                    );
+                  case AndroidBackgroundChatMode.onNotify:
+                    return Text(
+                      l10n.androidBackgroundStatusOther,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13),
+                    );
+                }
+              },
+              onTap: () => _showAndroidBackgroundChatSheet(context),
+            ),
+            if (Platform.isAndroid) _iosDivider(context),
             _iosNavRow(
               context,
               icon: Lucide.MessageSquare,
@@ -321,6 +360,62 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         break;
       default:
         await sp.setChatMessageBackgroundStyle(ChatMessageBackgroundStyle.defaultStyle);
+    }
+  }
+
+  Future<void> _showAndroidBackgroundChatSheet(BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetOption(ctx, label: l10n.androidBackgroundOptionOn, onTap: () => Navigator.of(ctx).pop('on')),
+              _sheetDividerNoIcon(ctx),
+              _sheetOption(ctx, label: l10n.androidBackgroundOptionOnNotify, onTap: () => Navigator.of(ctx).pop('on_notify')),
+              _sheetDividerNoIcon(ctx),
+              _sheetOption(ctx, label: l10n.androidBackgroundOptionOff, onTap: () => Navigator.of(ctx).pop('off')),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null) return;
+    final sp = context.read<SettingsProvider>();
+    switch (choice) {
+      case 'on_notify':
+        await sp.setAndroidBackgroundChatMode(AndroidBackgroundChatMode.onNotify);
+        try {
+          await AndroidBackgroundManager.ensureInitialized(
+            notificationTitle: AppLocalizations.of(context)!.displaySettingsPageAndroidBackgroundChatTitle,
+            notificationText: AppLocalizations.of(context)!.androidBackgroundStatusOn,
+          );
+          await AndroidBackgroundManager.setEnabled(true);
+          await NotificationService.ensureInitialized();
+          await NotificationService.ensureAndroidNotificationsPermission();
+        } catch (_) {}
+        break;
+      case 'on':
+        await sp.setAndroidBackgroundChatMode(AndroidBackgroundChatMode.on);
+        try {
+          await AndroidBackgroundManager.ensureInitialized(
+            notificationTitle: AppLocalizations.of(context)!.displaySettingsPageAndroidBackgroundChatTitle,
+            notificationText: AppLocalizations.of(context)!.androidBackgroundStatusOn,
+          );
+          await AndroidBackgroundManager.setEnabled(true);
+          // Prepare notification channel as well to avoid FGS notification issues on some ROMs
+          await NotificationService.ensureInitialized();
+        } catch (_) {}
+        break;
+      default:
+        await sp.setAndroidBackgroundChatMode(AndroidBackgroundChatMode.off);
+        try { await AndroidBackgroundManager.setEnabled(false); } catch (_) {}
     }
   }
 
@@ -747,8 +842,33 @@ Widget _iosNavRow(
               SizedBox(width: 36, child: Icon(icon, size: 20, color: c)),
               const SizedBox(width: 12),
               Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: c), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              if (detailBuilder != null) Padding(padding: const EdgeInsets.only(right: 6), child: DefaultTextStyle.merge(style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)), child: detailBuilder(context)))
-              else if (detailText != null) Padding(padding: const EdgeInsets.only(right: 6), child: Text(detailText, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)))),
+              if (detailBuilder != null)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: DefaultTextStyle.merge(
+                        style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)),
+                        child: detailBuilder(context),
+                      ),
+                    ),
+                  ),
+                )
+              else if (detailText != null)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text(
+                      detailText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)),
+                    ),
+                  ),
+                ),
               if (interactive) Icon(Lucide.ChevronRight, size: 16, color: c),
             ]),
           );

@@ -51,6 +51,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
+  // Android background chat generation mode
+  static const String _androidBackgroundChatModeKey = 'android_background_chat_mode_v1';
   // Fonts
   static const String _displayAppFontFamilyKey = 'display_app_font_family_v1';
   static const String _displayCodeFontFamilyKey = 'display_code_font_family_v1';
@@ -297,6 +299,30 @@ class SettingsProvider extends ChangeNotifier {
     if (_appLocaleTag == null || _appLocaleTag!.isEmpty) {
       _appLocaleTag = 'system';
       await prefs.setString(_appLocaleKey, 'system');
+    }
+
+    // Android background chat mode (Android only; default ON on first run)
+    try {
+      final rawBg = prefs.getString(_androidBackgroundChatModeKey);
+      if (rawBg == null) {
+        // Default to OFF to avoid permission prompts on first launch
+        _androidBackgroundChatMode = AndroidBackgroundChatMode.off;
+        await prefs.setString(_androidBackgroundChatModeKey, 'off');
+      } else {
+        switch (rawBg) {
+          case 'on_notify':
+            _androidBackgroundChatMode = AndroidBackgroundChatMode.onNotify;
+            break;
+          case 'on':
+            _androidBackgroundChatMode = AndroidBackgroundChatMode.on;
+            break;
+          case 'off':
+          default:
+            _androidBackgroundChatMode = AndroidBackgroundChatMode.off;
+        }
+      }
+    } catch (_) {
+      _androidBackgroundChatMode = AndroidBackgroundChatMode.off;
     }
     
     // load search settings
@@ -812,6 +838,32 @@ class SettingsProvider extends ChangeNotifier {
       ChatMessageBackgroundStyle.defaultStyle => 'default',
     };
     await prefs.setString(_displayChatMessageBackgroundStyleKey, v);
+  }
+
+  // ===== Android background chat generation =====
+  AndroidBackgroundChatMode _androidBackgroundChatMode = AndroidBackgroundChatMode.off;
+  AndroidBackgroundChatMode get androidBackgroundChatMode => _androidBackgroundChatMode;
+  Future<void> setAndroidBackgroundChatMode(AndroidBackgroundChatMode mode) async {
+    if (_androidBackgroundChatMode == mode) return;
+    _androidBackgroundChatMode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final v = switch (mode) {
+      AndroidBackgroundChatMode.onNotify => 'on_notify',
+      AndroidBackgroundChatMode.on => 'on',
+      AndroidBackgroundChatMode.off => 'off',
+    };
+    await prefs.setString(_androidBackgroundChatModeKey, v);
+    // Best-effort: update Android background execution state immediately
+    try {
+      if (Platform.isAndroid) {
+        // Direct call; file is present in project and guards by Platform
+        // ignore: depend_on_referenced_packages
+        // ignore_for_file: unnecessary_import
+        // ignore: avoid_print
+        // Defer import here is not possible; rely on main.dart sync. This is a no-op placeholder.
+      }
+    } catch (_) {}
   }
 
   void setDynamicColorSupported(bool v) {
@@ -1486,6 +1538,7 @@ enum ProviderKind { openai, google, claude }
 
 // Background rendering mode for chat message bubbles
 enum ChatMessageBackgroundStyle { defaultStyle, frosted, solid }
+enum AndroidBackgroundChatMode { off, on, onNotify }
 
 class ProviderConfig {
   final String id;
@@ -1816,7 +1869,7 @@ class ProviderConfig {
             proxyPassword: '',
             multiKeyEnabled: false,
             apiKeys: const [],
-            keyManagement: const KeyManagementConfig(),
+          keyManagement: const KeyManagementConfig(),
           );
         }
         return ProviderConfig(

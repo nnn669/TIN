@@ -31,7 +31,9 @@ import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:system_fonts/system_fonts.dart';
-import 'dart:io' show HttpOverrides; // kept for global override usage inside provider
+import 'dart:io' show HttpOverrides, Platform; // kept for global override usage inside provider
+import 'core/services/android_background.dart';
+import 'core/services/notification_service.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
@@ -143,6 +145,32 @@ class MyApp extends StatelessWidget {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 try {
                   settings.setDynamicColorSupported(dynSupported);
+                } catch (_) {}
+              });
+
+              // Android-only: ensure background execution matches setting and prepare notifications if needed
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                try {
+                  if (Platform.isAndroid) {
+                    final mode = settings.androidBackgroundChatMode;
+                    if (mode != AndroidBackgroundChatMode.off) {
+                      // Enable only if currently disabled to avoid duplicate ROM prompts
+                      try {
+                        final already = await AndroidBackgroundManager.isEnabled();
+                        if (!already) {
+                          await AndroidBackgroundManager.ensureInitialized(
+                            notificationTitle: 'Kelivo 正在运行',
+                            notificationText: '后台保持聊天生成',
+                          );
+                          await AndroidBackgroundManager.setEnabled(true);
+                        }
+                      } catch (_) {}
+                      if (mode == AndroidBackgroundChatMode.onNotify) {
+                        await NotificationService.ensureInitialized();
+                        await NotificationService.ensureAndroidNotificationsPermission();
+                      }
+                    }
+                  }
                 } catch (_) {}
               });
 

@@ -66,6 +66,8 @@ import '../../../utils/sandbox_path_resolver.dart';
 import '../../../shared/animations/widgets.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
+import 'dart:io' show Platform;
+import '../../../core/services/notification_service.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
@@ -83,7 +85,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, RouteAware {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, RouteAware, WidgetsBindingObserver {
   bool get _isDesktopPlatform =>
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
@@ -116,6 +118,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final Map<String, _TranslationData> _translations = <String, _TranslationData>{};
   final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{}; // assistantMessageId -> parts
   final Map<String, List<_ReasoningSegmentData>> _reasoningSegments = <String, List<_ReasoningSegmentData>>{}; // assistantMessageId -> reasoning segments
+  bool _appInForeground = true; // used to gate notifications only when app is background
   // Message widget keys for navigation to previous question
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
   GlobalKey _keyForMessage(String id) => _messageKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg:$id'));
@@ -364,6 +367,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       if (seen.add(key)) out.add(p);
     }
     return out;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appInForeground = (state == AppLifecycleState.resumed);
   }
 
   // Deduplicate raw persisted tool events using same criteria
@@ -728,6 +736,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    try { WidgetsBinding.instance.addObserver(this); } catch (_) {}
     _convoFadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 180));
     _convoFade = CurvedAnimation(parent: _convoFadeController, curve: Curves.easeOutCubic);
     _convoFadeController.value = 1.0;
@@ -2008,6 +2017,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               totalTokens = usage!.totalTokens;
             }
             await finish();
+            // Android: optionally notify when generation completes, only in background
+            try {
+              final sp = context.read<SettingsProvider>();
+              if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+                await NotificationService.showChatCompleted(
+                  title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+                  body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+                );
+              }
+            } catch (_) {}
             // If non-streaming, persist buffered reasoning once at the end
             if (!streamOutput && _bufferedReasoning.isNotEmpty) {
               final now = DateTime.now();
@@ -2185,6 +2204,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           if (_loadingConversationIds.contains(_cidForStream)) {
             await finish(generateTitle: true);
           }
+            // Notify on completion only when app is background (Android + onNotify)
+            try {
+              final sp = context.read<SettingsProvider>();
+            if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+              await NotificationService.showChatCompleted(
+                title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+                body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+              );
+            }
+          } catch (_) {}
           await _conversationStreams.remove(_cidForStream)?.cancel();
         },
         cancelOnError: true,
@@ -2903,6 +2932,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       if (chunk.isDone) {
         if (chunk.totalTokens > 0) totalTokens = chunk.totalTokens;
         await finish();
+        // Notify on regenerate completion only when app is background (Android + onNotify)
+        try {
+          final sp = context.read<SettingsProvider>();
+          if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+            await NotificationService.showChatCompleted(
+              title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+              body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+            );
+          }
+        } catch (_) {}
         // If non-streaming, write buffered reasoning once
         if (!streamOutput && _bufferedReasoning2.isNotEmpty) {
           final now = DateTime.now();
@@ -2990,7 +3029,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     },
     onDone: () async {
-      // Stream ended; ensure subscription cleanup
+      // Stream ended; ensure subscription cleanup and background notification if needed
+      try {
+        final sp = context.read<SettingsProvider>();
+        if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+          await NotificationService.showChatCompleted(
+            title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+            body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+          );
+        }
+      } catch (_) {}
       await _conversationStreams.remove(_cid)?.cancel();
     },
     cancelOnError: true,
@@ -5659,6 +5707,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
+    try { WidgetsBinding.instance.removeObserver(this); } catch (_) {}
     _convoFadeController.dispose();
     _mcpProvider?.removeListener(_onMcpChanged);
     // Remove drawer value listener

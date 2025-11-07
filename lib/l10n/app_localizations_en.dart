@@ -523,6 +523,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => 'Solid Color';
 
   @override
+  String get displaySettingsPageAndroidBackgroundChatTitle =>
+      'Background Generation (Android)';
+
+  @override
+  String get androidBackgroundStatusOn => 'On';
+
+  @override
+  String get androidBackgroundStatusOff => 'Off';
+
+  @override
+  String get androidBackgroundStatusOther => 'On and notify';
+
+  @override
+  String get androidBackgroundOptionOn => 'On';
+
+  @override
+  String get androidBackgroundOptionOnNotify => 'On and notify when done';
+
+  @override
+  String get androidBackgroundOptionOff => 'Off';
+
+  @override
+  String get notificationChatCompletedTitle => 'Generation complete';
+
+  @override
+  String get notificationChatCompletedBody =>
+      'Assistant reply has been generated';
+
+  @override
   String get assistantEditEmojiDialogTitle => 'Choose Emoji';
 
   @override

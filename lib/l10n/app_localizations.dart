@@ -1073,6 +1073,60 @@ abstract class AppLocalizations {
   /// **'Solid Color'**
   String get displaySettingsPageChatMessageBackgroundSolid;
 
+  /// No description provided for @displaySettingsPageAndroidBackgroundChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background Generation (Android)'**
+  String get displaySettingsPageAndroidBackgroundChatTitle;
+
+  /// No description provided for @androidBackgroundStatusOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get androidBackgroundStatusOn;
+
+  /// No description provided for @androidBackgroundStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get androidBackgroundStatusOff;
+
+  /// No description provided for @androidBackgroundStatusOther.
+  ///
+  /// In en, this message translates to:
+  /// **'On and notify'**
+  String get androidBackgroundStatusOther;
+
+  /// No description provided for @androidBackgroundOptionOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get androidBackgroundOptionOn;
+
+  /// No description provided for @androidBackgroundOptionOnNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'On and notify when done'**
+  String get androidBackgroundOptionOnNotify;
+
+  /// No description provided for @androidBackgroundOptionOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get androidBackgroundOptionOff;
+
+  /// No description provided for @notificationChatCompletedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation complete'**
+  String get notificationChatCompletedTitle;
+
+  /// No description provided for @notificationChatCompletedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant reply has been generated'**
+  String get notificationChatCompletedBody;
+
   /// No description provided for @assistantEditEmojiDialogTitle.
   ///
   /// In en, this message translates to:

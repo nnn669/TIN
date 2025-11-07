@@ -509,6 +509,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
+  String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
+
+  @override
+  String get androidBackgroundStatusOn => '开启';
+
+  @override
+  String get androidBackgroundStatusOff => '关闭';
+
+  @override
+  String get androidBackgroundStatusOther => '开启并通知';
+
+  @override
+  String get androidBackgroundOptionOn => '开启';
+
+  @override
+  String get androidBackgroundOptionOnNotify => '开启并在生成完时发送消息';
+
+  @override
+  String get androidBackgroundOptionOff => '关闭';
+
+  @override
+  String get notificationChatCompletedTitle => '生成完成';
+
+  @override
+  String get notificationChatCompletedBody => '助手回复已生成';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -3465,6 +3492,33 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
+  String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
+
+  @override
+  String get androidBackgroundStatusOn => '开启';
+
+  @override
+  String get androidBackgroundStatusOff => '关闭';
+
+  @override
+  String get androidBackgroundStatusOther => '开启并通知';
+
+  @override
+  String get androidBackgroundOptionOn => '开启';
+
+  @override
+  String get androidBackgroundOptionOnNotify => '开启并在生成完时通知';
+
+  @override
+  String get androidBackgroundOptionOff => '关闭';
+
+  @override
+  String get notificationChatCompletedTitle => '生成完成';
+
+  @override
+  String get notificationChatCompletedBody => '助手回复已生成';
+
+  @override
   String get assistantEditEmojiDialogTitle => '选择表情';
 
   @override
@@ -6419,6 +6473,33 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageChatMessageBackgroundSolid => '純色';
+
+  @override
+  String get displaySettingsPageAndroidBackgroundChatTitle => '後台聊天生成';
+
+  @override
+  String get androidBackgroundStatusOn => '開啟';
+
+  @override
+  String get androidBackgroundStatusOff => '關閉';
+
+  @override
+  String get androidBackgroundStatusOther => '關閉並發送消息';
+
+  @override
+  String get androidBackgroundOptionOn => '開啟';
+
+  @override
+  String get androidBackgroundOptionOnNotify => '開啟並在生成完時發送消息';
+
+  @override
+  String get androidBackgroundOptionOff => '關閉';
+
+  @override
+  String get notificationChatCompletedTitle => '生成完成';
+
+  @override
+  String get notificationChatCompletedBody => '助手回覆已生成';
 
   @override
   String get assistantEditEmojiDialogTitle => '選擇表情';
