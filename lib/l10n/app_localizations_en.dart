@@ -2493,6 +2493,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Auto switch to Topics';
 
   @override
+  String get desktopDisplaySettingsTopicPositionTitle => 'Topic position';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionLeft => 'Left';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionRight => 'Right';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle =>
       'Automatically create a new chat on launch';
 

@@ -4745,6 +4745,24 @@ abstract class AppLocalizations {
   /// **'Auto switch to Topics'**
   String get displaySettingsPageAutoSwitchTopicsTitle;
 
+  /// No description provided for @desktopDisplaySettingsTopicPositionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic position'**
+  String get desktopDisplaySettingsTopicPositionTitle;
+
+  /// No description provided for @desktopDisplaySettingsTopicPositionLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get desktopDisplaySettingsTopicPositionLeft;
+
+  /// No description provided for @desktopDisplaySettingsTopicPositionRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get desktopDisplaySettingsTopicPositionRight;
+
   /// No description provided for @displaySettingsPageNewChatOnLaunchSubtitle.
   ///
   /// In en, this message translates to:

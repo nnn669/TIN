@@ -12,6 +12,9 @@ import '../models/api_keys.dart';
 import '../models/backup.dart';
 import '../services/haptics.dart';
 
+// Desktop: topic list position
+enum DesktopTopicPosition { left, right }
+
 class SettingsProvider extends ChangeNotifier {
   static const String _providersOrderKey = 'providers_order_v1';
   static const String _themeModeKey = 'theme_mode_v1';
@@ -51,6 +54,9 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
+  // Desktop topic panel placement + right sidebar open state
+  static const String _desktopTopicPositionKey = 'desktop_topic_position_v1';
+  static const String _desktopRightSidebarOpenKey = 'desktop_right_sidebar_open_v1';
   // Android background chat generation mode
   static const String _androidBackgroundChatModeKey = 'android_background_chat_mode_v1';
   // Fonts
@@ -85,6 +91,7 @@ class SettingsProvider extends ChangeNotifier {
   // Desktop UI
   static const String _desktopSidebarWidthKey = 'desktop_sidebar_width_v1';
   static const String _desktopSidebarOpenKey = 'desktop_sidebar_open_v1';
+  static const String _desktopRightSidebarWidthKey = 'desktop_right_sidebar_width_v1';
 
   // ===== Network TTS services =====
   List<TtsServiceOptions> _ttsServices = const <TtsServiceOptions>[];
@@ -118,6 +125,15 @@ class SettingsProvider extends ChangeNotifier {
   bool _desktopSidebarOpen = true;
   double get desktopSidebarWidth => _desktopSidebarWidth;
   bool get desktopSidebarOpen => _desktopSidebarOpen;
+  double _desktopRightSidebarWidth = 300;
+  double get desktopRightSidebarWidth => _desktopRightSidebarWidth;
+
+  // Desktop: topic list position (left or right) and right sidebar open state
+  DesktopTopicPosition _desktopTopicPosition = DesktopTopicPosition.left;
+  DesktopTopicPosition get desktopTopicPosition => _desktopTopicPosition;
+  bool get desktopTopicsOnRight => _desktopTopicPosition == DesktopTopicPosition.right;
+  bool _desktopRightSidebarOpen = true;
+  bool get desktopRightSidebarOpen => _desktopRightSidebarOpen;
 
   Map<String, ProviderConfig> _providerConfigs = {};
   Map<String, ProviderConfig> get providerConfigs => Map.unmodifiable(_providerConfigs);
@@ -279,6 +295,17 @@ class SettingsProvider extends ChangeNotifier {
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
     _desktopAutoSwitchTopics = prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
+    // desktop: topic panel placement + right sidebar open state
+    final topicPos = prefs.getString(_desktopTopicPositionKey);
+    switch (topicPos) {
+      case 'right':
+        _desktopTopicPosition = DesktopTopicPosition.right;
+        break;
+      case 'left':
+      default:
+        _desktopTopicPosition = DesktopTopicPosition.left;
+    }
+    _desktopRightSidebarOpen = prefs.getBool(_desktopRightSidebarOpenKey) ?? true;
     // Chat message background style (default | frosted | solid)
     final bgStyleStr = prefs.getString(_displayChatMessageBackgroundStyleKey) ?? 'default';
     switch (bgStyleStr) {
@@ -294,6 +321,7 @@ class SettingsProvider extends ChangeNotifier {
     // desktop UI
     _desktopSidebarWidth = prefs.getDouble(_desktopSidebarWidthKey) ?? 300;
     _desktopSidebarOpen = prefs.getBool(_desktopSidebarOpenKey) ?? true;
+    _desktopRightSidebarWidth = prefs.getDouble(_desktopRightSidebarWidthKey) ?? 300;
     // Load app locale; default to follow system on first launch
     _appLocaleTag = prefs.getString(_appLocaleKey);
     if (_appLocaleTag == null || _appLocaleTag!.isEmpty) {
@@ -681,6 +709,33 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_desktopSidebarOpenKey, _desktopSidebarOpen);
+  }
+
+  Future<void> setDesktopRightSidebarWidth(double w) async {
+    if ((_desktopRightSidebarWidth - w).abs() < 0.5) return;
+    _desktopRightSidebarWidth = w;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_desktopRightSidebarWidthKey, _desktopRightSidebarWidth);
+  }
+
+  // Desktop: topic panel placement (left/right)
+  Future<void> setDesktopTopicPosition(DesktopTopicPosition pos) async {
+    if (_desktopTopicPosition == pos) return;
+    _desktopTopicPosition = pos;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final v = (pos == DesktopTopicPosition.right) ? 'right' : 'left';
+    await prefs.setString(_desktopTopicPositionKey, v);
+  }
+
+  // Desktop: right sidebar visible state
+  Future<void> setDesktopRightSidebarOpen(bool open) async {
+    if (_desktopRightSidebarOpen == open) return;
+    _desktopRightSidebarOpen = open;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopRightSidebarOpenKey, _desktopRightSidebarOpen);
   }
 
   // ===== App locale (UI language) =====

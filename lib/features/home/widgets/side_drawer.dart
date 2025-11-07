@@ -53,6 +53,8 @@ class SideDrawer extends StatefulWidget {
     this.embeddedWidth,
     this.showBottomBar = true,
     this.useDesktopTabs = false,
+    this.desktopAssistantsOnly = false,
+    this.desktopTopicsOnly = false,
   });
 
   final String userName;
@@ -65,6 +67,8 @@ class SideDrawer extends StatefulWidget {
   final double? embeddedWidth; // optional explicit width for embedded mode
   final bool showBottomBar; // desktop can hide this bottom area
   final bool useDesktopTabs; // desktop-only: show tabs (Assistants/Topics)
+  final bool desktopAssistantsOnly; // desktop-only: show only assistants list
+  final bool desktopTopicsOnly; // desktop-only: show only topics list
 
   @override
   State<SideDrawer> createState() => _SideDrawerState();
@@ -682,7 +686,9 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     }
 
     // Desktop-only: enable tabs for embedded sidebar when requested
-    final bool _useTabs = widget.useDesktopTabs && _isDesktop && widget.embedded;
+    final bool _assistOnly = widget.desktopAssistantsOnly && _isDesktop && widget.embedded;
+    final bool _topicsOnly = widget.desktopTopicsOnly && _isDesktop && widget.embedded;
+    final bool _useTabs = widget.useDesktopTabs && _isDesktop && widget.embedded && !_assistOnly && !_topicsOnly;
 
     final inner = SafeArea(
       child: Stack(
@@ -709,9 +715,16 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                         child: Row(
                           key: ValueKey<String>((() {
                             final l10n = AppLocalizations.of(context)!;
-                            final hint = (_useTabs && (_tabController?.index ?? 0) == 0)
-                                ? l10n.sideDrawerSearchAssistantsHint
-                                : l10n.sideDrawerSearchHint;
+                            String hint;
+                            if (_useTabs) {
+                              hint = ((_tabController?.index ?? 0) == 0)
+                                  ? l10n.sideDrawerSearchAssistantsHint
+                                  : l10n.sideDrawerSearchHint;
+                            } else if (_assistOnly) {
+                              hint = l10n.sideDrawerSearchAssistantsHint;
+                            } else {
+                              hint = l10n.sideDrawerSearchHint;
+                            }
                             return hint;
                           })()),
                           children: [
@@ -721,9 +734,13 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                               decoration: InputDecoration(
                                 hintText: (() {
                                   final l10n = AppLocalizations.of(context)!;
-                                  return (_useTabs && (_tabController?.index ?? 0) == 0)
-                                      ? l10n.sideDrawerSearchAssistantsHint
-                                      : l10n.sideDrawerSearchHint;
+                                  if (_useTabs) {
+                                    return ((_tabController?.index ?? 0) == 0)
+                                        ? l10n.sideDrawerSearchAssistantsHint
+                                        : l10n.sideDrawerSearchHint;
+                                  }
+                                  if (_assistOnly) return l10n.sideDrawerSearchAssistantsHint;
+                                  return l10n.sideDrawerSearchHint;
                                 })(),
                                 filled: true,
                                 fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
@@ -738,8 +755,8 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                                // 历史按钮放入后缀区域
-                                suffixIcon: Padding(
+                                // 右侧（话题列表）不需要历史入口（左侧已有）；左侧或默认仍保留
+                                suffixIcon: _topicsOnly ? null : Padding(
                                   padding: const EdgeInsets.only(right: 6),
                                   child: IosIconButton(
                                     size: 16,
@@ -852,7 +869,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                   // 桌面端：替换为 Tab（助手 / 话题）
                   if (_useTabs)
                     _DesktopSidebarTabs(textColor: textBase, controller: _tabController!)
-                  else
+                  else if (!_assistOnly && !_topicsOnly)
                     // 当前助手区域（固定）
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -924,20 +941,43 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
 
             // Scrollable area below header
             Expanded(
-              child: _useTabs
-                  ? _DesktopTabViews(
-                      controller: _tabController!,
-                      listController: _listController,
-                      buildAssistants: () => _buildAssistantsList(context),
-                      buildConversations: () => _buildConversationsList(context, cs, textBase, chatService, pinnedList, groups, includeUpdateBanner: true),
-                    )
-                  : _LegacyListArea(
-                      listController: _listController,
-                      isDesktop: _isDesktop,
-                      assistantsExpanded: _assistantsExpanded,
-                      buildAssistants: () => _buildAssistantsList(context, inlineMode: true),
-                      buildConversations: () => _buildConversationsList(context, cs, textBase, chatService, pinnedList, groups, includeUpdateBanner: true),
-                    ),
+              child: () {
+                if (_useTabs) {
+                  return _DesktopTabViews(
+                    controller: _tabController!,
+                    listController: _listController,
+                    buildAssistants: () => _buildAssistantsList(context),
+                    buildConversations: () => _buildConversationsList(context, cs, textBase, chatService, pinnedList, groups, includeUpdateBanner: true),
+                  );
+                }
+                if (_assistOnly) {
+                  return ListView(
+                    controller: _listController,
+                    padding: const EdgeInsets.fromLTRB(10, 2, 10, 16),
+                    children: [
+                      _buildAssistantsList(context, inlineMode: true),
+                    ],
+                  );
+                }
+                if (_topicsOnly) {
+                  final isDesktop = _isDesktop;
+                  final topPad = context.watch<SettingsProvider>().showChatListDate ? (isDesktop ? 2.0 : 4.0) : 10.0;
+                  return ListView(
+                    controller: _listController,
+                    padding: EdgeInsets.fromLTRB(10, topPad, 10, 16),
+                    children: [
+                      _buildConversationsList(context, cs, textBase, chatService, pinnedList, groups, includeUpdateBanner: true),
+                    ],
+                  );
+                }
+                return _LegacyListArea(
+                  listController: _listController,
+                  isDesktop: _isDesktop,
+                  assistantsExpanded: _assistantsExpanded,
+                  buildAssistants: () => _buildAssistantsList(context, inlineMode: true),
+                  buildConversations: () => _buildConversationsList(context, cs, textBase, chatService, pinnedList, groups, includeUpdateBanner: true),
+                );
+              }(),
             ),
 
             if (widget.showBottomBar && (!widget.embedded || !_isDesktop)) Container(
@@ -1867,7 +1907,11 @@ extension on _SideDrawerState {
     final textBase2 = isDark2 ? Colors.white : Colors.black;
 
     List<Assistant> assistants = ap2.assistants;
-    if (!inlineMode && _query.trim().isNotEmpty) {
+    // Apply search filter when:
+    // - Desktop tab mode (inlineMode == false), OR
+    // - Desktop assistants-only mode (left sidebar when topics are on right)
+    final shouldFilterAssistants = (!inlineMode) || (widget.desktopAssistantsOnly && _isDesktop);
+    if (shouldFilterAssistants && _query.trim().isNotEmpty) {
       final q = _query.toLowerCase();
       assistants = assistants.where((a) => (a.name).toLowerCase().contains(q)).toList();
     }

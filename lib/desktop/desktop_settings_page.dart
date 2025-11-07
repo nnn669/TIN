@@ -3433,6 +3433,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ToggleRowPureBackground(),
                   _RowDivider(),
                   _ChatMessageBackgroundRow(),
+                  _RowDivider(),
+                  _TopicPositionRow(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -3864,6 +3866,249 @@ class _ChatMessageBackgroundRow extends StatelessWidget {
     return _LabeledRow(
       label: l10n.displaySettingsPageChatMessageBackgroundTitle,
       trailing: const _BackgroundStyleDropdown(),
+    );
+  }
+}
+
+// --- Topic position (desktop) ---
+class _TopicPositionRow extends StatelessWidget {
+  const _TopicPositionRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.desktopDisplaySettingsTopicPositionTitle,
+      trailing: const _TopicPositionDropdown(),
+    );
+  }
+}
+
+class _TopicPositionDropdown extends StatefulWidget {
+  const _TopicPositionDropdown();
+  @override
+  State<_TopicPositionDropdown> createState() => _TopicPositionDropdownState();
+}
+
+class _TopicPositionDropdownState extends State<_TopicPositionDropdown> {
+  bool _hover = false;
+  bool _open = false;
+  final LayerLink _link = LayerLink();
+  final GlobalKey _triggerKey = GlobalKey();
+  OverlayEntry? _entry;
+
+  void _toggle() {
+    if (_open) {
+      _close();
+    } else {
+      _openMenu();
+    }
+  }
+
+  void _close() {
+    _entry?.remove();
+    _entry = null;
+    if (mounted) setState(() => _open = false);
+  }
+
+  String _labelFor(BuildContext context, DesktopTopicPosition pos) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (pos) {
+      case DesktopTopicPosition.right:
+        return l10n.desktopDisplaySettingsTopicPositionRight;
+      case DesktopTopicPosition.left:
+      default:
+        return l10n.desktopDisplaySettingsTopicPositionLeft;
+    }
+  }
+
+  void _openMenu() {
+    if (_entry != null) return;
+    final rb = _triggerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (rb == null) return;
+    final triggerSize = rb.size;
+    final triggerWidth = triggerSize.width;
+
+    _entry = OverlayEntry(builder: (ctx) {
+      final cs = Theme.of(ctx).colorScheme;
+      final isDark = Theme.of(ctx).brightness == Brightness.dark;
+      final usePure = Provider.of<SettingsProvider>(ctx, listen: false).usePureBackground;
+      final bgColor = usePure ? (isDark ? Colors.black : Colors.white) : (isDark ? const Color(0xFF1C1C1E) : Colors.white);
+      final sp = Provider.of<SettingsProvider>(ctx, listen: false);
+
+      return Stack(children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _close,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        CompositedTransformFollower(
+          link: _link,
+          showWhenUnlinked: false,
+          offset: Offset(0, triggerSize.height + 6),
+          child: _TopicPositionOverlay(
+            width: triggerWidth,
+            backgroundColor: bgColor,
+            selected: sp.desktopTopicPosition,
+            onSelected: (pos) async {
+              await sp.setDesktopTopicPosition(pos);
+              _close();
+            },
+          ),
+        ),
+      ]);
+    });
+    Overlay.of(context)?.insert(_entry!);
+    setState(() => _open = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sp = context.watch<SettingsProvider>();
+    final label = _labelFor(context, sp.desktopTopicPosition);
+
+    final baseBorder = cs.outlineVariant.withOpacity(0.18);
+    final hoverBorder = cs.primary;
+    final borderColor = _open || _hover ? hoverBorder : baseBorder;
+
+    return CompositedTransformTarget(
+      link: _link,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: _toggle,
+          child: AnimatedContainer(
+            key: _triggerKey,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            constraints: const BoxConstraints(minWidth: 100, minHeight: 34),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF141414) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor, width: 1),
+              boxShadow: _open
+                  ? [BoxShadow(color: cs.primary.withOpacity(0.10), blurRadius: 0, spreadRadius: 2)]
+                  : null,
+            ),
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.88)),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                  ],
+                ),
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AnimatedRotation(
+                      turns: _open ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(lucide.Lucide.ChevronDown, size: 16, color: cs.onSurface.withOpacity(0.7)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopicPositionOverlay extends StatefulWidget {
+  const _TopicPositionOverlay({
+    required this.width,
+    required this.backgroundColor,
+    required this.selected,
+    required this.onSelected,
+  });
+  final double width;
+  final Color backgroundColor;
+  final DesktopTopicPosition selected;
+  final ValueChanged<DesktopTopicPosition> onSelected;
+  @override
+  State<_TopicPositionOverlay> createState() => _TopicPositionOverlayState();
+}
+
+class _TopicPositionOverlayState extends State<_TopicPositionOverlay> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _slide = Tween<Offset>(begin: const Offset(0, -0.06), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ctrl.forward());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final borderColor = cs.outlineVariant.withOpacity(0.12);
+
+    final items = <(DesktopTopicPosition, String, IconData)>[
+      (DesktopTopicPosition.left, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionLeft, lucide.Lucide.panelLeft),
+      (DesktopTopicPosition.right, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionRight, lucide.Lucide.panelRight),
+    ];
+
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            constraints: BoxConstraints(minWidth: widget.width, maxWidth: widget.width),
+            decoration: BoxDecoration(
+              color: widget.backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1),
+              boxShadow: [
+                BoxShadow(color: cs.onSurface.withOpacity(0.06), blurRadius: 14, spreadRadius: 2, offset: const Offset(0, 8)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final (pos, label, icon) in items) _OverlayItem(
+                  icon: icon,
+                  label: label,
+                  background: widget.backgroundColor,
+                  selected: widget.selected == pos,
+                  onTap: () => widget.onSelected(pos),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -4386,6 +4631,65 @@ class _OverlayMenuItemState extends State<_OverlayMenuItem> {
             Expanded(child: Text(widget.label, style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.9)))),
             if (widget.selected) Icon(lucide.Lucide.Check, size: 16, color: cs.primary),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+// Generic overlay item with leading icon, label and optional selected checkmark.
+class _OverlayItem extends StatefulWidget {
+  const _OverlayItem({
+    required this.icon,
+    required this.label,
+    required this.background,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color background;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_OverlayItem> createState() => _OverlayItemState();
+}
+
+class _OverlayItemState extends State<_OverlayItem> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover
+        ? Color.alphaBlend((isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04)), widget.background)
+        : widget.background;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 16, color: cs.onSurface.withOpacity(0.85)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.9)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (widget.selected) Icon(lucide.Lucide.Check, size: 16, color: cs.primary),
+            ],
+          ),
         ),
       ),
     );

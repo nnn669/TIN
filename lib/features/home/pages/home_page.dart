@@ -196,13 +196,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
   // Tablet: whether the left embedded sidebar is visible
   bool _tabletSidebarOpen = true;
+  // Desktop: whether the right embedded topics sidebar is visible
+  bool _rightSidebarOpen = true;
   bool _learningModeEnabled = false;
   static const Duration _sidebarAnimDuration = Duration(milliseconds: 260);
   static const Curve _sidebarAnimCurve = Curves.easeOutCubic;
   // Desktop: resizable embedded sidebar width
   double _embeddedSidebarWidth = 300;
   static const double _sidebarMinWidth = 200;
-  static const double _sidebarMaxWidth = 480;
+  static const double _sidebarMaxWidth = 360;
+  double _rightSidebarWidth = 300;
   bool _desktopUiInited = false;
   
   void _openSearchSettings() {
@@ -822,10 +825,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     try { context.read<SettingsProvider>().setDesktopSidebarOpen(_tabletSidebarOpen); } catch (_) {}
   }
 
+  void _toggleRightSidebar() {
+    _dismissKeyboard();
+    try {
+      if (context.read<SettingsProvider>().hapticsOnDrawer) {
+        Haptics.drawerPulse();
+      }
+    } catch (_) {}
+    setState(() {
+      _rightSidebarOpen = !_rightSidebarOpen;
+    });
+    try { context.read<SettingsProvider>().setDesktopRightSidebarOpen(_rightSidebarOpen); } catch (_) {}
+  }
+
   Widget _buildTabletSidebar(BuildContext context) {
     final bool _isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
+    final sp = context.watch<SettingsProvider>();
+    final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
     final sidebar = SideDrawer(
       embedded: true,
       embeddedWidth: _embeddedSidebarWidth,
@@ -838,7 +856,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       })(),
       closePickerTicker: _assistantPickerCloseTick,
       loadingConversationIds: _loadingConversationIds,
-      useDesktopTabs: _isDesktop,
+      useDesktopTabs: _isDesktop && !topicsOnRight,
+      desktopAssistantsOnly: _isDesktop && topicsOnRight,
         onSelectConversation: (id) {
           _switchConversationAnimated(id);
         },
@@ -4650,6 +4669,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final sp = context.read<SettingsProvider>();
         _embeddedSidebarWidth = sp.desktopSidebarWidth.clamp(_sidebarMinWidth, _sidebarMaxWidth);
         _tabletSidebarOpen = sp.desktopSidebarOpen;
+        _rightSidebarOpen = sp.desktopRightSidebarOpen;
+        _rightSidebarWidth = sp.desktopRightSidebarWidth.clamp(_sidebarMinWidth, _sidebarMaxWidth);
       } catch (_) {}
     }
     return Stack(
@@ -4852,6 +4873,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 );
               }),
               actions: [
+                // Right topics sidebar toggle (desktop + topics on right)
+                Builder(builder: (context) {
+                  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                      defaultTargetPlatform == TargetPlatform.windows ||
+                      defaultTargetPlatform == TargetPlatform.linux;
+                  final sp = context.watch<SettingsProvider>();
+                  final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
+                  if (!isDesktop || !topicsOnRight) return const SizedBox.shrink();
+                  return IosIconButton(
+                    size: 20,
+                    padding: const EdgeInsets.all(8),
+                    minSize: 40,
+                    icon: Lucide.panelRight,
+                    onTap: _toggleRightSidebar,
+                  );
+                }),
+                const SizedBox(width: 2),
                 IosIconButton(
                   size: 20,
                   padding: const EdgeInsets.all(8),
@@ -5689,6 +5727,70 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             )),
           ),
         ),
+        // Fixed right topics sidebar when enabled
+        Builder(builder: (context) {
+          final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux;
+          final sp = context.watch<SettingsProvider>();
+          final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
+          if (!isDesktop || !topicsOnRight) return const SizedBox.shrink();
+          final double w = _rightSidebarWidth;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              
+              if (isDesktop)
+                _SidebarResizeHandle(
+                  visible: _rightSidebarOpen,
+                  onDrag: (dx) {
+                    setState(() {
+                      _rightSidebarWidth = (_rightSidebarWidth - dx).clamp(_sidebarMinWidth, _sidebarMaxWidth);
+                    });
+                  },
+                  onDragEnd: () {
+                    try { context.read<SettingsProvider>().setDesktopRightSidebarWidth(_rightSidebarWidth); } catch (_) {}
+                  },
+                ),
+              AnimatedContainer(
+                duration: _sidebarAnimDuration,
+                curve: _sidebarAnimCurve,
+                width: _rightSidebarOpen ? _rightSidebarWidth : 0,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerRight,
+                    minWidth: 0,
+                    maxWidth: _rightSidebarWidth,
+                    child: SizedBox(
+                      width: _rightSidebarWidth,
+                      child: SideDrawer(
+                        embedded: true,
+                        embeddedWidth: _rightSidebarWidth,
+                        userName: context.watch<UserProvider>().name,
+                        assistantName: (() {
+                          final l10n = AppLocalizations.of(context)!;
+                          final a = context.watch<AssistantProvider>().currentAssistant;
+                          final n = a?.name.trim();
+                          return (n == null || n.isEmpty) ? l10n.homePageDefaultAssistant : n;
+                        })(),
+                        closePickerTicker: _assistantPickerCloseTick,
+                        loadingConversationIds: _loadingConversationIds,
+                        useDesktopTabs: false,
+                        desktopTopicsOnly: true,
+                        onSelectConversation: (id) {
+                          _switchConversationAnimated(id);
+                        },
+                        onNewConversation: () async {
+                          await _createNewConversationAnimated();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
       ],
     ),
     ),

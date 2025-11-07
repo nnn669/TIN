@@ -2409,6 +2409,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
+  String get desktopDisplaySettingsTopicPositionTitle => '话题位置';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionLeft => '左侧';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionRight => '右侧';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -5398,6 +5407,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
+  String get desktopDisplaySettingsTopicPositionTitle => '话题位置';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionLeft => '左侧';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionRight => '右侧';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -8384,6 +8402,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自動切換話題';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionTitle => '主題位置';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionLeft => '左側';
+
+  @override
+  String get desktopDisplaySettingsTopicPositionRight => '右側';
 
   @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '應用程式啟動時自動建立新對話';
