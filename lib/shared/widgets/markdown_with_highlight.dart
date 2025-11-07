@@ -401,6 +401,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: Theme.of(ctx).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  // Draw border on top so header row background won't cover top corners
+                  foregroundDecoration: BoxDecoration(
                     border: Border.all(color: borderColor, width: 0.8),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -463,6 +467,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: constraints.maxWidth),
                   decoration: BoxDecoration(
                     color: Theme.of(ctx).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  foregroundDecoration: BoxDecoration(
                     border: Border.all(color: borderColor, width: 0.8),
                     borderRadius: BorderRadius.circular(12),
                   ),
