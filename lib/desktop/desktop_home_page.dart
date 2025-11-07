@@ -101,7 +101,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               )
             : body;
 
-        if (!needsWidthPad && !needsHeightPad) return content;
+        // if (!needsWidthPad && !needsHeightPad) return content;
 
         // Center a constrained area if window is smaller than our minimum
         return Center(
