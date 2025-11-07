@@ -4071,11 +4071,14 @@ class _TopicPositionOverlayState extends State<_TopicPositionOverlay> with Singl
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = cs.outlineVariant.withOpacity(0.12);
 
-    final items = <(DesktopTopicPosition, String, IconData)>[
-      (DesktopTopicPosition.left, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionLeft, lucide.Lucide.panelLeft),
-      (DesktopTopicPosition.right, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionRight, lucide.Lucide.panelRight),
+    // Align style with chat message background dropdown: no leading icons,
+    // selected item gets a highlighted background.
+    final items = <(DesktopTopicPosition, String)>[
+      (DesktopTopicPosition.left, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionLeft),
+      (DesktopTopicPosition.right, AppLocalizations.of(context)!.desktopDisplaySettingsTopicPositionRight),
     ];
 
     return FadeTransition(
@@ -4089,21 +4092,21 @@ class _TopicPositionOverlayState extends State<_TopicPositionOverlay> with Singl
             decoration: BoxDecoration(
               color: widget.backgroundColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor, width: 1),
+              border: Border.all(color: borderColor, width: 0.5),
               boxShadow: [
-                BoxShadow(color: cs.onSurface.withOpacity(0.06), blurRadius: 14, spreadRadius: 2, offset: const Offset(0, 8)),
+                BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.08), blurRadius: 16, offset: const Offset(0, 6)),
               ],
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final (pos, label, icon) in items) _OverlayItem(
-                  icon: icon,
-                  label: label,
-                  background: widget.backgroundColor,
-                  selected: widget.selected == pos,
-                  onTap: () => widget.onSelected(pos),
-                ),
+                for (final it in items)
+                  _SimpleOptionTile(
+                    label: it.$2,
+                    selected: widget.selected == it.$1,
+                    onTap: () => widget.onSelected(it.$1),
+                  ),
               ],
             ),
           ),
