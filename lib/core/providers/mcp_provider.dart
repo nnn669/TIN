@@ -347,9 +347,18 @@ class McpProvider extends ChangeNotifier {
 
       if (serversFromMap != null) {
         final isDesktop = _isDesktopPlatform();
+        bool builtinSeen = false;
+        bool builtinEnabled = true;
         serversFromMap.forEach((id, cfgAny) {
           if (cfgAny is! Map) return;
           final cfg = cfgAny.cast<String, dynamic>();
+          final typeLower = (cfg['type'] ?? '').toString().toLowerCase();
+          if (typeLower == 'inmemory') {
+            // Built-in @kelivo/fetch control via isActive; ignore name mismatches silently
+            builtinSeen = true;
+            builtinEnabled = (cfg['isActive'] as bool?) ?? true;
+            return;
+          }
           final hasStdioShape = cfg.containsKey('command') || cfg.containsKey('args') || cfg.containsKey('env') || (cfg['type']?.toString().toLowerCase() == 'stdio');
           if (hasStdioShape) {
             if (!isDesktop) {
@@ -410,6 +419,15 @@ class McpProvider extends ChangeNotifier {
             headers: headers,
           ));
         });
+        if (builtinSeen) {
+          // Append single built-in server with fixed id/name
+          next.add(McpServerConfig(
+            id: 'kelivo_fetch',
+            enabled: builtinEnabled,
+            name: '@kelivo/fetch',
+            transport: McpTransportType.inmemory,
+          ));
+        }
       } else if (data is List) {
         // Attempt to parse internal list format. Be tolerant to transport string variants.
         for (final item in data) {

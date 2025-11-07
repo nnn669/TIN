@@ -169,6 +169,7 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
   Widget _basicForm() {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isBuiltin = isEdit && _transport == McpTransportType.inmemory;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,23 +177,38 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
           _switchRow(label: l10n.mcpServerEditSheetEnabledLabel, value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
         ]),
         const SizedBox(height: 10),
-        _inputRow(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP'),
-        const SizedBox(height: 10),
-        Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 6),
-        _transportPicker(),
-        const SizedBox(height: 10),
-        if (_transport == McpTransportType.sse) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
-          ),
+        if (isBuiltin)
+          _iosCard(children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Text(l10n.mcpServerEditSheetNameLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(_nameCtrl.text, style: const TextStyle(fontWeight: FontWeight.w600))),
+                ],
+              ),
+            ),
+          ])
+        else ...[
+          _inputRow(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP'),
+          const SizedBox(height: 10),
+          Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
+          _transportPicker(),
+          const SizedBox(height: 10),
+          if (_transport == McpTransportType.sse) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+            ),
+          ],
+          _inputRow(label: l10n.mcpServerEditSheetUrlLabel, controller: _urlCtrl, hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000'),
+          const SizedBox(height: 16),
+          Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          _headersEditor(),
         ],
-        _inputRow(label: l10n.mcpServerEditSheetUrlLabel, controller: _urlCtrl, hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000'),
-        const SizedBox(height: 16),
-        Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        _headersEditor(),
       ],
     );
   }
@@ -247,6 +263,13 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
 
   Future<void> _onSave() async {
     final mcp = context.read<McpProvider>();
+    // Built-in: only toggle enabled
+    if (isEdit && _transport == McpTransportType.inmemory) {
+      final old = mcp.getById(widget.serverId!)!;
+      await mcp.updateServer(old.copyWith(enabled: _enabled));
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     final name = _nameCtrl.text.trim().isEmpty ? 'MCP' : _nameCtrl.text.trim();
     final url = _urlCtrl.text.trim();
     if (url.isEmpty) {

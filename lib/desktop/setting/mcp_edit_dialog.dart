@@ -89,6 +89,13 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     final mcp = context.read<McpProvider>();
+    // Built-in server: only allow toggling enabled, no other changes
+    if (isEdit && _transport == McpTransportType.inmemory) {
+      final old = mcp.getById(widget.serverId!)!;
+      await mcp.updateServer(old.copyWith(enabled: _enabled));
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
     final name = _nameCtrl.text.trim().isEmpty ? 'MCP' : _nameCtrl.text.trim();
     final headers = <String, String>{ for (final h in _headers) if (h.key.text.trim().isNotEmpty) h.key.text.trim(): h.value.text.trim() };
     if (_transport == McpTransportType.stdio) {
@@ -190,6 +197,7 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
+    final isBuiltin = isEdit && _transport == McpTransportType.inmemory;
     return ListView(
       children: [
         Padding(
@@ -202,46 +210,60 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
           ),
         ),
         const SizedBox(height: 10),
-        _labeledField(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP', bold: true),
+        // Name row: read-only text for builtin, editable for others
+        if (isBuiltin) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Text(l10n.mcpServerEditSheetNameLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(width: 10),
+                Expanded(child: Text(_nameCtrl.text, style: const TextStyle(fontWeight: FontWeight.w600))),
+              ],
+            ),
+          ),
+        ] else ...[
+          _labeledField(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP', bold: true),
+          const SizedBox(height: 10),
+          Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
+          Builder(builder: (context) {
+            final isDesktop = _isDesktopPlatform();
+            final labels = isDesktop ? ['Streamable HTTP', 'SSE', l10n.mcpTransportOptionStdio] : ['Streamable HTTP', 'SSE'];
+            int selectedIdx;
+            if (_transport == McpTransportType.http) selectedIdx = 0;
+            else if (_transport == McpTransportType.sse) selectedIdx = 1;
+            else selectedIdx = isDesktop ? 2 : 0;
+            return _SegChoiceBar(
+              labels: labels,
+              selectedIndex: selectedIdx,
+              onSelected: (i) {
+                setState(() {
+                  if (isDesktop && i == 2) {
+                    _transport = McpTransportType.stdio;
+                  } else if (i == 0) {
+                    _transport = McpTransportType.http;
+                  } else {
+                    _transport = McpTransportType.sse;
+                  }
+                });
+              },
+            );
+          }),
+        ],
         const SizedBox(height: 10),
-        Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 6),
-        Builder(builder: (context) {
-          final isDesktop = _isDesktopPlatform();
-          final labels = isDesktop ? ['Streamable HTTP', 'SSE', l10n.mcpTransportOptionStdio] : ['Streamable HTTP', 'SSE'];
-          int selectedIdx;
-          if (_transport == McpTransportType.http) selectedIdx = 0;
-          else if (_transport == McpTransportType.sse) selectedIdx = 1;
-          else selectedIdx = isDesktop ? 2 : 0;
-          return _SegChoiceBar(
-            labels: labels,
-            selectedIndex: selectedIdx,
-            onSelected: (i) {
-              setState(() {
-                if (isDesktop && i == 2) {
-                  _transport = McpTransportType.stdio;
-                } else if (i == 0) {
-                  _transport = McpTransportType.http;
-                } else {
-                  _transport = McpTransportType.sse;
-                }
-              });
-            },
-          );
-        }),
-        const SizedBox(height: 10),
-        if (_transport == McpTransportType.sse)
+        if (!isBuiltin && _transport == McpTransportType.sse)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
           ),
-        if (_transport != McpTransportType.stdio)
+        if (!isBuiltin && _transport != McpTransportType.stdio)
           _labeledField(
             label: l10n.mcpServerEditSheetUrlLabel,
             controller: _urlCtrl,
             hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000', bold: true,
           ),
-        if (_transport == McpTransportType.stdio) ...[
+        if (!isBuiltin && _transport == McpTransportType.stdio) ...[
           _labeledField(label: l10n.mcpServerEditSheetStdioCommandLabel, controller: _cmdCtrl, hint: 'npx', bold: false),
           const SizedBox(height: 10),
           _labeledField(label: l10n.mcpServerEditSheetStdioArgumentsLabel, controller: _argsCtrl, hint: "-y @modelcontextprotocol/server-filesystem", bold: false),
@@ -295,7 +317,7 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
           ]),
         ],
         const SizedBox(height: 16),
-        if (_transport != McpTransportType.stdio) ...[
+        if (!isBuiltin && _transport != McpTransportType.stdio) ...[
           Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Column(
