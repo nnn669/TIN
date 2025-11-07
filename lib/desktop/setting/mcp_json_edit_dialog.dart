@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../icons/lucide_adapter.dart' as lucide;
 import '../../core/providers/mcp_provider.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/providers/settings_provider.dart';
 
 Future<void> showDesktopMcpJsonEditDialog(BuildContext context) async {
   final cs = Theme.of(context).colorScheme;
@@ -69,6 +71,22 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Resolve user-preferred code font family (Google/local/system)
+    final settings = context.watch<SettingsProvider>();
+    String resolveCodeFont() {
+      final fam = settings.codeFontFamily;
+      if (fam == null || fam.isEmpty) return 'monospace';
+      if (settings.codeFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(fam);
+          return s.fontFamily ?? fam;
+        } catch (_) {
+          return fam;
+        }
+      }
+      return fam;
+    }
+    final codeFontFamily = resolveCodeFont();
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 860, maxHeight: 720),
       child: SizedBox(
@@ -110,7 +128,7 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
                       controller: _controller,
                       keyboardType: TextInputType.multiline,
                       maxLines: null,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13.5, height: 1.35),
+                      style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5, height: 1.35),
                       decoration: const InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,

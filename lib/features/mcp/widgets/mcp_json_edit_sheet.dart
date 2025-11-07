@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/providers/settings_provider.dart';
 
 Future<void> showMcpJsonEditSheet(BuildContext context) async {
   final cs = Theme.of(context).colorScheme;
@@ -70,6 +72,22 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Resolve user-preferred code font family (Google/local/system)
+    final settings = context.watch<SettingsProvider>();
+    String resolveCodeFont() {
+      final fam = settings.codeFontFamily;
+      if (fam == null || fam.isEmpty) return 'monospace';
+      if (settings.codeFontIsGoogle) {
+        try {
+          final s = GoogleFonts.getFont(fam);
+          return s.fontFamily ?? fam;
+        } catch (_) {
+          return fam;
+        }
+      }
+      return fam;
+    }
+    final codeFontFamily = resolveCodeFont();
     final media = MediaQuery.of(context);
     final height = media.size.height * 0.9;
 
@@ -133,7 +151,7 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
                       controller: _controller,
                       keyboardType: TextInputType.multiline,
                       maxLines: null,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13.5, height: 1.4),
+                      style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5, height: 1.4),
                       decoration: const InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
