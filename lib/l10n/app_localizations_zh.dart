@@ -479,6 +479,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相机权限。';
 
   @override
+  String get openSystemSettings => '去设置';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => '从图片更换…';
 
   @override
@@ -3480,6 +3483,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相机权限';
 
   @override
+  String get openSystemSettings => '去设置';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => '从图片更换…';
 
   @override
@@ -6479,6 +6485,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相機權限';
+
+  @override
+  String get openSystemSettings => '前往設定';
 
   @override
   String get desktopAvatarMenuChangeFromImage => '從圖片更換…';

@@ -76,6 +76,7 @@ import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../utils/app_directories.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -1058,6 +1059,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   Future<void> _onPickCamera() async {
     try {
+      // Proactive permission check on mobile
+      if (Platform.isAndroid || Platform.isIOS) {
+        var status = await Permission.camera.status;
+        // Request if not determined; otherwise guide user
+        if (status.isDenied || status.isRestricted) {
+          status = await Permission.camera.request();
+        }
+        if (!status.isGranted) {
+          final l10n = AppLocalizations.of(context)!;
+          showAppSnackBar(
+            context,
+            message: l10n.cameraPermissionDeniedMessage,
+            type: NotificationType.error,
+            duration: const Duration(seconds: 4),
+            actionLabel: l10n.openSystemSettings,
+            onAction: () {
+              try { openAppSettings(); } catch (_) {}
+            },
+          );
+          return;
+        }
+      }
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.camera);
       if (file == null) return;

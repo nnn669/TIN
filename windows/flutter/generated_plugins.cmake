@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
   file_selector_windows
   irondash_engine_context
+  permission_handler_windows
   screen_retriever_windows
   share_plus
   super_native_extensions

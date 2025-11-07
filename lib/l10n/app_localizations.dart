@@ -1013,6 +1013,12 @@ abstract class AppLocalizations {
   /// **'Camera unavailable: permission not granted.'**
   String get cameraPermissionDeniedMessage;
 
+  /// No description provided for @openSystemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSystemSettings;
+
   /// No description provided for @desktopAvatarMenuChangeFromImage.
   ///
   /// In en, this message translates to:

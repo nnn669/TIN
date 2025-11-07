@@ -493,6 +493,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Camera unavailable: permission not granted.';
 
   @override
+  String get openSystemSettings => 'Open Settings';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => 'Change from image…';
 
   @override
