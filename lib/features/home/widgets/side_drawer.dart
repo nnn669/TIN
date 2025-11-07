@@ -2644,7 +2644,7 @@ class _AssistantInlineTileState extends State<_AssistantInlineTile> {
               IosIconButton(
                 icon: Lucide.Pencil,
                 size: 18,
-                color: cs.onSurface,
+                color: cs.onSurface.withOpacity(0.7),
                 padding: const EdgeInsets.all(8),
                 minSize: 36,
                 onTap: widget.onEditTap,

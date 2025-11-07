@@ -859,13 +859,16 @@ Widget _iosNavRow(
                 Flexible(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: Text(
-                      detailText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        detailText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6)),
+                      ),
                     ),
                   ),
                 ),
