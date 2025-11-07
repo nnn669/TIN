@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:ui' as ui;
 import '../../utils/sandbox_path_resolver.dart';
 import '../../features/chat/pages/image_viewer_page.dart';
 import 'snackbar.dart';
@@ -770,6 +771,7 @@ class _CollapsibleCodeBlock extends StatefulWidget {
 
 class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   bool _expanded = true;
+  late final ScrollController _vCodeScrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -926,31 +928,93 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     width: double.infinity,
                     color: bodyBg,
                     padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
-                    child: SelectionContainer.disabled(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        primary: false,
-                        child: HighlightView(
-                          _trimTrailingNewlines(widget.code),
-                          language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
-                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                    child: () {
+                      // Desktop: enable mouse-drag scrolling and cap height with vertical scroll
+                      final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+                      if (!isDesktop) {
+                        return SelectionContainer.disabled(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            primary: false,
+                            child: HighlightView(
+                              _trimTrailingNewlines(widget.code),
+                              language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
+                              theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                isDark ? atomOneDarkReasonableTheme : githubTheme,
+                              ),
+                              padding: EdgeInsets.zero,
+                              textStyle: TextStyle(
+                                fontFamily: codeFontFamily,
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                            ),
                           ),
-                          padding: EdgeInsets.zero,
-                          textStyle: TextStyle(
-                            fontFamily: codeFontFamily,
-                            fontSize: 13,
-                            height: 1.5,
+                        );
+                      }
+
+                      final screenH = MediaQuery.of(context).size.height;
+                      final maxH = math.min(420.0, screenH * 0.55);
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: maxH),
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(
+                            dragDevices: {
+                              ui.PointerDeviceKind.touch,
+                              ui.PointerDeviceKind.mouse,
+                              ui.PointerDeviceKind.stylus,
+                              ui.PointerDeviceKind.unknown,
+                            },
+                          ),
+                          child: Scrollbar(
+                            controller: _vCodeScrollController,
+                            thumbVisibility: true,
+                            interactive: true,
+                            notificationPredicate: (notif) => notif.metrics.axis == Axis.vertical,
+                            child: SingleChildScrollView(
+                              controller: _vCodeScrollController,
+                              child: SelectionContainer.disabled(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  primary: false,
+                                  child: HighlightView(
+                                    _trimTrailingNewlines(widget.code),
+                                    language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
+                                    theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                      isDark ? atomOneDarkReasonableTheme : githubTheme,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    textStyle: TextStyle(
+                                      fontFamily: codeFontFamily,
+                                      fontSize: 13,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }(),
                   )
                 : const SizedBox.shrink(key: ValueKey('code-collapsed')),
           ),
           ],
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _vCodeScrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _vCodeScrollController.dispose();
+    super.dispose();
   }
 
   // Remove trailing newlines to avoid rendering an extra empty line at the bottom
@@ -981,6 +1045,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
   bool _expanded = true;
   // Stable key to avoid frequent WebView recreation across rebuilds
   final GlobalKey _mermaidViewKey = GlobalKey();
+  late final ScrollController _vMermaidScrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -1221,26 +1286,75 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                           ),
                         ] else ...[
                           // Fallback: show raw code and a preview button (opens browser)
-                          SelectionContainer.disabled(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: HighlightView(
-                                widget.code,
-                                language: 'plaintext',
-                                theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                                  Theme.of(context).brightness == Brightness.dark
-                                      ? atomOneDarkReasonableTheme
-                                      : githubTheme,
+                          () {
+                            final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+                            if (!isDesktop) {
+                              return SelectionContainer.disabled(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: HighlightView(
+                                    widget.code,
+                                    language: 'plaintext',
+                                    theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                      Theme.of(context).brightness == Brightness.dark
+                                          ? atomOneDarkReasonableTheme
+                                          : githubTheme,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    textStyle: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                      height: 1.5,
+                                    ),
+                                  ),
                                 ),
-                                padding: EdgeInsets.zero,
-                                textStyle: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 13,
-                                  height: 1.5,
+                              );
+                            }
+                            final screenH = MediaQuery.of(context).size.height;
+                            final maxH = math.min(420.0, screenH * 0.55);
+                            return ConstrainedBox(
+                              constraints: BoxConstraints(maxHeight: maxH),
+                              child: ScrollConfiguration(
+                                behavior: ScrollConfiguration.of(context).copyWith(
+                                  dragDevices: {
+                                    ui.PointerDeviceKind.touch,
+                                    ui.PointerDeviceKind.mouse,
+                                    ui.PointerDeviceKind.stylus,
+                                    ui.PointerDeviceKind.unknown,
+                                  },
+                                ),
+                                child: Scrollbar(
+                                  controller: _vMermaidScrollController,
+                                  thumbVisibility: true,
+                                  interactive: true,
+                                  notificationPredicate: (notif) => notif.metrics.axis == Axis.vertical,
+                                  child: SingleChildScrollView(
+                                    controller: _vMermaidScrollController,
+                                    child: SelectionContainer.disabled(
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: HighlightView(
+                                          widget.code,
+                                          language: 'plaintext',
+                                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                            Theme.of(context).brightness == Brightness.dark
+                                                ? atomOneDarkReasonableTheme
+                                                : githubTheme,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          textStyle: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 13,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                          }(),
                           if (!ExportCaptureScope.of(context)) ...[
                             const SizedBox(height: 8),
                             Align(
@@ -1264,6 +1378,18 @@ class _MermaidBlockState extends State<_MermaidBlock> {
         ],
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _vMermaidScrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _vMermaidScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _openMermaidPreviewInBrowser(BuildContext context, String code, bool dark) async {
