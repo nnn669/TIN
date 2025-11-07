@@ -33,10 +33,13 @@ class DesktopWindowController with WindowListener {
     const minSize = Size(WindowSizeManager.minWindowWidth, WindowSizeManager.minWindowHeight);
     const maxSize = Size(WindowSizeManager.maxWindowWidth, WindowSizeManager.maxWindowHeight);
 
+    final isMac = defaultTargetPlatform == TargetPlatform.macOS;
     final options = WindowOptions(
-      size: initialSize,
-      minimumSize: minSize,
-      maximumSize: maxSize,
+      // On macOS, let Cocoa autosave restore the last frame to avoid jumps.
+      size: isMac ? null : initialSize,
+      // Avoid imposing min/max on macOS to prevent subtle size corrections.
+      minimumSize: isMac ? null : minSize,
+      maximumSize: isMac ? null : maxSize,
       title: title,
     );
 
@@ -44,14 +47,20 @@ class DesktopWindowController with WindowListener {
     final wasMax = await _sizeMgr.getWindowMaximized();
 
     await windowManager.waitUntilReadyToShow(options, () async {
-      if (savedPos != null) {
-        try { await windowManager.setPosition(savedPos); } catch (_) {}
-      }
+      // Show first, then restore position to avoid macOS jump/flicker.
       await windowManager.show();
       await windowManager.focus();
-      if (wasMax) {
-        try { await windowManager.maximize(); } catch (_) {}
+      // On macOS rely on native autosave. Do not set position from Dart.
+      final shouldRestorePos = savedPos != null && !isMac;
+      if (shouldRestorePos) {
+        try { await windowManager.setPosition(savedPos); } catch (_) {}
       }
+      // Only auto-restore maximize on Windows; macOS restore may cause jump.
+      try {
+        if (defaultTargetPlatform == TargetPlatform.windows && wasMax) {
+          await windowManager.maximize();
+        }
+      } catch (_) {}
     });
 
     _attachListeners();
@@ -92,12 +101,39 @@ class DesktopWindowController with WindowListener {
 
   @override
   void onWindowMaximize() async {
-    try { await _sizeMgr.setWindowMaximized(true); } catch (_) {}
+    try {
+      await _sizeMgr.setWindowMaximized(true);
+      // Mark position as origin placeholder to avoid stale restore when maximized.
+      await _sizeMgr.setPosition(const Offset(0, 0));
+    } catch (_) {}
   }
 
   @override
   void onWindowUnmaximize() async {
-    try { await _sizeMgr.setWindowMaximized(false); } catch (_) {}
+    try {
+      await _sizeMgr.setWindowMaximized(false);
+      // Capture current position on restore from maximized.
+      final offset = await windowManager.getPosition();
+      await _sizeMgr.setPosition(offset);
+    } catch (_) {}
+  }
+
+  // Persist fullscreen transitions similarly to maximize/unmaximize to
+  // keep state consistent across platforms and avoid position jumps.
+  @override
+  void onWindowEnterFullScreen() async {
+    try {
+      await _sizeMgr.setWindowMaximized(true);
+      await _sizeMgr.setPosition(const Offset(0, 0));
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowLeaveFullScreen() async {
+    try {
+      await _sizeMgr.setWindowMaximized(false);
+      final offset = await windowManager.getPosition();
+      await _sizeMgr.setPosition(offset);
+    } catch (_) {}
   }
 }
-

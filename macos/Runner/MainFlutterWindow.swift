@@ -2,6 +2,8 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  // Use Cocoa autosave to persist and restore window frame precisely on macOS.
+  private let autosaveName = NSWindow.FrameAutosaveName("KelivoMainWindowFrame")
   // Layout helper: re-position the traffic light buttons
   private func layoutTrafficLightButton(titlebarView: NSView, button: NSButton, offsetTop: CGFloat, offsetLeft: CGFloat) {
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -45,15 +47,19 @@ class MainFlutterWindow: NSWindow {
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
     self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
-
     // Customize title bar appearance for a clean, full-size content view
     self.titlebarAppearsTransparent = true
     self.titleVisibility = .hidden
     self.styleMask.insert(.fullSizeContentView)
     self.isMovableByWindowBackground = true
+    if #available(macOS 15.0, *) {
+      self.isMovable = true
+    }
+
+    // Now enable autosave and restore the last saved frame (post style configuration)
+    _ = self.setFrameAutosaveName(autosaveName)
+    _ = self.setFrameUsingName(autosaveName, force: false)
 
     // Place system traffic light buttons
     self.layoutTrafficLights()
