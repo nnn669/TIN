@@ -124,6 +124,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
   final Map<LogicalKeyboardKey, Timer?> _repeatTimers = {};
   static const Duration _repeatInitialDelay = Duration(milliseconds: 300);
   static const Duration _repeatPeriod = Duration(milliseconds: 35);
+  // Anchor for the responsive overflow menu on the left action bar
+  final GlobalKey _leftOverflowAnchorKey = GlobalKey(debugLabel: 'left-overflow-anchor');
 
   void _addImages(List<String> paths) {
     if (paths.isEmpty) return;
@@ -515,6 +517,321 @@ class _ChatInputBarState extends State<ChatInputBar> {
     return (images: images, docs: docs);
   }
 
+  // Build a responsive left action bar that hides overflowing actions
+  // into an anchored "+" menu using DesktopContextMenu style.
+  Widget _buildResponsiveLeftActions(BuildContext context) {
+    const double spacing = 8;
+    const double normalButtonW = 32; // 20 + padding(6*2)
+    const double modelButtonW = 30;  // 28 + padding(1*2)
+    const double plusButtonW = 32;
+
+    final l10n = AppLocalizations.of(context)!;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final List<_OverflowAction> actions = [];
+
+        // Model select (always present; can be hidden if overflow)
+        actions.add(_OverflowAction(
+          width: (widget.modelIcon != null) ? modelButtonW : normalButtonW,
+          builder: () => _CompactIconButton(
+            tooltip: l10n.chatInputBarSelectModelTooltip,
+            icon: Lucide.Boxes,
+            child: widget.modelIcon,
+            modelIcon: true,
+            onTap: widget.onSelectModel,
+            onLongPress: widget.onLongPressSelectModel,
+          ),
+          menu: DesktopContextMenuItem(
+            icon: Lucide.Boxes,
+            label: l10n.chatInputBarSelectModelTooltip,
+            onTap: widget.onSelectModel,
+          ),
+        ));
+
+        // Search button (stateful icon depending on provider config)
+        final settings = context.watch<SettingsProvider>();
+        final ap = context.watch<AssistantProvider>();
+        final a = ap.currentAssistant;
+        final currentProviderKey = a?.chatModelProvider ?? settings.currentModelProvider;
+        final currentModelId = a?.chatModelId ?? settings.currentModelId;
+        final cfg = (currentProviderKey != null)
+            ? settings.getProviderConfig(currentProviderKey)
+            : null;
+        bool builtinSearchActive = false;
+        if (cfg != null && currentModelId != null) {
+          final isGeminiOfficial = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
+          final isClaude = cfg.providerType == ProviderKind.claude;
+          final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
+          if (isGeminiOfficial || isClaude || isOpenAIResponses) {
+            final ov = cfg.modelOverrides[currentModelId] as Map?;
+            final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
+            builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
+          }
+        }
+        final appSearchEnabled = settings.searchEnabled;
+        final brandAsset = (() {
+          if (!appSearchEnabled || builtinSearchActive) return null;
+          final services = settings.searchServices;
+          final sel = settings.searchServiceSelected.clamp(0, services.isNotEmpty ? services.length - 1 : 0);
+          final options = services.isNotEmpty ? services[sel] : SearchServiceOptions.defaultOption;
+          final svc = SearchService.getService(options);
+          return BrandAssets.assetForName(svc.name);
+        })();
+
+        actions.add(_OverflowAction(
+          width: normalButtonW,
+          builder: () {
+            // Not enabled at all -> default globe
+            if (!appSearchEnabled && !builtinSearchActive) {
+              return _CompactIconButton(
+                tooltip: l10n.chatInputBarOnlineSearchTooltip,
+                icon: Lucide.Globe,
+                active: false,
+                onTap: widget.onOpenSearch,
+              );
+            }
+            // Built-in search -> magnifier icon in theme color
+            if (builtinSearchActive) {
+              return _CompactIconButton(
+                tooltip: l10n.chatInputBarOnlineSearchTooltip,
+                icon: Lucide.Search,
+                active: true,
+                onTap: widget.onOpenSearch,
+              );
+            }
+            // External provider search -> brand icon
+            return _CompactIconButton(
+              tooltip: l10n.chatInputBarOnlineSearchTooltip,
+              icon: Lucide.Globe,
+              active: true,
+              onTap: widget.onOpenSearch,
+              childBuilder: (c) {
+                final asset = brandAsset;
+                if (asset != null) {
+                  if (asset.endsWith('.svg')) {
+                    return SvgPicture.asset(asset, width: 20, height: 20, colorFilter: ColorFilter.mode(c, BlendMode.srcIn));
+                  } else {
+                    return Image.asset(asset, width: 20, height: 20, color: c, colorBlendMode: BlendMode.srcIn);
+                  }
+                } else {
+                  return Icon(Lucide.Globe, size: 20, color: c);
+                }
+              },
+            );
+          },
+          menu: () {
+            // Prefer vector icon if brandAsset is svg, otherwise pick reasonable default
+            if (!appSearchEnabled && !builtinSearchActive) {
+              return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+            }
+            if (builtinSearchActive) {
+              return DesktopContextMenuItem(icon: Lucide.Search, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+            }
+            if (brandAsset != null && brandAsset.endsWith('.svg')) {
+              return DesktopContextMenuItem(svgAsset: brandAsset, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+            }
+            return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+          }(),
+        ));
+
+        if (widget.supportsReasoning) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.chatInputBarReasoningStrengthTooltip,
+              icon: Lucide.Brain,
+              active: widget.reasoningActive,
+              onTap: widget.onConfigureReasoning,
+              childBuilder: (c) => SvgPicture.asset(
+                'assets/icons/deepthink.svg',
+                width: 20,
+                height: 20,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              ),
+            ),
+            menu: DesktopContextMenuItem(
+              svgAsset: 'assets/icons/deepthink.svg',
+              label: l10n.chatInputBarReasoningStrengthTooltip,
+              onTap: widget.onConfigureReasoning,
+            ),
+          ));
+        }
+
+        if (widget.showMcpButton) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.chatInputBarMcpServersTooltip,
+              icon: Lucide.Hammer,
+              active: widget.mcpActive,
+              onTap: widget.onOpenMcp,
+              onLongPress: widget.onLongPressMcp,
+            ),
+            menu: DesktopContextMenuItem(
+              icon: Lucide.Hammer,
+              label: l10n.chatInputBarMcpServersTooltip,
+              onTap: widget.onOpenMcp,
+            ),
+          ));
+        }
+
+        if (widget.showQuickPhraseButton && widget.onQuickPhrase != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.chatInputBarQuickPhraseTooltip,
+              icon: Lucide.Zap,
+              onTap: widget.onQuickPhrase,
+              onLongPress: widget.onLongPressQuickPhrase,
+            ),
+            menu: DesktopContextMenuItem(
+              icon: Lucide.Zap,
+              label: l10n.chatInputBarQuickPhraseTooltip,
+              onTap: widget.onQuickPhrase,
+            ),
+          ));
+        }
+
+        if (widget.onPickCamera != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.bottomToolsSheetCamera,
+              icon: Lucide.Camera,
+              onTap: widget.onPickCamera,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.Camera, label: l10n.bottomToolsSheetCamera, onTap: widget.onPickCamera),
+          ));
+        }
+
+        if (widget.onPickPhotos != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.bottomToolsSheetPhotos,
+              icon: Lucide.Image,
+              onTap: widget.onPickPhotos,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.Image, label: l10n.bottomToolsSheetPhotos, onTap: widget.onPickPhotos),
+          ));
+        }
+
+        if (widget.onUploadFiles != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.bottomToolsSheetUpload,
+              icon: Lucide.Paperclip,
+              onTap: widget.onUploadFiles,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.Paperclip, label: l10n.bottomToolsSheetUpload, onTap: widget.onUploadFiles),
+          ));
+        }
+
+        if (widget.onToggleLearningMode != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.bottomToolsSheetLearningMode,
+              icon: Lucide.BookOpenText,
+              active: widget.learningModeActive,
+              onTap: widget.onToggleLearningMode,
+              onLongPress: widget.onLongPressLearning,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.BookOpenText, label: l10n.bottomToolsSheetLearningMode, onTap: widget.onToggleLearningMode),
+          ));
+        }
+
+        if (widget.onClearContext != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.bottomToolsSheetClearContext,
+              icon: Lucide.Eraser,
+              onTap: widget.onClearContext,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.Eraser, label: l10n.bottomToolsSheetClearContext, onTap: widget.onClearContext),
+          ));
+        }
+
+        if (widget.showMiniMapButton) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.miniMapTooltip,
+              icon: Lucide.Map,
+              onTap: widget.onOpenMiniMap,
+            ),
+            menu: DesktopContextMenuItem(icon: Lucide.Map, label: l10n.miniMapTooltip, onTap: widget.onOpenMiniMap),
+          ));
+        }
+
+        // Compute total width with spacing to see if overflow is needed
+        double full = 0;
+        for (var i = 0; i < actions.length; i++) {
+          if (i > 0) full += spacing;
+          full += actions[i].width;
+        }
+
+        final maxW = constraints.maxWidth;
+        int visibleCount = actions.length;
+        if (full > maxW) {
+          // First pass: include as many as possible ignoring the +
+          double used = 0;
+          visibleCount = 0;
+          for (var i = 0; i < actions.length; i++) {
+            final add = (visibleCount > 0 ? spacing : 0) + actions[i].width;
+            if (used + add <= maxW) {
+              used += add;
+              visibleCount++;
+            } else {
+              break;
+            }
+          }
+          // Ensure + button fits; remove items until it does
+          while (visibleCount > 0 && used + spacing + plusButtonW > maxW) {
+            // remove last
+            used -= actions[visibleCount - 1].width;
+            if (visibleCount - 1 > 0) used -= spacing;
+            visibleCount--;
+          }
+        }
+
+        final overflowItems = actions.sublist(visibleCount);
+
+        final children = <Widget>[];
+        for (var i = 0; i < visibleCount; i++) {
+          if (i > 0) children.add(const SizedBox(width: spacing));
+          children.add(actions[i].builder());
+        }
+
+        if (overflowItems.isNotEmpty) {
+          if (children.isNotEmpty) children.add(const SizedBox(width: spacing));
+          final menuItems = overflowItems.map((e) => e.menu).toList(growable: false);
+          children.add(
+            Container(
+              key: _leftOverflowAnchorKey,
+              child: _CompactIconButton(
+                tooltip: l10n.chatInputBarMoreTooltip,
+                icon: Lucide.Plus,
+                onTap: () {
+                  showDesktopAnchoredMenu(
+                    context,
+                    anchorKey: _leftOverflowAnchorKey,
+                    items: menuItems,
+                  );
+                },
+              ),
+            ),
+          );
+        }
+
+        return Row(children: children);
+      },
+    );
+  }
+
   String _inferMimeByExtension(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return 'application/pdf';
@@ -893,202 +1210,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            _CompactIconButton(
-                              tooltip: AppLocalizations.of(context)!.chatInputBarSelectModelTooltip,
-                              icon: Lucide.Boxes,
-                              child: widget.modelIcon,
-                              modelIcon: true,
-                              onTap: widget.onSelectModel,
-                              onLongPress: widget.onLongPressSelectModel,
-                            ),
-                            const SizedBox(width: 8),
-                            (() {
-                              // Determine current search state to render icon
-                              final settings = context.watch<SettingsProvider>();
-                              final ap = context.watch<AssistantProvider>();
-                              final a = ap.currentAssistant;
-                              final currentProviderKey = a?.chatModelProvider ?? settings.currentModelProvider;
-                              final currentModelId = a?.chatModelId ?? settings.currentModelId;
-                              final cfg = (currentProviderKey != null)
-                                  ? settings.getProviderConfig(currentProviderKey)
-                                  : null;
-                              bool builtinSearchActive = false;
-                              if (cfg != null && currentModelId != null) {
-                                final isGeminiOfficial = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
-                                final isClaude = cfg.providerType == ProviderKind.claude;
-                                final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-                                if (isGeminiOfficial || isClaude || isOpenAIResponses) {
-                                  final ov = cfg.modelOverrides[currentModelId] as Map?;
-                                  final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-                                  builtinSearchActive = list
-                                      .map((e) => e.toString().toLowerCase())
-                                      .contains('search');
-                                }
-                              }
-                              final appSearchEnabled = settings.searchEnabled;
-                              final theme = Theme.of(context);
-                              final isDark = theme.brightness == Brightness.dark;
-
-                              // Not enabled at all -> default globe (not themed)
-                              if (!appSearchEnabled && !builtinSearchActive) {
-                                return _CompactIconButton(
-                                  tooltip: AppLocalizations.of(context)!.chatInputBarOnlineSearchTooltip,
-                                  icon: Lucide.Globe,
-                                  active: false,
-                                  onTap: widget.onOpenSearch,
-                                );
-                              }
-
-                              // Built-in search -> show magnifier icon in theme color
-                              if (builtinSearchActive) {
-                                return _CompactIconButton(
-                                  tooltip: AppLocalizations.of(context)!.chatInputBarOnlineSearchTooltip,
-                                  icon: Lucide.Search,
-                                  active: true,
-                                  onTap: widget.onOpenSearch,
-                                );
-                              }
-
-                              // External provider search -> brand icon tinted to theme color
-                              // Resolve selected service and its brand asset
-                              final services = settings.searchServices;
-                              final sel = settings.searchServiceSelected
-                                  .clamp(0, services.isNotEmpty ? services.length - 1 : 0);
-                              final options = services.isNotEmpty
-                                  ? services[sel]
-                                  : SearchServiceOptions.defaultOption;
-                              final svc = SearchService.getService(options);
-                              final asset = BrandAssets.assetForName(svc.name);
-
-                              return _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.chatInputBarOnlineSearchTooltip,
-                                icon: Lucide.Globe,
-                                active: true,
-                                onTap: widget.onOpenSearch,
-                                childBuilder: (c) {
-                                  if (asset != null) {
-                                    if (asset.endsWith('.svg')) {
-                                      return SvgPicture.asset(
-                                        asset,
-                                        width: 20,
-                                        height: 20,
-                                        colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
-                                      );
-                                    } else {
-                                      return Image.asset(
-                                        asset,
-                                        width: 20,
-                                        height: 20,
-                                        color: c,
-                                        colorBlendMode: BlendMode.srcIn,
-                                      );
-                                    }
-                                  } else {
-                                    return Icon(Lucide.Globe, size: 20, color: c);
-                                  }
-                                },
-                              );
-                            })(),
-                            if (widget.supportsReasoning) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.chatInputBarReasoningStrengthTooltip,
-                                icon: Lucide.Brain,
-                                active: widget.reasoningActive,
-                                onTap: widget.onConfigureReasoning,
-                                childBuilder: (c) => SvgPicture.asset(
-                                  'assets/icons/deepthink.svg',
-                                  width: 20,
-                                  height: 20,
-                                  colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
-                                ),
-                              ),
-                            ],
-                            if (widget.showMcpButton) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.chatInputBarMcpServersTooltip,
-                                icon: Lucide.Hammer,
-                                active: widget.mcpActive,
-                                onTap: widget.onOpenMcp,
-                                onLongPress: widget.onLongPressMcp,
-                                // child: SvgPicture.asset(
-                                //   'assets/icons/codex.svg',
-                                //   width: 20,
-                                //   height: 20,
-                                //   colorFilter: ColorFilter.mode(
-                                //     widget.mcpActive
-                                //         ? theme.colorScheme.primary
-                                //         : (isDark ? Colors.white70 : Colors.black54),
-                                //     BlendMode.srcIn,
-                                //   ),
-                                // ),
-                              ),
-                            ],
-                            // Quick Phrase button placed immediately to the right of MCP
-                            if (widget.showQuickPhraseButton && widget.onQuickPhrase != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.chatInputBarQuickPhraseTooltip,
-                                icon: Lucide.Zap,
-                                onTap: widget.onQuickPhrase,
-                                onLongPress: widget.onLongPressQuickPhrase,
-                              ),
-                            ],
-                            if (widget.onPickCamera != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.bottomToolsSheetCamera,
-                                icon: Lucide.Camera,
-                                onTap: widget.onPickCamera,
-                              ),
-                            ],
-                            if (widget.onPickPhotos != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.bottomToolsSheetPhotos,
-                                icon: Lucide.Image,
-                                onTap: widget.onPickPhotos,
-                              ),
-                            ],
-                            if (widget.onUploadFiles != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.bottomToolsSheetUpload,
-                                icon: Lucide.Paperclip,
-                                onTap: widget.onUploadFiles,
-                              ),
-                            ],
-                            if (widget.onToggleLearningMode != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.bottomToolsSheetLearningMode,
-                                icon: Lucide.BookOpenText,
-                                active: widget.learningModeActive,
-                                onTap: widget.onToggleLearningMode,
-                                onLongPress: widget.onLongPressLearning,
-                              ),
-                            ],
-                            if (widget.onClearContext != null) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.bottomToolsSheetClearContext,
-                                icon: Lucide.Eraser,
-                                onTap: widget.onClearContext,
-                              ),
-                            ],
-                            if (widget.showMiniMapButton) ...[
-                              const SizedBox(width: 8),
-                              _CompactIconButton(
-                                tooltip: AppLocalizations.of(context)!.miniMapTooltip,
-                                icon: Lucide.Map,
-                                onTap: widget.onOpenMiniMap,
-                              ),
-                            ],
-                          ],
-                        ),
+                        // Responsive left action bar that overflows into a + menu on desktop
+                        Expanded(child: _buildResponsiveLeftActions(context)),
                         Row(
                           children: [
                             if (widget.showMoreButton) ...[
@@ -1137,6 +1260,16 @@ class _ChatInputBarState extends State<ChatInputBar> {
 );
   }
 }
+
+
+// Internal data model for responsive overflow actions on desktop
+class _OverflowAction {
+  final double width;
+  final Widget Function() builder;
+  final DesktopContextMenuItem menu;
+  const _OverflowAction({required this.width, required this.builder, required this.menu});
+}
+
 
 // New compact button for the integrated input bar
 class _CompactIconButton extends StatelessWidget {
