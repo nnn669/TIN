@@ -476,6 +476,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopAvatarMenuUseEmoji => '使用表情符号';
 
   @override
+  String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相机权限。';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => '从图片更换…';
 
   @override
@@ -3474,6 +3477,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopAvatarMenuUseEmoji => '使用表情符号';
 
   @override
+  String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相机权限';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => '从图片更换…';
 
   @override
@@ -6470,6 +6476,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopAvatarMenuUseEmoji => '使用表情符號';
+
+  @override
+  String get cameraPermissionDeniedMessage => '拍照不可用：可能未授予相機權限';
 
   @override
   String get desktopAvatarMenuChangeFromImage => '從圖片更換…';

@@ -198,6 +198,7 @@
   "desktopNavThemeToggleTooltip": "Theme",
   "desktopNavSettingsTooltip": "Settings",
   "desktopAvatarMenuUseEmoji": "Use emoji",
+  "cameraPermissionDeniedMessage": "Camera unavailable: permission not granted.",
   "desktopAvatarMenuChangeFromImage": "Change from image…",
   "desktopAvatarMenuReset": "Reset avatar",
   "assistantEditAvatarChooseImage": "Choose Image",

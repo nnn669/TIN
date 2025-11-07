@@ -29,6 +29,7 @@
   "settingsPageDocs": "使用文档",
   "settingsPageSponsor": "赞助",
   "settingsPageShare": "分享",
+  "cameraPermissionDeniedMessage": "拍照不可用：可能未授予相机权限。",
   "sponsorPageMethodsSectionTitle": "赞助方式",
   "sponsorPageSponsorsSectionTitle": "赞助用户",
   "sponsorPageEmpty": "暂无赞助者",

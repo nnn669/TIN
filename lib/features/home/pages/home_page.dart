@@ -1066,7 +1066,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _mediaController.addImages(paths);
         _scrollToBottomSoon();
       }
-    } catch (_) {}
+    } catch (e) {
+      try {
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnackBar(
+          context,
+          message: l10n.cameraPermissionDeniedMessage,
+          type: NotificationType.error,
+          duration: const Duration(seconds: 3),
+        );
+      } catch (_) {}
+    }
   }
 
   String _inferMimeByExtension(String name) {

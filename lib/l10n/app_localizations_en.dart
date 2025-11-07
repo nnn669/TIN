@@ -489,6 +489,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopAvatarMenuUseEmoji => 'Use emoji';
 
   @override
+  String get cameraPermissionDeniedMessage =>
+      'Camera unavailable: permission not granted.';
+
+  @override
   String get desktopAvatarMenuChangeFromImage => 'Change from image…';
 
   @override
