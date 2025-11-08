@@ -39,25 +39,29 @@ Thanks to [siliconflow.cn](https://siliconflow.cn) for providing free models in 
 - 🎨 **Modern Design** - Material You design language with dynamic color theming support (Android 12+).
 - 🌙 **Dark Mode** - Perfectly adapted dark theme to protect your eyes.
 - 🌍 **Multi-language Support** - Supports both English and Chinese interfaces.
+- 🖥️ **Multi-platform Support** - Mobile (Android/iOS/Harmony) and Desktop (Windows/macOS/Linux).
 - 🔄 **Multi-provider Support** - Supports major AI providers like OpenAI, Google Gemini, Anthropic, etc.
 - 🤖 **Custom Assistants** - Create and manage personalized AI assistants.
 - 🖼️ **Multimodal Input** - Supports various formats including images, text documents, PDFs, Word documents, etc.
 - 📝 **Markdown Rendering** - Full support for code highlighting, LaTeX formulas, tables, and more.
-- 🎙️ **Voice Functionality** - Built-in system TTS (Text-to-Speech) functionality.
+- 🎙️ **Voice/TTS Providers** - Built-in system TTS plus OpenAI / Google Gemini / ElevenLabs voice servers.
 - 🛠️ **MCP Support** - Model Context Protocol tool integration.
+- 🧰 **Built-in MCP Tools** - Includes a built-in MCP Fetch tool.
 - 🔍 **Web Search** - Integrated with multiple search engines (Exa, Tavily, Zhipu, LinkUp, Brave, Bing, Metaso, SearXNG, Ollama, Jina, Perplexity, Bocha).
 - 🧩 **Prompt Variables** - Supports dynamic variables like model name, time, etc.
 - 📤 **QR Code Sharing** - Export and import provider configurations via QR codes.
 - 💾 **Data Backup** - Supports chat history backup and restoration.
 - 🌐 **Custom Requests** - Supports custom HTTP request headers and bodies.
+- 🔡 **Custom Fonts** - Bring your own fonts (system fonts / Google Fonts).
 
 ## 📱 Platform Support
 
 - ✅ Android
 - ✅ iOS
 - ✅ Harmony ([kelivo-ohos](https://github.com/Chevey339/kelivo-ohos))
-- 🚧 Windows (Planned)
-- 🚧 macOS (Planned)
+- ✅ Windows
+- ✅ macOS
+- ✅ Linux
 
 ## 🤝 Contribution Guide
 
