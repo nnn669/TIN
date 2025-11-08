@@ -463,7 +463,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
             ),
           // Top bar
           SafeArea(
-            child: Row(
+            child: Padding(
+              padding: EdgeInsets.only(top: Platform.isMacOS ? 28.0 : 0.0),
+              child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
@@ -478,6 +480,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                   ),
                 ),
               ],
+              ),
             ),
           ),
           // Bottom action buttons (save + share)
