@@ -31,6 +31,7 @@ import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:system_fonts/system_fonts.dart';
+import 'package:flutter/painting.dart' show PaintingBinding;
 import 'dart:io' show HttpOverrides, Platform; // kept for global override usage inside provider
 import 'core/services/android_background.dart';
 import 'core/services/notification_service.dart';
@@ -38,14 +39,19 @@ import 'core/services/notification_service.dart';
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
 bool _didEnsureAssistants = false; // ensure defaults after l10n ready
+bool _didEnsureSystemFonts = false; // one-time system fonts load when needed
 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Trim Flutter global image cache to reduce memory pressure from large images
+  try {
+    PaintingBinding.instance.imageCache.maximumSize = 200;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20; // ~48MB
+  } catch (_) {}
   // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
   await _initDesktopWindow();
-  // Preload system fonts on desktop so saved font selections render on launch
-  await _preloadDesktopSystemFonts();
+  // Avoid preloading all system fonts at launch (huge memory on desktop)
   // Debug logging and global error handlers were enabled previously for diagnosis.
   // They are commented out now per request to reduce log noise.
   // FlutterError.onError = (FlutterErrorDetails details) { ... };
@@ -57,7 +63,7 @@ Future<void> main() async {
   // Enable edge-to-edge to allow content under system bars (Android)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Start app (no extra guarded zone logging)
-runApp(const MyApp());
+  runApp(const MyApp());
 }
 
 Future<void> _initDesktopWindow() async {
@@ -74,20 +80,7 @@ Future<void> _initDesktopWindow() async {
   }
 }
 
-Future<void> _preloadDesktopSystemFonts() async {
-  if (kIsWeb) return;
-  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
-  if (!isDesktop) return;
-  try {
-    final sf = SystemFonts();
-    // Best-effort: ensure system font families are registered before first frame
-    await sf.loadAllFonts();
-  } catch (_) {
-    // Ignore failures; fallback fonts will still work
-  }
-}
+// Removed eager system font preloading to reduce memory footprint at launch.
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -120,6 +113,28 @@ class MyApp extends StatelessWidget {
           final settings = context.watch<SettingsProvider>();
           // Apply global proxy overrides when settings change
           settings.applyGlobalProxyOverridesIfNeeded();
+          // Lazily ensure system fonts only if user selected a system family (desktop only)
+          // Load ONLY selected families to avoid huge memory from loading all system fonts.
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            try {
+              final isDesktop = !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux);
+              if (!isDesktop) return;
+              // Selected system app/code fonts (not Google, not local alias)
+              final wantsAppSystem = (settings.appFontFamily?.isNotEmpty == true) && !settings.appFontIsGoogle && (settings.appFontLocalAlias == null || settings.appFontLocalAlias!.isEmpty);
+              final wantsCodeSystem = (settings.codeFontFamily?.isNotEmpty == true) && !settings.codeFontIsGoogle && (settings.codeFontLocalAlias == null || settings.codeFontLocalAlias!.isEmpty);
+              if (wantsAppSystem || wantsCodeSystem) {
+                final sf = SystemFonts();
+                if (wantsAppSystem) {
+                  final fam = settings.appFontFamily!;
+                  try { await sf.loadFont(fam); } catch (_) {}
+                }
+                if (wantsCodeSystem) {
+                  final fam = settings.codeFontFamily!;
+                  try { if (fam != settings.appFontFamily) await sf.loadFont(fam); } catch (_) {}
+                }
+              }
+            } catch (_) {}
+          });
           // One-time app update check after first build
           if (settings.showAppUpdates && !_didCheckUpdates) {
             _didCheckUpdates = true;
@@ -208,22 +223,22 @@ class MyApp extends StatelessWidget {
                 if (effectiveAppFont == null || effectiveAppFont.isEmpty) return base;
                 TextStyle? _f(TextStyle? s) => s?.copyWith(fontFamily: effectiveAppFont);
                 TextTheme _apply(TextTheme t) => t.copyWith(
-                      displayLarge: _f(t.displayLarge),
-                      displayMedium: _f(t.displayMedium),
-                      displaySmall: _f(t.displaySmall),
-                      headlineLarge: _f(t.headlineLarge),
-                      headlineMedium: _f(t.headlineMedium),
-                      headlineSmall: _f(t.headlineSmall),
-                      titleLarge: _f(t.titleLarge),
-                      titleMedium: _f(t.titleMedium),
-                      titleSmall: _f(t.titleSmall),
-                      bodyLarge: _f(t.bodyLarge),
-                      bodyMedium: _f(t.bodyMedium),
-                      bodySmall: _f(t.bodySmall),
-                      labelLarge: _f(t.labelLarge),
-                      labelMedium: _f(t.labelMedium),
-                      labelSmall: _f(t.labelSmall),
-                    );
+                  displayLarge: _f(t.displayLarge),
+                  displayMedium: _f(t.displayMedium),
+                  displaySmall: _f(t.displaySmall),
+                  headlineLarge: _f(t.headlineLarge),
+                  headlineMedium: _f(t.headlineMedium),
+                  headlineSmall: _f(t.headlineSmall),
+                  titleLarge: _f(t.titleLarge),
+                  titleMedium: _f(t.titleMedium),
+                  titleSmall: _f(t.titleSmall),
+                  bodyLarge: _f(t.bodyLarge),
+                  bodyMedium: _f(t.bodyMedium),
+                  bodySmall: _f(t.bodySmall),
+                  labelLarge: _f(t.labelLarge),
+                  labelMedium: _f(t.labelMedium),
+                  labelSmall: _f(t.labelSmall),
+                );
                 final bar = base.appBarTheme;
                 final appBar = bar.copyWith(
                   titleTextStyle: (bar.titleTextStyle ?? const TextStyle()).copyWith(fontFamily: effectiveAppFont),
@@ -257,32 +272,32 @@ class MyApp extends StatelessWidget {
                   final bright = Theme.of(ctx).brightness;
                   final overlay = bright == Brightness.dark
                       ? const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.light,
-                          statusBarBrightness: Brightness.dark,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.light,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        )
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: Brightness.light,
+                    statusBarBrightness: Brightness.dark,
+                    systemNavigationBarColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: Brightness.light,
+                    systemNavigationBarDividerColor: Colors.transparent,
+                    systemNavigationBarContrastEnforced: false,
+                  )
                       : const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.dark,
-                          statusBarBrightness: Brightness.light,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.dark,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        );
-              // Ensure localized defaults (assistants and chat default title) after first frame
-              if (!_didEnsureAssistants) {
-                _didEnsureAssistants = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  try { ctx.read<AssistantProvider>().ensureDefaults(ctx); } catch (_) {}
-                  try { ctx.read<ChatService>().setDefaultConversationTitle(AppLocalizations.of(ctx)!.chatServiceDefaultConversationTitle); } catch (_) {}
-                  try { ctx.read<UserProvider>().setDefaultNameIfUnset(AppLocalizations.of(ctx)!.userProviderDefaultUserName); } catch (_) {}
-                });
-              }
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: Brightness.dark,
+                    statusBarBrightness: Brightness.light,
+                    systemNavigationBarColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: Brightness.dark,
+                    systemNavigationBarDividerColor: Colors.transparent,
+                    systemNavigationBarContrastEnforced: false,
+                  );
+                  // Ensure localized defaults (assistants and chat default title) after first frame
+                  if (!_didEnsureAssistants) {
+                    _didEnsureAssistants = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      try { ctx.read<AssistantProvider>().ensureDefaults(ctx); } catch (_) {}
+                      try { ctx.read<ChatService>().setDefaultConversationTitle(AppLocalizations.of(ctx)!.chatServiceDefaultConversationTitle); } catch (_) {}
+                      try { ctx.read<UserProvider>().setDefaultNameIfUnset(AppLocalizations.of(ctx)!.userProviderDefaultUserName); } catch (_) {}
+                    });
+                  }
 
                   // Enforce app font as a default across the tree for Texts without explicit family
                   return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -290,9 +305,9 @@ class MyApp extends StatelessWidget {
                     child: effectiveAppFont == null
                         ? AppSnackBarOverlay(child: child ?? const SizedBox.shrink())
                         : DefaultTextStyle.merge(
-                            style: TextStyle(fontFamily: effectiveAppFont),
-                            child: AppSnackBarOverlay(child: child ?? const SizedBox.shrink()),
-                          ),
+                      style: TextStyle(fontFamily: effectiveAppFont),
+                      child: AppSnackBarOverlay(child: child ?? const SizedBox.shrink()),
+                    ),
                   );
                 },
               );
@@ -312,5 +327,5 @@ Widget _selectHome() {
       defaultTargetPlatform == TargetPlatform.linux;
   return isDesktop ? const DesktopHomePage() : const HomePage();
 }
- 
+
 // Overrides logic is implemented within SettingsProvider now.
