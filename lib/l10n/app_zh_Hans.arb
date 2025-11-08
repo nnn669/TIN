@@ -202,6 +202,8 @@
   "assistantEditVariableRole": "角色",
   "assistantEditVariableMessage": "内容",
   "assistantEditPreviewTitle": "预览",
+  "codeBlockPreviewButton": "预览",
+  "htmlPreviewNotSupportedOnLinux": "Linux 暂不支持 HTML 预览",
   "assistantEditSampleUser": "用户",
   "assistantEditSampleMessage": "你好啊",
   "assistantEditSampleReply": "你好，有什么我可以帮你的吗？",

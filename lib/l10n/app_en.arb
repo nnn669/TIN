@@ -295,6 +295,8 @@
   "assistantEditVariableRole": "Role",
   "assistantEditVariableMessage": "Message",
   "assistantEditPreviewTitle": "Preview",
+  "codeBlockPreviewButton": "Preview",
+  "htmlPreviewNotSupportedOnLinux": "HTML preview is not supported on Linux",
   "assistantEditSampleUser": "User",
   "assistantEditSampleMessage": "Hello there",
   "assistantEditSampleReply": "Hello, how can I help you?",

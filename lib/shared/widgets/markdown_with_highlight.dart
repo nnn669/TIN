@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 import '../../utils/sandbox_path_resolver.dart';
 import '../../features/chat/pages/image_viewer_page.dart';
+import '../../features/chat/pages/html_preview_page.dart';
 import 'snackbar.dart';
 import 'mermaid_bridge.dart';
 import 'export_capture_scope.dart';
@@ -23,6 +24,7 @@ import 'package:Kelivo/theme/theme_factory.dart' show getPlatformFontFallback;
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/settings_provider.dart';
+import 'package:Kelivo/desktop/html_preview_dialog.dart';
 
 /// gpt_markdown with custom code block highlight and inline code styling.
 class MarkdownWithCodeHighlight extends StatelessWidget {
@@ -855,6 +857,60 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       ),
                     ),
                     const Spacer(),
+                    if (_isHtml(widget.language))
+                      InkWell(
+                        onTap: () async {
+                          final l10n = AppLocalizations.of(context)!;
+                          if (Platform.isAndroid || Platform.isIOS) {
+                            // Mobile: navigate to preview page
+                            Navigator.of(context).push(PageRouteBuilder(
+                              pageBuilder: (_, __, ___) => HtmlPreviewPage(html: widget.code),
+                              transitionDuration: const Duration(milliseconds: 300),
+                              reverseTransitionDuration: const Duration(milliseconds: 240),
+                              transitionsBuilder: (context, anim, sec, child) {
+                                final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+                                return FadeTransition(opacity: curved, child: child);
+                              },
+                            ));
+                          } else if (Platform.isLinux) {
+                            // Linux: show not supported
+                            showAppSnackBar(context, message: l10n.htmlPreviewNotSupportedOnLinux, type: NotificationType.warning);
+                          } else {
+                            // Desktop (macOS/Windows): open dialog
+                            try {
+                              // Defer import to avoid cycle
+                              // ignore: use_build_context_synchronously
+                              await showHtmlPreviewDesktopDialog(context, html: widget.code);
+                            } catch (_) {}
+                          }
+                        },
+                        splashColor: Platform.isIOS ? Colors.transparent : null,
+                        highlightColor: Platform.isIOS ? Colors.transparent : null,
+                        hoverColor: Platform.isIOS ? Colors.transparent : null,
+                        overlayColor: Platform.isIOS ? const MaterialStatePropertyAll(Colors.transparent) : null,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Lucide.Eye,
+                                size: 14,
+                                color: cs.onSurface.withOpacity(0.6),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                AppLocalizations.of(context)!.codeBlockPreviewButton,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: cs.onSurface.withOpacity(0.6),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     // Copy action: icon + label ("复制"/localized)
                     InkWell(
                       onTap: () async {
@@ -1031,6 +1087,11 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     }
     return end == s.length ? s : s.substring(0, end);
   }
+}
+
+bool _isHtml(String? lang) {
+  final l = (lang ?? '').trim().toLowerCase();
+  return l == 'html' || l == 'htm' || l == 'rawhtml' || l == 'raw_html';
 }
 
 class _MermaidBlock extends StatefulWidget {

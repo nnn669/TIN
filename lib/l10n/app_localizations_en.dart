@@ -771,6 +771,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantEditPreviewTitle => 'Preview';
 
   @override
+  String get codeBlockPreviewButton => 'Preview';
+
+  @override
+  String get htmlPreviewNotSupportedOnLinux =>
+      'HTML preview is not supported on Linux';
+
+  @override
   String get assistantEditSampleUser => 'User';
 
   @override

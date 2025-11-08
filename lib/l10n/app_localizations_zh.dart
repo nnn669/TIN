@@ -749,6 +749,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditPreviewTitle => '预览';
 
   @override
+  String get codeBlockPreviewButton => '预览';
+
+  @override
+  String get htmlPreviewNotSupportedOnLinux => 'Linux 暂不支持 HTML 预览';
+
+  @override
   String get assistantEditSampleUser => '用户';
 
   @override
@@ -3756,6 +3762,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantEditPreviewTitle => '预览';
 
   @override
+  String get codeBlockPreviewButton => '预览';
+
+  @override
+  String get htmlPreviewNotSupportedOnLinux => 'Linux 暂不支持 HTML 预览';
+
+  @override
   String get assistantEditSampleUser => '用户';
 
   @override
@@ -6761,6 +6773,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantEditPreviewTitle => '預覽';
+
+  @override
+  String get codeBlockPreviewButton => '預覽';
+
+  @override
+  String get htmlPreviewNotSupportedOnLinux => 'Linux 暫不支援 HTML 預覽';
 
   @override
   String get assistantEditSampleUser => '使用者';

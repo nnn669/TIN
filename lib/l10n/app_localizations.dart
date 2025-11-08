@@ -1547,6 +1547,18 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get assistantEditPreviewTitle;
 
+  /// No description provided for @codeBlockPreviewButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get codeBlockPreviewButton;
+
+  /// No description provided for @htmlPreviewNotSupportedOnLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'HTML preview is not supported on Linux'**
+  String get htmlPreviewNotSupportedOnLinux;
+
   /// No description provided for @assistantEditSampleUser.
   ///
   /// In en, this message translates to:
