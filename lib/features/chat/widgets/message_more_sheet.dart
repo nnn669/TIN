@@ -15,6 +15,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../desktop/select_copy_dialog.dart';
+import '../../../utils/markdown_preview_html.dart';
+import '../../../utils/markdown_media_sanitizer.dart';
+import '../../../shared/pages/webview_page.dart';
+import '../../../desktop/html_preview_dialog.dart';
+import 'dart:convert';
 
 enum MessageMoreAction { edit, fork, delete, share }
 
@@ -55,13 +60,19 @@ Future<MessageMoreAction?> showMessageMoreSheet(BuildContext context, ChatMessag
       DesktopContextMenuItem(
         icon: Lucide.BookOpenText,
         label: l10n.messageMoreSheetRenderWebView,
-        onTap: () {
-          showAppSnackBar(
-            context,
-            message: l10n.messageMoreSheetNotImplemented,
-            type: NotificationType.warning,
-            duration: const Duration(seconds: 3),
-          );
+        onTap: () async {
+          try {
+            final raw = message.content.trim();
+            if (raw.isEmpty) return;
+            final processed = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(raw);
+            final html = await MarkdownPreviewHtmlBuilder.buildFromMarkdown(context, processed);
+            // After menu close, open as desktop dialog
+            Future.delayed(const Duration(milliseconds: 40), () {
+              showHtmlPreviewDesktopDialog(context, html: html);
+            });
+          } catch (e) {
+            showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
+          }
         },
       ),
       DesktopContextMenuItem(
@@ -226,14 +237,20 @@ class _MessageMoreSheetState extends State<_MessageMoreSheet> {
                     _actionItem(
                       icon: Lucide.BookOpenText,
                       label: l10n.messageMoreSheetRenderWebView,
-                      onTap: () {
+                      onTap: () async {
                         Navigator.of(context).pop();
-                        showAppSnackBar(
-                          context,
-                          message: l10n.messageMoreSheetNotImplemented,
-                          type: NotificationType.warning,
-                          duration: const Duration(seconds: 3),
-                        );
+                        try {
+                          final raw = widget.message.content.trim();
+                          if (raw.isEmpty) return;
+                          final processed = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(raw);
+                          final html = await MarkdownPreviewHtmlBuilder.buildFromMarkdown(widget.parentContext, processed);
+                          final b64 = base64Encode(utf8.encode(html));
+                          Navigator.of(widget.parentContext).push(
+                            MaterialPageRoute(builder: (_) => WebViewPage(contentBase64: b64)),
+                          );
+                        } catch (e) {
+                          showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
+                        }
                       },
                     ),
                     _actionItem(

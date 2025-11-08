@@ -129,6 +129,7 @@ flutter:
     - assets/icons/
     - assets/app_icon.png
     - assets/mermaid.min.js
+    - assets/html/mark.html
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

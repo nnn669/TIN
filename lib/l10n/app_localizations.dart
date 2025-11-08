@@ -5914,6 +5914,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show provider in model capsule'**
   String get desktopShowProviderInModelCapsule;
+
+  /// No description provided for @messageWebViewOpenInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Browser'**
+  String get messageWebViewOpenInBrowser;
+
+  /// No description provided for @messageWebViewConsoleLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Console Logs'**
+  String get messageWebViewConsoleLogs;
+
+  /// No description provided for @messageWebViewNoConsoleMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No console messages'**
+  String get messageWebViewNoConsoleMessages;
+
+  /// No description provided for @messageWebViewRefreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get messageWebViewRefreshTooltip;
+
+  /// No description provided for @messageWebViewForwardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get messageWebViewForwardTooltip;
 }
 
 class _AppLocalizationsDelegate

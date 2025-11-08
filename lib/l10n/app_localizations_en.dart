@@ -3122,4 +3122,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get desktopShowProviderInModelCapsule =>
       'Show provider in model capsule';
+
+  @override
+  String get messageWebViewOpenInBrowser => 'Open in Browser';
+
+  @override
+  String get messageWebViewConsoleLogs => 'Console Logs';
+
+  @override
+  String get messageWebViewNoConsoleMessages => 'No console messages';
+
+  @override
+  String get messageWebViewRefreshTooltip => 'Refresh';
+
+  @override
+  String get messageWebViewForwardTooltip => 'Forward';
 }

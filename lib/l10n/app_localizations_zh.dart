@@ -3015,6 +3015,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get desktopShowProviderInModelCapsule => '模型胶囊显示供应商';
+
+  @override
+  String get messageWebViewOpenInBrowser => '在浏览器中打开';
+
+  @override
+  String get messageWebViewConsoleLogs => '控制台日志';
+
+  @override
+  String get messageWebViewNoConsoleMessages => '暂无控制台消息';
+
+  @override
+  String get messageWebViewRefreshTooltip => '刷新';
+
+  @override
+  String get messageWebViewForwardTooltip => '前进';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -6028,6 +6043,21 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get desktopShowProviderInModelCapsule => '模型胶囊显示供应商';
+
+  @override
+  String get messageWebViewOpenInBrowser => '在浏览器中打开';
+
+  @override
+  String get messageWebViewConsoleLogs => '控制台日志';
+
+  @override
+  String get messageWebViewNoConsoleMessages => '暂无控制台消息';
+
+  @override
+  String get messageWebViewRefreshTooltip => '刷新';
+
+  @override
+  String get messageWebViewForwardTooltip => '前进';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -9042,4 +9072,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopShowProviderInModelCapsule => '模型膠囊顯示供應商';
+
+  @override
+  String get messageWebViewOpenInBrowser => '在瀏覽器中開啟';
+
+  @override
+  String get messageWebViewConsoleLogs => '控制台日誌';
+
+  @override
+  String get messageWebViewNoConsoleMessages => '暫無控制台訊息';
+
+  @override
+  String get messageWebViewRefreshTooltip => '重新整理';
+
+  @override
+  String get messageWebViewForwardTooltip => '前進';
 }

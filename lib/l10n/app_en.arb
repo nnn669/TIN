@@ -1254,5 +1254,10 @@
   },
   "networkProxyNoUrl": "Please enter a URL",
   "networkProxyPriorityNote": "When both global and provider proxies are enabled, provider-level proxy takes priority.",
-  "desktopShowProviderInModelCapsule": "Show provider in model capsule"
+  "desktopShowProviderInModelCapsule": "Show provider in model capsule",
+  "messageWebViewOpenInBrowser": "Open in Browser",
+  "messageWebViewConsoleLogs": "Console Logs",
+  "messageWebViewNoConsoleMessages": "No console messages",
+  "messageWebViewRefreshTooltip": "Refresh",
+  "messageWebViewForwardTooltip": "Forward"
 }
