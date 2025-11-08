@@ -53,6 +53,7 @@ Thanks to [siliconflow.cn](https://siliconflow.cn) for providing free models in 
 - 💾 **Data Backup** - Supports chat history backup and restoration.
 - 🌐 **Custom Requests** - Supports custom HTTP request headers and bodies.
 - 🔡 **Custom Fonts** - Bring your own fonts (system fonts / Google Fonts).
+- ⚙️ **Android Background Generation** - Keep chat generation running in the background (optional setting).
 
 ## 📱 Platform Support
 
