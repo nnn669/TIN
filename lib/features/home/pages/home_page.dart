@@ -1810,6 +1810,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         onToolCall: onToolCall,
         extraHeaders: aHeaders,
         extraBody: aBody,
+        stream: streamOutput,
       );
 
       Future<void> finish({bool generateTitle = true}) async {
@@ -2764,6 +2765,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       if (aBody.isEmpty) aBody = null;
     }
 
+    // Respect assistant streaming toggle: if off, buffer updates until done
+    final bool streamOutput = assistant?.streamOutput ?? true;
+
     final stream = ChatApiService.sendMessageStream(
       config: settings.getProviderConfig(providerKey),
       modelId: modelId,
@@ -2776,6 +2780,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onToolCall: onToolCall,
       extraHeaders: aHeaders,
       extraBody: aBody,
+      stream: streamOutput,
     );
 
     String fullContent = '';
@@ -2783,7 +2788,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     TokenUsage? usage;
 
     // Respect assistant streaming toggle: if off, buffer updates until done
-    final bool streamOutput = assistant?.streamOutput ?? true;
     String _bufferedReasoning2 = '';
     DateTime? _reasoningStartAt2;
 

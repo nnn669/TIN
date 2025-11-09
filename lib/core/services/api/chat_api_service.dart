@@ -230,6 +230,7 @@ class ChatApiService {
     Future<String> Function(String name, Map<String, dynamic> args)? onToolCall,
     Map<String, String>? extraHeaders,
     Map<String, dynamic>? extraBody,
+    bool stream = true,
   }) async* {
     final kind = ProviderConfig.classify(config.id, explicitType: config.providerType);
     final client = _clientFor(config);
@@ -250,6 +251,7 @@ class ChatApiService {
           onToolCall: onToolCall,
           extraHeaders: extraHeaders,
           extraBody: extraBody,
+          stream: stream,
         );
       } else if (kind == ProviderKind.claude) {
         yield* _sendClaudeStream(
@@ -266,6 +268,7 @@ class ChatApiService {
           onToolCall: onToolCall,
           extraHeaders: extraHeaders,
           extraBody: extraBody,
+          stream: stream,
         );
       } else if (kind == ProviderKind.google) {
         yield* _sendGoogleStream(
@@ -282,6 +285,7 @@ class ChatApiService {
           onToolCall: onToolCall,
           extraHeaders: extraHeaders,
           extraBody: extraBody,
+          stream: stream,
         );
       }
     } finally {
@@ -654,7 +658,7 @@ class ChatApiService {
       ProviderConfig config,
       String modelId,
       List<Map<String, dynamic>> messages,
-      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody}
+      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
     final base = config.baseUrl.endsWith('/')
         ? config.baseUrl.substring(0, config.baseUrl.length - 1)
@@ -787,7 +791,7 @@ class ChatApiService {
       body = {
         'model': modelId,
         'input': input,
-        'stream': true,
+        'stream': stream,
         if (instructions.isNotEmpty) 'instructions': instructions,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'top_p': topP,
@@ -875,7 +879,7 @@ class ChatApiService {
       body = {
         'model': modelId,
         'messages': mm,
-        'stream': true,
+        'stream': stream,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'top_p': topP,
         if (maxTokens != null) 'max_tokens': maxTokens,
@@ -977,14 +981,14 @@ class ChatApiService {
     final headers = <String, String>{
       'Authorization': 'Bearer ${_apiKeyForRequest(config, modelId)}',
       'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
+      'Accept': stream ? 'text/event-stream' : 'application/json',
     };
     // Merge custom headers (override takes precedence)
     headers.addAll(_customHeaders(config, modelId));
     if (extraHeaders != null && extraHeaders.isNotEmpty) headers.addAll(extraHeaders);
     request.headers.addAll(headers);
     // Ask for usage in streaming for chat-completions compatible hosts (when supported)
-    if (config.useResponseApi != true) {
+    if (stream && config.useResponseApi != true) {
       final h = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
       if (!h.contains('mistral.ai')) {
         (body as Map<String, dynamic>)['stream_options'] = {'include_usage': true};
@@ -1008,7 +1012,182 @@ class ChatApiService {
       throw HttpException('HTTP ${response.statusCode}: $errorBody');
     }
 
-    final stream = response.stream.transform(utf8.decoder);
+    // Non-streaming path: parse one-shot JSON and optionally follow tool calls.
+    if (!stream) {
+      final txt = await response.stream.bytesToString();
+      try {
+        final obj = jsonDecode(txt);
+        // Responses API non-stream
+        if (config.useResponseApi == true) {
+          String outText = '';
+          try { outText = (obj['output_text'] ?? '').toString(); } catch (_) {}
+          if (outText.isEmpty) {
+            try { outText = (obj['response']?['output_text'] ?? '').toString(); } catch (_) {}
+          }
+          if (outText.isEmpty) {
+            try {
+              final out = obj['output'] as List?;
+              if (out != null) {
+                final buf = StringBuffer();
+                for (final it in out) {
+                  if (it is Map && it['type'] == 'output_text') {
+                    final c = (it['content'] ?? '').toString();
+                    if (c.isNotEmpty) buf.write(c);
+                  } else if (it is Map && it['type'] == 'message') {
+                    final content = it['content'] as List?;
+                    if (content != null) {
+                      for (final part in content) {
+                        if (part is Map && (part['type'] == 'output_text' || part['type'] == 'text')) {
+                          final t = (part['text'] ?? part['content'] ?? '').toString();
+                          if (t.isNotEmpty) buf.write(t);
+                        }
+                      }
+                    }
+                  }
+                }
+                outText = buf.toString();
+              }
+            } catch (_) {}
+          }
+          TokenUsage? usage;
+          try {
+            final u = (obj['usage'] ?? obj['response']?['usage']) as Map?;
+            if (u != null) {
+              final prompt = (u['prompt_tokens'] ?? u['input_tokens'] ?? 0) as int? ?? 0;
+              final completion = (u['completion_tokens'] ?? u['output_tokens'] ?? 0) as int? ?? 0;
+              final cached = (u['prompt_tokens_details']?['cached_tokens'] ?? 0) as int? ?? 0;
+              usage = TokenUsage(promptTokens: prompt, completionTokens: completion, cachedTokens: cached, totalTokens: prompt + completion);
+            }
+          } catch (_) {}
+          yield ChatStreamChunk(content: outText, isDone: true, totalTokens: usage?.totalTokens ?? 0, usage: usage);
+          return;
+        }
+
+        // Chat Completions non-stream with tool-calls follow-ups
+        List<Map<String, dynamic>> currentMessages = List<Map<String, dynamic>>.from((body['messages'] as List?)?.map((e) => (e as Map).cast<String, dynamic>()) ?? const <Map<String, dynamic>>[]);
+        TokenUsage? aggUsage;
+        Map<String, dynamic> lastObj = (obj is Map)
+            ? (obj as Map).cast<String, dynamic>()
+            : <String, dynamic>{};
+        while (true) {
+          Map<String, dynamic>? c0;
+          try {
+            final choices = lastObj['choices'] as List?;
+            if (choices != null && choices.isNotEmpty) c0 = (choices.first as Map).cast<String, dynamic>();
+          } catch (_) {}
+          if (c0 == null) {
+            final s = (lastObj['output_text'] ?? '').toString();
+            yield ChatStreamChunk(content: s, isDone: true, totalTokens: aggUsage?.totalTokens ?? 0, usage: aggUsage);
+            return;
+          }
+          // usage
+          try {
+            final u = lastObj['usage'];
+            if (u is Map) {
+              final prompt = (u['prompt_tokens'] ?? 0) as int? ?? 0;
+              final completion = (u['completion_tokens'] ?? 0) as int? ?? 0;
+              final cached = (u['prompt_tokens_details']?['cached_tokens'] ?? 0) as int? ?? 0;
+              final round = TokenUsage(promptTokens: prompt, completionTokens: completion, cachedTokens: cached, totalTokens: prompt + completion);
+              aggUsage = (aggUsage ?? const TokenUsage()).merge(round);
+            }
+          } catch (_) {}
+
+          final msg = (c0['message'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+          final tcs = (msg['tool_calls'] as List?) ?? const <dynamic>[];
+          if (tcs.isNotEmpty && onToolCall != null) {
+            final calls = <Map<String, dynamic>>[];
+            final callInfos = <ToolCallInfo>[];
+            for (int i = 0; i < tcs.length; i++) {
+              final t = (tcs[i] as Map).cast<String, dynamic>();
+              final id = (t['id'] ?? 'call_$i').toString();
+              final f = (t['function'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+              final name = (f['name'] ?? '').toString();
+              Map<String, dynamic> args;
+              try { args = (jsonDecode((f['arguments'] ?? '{}').toString()) as Map).cast<String, dynamic>(); } catch (_) { args = <String, dynamic>{}; }
+              callInfos.add(ToolCallInfo(id: id, name: name, arguments: args));
+              calls.add({'id': id, 'type': 'function', 'function': {'name': name, 'arguments': jsonEncode(args)}});
+            }
+            if (callInfos.isNotEmpty) {
+              yield ChatStreamChunk(content: '', isDone: false, totalTokens: aggUsage?.totalTokens ?? 0, usage: aggUsage, toolCalls: callInfos);
+            }
+            final results = <Map<String, dynamic>>[];
+            final resultsInfo = <ToolResultInfo>[];
+            for (final c in callInfos) {
+              final res = await onToolCall(c.name, c.arguments) ?? '';
+              results.add({'tool_call_id': c.id, 'content': res});
+              resultsInfo.add(ToolResultInfo(id: c.id, name: c.name, arguments: c.arguments, content: res));
+            }
+            if (resultsInfo.isNotEmpty) {
+              yield ChatStreamChunk(content: '', isDone: false, totalTokens: aggUsage?.totalTokens ?? 0, usage: aggUsage, toolResults: resultsInfo);
+            }
+            // Follow-up request
+            final req = http.Request('POST', url);
+            final headers2 = <String, String>{
+              'Authorization': 'Bearer ${_apiKeyForRequest(config, modelId)}',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            };
+            headers2.addAll(_customHeaders(config, modelId));
+            if (extraHeaders != null && extraHeaders.isNotEmpty) headers2.addAll(extraHeaders);
+            req.headers.addAll(headers2);
+            final next = <Map<String, dynamic>>[];
+            for (final m in messages) {
+              next.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
+            }
+            next.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+            for (final r in results) {
+              final id = r['tool_call_id'];
+              final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
+              next.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+            }
+            final reqBody = Map<String, dynamic>.from(body);
+            reqBody['messages'] = next;
+            reqBody.remove('stream');
+            req.body = jsonEncode(reqBody);
+            final resp2 = await client.send(req);
+            if (resp2.statusCode < 200 || resp2.statusCode >= 300) {
+              final errorBody = await resp2.stream.bytesToString();
+              throw HttpException('HTTP ${resp2.statusCode}: $errorBody');
+            }
+            final txt2 = await resp2.stream.bytesToString();
+            lastObj = jsonDecode(txt2) as Map<String, dynamic>;
+            messages = next; // update transcript for next round
+            continue;
+          }
+
+          // No tool calls -> final content
+          String content = '';
+          final cmsg = (c0['message'] as Map?)?.cast<String, dynamic>();
+          if (cmsg != null) {
+            final cc = cmsg['content'];
+            if (cc is String) {
+              content = cc;
+            } else if (cc is List) {
+              final buf = StringBuffer();
+              for (final it in cc) {
+                if (it is Map && (it['type'] == 'text')) {
+                  final t = (it['text'] ?? '').toString();
+                  if (t.isNotEmpty) buf.write(t);
+                } else if (it is Map && (it['type'] == 'image_url' || it['type'] == 'image')) {
+                  dynamic iu = it['image_url'];
+                  String? url;
+                  if (iu is String) { url = iu; } else if (iu is Map) { final u2 = iu['url']; if (u2 is String) url = u2; }
+                  if (url != null && url.isNotEmpty) buf.write('\n\n![image](' + url + ')');
+                }
+              }
+              content = buf.toString();
+            }
+          }
+          yield ChatStreamChunk(content: content, isDone: true, totalTokens: aggUsage?.totalTokens ?? 0, usage: aggUsage);
+          return;
+        }
+      } catch (e) {
+        throw HttpException('Invalid JSON: $e');
+      }
+    }
+
+    // Streaming path
+    final sse = response.stream.transform(utf8.decoder);
     String buffer = '';
     int totalTokens = 0;
     TokenUsage? usage;
@@ -1027,7 +1206,7 @@ class ChatApiService {
     List<Map<String, dynamic>> lastResponseOutputItems = const <Map<String, dynamic>>[];
     String? finishReason;
 
-    await for (final chunk in stream) {
+    await for (final chunk in sse) {
       buffer += chunk;
       final lines = buffer.split('\n');
       buffer = lines.last;
@@ -2790,7 +2969,7 @@ class ChatApiService {
       ProviderConfig config,
       String modelId,
       List<Map<String, dynamic>> messages,
-      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody}
+      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
     // Endpoint and headers (constant across rounds)
     final base = config.baseUrl.endsWith('/')
@@ -2902,7 +3081,7 @@ class ChatApiService {
       'x-api-key': _effectiveApiKey(config),
       'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
+      'Accept': stream ? 'text/event-stream' : 'application/json',
     };
     baseHeaders.addAll(_customHeaders(config, modelId));
     if (extraHeaders != null && extraHeaders.isNotEmpty) baseHeaders.addAll(extraHeaders);
@@ -2917,7 +3096,7 @@ class ChatApiService {
         'model': modelId,
         'max_tokens': maxTokens ?? 4096,
         'messages': convo,
-        'stream': true,
+        'stream': stream,
         if (systemPrompt.isNotEmpty) 'system': systemPrompt,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'top_p': topP,
@@ -2948,7 +3127,71 @@ class ChatApiService {
         throw HttpException('HTTP ${response.statusCode}: $errorBody');
       }
 
-      final stream = response.stream.transform(utf8.decoder);
+      // Non-streaming path: parse full JSON, handle tool_use, then continue loop if needed.
+      if (!stream) {
+        final txt = await response.stream.bytesToString();
+        final obj = jsonDecode(txt) as Map;
+        // Usage
+        try {
+          final u = (obj['usage'] as Map?)?.cast<String, dynamic>();
+          if (u != null) {
+            final inTok = (u['input_tokens'] ?? 0) as int? ?? 0;
+            final outTok = (u['output_tokens'] ?? 0) as int? ?? 0;
+            final round = TokenUsage(promptTokens: inTok, completionTokens: outTok, cachedTokens: 0, totalTokens: inTok + outTok);
+            totalUsage = (totalUsage ?? const TokenUsage()).merge(round);
+          }
+        } catch (_) {}
+        final content = (obj['content'] as List?) ?? const <dynamic>[];
+        final List<Map<String, dynamic>> assistantBlocks = <Map<String, dynamic>>[];
+        final Map<String, Map<String, dynamic>> toolUses = <String, Map<String, dynamic>>{}; // id -> {name,args}
+        final buf = StringBuffer();
+        for (final it in content) {
+          if (it is! Map) continue;
+          final type = (it['type'] ?? '').toString();
+          if (type == 'text') {
+            final t = (it['text'] ?? '').toString();
+            if (t.isNotEmpty) { assistantBlocks.add({'type': 'text', 'text': t}); buf.write(t); }
+          } else if (type == 'thinking') {
+          } else if (type == 'tool_use') {
+            final id = (it['id'] ?? '').toString();
+            final name = (it['name'] ?? '').toString();
+            final args = (it['input'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+            if (id.isNotEmpty) {
+              toolUses[id] = {'name': name, 'args': args};
+              assistantBlocks.add({'type': 'tool_use', 'id': id, 'name': name, 'input': args});
+            }
+          }
+        }
+        if (toolUses.isNotEmpty && onToolCall != null) {
+          final callInfos = <ToolCallInfo>[];
+          for (final e in toolUses.entries) {
+            callInfos.add(ToolCallInfo(id: e.key, name: (e.value['name'] ?? '').toString(), arguments: (e.value['args'] as Map<String, dynamic>)));
+          }
+          yield ChatStreamChunk(content: '', isDone: false, totalTokens: (totalUsage?.totalTokens ?? 0), usage: totalUsage, toolCalls: callInfos);
+          final results = <Map<String, dynamic>>[];
+          final resultsInfo = <ToolResultInfo>[];
+          for (final e in toolUses.entries) {
+            final name = (e.value['name'] ?? '').toString();
+            final args = (e.value['args'] as Map<String, dynamic>);
+            final res = await onToolCall(name, args) ?? '';
+            results.add({'type': 'tool_result', 'tool_use_id': e.key, 'content': res});
+            resultsInfo.add(ToolResultInfo(id: e.key, name: name, arguments: args, content: res));
+          }
+          if (resultsInfo.isNotEmpty) {
+            yield ChatStreamChunk(content: '', isDone: false, totalTokens: (totalUsage?.totalTokens ?? 0), usage: totalUsage, toolResults: resultsInfo);
+          }
+          // Extend convo: assistant + user tool_result, loop
+          final assistantMsg = {'role': 'assistant', 'content': assistantBlocks};
+          final userToolMsg = {'role': 'user', 'content': results};
+          convo = [...convo, assistantMsg, userToolMsg];
+          continue; // next round
+        }
+        // No tool use -> return final text
+        yield ChatStreamChunk(content: buf.toString(), isDone: true, totalTokens: (totalUsage?.totalTokens ?? 0), usage: totalUsage);
+        return;
+      }
+
+      final sse = response.stream.transform(utf8.decoder);
       String buffer = '';
       int roundTokens = 0;
       TokenUsage? usage;
@@ -2968,7 +3211,7 @@ class ChatApiService {
 
       bool messageStopped = false;
 
-      await for (final chunk in stream) {
+      await for (final chunk in sse) {
         buffer += chunk;
         final lines = buffer.split('\n');
         buffer = lines.last;
@@ -3212,8 +3455,175 @@ class ChatApiService {
       ProviderConfig config,
       String modelId,
       List<Map<String, dynamic>> messages,
-      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody}
+      {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
+    // Non-streaming path: use generateContent
+    if (!stream) {
+      final isVertex = config.vertexAI == true;
+      final base = config.baseUrl.endsWith('/') ? config.baseUrl.substring(0, config.baseUrl.length - 1) : config.baseUrl;
+      String url;
+      if (isVertex && (config.projectId?.isNotEmpty == true) && (config.location?.isNotEmpty == true)) {
+        url = 'https://aiplatform.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/publishers/google/models/$modelId:generateContent';
+      } else {
+        final key = Uri.encodeComponent(_effectiveApiKey(config));
+        url = '$base/models/$modelId:generateContent?key=$key';
+      }
+
+      // Convert messages to contents
+      final contents = <Map<String, dynamic>>[];
+      for (int i = 0; i < messages.length; i++) {
+        final msg = messages[i];
+        final role = msg['role'] == 'assistant' ? 'model' : 'user';
+        final isLast = i == messages.length - 1;
+        final parts = <Map<String, dynamic>>[];
+        final raw = (msg['content'] ?? '').toString();
+        final hasMarkdownImages = raw.contains('![') && raw.contains('](');
+        final hasCustomImages = raw.contains('[image:');
+        final hasAttachedImages = isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
+        if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
+          final parsed = _parseTextAndImages(raw);
+          if (parsed.text.isNotEmpty) parts.add({'text': parsed.text});
+          for (final ref in parsed.images) {
+            if (ref.kind == 'data') {
+              final mime = _mimeFromDataUrl(ref.src);
+              final idx = ref.src.indexOf('base64,');
+              if (idx > 0) {
+                final b64 = ref.src.substring(idx + 7);
+                parts.add({'inline_data': {'mime_type': mime, 'data': b64}});
+              } else {
+                parts.add({'text': ref.src});
+              }
+            } else if (ref.kind == 'path') {
+              final mime = _mimeFromPath(ref.src);
+              final b64 = await _encodeBase64File(ref.src, withPrefix: false);
+              parts.add({'inline_data': {'mime_type': mime, 'data': b64}});
+            } else {
+              parts.add({'text': '(image) ${ref.src}'});
+            }
+          }
+          if (hasAttachedImages) {
+            for (final p in userImagePaths!) {
+              if (p.startsWith('data:')) {
+                final mime = _mimeFromDataUrl(p);
+                final idx = p.indexOf('base64,');
+                if (idx > 0) {
+                  final b64 = p.substring(idx + 7);
+                  parts.add({'inline_data': {'mime_type': mime, 'data': b64}});
+                }
+              } else if (!(p.startsWith('http://') || p.startsWith('https://'))) {
+                final mime = _mimeFromPath(p);
+                final b64 = await _encodeBase64File(p, withPrefix: false);
+                parts.add({'inline_data': {'mime_type': mime, 'data': b64}});
+              } else {
+                parts.add({'text': '(image) ${p}'});
+              }
+            }
+          }
+        } else {
+          if (raw.isNotEmpty) parts.add({'text': raw});
+        }
+        contents.add({'role': role, 'parts': parts});
+      }
+
+      final effective = _effectiveModelInfo(config, modelId);
+      final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
+      final builtIns = _builtInTools(config, modelId);
+      final isOfficialGemini = config.vertexAI != true;
+      final builtInToolEntries = <Map<String, dynamic>>[];
+      if (isOfficialGemini && builtIns.isNotEmpty) {
+        if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
+        if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
+      }
+      List<Map<String, dynamic>>? geminiTools;
+      if (builtInToolEntries.isEmpty && tools != null && tools.isNotEmpty) {
+        final decls = <Map<String, dynamic>>[];
+        for (final t in tools) {
+          final fn = (t['function'] as Map<String, dynamic>?);
+          if (fn == null) continue;
+          final name = (fn['name'] ?? '').toString();
+          if (name.isEmpty) continue;
+          final desc = (fn['description'] ?? '').toString();
+          final params = (fn['parameters'] as Map?)?.cast<String, dynamic>();
+          final d = <String, dynamic>{'name': name, if (desc.isNotEmpty) 'description': desc};
+          if (params != null) d['parameters'] = _cleanSchemaForGemini(params);
+          decls.add(d);
+        }
+        if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
+      }
+
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (isVertex) {
+        final token = await GoogleServiceAccountAuth.getAccessTokenFromJson(config.serviceAccountJson ?? '');
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      Map<String, dynamic> baseBody = {
+        'contents': contents,
+        if (temperature != null) 'temperature': temperature,
+        if (topP != null) 'topP': topP,
+        if (maxTokens != null) 'generationConfig': {'maxOutputTokens': maxTokens},
+        if (geminiTools != null) 'tools': geminiTools,
+        if (builtInToolEntries.isNotEmpty) 'tools': builtInToolEntries,
+        if (geminiTools != null || builtInToolEntries.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
+      };
+      final extraG = _customBody(config, modelId);
+      if (extraG.isNotEmpty) baseBody.addAll(extraG);
+      if (extraBody != null && extraBody.isNotEmpty) {
+        extraBody.forEach((k, v) { baseBody[k] = (v is String) ? _parseOverrideValue(v) : v; });
+      }
+
+      TokenUsage? totalUsage;
+      List<Map<String, dynamic>> currentContents = List<Map<String, dynamic>>.from(contents);
+      while (true) {
+        final req = http.Request('POST', Uri.parse(url));
+        req.headers.addAll(headers);
+        final body = Map<String, dynamic>.from(baseBody);
+        body['contents'] = currentContents;
+        req.body = jsonEncode(body);
+        final resp = await client.send(req);
+        if (resp.statusCode < 200 || resp.statusCode >= 300) {
+          final errorBody = await resp.stream.bytesToString();
+          throw HttpException('HTTP ${resp.statusCode}: $errorBody');
+        }
+        final txt = await resp.stream.bytesToString();
+        final obj = jsonDecode(txt) as Map<String, dynamic>;
+        try {
+          final u = (obj['usageMetadata'] as Map?)?.cast<String, dynamic>();
+          if (u != null) {
+            final prompt = (u['promptTokenCount'] ?? 0) as int? ?? 0;
+            final completion = (u['candidatesTokenCount'] ?? 0) as int? ?? 0;
+            totalUsage = (totalUsage ?? const TokenUsage()).merge(TokenUsage(promptTokens: prompt, completionTokens: completion, cachedTokens: 0));
+          }
+        } catch (_) {}
+        final candidates = (obj['candidates'] as List?) ?? const <dynamic>[];
+        if (candidates.isEmpty) {
+          yield ChatStreamChunk(content: '', isDone: true, totalTokens: totalUsage?.totalTokens ?? 0, usage: totalUsage);
+          return;
+        }
+        final cand = (candidates.first as Map).cast<String, dynamic>();
+        final parts = (cand['content']?['parts'] as List?) ?? const <dynamic>[];
+        final fc = parts.firstWhere((e) => (e is Map) && e.containsKey('functionCall'), orElse: () => null);
+        if (fc is Map && fc['functionCall'] is Map && onToolCall != null) {
+          final call = (fc['functionCall'] as Map).cast<String, dynamic>();
+          final name = (call['name'] ?? '').toString();
+          final args = (call['args'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+          yield ChatStreamChunk(content: '', isDone: false, totalTokens: totalUsage?.totalTokens ?? 0, usage: totalUsage, toolCalls: [ToolCallInfo(id: 'fn_0', name: name, arguments: args)]);
+          final res = await onToolCall(name, args) ?? '';
+          yield ChatStreamChunk(content: '', isDone: false, totalTokens: totalUsage?.totalTokens ?? 0, usage: totalUsage, toolResults: [ToolResultInfo(id: 'fn_0', name: name, arguments: args, content: res)]);
+          currentContents = [
+            ...currentContents,
+            {'role': 'model', 'parts': parts},
+            {'role': 'user', 'parts': [ {'functionResponse': {'name': name, 'response': {'result': res}}} ]},
+          ];
+          continue;
+        }
+        final buf = StringBuffer();
+        for (final p in parts) { if (p is Map && p['text'] is String) buf.write(p['text']); }
+        yield ChatStreamChunk(content: buf.toString(), isDone: true, totalTokens: totalUsage?.totalTokens ?? 0, usage: totalUsage);
+        return;
+      }
+    }
+
     // Implement SSE streaming via :streamGenerateContent with alt=sse
     // Build endpoint per Vertex vs Gemini
     String baseUrl;
@@ -3429,7 +3839,7 @@ class ChatApiService {
         throw HttpException('HTTP ${resp.statusCode}: $errorBody');
       }
 
-      final stream = resp.stream.transform(utf8.decoder);
+      final sse = resp.stream.transform(utf8.decoder);
       String buffer = '';
       // Collect any function calls in this round
       final List<Map<String, dynamic>> calls = <Map<String, dynamic>>[]; // {id,name,args,res}
@@ -3438,7 +3848,7 @@ class ChatApiService {
       bool _imageOpen = false; // true after we emit the data URL prefix
       String _imageMime = 'image/png';
 
-      await for (final chunk in stream) {
+      await for (final chunk in sse) {
         buffer += chunk;
         final lines = buffer.split('\n');
         buffer = lines.last; // keep incomplete line
