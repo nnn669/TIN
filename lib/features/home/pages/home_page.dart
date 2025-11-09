@@ -2055,6 +2055,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           }
 
           if (chunk.isDone) {
+            // Ensure final content from non-streaming path is captured before finish()
+            if (chunk.content.isNotEmpty) {
+              fullContent += chunk.content;
+            }
             // Guard: if we have any loading tool-call placeholders, a follow-up round is coming.
             final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
             if (hasLoadingTool) {
