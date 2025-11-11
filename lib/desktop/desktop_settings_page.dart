@@ -5140,13 +5140,7 @@ Future<String?> _showDesktopFontChooserDialog(
   Future<List<String>> _fetchSystemFonts() async {
     try {
       final sf = SystemFonts();
-      // Load fonts so preview works
-      final loaded = await sf.loadAllFonts();
-      final list = List<String>.from(loaded);
-      if (list.isNotEmpty) {
-        list.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-        return list;
-      }
+      // Only fetch the font family list to avoid huge memory spikes.
       final alt = await Future.value(sf.getFontList());
       final out = List<String>.from(alt ?? const <String>[]);
       out.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
@@ -5288,8 +5282,31 @@ class _FontRowItem extends StatefulWidget {
   State<_FontRowItem> createState() => _FontRowItemState();
 }
 
+// Cache loaded/ongoing system fonts to avoid duplicate loads
+final Set<String> _loadedSystemFontFamilies = <String>{};
+final Set<String> _loadingSystemFontFamilies = <String>{};
+
 class _FontRowItemState extends State<_FontRowItem> {
   bool _hover = false;
+  @override
+  void initState() {
+    super.initState();
+    // Lazy-load this row's font family for preview (only for visible items)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final fam = widget.family;
+      if (_loadedSystemFontFamilies.contains(fam) || _loadingSystemFontFamilies.contains(fam)) return;
+      _loadingSystemFontFamilies.add(fam);
+      try {
+        await SystemFonts().loadFont(fam);
+      } catch (_) {
+        // best-effort; fallback rendering will be used if load fails
+      } finally {
+        _loadingSystemFontFamilies.remove(fam);
+        _loadedSystemFontFamilies.add(fam);
+        if (mounted) setState(() {});
+      }
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
