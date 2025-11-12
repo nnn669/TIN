@@ -4,6 +4,56 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow {
   // Use Cocoa autosave to persist and restore window frame precisely on macOS.
   private let autosaveName = NSWindow.FrameAutosaveName("KelivoMainWindowFrame")
+
+  // Minimum reasonable content size to ensure the window is visible and usable.
+  private let minContentSize = NSSize(width: 960, height: 640)
+
+  // Clamp a size within min bounds and the given screen's visible frame
+  private func clampedSize(_ size: NSSize, for screen: NSScreen?) -> NSSize {
+    let minW = minContentSize.width
+    let minH = minContentSize.height
+    guard let s = screen?.visibleFrame.size else {
+      return NSSize(width: max(size.width, minW), height: max(size.height, minH))
+    }
+    // Keep a small margin from full screen to avoid edge cases
+    let maxW = max(minW, s.width - 20)
+    let maxH = max(minH, s.height - 20)
+    let w = max(minW, min(size.width, maxW))
+    let h = max(minH, min(size.height, maxH))
+    return NSSize(width: w, height: h)
+  }
+
+  // Returns true if a rect intersects any screen's visible frame meaningfully
+  private func isRectOnAnyScreen(_ rect: NSRect) -> Bool {
+    for screen in NSScreen.screens {
+      if rect.intersects(screen.visibleFrame) { return true }
+    }
+    return false
+  }
+
+  // Some macOS setups can persist frames that are off‑screen or zero‑sized.
+  // Normalize the frame so it's visible on the current main screen.
+  private func normalizeFrameIfNeeded() {
+    let frame = self.frame
+    let invalidOrigin = !frame.origin.x.isFinite || !frame.origin.y.isFinite
+    let tooSmall = frame.width < 100 || frame.height < 100
+    let offScreen = !isRectOnAnyScreen(frame)
+    if invalidOrigin || tooSmall || offScreen {
+      let targetScreen = NSScreen.main ?? NSScreen.screens.first
+      let targetSize = clampedSize(NSSize(width: max(frame.width, minContentSize.width),
+                                          height: max(frame.height, minContentSize.height)),
+                                   for: targetScreen)
+      let vf = targetScreen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+      let newOrigin = NSPoint(
+        x: vf.origin.x + (vf.size.width - targetSize.width) / 2,
+        y: vf.origin.y + (vf.size.height - targetSize.height) / 2
+      )
+      let newFrame = NSRect(origin: newOrigin, size: targetSize)
+      self.setFrame(newFrame, display: false)
+      // Persist the corrected frame immediately so subsequent launches are safe
+      self.saveFrame(usingName: autosaveName)
+    }
+  }
   // Layout helper: re-position the traffic light buttons
   private func layoutTrafficLightButton(titlebarView: NSView, button: NSButton, offsetTop: CGFloat, offsetLeft: CGFloat) {
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -56,10 +106,14 @@ class MainFlutterWindow: NSWindow {
     if #available(macOS 15.0, *) {
       self.isMovable = true
     }
+    // Enforce a minimum content size so users can't shrink below usable bounds
+    self.contentMinSize = minContentSize
 
     // Now enable autosave and restore the last saved frame (post style configuration)
     _ = self.setFrameAutosaveName(autosaveName)
     _ = self.setFrameUsingName(autosaveName, force: false)
+    // Guard against saved frames that are off-screen or invalid sizes
+    normalizeFrameIfNeeded()
 
     // Place system traffic light buttons
     self.layoutTrafficLights()
