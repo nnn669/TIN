@@ -8,6 +8,7 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/model_provider.dart';
@@ -20,9 +21,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../shared/widgets/ios_switch.dart';
+import '../../../shared/widgets/ios_tactile.dart';
 import 'multi_key_manager_page.dart';
 import 'provider_network_page.dart';
 import '../../../core/services/haptics.dart';
+import '../../provider/widgets/provider_avatar.dart';
 
 class ProviderDetailPage extends StatefulWidget {
   const ProviderDetailPage({super.key, required this.keyName, required this.displayName});
@@ -126,9 +129,14 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
         ),
         title: Row(
           children: [
-            _BrandAvatar(
-              name: (_nameCtrl.text.isEmpty ? widget.displayName : _nameCtrl.text),
-              size: 22,
+            ProviderAvatar(
+              providerKey: widget.keyName,
+              displayName: (_nameCtrl.text.isEmpty ? widget.displayName : _nameCtrl.text),
+              size: 24,
+              onTap: () async {
+                try { Haptics.light(); } catch (_) {}
+                await _editProviderAvatar(context);
+              },
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -241,6 +249,129 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _editProviderAvatar(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final maxH = MediaQuery.of(ctx).size.height * 0.8;
+        Widget row(String text, VoidCallback onTap) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: SizedBox(
+              height: 48,
+              child: IosCardPress(
+                borderRadius: BorderRadius.circular(14),
+                baseColor: cs.surface,
+                duration: const Duration(milliseconds: 260),
+                onTap: () async {
+                  try { Haptics.light(); } catch (_) {}
+                  Navigator.of(ctx).pop();
+                  await Future<void>.delayed(const Duration(milliseconds: 10));
+                  onTap();
+                },
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Align(alignment: Alignment.centerLeft, child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+              ),
+            ),
+          );
+        }
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxH),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    row(l10n.sideDrawerChooseImage, () async {
+                      try {
+                        final ImagePicker picker = ImagePicker();
+                        final XFile? img = await picker.pickImage(source: ImageSource.gallery, requestFullMetadata: false);
+                        if (img != null && img.path.isNotEmpty) {
+                          await context.read<SettingsProvider>().setProviderAvatarFilePath(widget.keyName, img.path);
+                        }
+                      } catch (_) {}
+                    }),
+                    row(l10n.sideDrawerEnterLink, () async {
+                      await _inputProviderAvatarUrl(context);
+                    }),
+                    row(l10n.sideDrawerReset, () async {
+                      await context.read<SettingsProvider>().resetProviderAvatar(widget.keyName);
+                    }),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _inputProviderAvatarUrl(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        bool valid(String s) => s.trim().startsWith('http://') || s.trim().startsWith('https://');
+        String value = '';
+        return StatefulBuilder(builder: (ctx2, setLocal) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: cs.surface,
+            title: Text(l10n.sideDrawerImageUrlDialogTitle),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: l10n.sideDrawerImageUrlDialogHint,
+                filled: true,
+                fillColor: Theme.of(ctx2).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.transparent)),
+                enabledBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: Colors.transparent)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.primary.withOpacity(0.4))),
+              ),
+              onChanged: (v) => setLocal(() => value = v),
+              onSubmitted: (_) { if (valid(value)) Navigator.of(ctx2).pop(true); },
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.sideDrawerCancel)),
+              TextButton(
+                onPressed: valid(value) ? () => Navigator.of(ctx).pop(true) : null,
+                child: Text(l10n.sideDrawerSave, style: TextStyle(color: valid(value) ? cs.primary : cs.onSurface.withOpacity(0.38), fontWeight: FontWeight.w600)),
+              ),
+            ],
+          );
+        });
+      },
+    );
+    if (ok == true) {
+      final url = controller.text.trim();
+      if (url.isNotEmpty) {
+        await context.read<SettingsProvider>().setProviderAvatarUrl(widget.keyName, url);
+      }
+    }
   }
 
   Widget _buildConfigTab(BuildContext context, ColorScheme cs, AppLocalizations l10n) {

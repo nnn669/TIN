@@ -20,6 +20,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'dart:ui' as ui show ImageFilter;
 import '../../../shared/widgets/ios_tile_button.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
+import '../widgets/provider_avatar.dart';
 
 class ProvidersPage extends StatefulWidget {
   const ProvidersPage({super.key});
@@ -477,7 +478,16 @@ class _ProviderRow extends StatelessWidget {
                     ),
                   ),
                   if (selectMode) const SizedBox(width: 4),
-                  SizedBox(width: 36, child: Center(child: _BrandAvatar(name: (cfg.name.isNotEmpty ? cfg.name : provider.keyName), size: 22))),
+                  SizedBox(
+                    width: 36,
+                    child: Center(
+                      child: ProviderAvatar(
+                        providerKey: provider.keyName,
+                        displayName: (cfg.name.isNotEmpty ? cfg.name : provider.keyName),
+                        size: 22,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(

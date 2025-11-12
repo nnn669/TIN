@@ -11,6 +11,9 @@ import '../services/tts/network_tts.dart';
 import '../models/api_keys.dart';
 import '../models/backup.dart';
 import '../services/haptics.dart';
+import '../../utils/app_directories.dart';
+import '../../utils/sandbox_path_resolver.dart';
+import '../../utils/avatar_cache.dart';
 
 // Desktop: topic list position
 enum DesktopTopicPosition { left, right }
@@ -940,6 +943,84 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString(_providerConfigsKey, jsonEncode(map));
   }
 
+  // ===== Provider Avatars =====
+  Future<void> setProviderAvatarEmoji(String key, String emoji) async {
+    final e = emoji.trim();
+    if (e.isEmpty) return;
+    final old = getProviderConfig(key);
+    await setProviderConfig(key, old.copyWith(avatarType: 'emoji', avatarValue: e));
+  }
+
+  Future<void> setProviderAvatarUrl(String key, String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+    final old = getProviderConfig(key);
+    await setProviderConfig(key, old.copyWith(avatarType: 'url', avatarValue: u));
+    // Prefetch for offline
+    try { await AvatarCache.getPath(u); } catch (_) {}
+  }
+
+  Future<void> setProviderAvatarFilePath(String key, String path) async {
+    final p = path.trim();
+    if (p.isEmpty) return;
+    final fixedInput = SandboxPathResolver.fix(p);
+    try {
+      final src = File(fixedInput);
+      if (!await src.exists()) return;
+      final avatarsDir = await AppDirectories.getAvatarsDirectory();
+      if (!await avatarsDir.exists()) {
+        await avatarsDir.create(recursive: true);
+      }
+      String ext = '';
+      final dot = fixedInput.lastIndexOf('.');
+      if (dot != -1 && dot < fixedInput.length - 1) {
+        ext = fixedInput.substring(dot + 1).toLowerCase();
+        if (ext.length > 6) ext = 'jpg';
+      } else {
+        ext = 'jpg';
+      }
+      final safeKey = key.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final filename = 'provider_${safeKey}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final dest = File('${avatarsDir.path}/$filename');
+      await src.copy(dest.path);
+
+      // Clean old stored avatar file if under managed avatars folder
+      final old = getProviderConfig(key);
+      if (old.avatarType == 'file' && (old.avatarValue ?? '').isNotEmpty) {
+        try {
+          final oldFile = File(old.avatarValue!);
+          if ((oldFile.path.contains('/avatars/') || oldFile.path.contains('\\\\avatars\\\\')) && await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        } catch (_) {}
+      }
+
+      await setProviderConfig(key, old.copyWith(avatarType: 'file', avatarValue: dest.path));
+    } catch (_) {
+      // Fallback: still save original path
+      final old = getProviderConfig(key);
+      await setProviderConfig(key, old.copyWith(avatarType: 'file', avatarValue: fixedInput));
+    }
+  }
+
+  Future<void> resetProviderAvatar(String key) async {
+    final old = getProviderConfig(key);
+    // Attempt to remove old local file if we managed it
+    if (old.avatarType == 'file' && (old.avatarValue ?? '').isNotEmpty) {
+      try {
+        final f = File(old.avatarValue!);
+        if ((f.path.contains('/avatars/') || f.path.contains('\\\\avatars\\\\')) && await f.exists()) {
+          await f.delete();
+        }
+      } catch (_) {}
+    }
+    // Best-effort: evict cached URL avatar
+    if (old.avatarType == 'url' && (old.avatarValue ?? '').isNotEmpty) {
+      try { await AvatarCache.evict(old.avatarValue!); } catch (_) {}
+    }
+    await setProviderConfig(key, old.copyWith(avatarType: null, avatarValue: null));
+  }
+
   Future<void> removeProviderConfig(String key) async {
     if (!_providerConfigs.containsKey(key)) return;
     _providerConfigs.remove(key);
@@ -1643,6 +1724,9 @@ class ProviderConfig {
   final String? proxyPort;
   final String? proxyUsername;
   final String? proxyPassword;
+  // Custom provider avatar (same scheme as user: emoji | url | file)
+  final String? avatarType; // 'emoji' | 'url' | 'file'
+  final String? avatarValue;
   // Multi-key mode
   final bool? multiKeyEnabled; // default false
   final List<ApiKeyConfig>? apiKeys; // when enabled
@@ -1668,10 +1752,15 @@ class ProviderConfig {
     this.proxyPort,
     this.proxyUsername,
     this.proxyPassword,
+    this.avatarType,
+    this.avatarValue,
     this.multiKeyEnabled,
     this.apiKeys,
     this.keyManagement,
   });
+
+  // Sentinel for copyWith nullability control (allow explicit null set)
+  static const Object _sentinel = Object();
 
   ProviderConfig copyWith({
     String? id,
@@ -1693,6 +1782,8 @@ class ProviderConfig {
     String? proxyPort,
     String? proxyUsername,
     String? proxyPassword,
+    Object? avatarType = _sentinel,
+    Object? avatarValue = _sentinel,
     bool? multiKeyEnabled,
     List<ApiKeyConfig>? apiKeys,
     KeyManagementConfig? keyManagement,
@@ -1716,6 +1807,8 @@ class ProviderConfig {
         proxyPort: proxyPort ?? this.proxyPort,
         proxyUsername: proxyUsername ?? this.proxyUsername,
         proxyPassword: proxyPassword ?? this.proxyPassword,
+        avatarType: (identical(avatarType, _sentinel)) ? this.avatarType : (avatarType as String?),
+        avatarValue: (identical(avatarValue, _sentinel)) ? this.avatarValue : (avatarValue as String?),
         multiKeyEnabled: multiKeyEnabled ?? this.multiKeyEnabled,
         apiKeys: apiKeys ?? this.apiKeys,
         keyManagement: keyManagement ?? this.keyManagement,
@@ -1741,6 +1834,8 @@ class ProviderConfig {
         'proxyPort': proxyPort,
         'proxyUsername': proxyUsername,
         'proxyPassword': proxyPassword,
+        'avatarType': avatarType,
+        'avatarValue': avatarValue,
         'multiKeyEnabled': multiKeyEnabled,
         'apiKeys': apiKeys?.map((e) => e.toJson()).toList(),
         'keyManagement': keyManagement?.toJson(),
@@ -1771,6 +1866,8 @@ class ProviderConfig {
         proxyPort: json['proxyPort'] as String?,
         proxyUsername: json['proxyUsername'] as String?,
         proxyPassword: json['proxyPassword'] as String?,
+        avatarType: json['avatarType'] as String?,
+        avatarValue: json['avatarValue'] as String?,
         multiKeyEnabled: json['multiKeyEnabled'] as bool?,
         apiKeys: (json['apiKeys'] as List?)
             ?.whereType<Map>()

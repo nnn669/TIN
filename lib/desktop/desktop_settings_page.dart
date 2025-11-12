@@ -44,6 +44,7 @@ import 'setting/about_pane.dart';
 import 'package:system_fonts/system_fonts.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../features/provider/widgets/provider_avatar.dart';
 
 /// Desktop settings layout: left menu + vertical divider + right content.
 /// For now, only the left menu and the Display Settings content are implemented.
@@ -1040,6 +1041,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                           final bg = selected ? cs.primary.withOpacity(0.08) : Colors.transparent;
                           final row = _ProviderListRow(
                             name: item.name,
+                            keyName: item.key,
                             enabled: enabled,
                             selected: selected,
                             background: bg,
@@ -1772,6 +1774,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
       context: context,
       barrierDismissible: true,
       builder: (ctx) {
+        final GlobalKey _avatarKey = GlobalKey();
         final nameCtrl = TextEditingController(text: cfg.name);
         final proxyHostCtrl = TextEditingController(text: cfg.proxyHost ?? '');
         final proxyPortCtrl = TextEditingController(text: cfg.proxyPort ?? '8080');
@@ -1837,6 +1840,64 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Divider(height: 1, thickness: 0.5, color: cs.outlineVariant.withOpacity(0.12)),
+                  ),
+                  // Centered provider avatar (smaller than user dialog)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14, bottom: 6),
+                    child: Center(
+                      child: GestureDetector(
+                        key: _avatarKey,
+                        onTapDown: (_) async {
+                          // Open avatar menu (anchored)
+                          final l10n2 = AppLocalizations.of(context)!;
+                          await showDesktopAnchoredMenu(
+                            context,
+                            anchorKey: _avatarKey,
+                            offset: const Offset(0, 8),
+                            items: [
+                              DesktopContextMenuItem(
+                                icon: lucide.Lucide.Image,
+                                label: l10n2.sideDrawerChooseImage,
+                                onTap: () async {
+                                  try {
+                                    final res = await FilePicker.platform.pickFiles(
+                                      allowMultiple: false,
+                                      withData: false,
+                                      type: FileType.custom,
+                                      allowedExtensions: const ['png','jpg','jpeg','gif','webp','heic','heif'],
+                                    );
+                                    final f = (res != null && res.files.isNotEmpty) ? res.files.first : null;
+                                    final path = f?.path;
+                                    if (path != null && path.isNotEmpty) {
+                                      await context.read<SettingsProvider>().setProviderAvatarFilePath(widget.providerKey, path);
+                                    }
+                                  } catch (_) {}
+                                },
+                              ),
+                              DesktopContextMenuItem(
+                                icon: lucide.Lucide.Link,
+                                label: l10n2.sideDrawerEnterLink,
+                                onTap: () async {
+                                  await _inputProviderAvatarUrl(context, widget.providerKey);
+                                },
+                              ),
+                              DesktopContextMenuItem(
+                                icon: lucide.Lucide.RotateCw,
+                                label: l10n2.desktopAvatarMenuReset,
+                                onTap: () async {
+                                  await context.read<SettingsProvider>().resetProviderAvatar(widget.providerKey);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                        child: ProviderAvatar(
+                          providerKey: widget.providerKey,
+                          displayName: widget.displayName,
+                          size: 64,
+                        ),
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -1999,6 +2060,64 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
         );
       },
     );
+  }
+
+  Future<void> _inputProviderAvatarUrl(BuildContext context, String providerKey) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        bool valid(String s) => s.trim().startsWith('http://') || s.trim().startsWith('https://');
+        String value = '';
+        return StatefulBuilder(builder: (ctx2, setLocal) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: cs.surface,
+            title: Text(l10n.sideDrawerImageUrlDialogTitle),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: l10n.sideDrawerImageUrlDialogHint,
+                filled: true,
+                fillColor: Theme.of(ctx2).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.transparent),
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Colors.transparent),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
+                ),
+              ),
+              onChanged: (v) => setLocal(() => value = v),
+              onSubmitted: (_) {
+                if (valid(value)) Navigator.of(ctx2).pop(true);
+              },
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.sideDrawerCancel)),
+              TextButton(
+                onPressed: valid(value) ? () => Navigator.of(ctx).pop(true) : null,
+                child: Text(l10n.sideDrawerSave, style: TextStyle(color: valid(value) ? cs.primary : cs.onSurface.withOpacity(0.38), fontWeight: FontWeight.w600)),
+              ),
+            ],
+          );
+        });
+      },
+    );
+    if (ok == true) {
+      final url = controller.text.trim();
+      if (url.isNotEmpty) {
+        await context.read<SettingsProvider>().setProviderAvatarUrl(providerKey, url);
+      }
+    }
   }
 
   Future<void> _showNetworkDialog(BuildContext context) async {
@@ -2950,6 +3069,7 @@ class _BrandCircle extends StatelessWidget {
 class _ProviderListRow extends StatefulWidget {
   const _ProviderListRow({
     required this.name,
+    required this.keyName,
     required this.enabled,
     required this.selected,
     required this.background,
@@ -2958,6 +3078,7 @@ class _ProviderListRow extends StatefulWidget {
     this.onDelete,
   });
   final String name;
+  final String keyName;
   final bool enabled;
   final bool selected;
   final Color background;
@@ -2995,7 +3116,7 @@ class _ProviderListRowState extends State<_ProviderListRow> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             children: [
-              _BrandCircle(name: widget.name, size: 22),
+              ProviderAvatar(providerKey: widget.keyName, displayName: widget.name, size: 22),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(widget.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),

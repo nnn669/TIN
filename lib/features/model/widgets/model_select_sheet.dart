@@ -13,6 +13,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../desktop/desktop_home_page.dart' show DesktopHomePage;
+import '../../provider/widgets/provider_avatar.dart';
 
 class ModelSelection {
   final String providerKey;
@@ -830,7 +831,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: _ProviderChip(
-        avatar: _BrandAvatar(name: name, size: 18),
+        avatar: ProviderAvatar(providerKey: key, displayName: name, size: 18),
         label: name,
         selected: selected,
         borderColor: cs.outlineVariant.withOpacity(0.25),
