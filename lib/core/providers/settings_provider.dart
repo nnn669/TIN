@@ -1010,6 +1010,14 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString(_selectedModelKey, '$providerKey::$modelId');
   }
 
+  Future<void> resetCurrentModel() async {
+    _currentModelProvider = null;
+    _currentModelId = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_selectedModelKey);
+  }
+
   // Title model and prompt
   String? _titleModelProvider;
   String? _titleModelId;
@@ -1040,6 +1048,14 @@ You need to summarize the conversation between user and assistant into a short t
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_titleModelKey, '$providerKey::$modelId');
+  }
+
+  Future<void> resetTitleModel() async {
+    _titleModelProvider = null;
+    _titleModelId = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_titleModelKey);
   }
 
   Future<void> setTitlePrompt(String prompt) async {
@@ -1077,6 +1093,14 @@ Please translate the <source_text> section:
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_translateModelKey, '$providerKey::$modelId');
+  }
+
+  Future<void> resetTranslateModel() async {
+    _translateModelProvider = null;
+    _translateModelId = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_translateModelKey);
   }
 
   Future<void> setTranslatePrompt(String prompt) async {

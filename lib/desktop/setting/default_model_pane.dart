@@ -43,6 +43,9 @@ class DesktopDefaultModelPane extends StatelessWidget {
                 subtitle: l10n.defaultModelPageChatModelSubtitle,
                 modelProvider: settings.currentModelProvider,
                 modelId: settings.currentModelId,
+                onReset: () async {
+                  await context.read<SettingsProvider>().resetCurrentModel();
+                },
                 onPick: () async {
                   final sel = await showModelSelector(context);
                   if (sel != null) {
@@ -60,6 +63,9 @@ class DesktopDefaultModelPane extends StatelessWidget {
                 modelId: settings.titleModelId,
                 fallbackProvider: settings.currentModelProvider,
                 fallbackModelId: settings.currentModelId,
+                onReset: () async {
+                  await context.read<SettingsProvider>().resetTitleModel();
+                },
                 onPick: () async {
                   final sel = await showModelSelector(context);
                   if (sel != null) {
@@ -78,6 +84,9 @@ class DesktopDefaultModelPane extends StatelessWidget {
                 modelId: settings.translateModelId,
                 fallbackProvider: settings.currentModelProvider,
                 fallbackModelId: settings.currentModelId,
+                onReset: () async {
+                  await context.read<SettingsProvider>().resetTranslateModel();
+                },
                 onPick: () async {
                   final sel = await showModelSelector(context);
                   if (sel != null) {
@@ -230,6 +239,7 @@ class _ModelCard extends StatefulWidget {
     required this.onPick,
     this.fallbackProvider,
     this.fallbackModelId,
+    this.onReset,
     this.configAction,
   });
 
@@ -240,6 +250,7 @@ class _ModelCard extends StatefulWidget {
   final String? modelId;
   final String? fallbackProvider;
   final String? fallbackModelId;
+  final VoidCallback? onReset;
   final VoidCallback onPick;
   final VoidCallback? configAction;
 
@@ -291,7 +302,13 @@ class _ModelCardState extends State<_ModelCard> {
                 Expanded(
                   child: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
-                if (widget.configAction != null) _SmallIconBtn(icon: lucide.Lucide.Settings, onTap: widget.configAction!),
+                if (widget.onReset != null && !usingFallback)
+                  Tooltip(
+                    message: l10n.defaultModelPageResetDefault,
+                    child: _SmallIconBtn(icon: lucide.Lucide.RotateCcw, onTap: widget.onReset!),
+                  ),
+                if (widget.configAction != null)
+                  _SmallIconBtn(icon: lucide.Lucide.Settings, onTap: widget.configAction!),
               ],
             ),
             const SizedBox(height: 6),

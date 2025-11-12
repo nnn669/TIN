@@ -58,6 +58,9 @@ class DefaultModelPage extends StatelessWidget {
             subtitle: l10n.defaultModelPageChatModelSubtitle,
             modelProvider: settings.currentModelProvider,
             modelId: settings.currentModelId,
+            onReset: () async {
+              await context.read<SettingsProvider>().resetCurrentModel();
+            },
             onPick: () async {
               final sel = await showModelSelector(context);
               if (sel != null) {
@@ -74,6 +77,9 @@ class DefaultModelPage extends StatelessWidget {
             modelId: settings.titleModelId,
             fallbackProvider: settings.currentModelProvider,
             fallbackModelId: settings.currentModelId,
+            onReset: () async {
+              await context.read<SettingsProvider>().resetTitleModel();
+            },
             onPick: () async {
               final sel = await showModelSelector(context);
               if (sel != null) {
@@ -91,6 +97,9 @@ class DefaultModelPage extends StatelessWidget {
             modelId: settings.translateModelId,
             fallbackProvider: settings.currentModelProvider,
             fallbackModelId: settings.currentModelId,
+            onReset: () async {
+              await context.read<SettingsProvider>().resetTranslateModel();
+            },
             onPick: () async {
               final sel = await showModelSelector(context);
               if (sel != null) {
@@ -265,6 +274,7 @@ class _ModelCard extends StatelessWidget {
     required this.modelProvider,
     required this.modelId,
     required this.onPick,
+    this.onReset,
     this.fallbackProvider,
     this.fallbackModelId,
     this.configAction,
@@ -278,6 +288,7 @@ class _ModelCard extends StatelessWidget {
   final String? fallbackProvider;
   final String? fallbackModelId;
   final VoidCallback onPick;
+  final VoidCallback? onReset;
   final VoidCallback? configAction;
 
   @override
@@ -331,6 +342,16 @@ class _ModelCard extends StatelessWidget {
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),
+                if (onReset != null && !usingFallback)
+                  Tooltip(
+                    message: l10n.defaultModelPageResetDefault,
+                    child: _TactileIconButton(
+                      icon: Lucide.RotateCcw,
+                      color: cs.onSurface,
+                      size: 20,
+                      onTap: onReset!,
+                    ),
+                  ),
                 if (configAction != null)
                   _TactileIconButton(
                     icon: Lucide.Settings,
