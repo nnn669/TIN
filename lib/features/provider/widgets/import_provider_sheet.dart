@@ -52,7 +52,7 @@ List<_ImportResult> _decodeChatBoxJson(BuildContext context, String s) {
     final baseUrl = (openai['baseUrl'] ?? '').toString();
     final providedName = (openai['name'] ?? '').toString();
     if (apiKey.trim().isNotEmpty) {
-      final name = providedName.isNotEmpty ? providedName : 'OpenAI-Compat';
+      final name = providedName.isNotEmpty ? providedName : 'OpenAI';
       final key = uniqueKey('OpenAI', name);
       final cfg = ProviderConfig(
         id: key,
@@ -168,7 +168,7 @@ _ImportResult _decodeSingle(BuildContext context, String s) {
     return candidate;
   }
 
-  if (type == 'openai-compat') {
+  if (type == 'openai') {
     final key = uniqueKey('OpenAI', name.isEmpty ? 'OpenAI' : name);
     final cfg = ProviderConfig(
       id: key,

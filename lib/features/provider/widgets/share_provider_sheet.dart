@@ -23,7 +23,7 @@ String encodeProviderConfig(ProviderConfig cfg) {
       break;
     case ProviderKind.openai:
     default:
-      type = 'openai-compat';
+      type = 'openai';
   }
   final map = <String, dynamic>{
     'type': type,
