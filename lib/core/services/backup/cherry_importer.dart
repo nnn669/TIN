@@ -305,9 +305,7 @@ class CherryImporter {
       final type = (p['type'] ?? '').toString().toLowerCase();
       final name = (p['name'] ?? id).toString();
       final apiKey = (p['apiKey'] ?? '').toString();
-      final apiHost = (p['apiHost'] ?? '').toString();
-      // normalize base url (trim trailing slash)
-      final base = apiHost.endsWith('/') ? apiHost.substring(0, apiHost.length - 1) : apiHost;
+      final apiHostRaw = (p['apiHost'] ?? '').toString().trim();
 
       // Determine provider kind mapping
       String? kind;
@@ -331,6 +329,29 @@ class CherryImporter {
       final mlist = (p['models'] as List?) ?? const <dynamic>[];
       for (final m in mlist) {
         if (m is Map && m['id'] != null) models.add(m['id'].toString());
+      }
+
+      // Normalize baseUrl following Cherry Studio semantics:
+      // - In Cherry, for OpenAI/Anthropic providers, if base_url DOES NOT end with '/', they default to appending '/v1'.
+      // - Our importer previously kept the base as-is, which could miss '/v1' and break requests.
+      // - Here we mirror Cherry's behavior on import for 'openai' and 'claude'.
+      String base = apiHostRaw;
+      if (base.isNotEmpty) {
+        if (base.endsWith('/')) {
+          // Trim trailing slash for consistency; user is responsible for including version if needed.
+          base = base.substring(0, base.length - 1);
+        } else {
+          // If it's OpenAI/Claude/Google and no trailing slash, append default version unless a suffix already exists.
+          final lower = base.toLowerCase();
+          final hasVersionSuffix = RegExp(r'/v\d([a-z0-9._-]+)?$').hasMatch(lower);
+          if (!hasVersionSuffix) {
+            if (kind == 'google') {
+              base = '$base/v1beta';
+            } else if (kind == 'openai' || kind == 'claude') {
+              base = '$base/v1';
+            }
+          }
+        }
       }
 
       // Compose ProviderConfig json
