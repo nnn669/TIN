@@ -45,15 +45,34 @@ class ModelInfo {
 }
 
 class ModelRegistry {
+  // Updated model groups to reflect new series
+  // Vision-capable models (text + image input)
   static final RegExp vision = RegExp(
-      r'(gpt-4o|gpt-4-1|o\d|gemini|claude|doubao-1\.6|grok-4|step-3|intern-s1)',
+      // GPT family incl. 4o, 4.1, 5 (exclude gpt-5-chat), and OpenAI o* series
+      r'(gpt-4o|gpt-4\.1|gpt-5(?!-chat)|o\d|gemini|claude|doubao.+1([-.])6|grok-4|step-3|intern-s1)',
       caseSensitive: false);
+  // Tool-using models
   static final RegExp tool = RegExp(
-      r'(gpt-4o|gpt-4-1|gpt-oss|o\d|gemini|claude|qwen-3|doubao-1\.6|grok-4|kimi-k2|step-3|intern-s1|glm-4\.5|deepseek-r1|deepseek-v3)'
+      (
+              r'(gpt-4o|gpt-4\.1|gpt-oss|gpt-5(?!-chat)|o\d|'
+              r'gemini|claude|'
+              r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
+              r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
+              r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2)'
+              r')'
+          )
           .replaceAll(' ', ''),
       caseSensitive: false);
   static final RegExp reasoning = RegExp(
-      r'(gpt-oss|o\d|gemini-2\.5-(flash|pro)|claude|qwen|doubao-1\.6|grok-4|step-3|intern-s1|glm-4\.5|deepseek-r1|gpt-5)'
+      (
+              r'(gpt-oss|gpt-5(?!-chat)|o\d|'
+              r'gemini-2\.5-(?:flash|pro)|gemini-(?:flash-latest|pro-latest)|'
+              r'claude|'
+              r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
+              r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
+              r'deepseek-(?:r1|v3\.1|v3\.2)'
+              r')'
+          )
           .replaceAll(' ', ''),
       caseSensitive: false);
 
