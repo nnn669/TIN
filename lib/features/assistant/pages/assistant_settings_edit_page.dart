@@ -63,6 +63,8 @@ class _AssistantSettingsEditPageState extends State<AssistantSettingsEditPage>
     super.initState();
     _tabController = TabController(length: 5, vsync: this); //mcp
     _tabController.addListener(() {
+      // Close IME when switching tabs and refresh state
+      FocusManager.instance.primaryFocus?.unfocus();
       if (mounted) setState(() {});
     });
   }
@@ -140,16 +142,20 @@ class _AssistantSettingsEditPageState extends State<AssistantSettingsEditPage>
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _BasicSettingsTab(assistantId: assistant.id),
-          _PromptTab(assistantId: assistant.id),
-          _MemoryTab(assistantId: assistant.id),
-          // _McpTab(assistantId: assistant.id),
-          _QuickPhraseTab(assistantId: assistant.id),
-          _CustomRequestTab(assistantId: assistant.id),
-        ],
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _BasicSettingsTab(assistantId: assistant.id),
+            _PromptTab(assistantId: assistant.id),
+            _MemoryTab(assistantId: assistant.id),
+            // _McpTab(assistantId: assistant.id),
+            _QuickPhraseTab(assistantId: assistant.id),
+            _CustomRequestTab(assistantId: assistant.id),
+          ],
+        ),
       ),
     );
   }
@@ -2920,28 +2926,9 @@ class _PromptTabState extends State<_PromptTab> {
                   .updateAssistant(a.copyWith(systemPrompt: v)),
               // minLines: 1,
               maxLines: 8,
-              keyboardType: TextInputType.text,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => FocusScope.of(context).unfocus(),
-              onEditingComplete: () => FocusScope.of(context).unfocus(),
-              contextMenuBuilder: Platform.isIOS
-                  ? (BuildContext context, EditableTextState state) {
-                      return AdaptiveTextSelectionToolbar.buttonItems(
-                        anchors: state.contextMenuAnchors,
-                        buttonItems: <ContextMenuButtonItem>[
-                          ...state.contextMenuButtonItems,
-                          ContextMenuButtonItem(
-                            onPressed: () {
-                              // Insert a newline at current caret or replace selection
-                              _insertNewlineAtCursor();
-                              state.hideToolbar();
-                            },
-                            label: l10n.chatInputBarInsertNewline,
-                          ),
-                        ],
-                      );
-                    }
-                  : null,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              enableInteractiveSelection: true,
               decoration: InputDecoration(
                 hintText: l10n.assistantEditSystemPromptHint,
                 border: OutlineInputBorder(
@@ -3015,29 +3002,8 @@ class _PromptTabState extends State<_PromptTab> {
               focusNode: _tmplFocus,
               maxLines: 4,
               keyboardType: TextInputType.multiline,
-              textInputAction: Platform.isIOS ? TextInputAction.done : TextInputAction.newline,
-              onSubmitted: Platform.isIOS ? (_) => FocusScope.of(context).unfocus() : null,
-              contextMenuBuilder: Platform.isIOS
-                  ? (BuildContext context, EditableTextState state) {
-                      return AdaptiveTextSelectionToolbar.buttonItems(
-                        anchors: state.contextMenuAnchors,
-                        buttonItems: <ContextMenuButtonItem>[
-                          ...state.contextMenuButtonItems,
-                          ContextMenuButtonItem(
-                            onPressed: () {
-                              _insertAtCursor(_tmplCtrl, '\n');
-                              context.read<AssistantProvider>().updateAssistant(
-                                a.copyWith(messageTemplate: _tmplCtrl.text),
-                              );
-                              setState(() {});
-                              state.hideToolbar();
-                            },
-                            label: l10n.chatInputBarInsertNewline,
-                          ),
-                        ],
-                      );
-                    }
-                  : null,
+              textInputAction: TextInputAction.newline,
+              enableInteractiveSelection: true,
               onChanged: (v) => context
                   .read<AssistantProvider>()
                   .updateAssistant(a.copyWith(messageTemplate: v)),
@@ -4884,6 +4850,8 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
         onTapCancel: () => setState(() => _pressed = false),
         onTap: () {
           if (widget.haptics) Haptics.light();
+          // Close IME when tapping buttons
+          FocusManager.instance.primaryFocus?.unfocus();
           widget.onTap();
         },
         onLongPress: widget.onLongPress == null
@@ -5009,6 +4977,8 @@ class _TactileRowState extends State<_TactileRow> {
           ? null
           : () {
               if (widget.haptics && context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
+              // Close IME when tapping segmented/tab rows or list items
+              FocusManager.instance.primaryFocus?.unfocus();
               widget.onTap!.call();
             },
       child: child,
