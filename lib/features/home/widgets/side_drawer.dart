@@ -39,6 +39,7 @@ import '../../../shared/widgets/emoji_text.dart';
 import '../../../core/providers/tag_provider.dart';
 import '../../assistant/pages/tags_manager_page.dart';
 import '../../assistant/widgets/tags_manager_dialog.dart';
+import '../../assistant/widgets/assistant_select_sheet.dart';
 import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import 'dart:async';
 
@@ -266,6 +267,39 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
             onTap: () async { await _regenerateTitle(context, chat.id); },
           ),
           DesktopContextMenuItem(
+            icon: Lucide.Shuffle,
+            label: l10n.sideDrawerMenuMoveTo,
+            onTap: () async {
+              final conv = chatService.getConversation(chat.id);
+              final movingCurrent = chatService.currentConversationId == chat.id;
+              // Pre-compute next recent conversation for current assistant
+              String? nextId;
+              try {
+                final ap = context.read<AssistantProvider>();
+                final currentAid = ap.currentAssistantId;
+                if (currentAid != null) {
+                  final all = chatService.getAllConversations();
+                  final candidates = all
+                      .where((c) => c.assistantId == currentAid && c.id != chat.id)
+                      .toList()
+                    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+                  if (candidates.isNotEmpty) nextId = candidates.first.id;
+                }
+              } catch (_) {}
+              final targetId = await showAssistantMoveSelector(context, excludeAssistantId: conv?.assistantId);
+              if (targetId != null) {
+                await chatService.moveConversationToAssistant(conversationId: chat.id, assistantId: targetId);
+                if (movingCurrent || chatService.currentConversationId == null) {
+                  if (nextId != null) {
+                    widget.onSelectConversation?.call(nextId!);
+                  } else {
+                    widget.onNewConversation?.call();
+                  }
+                }
+              }
+            },
+          ),
+          DesktopContextMenuItem(
             icon: Lucide.Trash2,
             label: l10n.sideDrawerMenuDelete,
             danger: true,
@@ -387,6 +421,39 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                       icon: Lucide.RefreshCw,
                       label: l10n.sideDrawerMenuRegenerateTitle,
                       action: () async { await _regenerateTitle(context, chat.id); },
+                    ),
+                    row(
+                      icon: Lucide.Shuffle,
+                      label: l10n.sideDrawerMenuMoveTo,
+                      action: () async {
+                        final conv = chatService.getConversation(chat.id);
+                        final movingCurrent = chatService.currentConversationId == chat.id;
+                        // Pre-compute next recent conversation for current assistant
+                        String? nextId;
+                        try {
+                          final ap = context.read<AssistantProvider>();
+                          final currentAid = ap.currentAssistantId;
+                          if (currentAid != null) {
+                            final all = chatService.getAllConversations();
+                            final candidates = all
+                                .where((c) => c.assistantId == currentAid && c.id != chat.id)
+                                .toList()
+                              ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+                            if (candidates.isNotEmpty) nextId = candidates.first.id;
+                          }
+                        } catch (_) {}
+                        final targetId = await showAssistantMoveSelector(context, excludeAssistantId: conv?.assistantId);
+                        if (targetId != null) {
+                          await chatService.moveConversationToAssistant(conversationId: chat.id, assistantId: targetId);
+                          if (movingCurrent || chatService.currentConversationId == null) {
+                            if (nextId != null) {
+                              widget.onSelectConversation?.call(nextId!);
+                            } else {
+                              widget.onNewConversation?.call();
+                            }
+                          }
+                        }
+                      },
                     ),
                     row(
                       icon: Lucide.Trash,

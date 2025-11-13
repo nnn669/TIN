@@ -1412,6 +1412,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sideDrawerMenuRegenerateTitle => 'Regenerate Title';
 
   @override
+  String get sideDrawerMenuMoveTo => 'Move to';
+
+  @override
   String get sideDrawerMenuDelete => 'Delete';
 
   @override

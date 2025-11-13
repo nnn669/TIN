@@ -2717,6 +2717,12 @@ abstract class AppLocalizations {
   /// **'Regenerate Title'**
   String get sideDrawerMenuRegenerateTitle;
 
+  /// No description provided for @sideDrawerMenuMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to'**
+  String get sideDrawerMenuMoveTo;
+
   /// No description provided for @sideDrawerMenuDelete.
   ///
   /// In en, this message translates to:

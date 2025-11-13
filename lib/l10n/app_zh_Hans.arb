@@ -485,6 +485,7 @@
   "sideDrawerMenuPin": "置顶",
   "sideDrawerMenuUnpin": "取消置顶",
   "sideDrawerMenuRegenerateTitle": "重新生成标题",
+  "sideDrawerMenuMoveTo": "移动到",
   "sideDrawerMenuDelete": "删除",
   "sideDrawerDeleteSnackbar": "已删除“{title}”",
   "sideDrawerRenameHint": "输入新名称",

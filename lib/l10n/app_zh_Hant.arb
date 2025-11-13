@@ -443,6 +443,7 @@
   "sideDrawerMenuPin": "置頂",
   "sideDrawerMenuUnpin": "取消置頂",
   "sideDrawerMenuRegenerateTitle": "重新生成標題",
+  "sideDrawerMenuMoveTo": "移動到",
   "sideDrawerMenuDelete": "刪除",
   "sideDrawerDeleteSnackbar": "已刪除「{title}」",
   "sideDrawerRenameHint": "輸入新名稱",

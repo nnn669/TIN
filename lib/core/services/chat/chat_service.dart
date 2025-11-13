@@ -800,6 +800,32 @@ class ChatService extends ChangeNotifier {
       return const UploadStats(fileCount: 0, totalBytes: 0);
     }
   }
+
+  // Move an existing conversation to a different assistant.
+  // If the conversation is still a draft, update it in memory;
+  // otherwise persist the assistantId change and updatedAt.
+  Future<void> moveConversationToAssistant({
+    required String conversationId,
+    required String assistantId,
+  }) async {
+    if (!_initialized) await init();
+
+    // Draft conversation case
+    if (_draftConversations.containsKey(conversationId)) {
+      final draft = _draftConversations[conversationId]!;
+      draft.assistantId = assistantId;
+      draft.updatedAt = DateTime.now();
+      notifyListeners();
+      return;
+    }
+
+    final c = _conversationsBox.get(conversationId);
+    if (c == null) return;
+    c.assistantId = assistantId;
+    c.updatedAt = DateTime.now();
+    await c.save();
+    notifyListeners();
+  }
 }
 
 class UploadStats {
