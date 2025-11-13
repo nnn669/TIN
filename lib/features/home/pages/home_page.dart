@@ -3861,7 +3861,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             size: 22,
             minSize: 44,
             onTap: () async {
-              await _createNewConversation();
+              await _createNewConversationAnimated();
               if (mounted) {
                 // Close drawer if open and scroll to bottom (fresh convo)
                 _forceScrollToBottomSoon();
@@ -5003,7 +5003,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   minSize: 40,
                   icon: Lucide.MessageCirclePlus,
                   onTap: () async {
-                    await _createNewConversation();
+                    await _createNewConversationAnimated();
                     if (mounted) _forceScrollToBottomSoon();
                   },
                 ),
