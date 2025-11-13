@@ -32,10 +32,9 @@ dependencies:
     sdk: flutter
   logging: ^1.2.0
   
-  # Desktop window control (caption buttons, drag area, title bar style)
   window_manager: ^0.5.1
-  # Desktop drag-and-drop for files/text
   desktop_drop: ^0.7.0
+  hotkey_manager: ^0.2.3
 
   # Localizations for Chinese/English UI strings
   flutter_localizations:

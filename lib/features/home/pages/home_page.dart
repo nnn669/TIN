@@ -68,6 +68,8 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
 import 'dart:io' show Platform;
 import '../../../core/services/notification_service.dart';
+import '../../../desktop/hotkeys/chat_action_bus.dart';
+import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
@@ -208,6 +210,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   static const double _sidebarMaxWidth = 360;
   double _rightSidebarWidth = 300;
   bool _desktopUiInited = false;
+  StreamSubscription<ChatAction>? _chatActionSub;
   
   void _openSearchSettings() {
     // On desktop platforms show the floating popover; mobile keeps bottom sheet
@@ -781,6 +784,35 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     // Attach drawer value listener to catch swipe-open and close events
     _drawerController.addListener(_onDrawerValueChanged);
+
+    // Listen to desktop hotkey actions (chat-only)
+    _chatActionSub = ChatActionBus.instance.stream.listen((action) async {
+      switch (action) {
+        case ChatAction.newTopic:
+          await _createNewConversation();
+          break;
+        case ChatAction.toggleLeftPanelTopics:
+        case ChatAction.toggleLeftPanelAssistants:
+          final sp = context.read<SettingsProvider>();
+          if (sp.desktopTopicPosition != DesktopTopicPosition.left) return;
+          final wantAssistants = (action == ChatAction.toggleLeftPanelAssistants);
+          // 行为：
+          // - 如果侧边栏关闭：打开并切换到目标标签
+          // - 如果侧边栏打开：仅切换标签，不再关闭
+          if (!_tabletSidebarOpen) {
+            setState(() => _tabletSidebarOpen = true);
+            try { context.read<SettingsProvider>().setDesktopSidebarOpen(true); } catch (_) {}
+          }
+          if (wantAssistants) {
+            DesktopSidebarTabBus.instance.switchToAssistants();
+          } else {
+            DesktopSidebarTabBus.instance.switchToTopics();
+          }
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   void _onDrawerValueChanged() {
@@ -5859,6 +5891,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _inputController.dispose();
     _scrollController.removeListener(_onScrollControllerChanged);
     _scrollController.dispose();
+    try { _chatActionSub?.cancel(); } catch (_) {}
     try {
       for (final s in _conversationStreams.values) { s.cancel(); }
     } catch (_) {}

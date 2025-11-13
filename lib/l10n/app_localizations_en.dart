@@ -58,6 +58,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPageProviders => 'Providers';
 
   @override
+  String get settingsPageHotkeys => 'Hotkeys';
+
+  @override
   String get settingsPageSearch => 'Search';
 
   @override
@@ -832,6 +835,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSidebarTabTopics => 'Topics';
+
+  @override
+  String get hotkeyToggleAppVisibility => 'Show/Hide App';
+
+  @override
+  String get hotkeyOpenSettings => 'Open Settings';
+
+  @override
+  String get hotkeyNewTopic => 'New Topic';
+
+  @override
+  String get hotkeyToggleAssistantPanel => 'Toggle Assistants';
+
+  @override
+  String get hotkeyToggleTopicPanel => 'Toggle Topics';
+
+  @override
+  String get hotkeysPressShortcut => 'Press a shortcut';
+
+  @override
+  String get hotkeysResetDefault => 'Reset to default';
+
+  @override
+  String get hotkeysClearShortcut => 'Clear shortcut';
+
+  @override
+  String get hotkeysResetAll => 'Reset all to defaults';
 
   @override
   String get assistantEditTemperatureTitle => 'Temperature';

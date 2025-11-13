@@ -57,6 +57,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsPageProviders => '供应商';
 
   @override
+  String get settingsPageHotkeys => '快捷键';
+
+  @override
   String get settingsPageSearch => '搜索服务';
 
   @override
@@ -809,6 +812,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get desktopSidebarTabTopics => '话题';
+
+  @override
+  String get hotkeyToggleAppVisibility => '显示/隐藏应用';
+
+  @override
+  String get hotkeyOpenSettings => '打开设置';
+
+  @override
+  String get hotkeyNewTopic => '新建话题';
+
+  @override
+  String get hotkeyToggleAssistantPanel => '切换助手显示';
+
+  @override
+  String get hotkeyToggleTopicPanel => '切换话题显示';
+
+  @override
+  String get hotkeysPressShortcut => '按下快捷键';
+
+  @override
+  String get hotkeysResetDefault => '重置为默认';
+
+  @override
+  String get hotkeysClearShortcut => '清除快捷键';
+
+  @override
+  String get hotkeysResetAll => '重置所有快捷键为默认';
 
   @override
   String get assistantEditTemperatureTitle => '温度';
@@ -3085,6 +3115,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get settingsPageProviders => '供应商';
 
   @override
+  String get settingsPageHotkeys => '快捷键';
+
+  @override
   String get settingsPageSearch => '搜索服务';
 
   @override
@@ -3837,6 +3870,33 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get desktopSidebarTabTopics => '话题';
+
+  @override
+  String get hotkeyToggleAppVisibility => '显示/隐藏应用';
+
+  @override
+  String get hotkeyOpenSettings => '打开设置';
+
+  @override
+  String get hotkeyNewTopic => '新建话题';
+
+  @override
+  String get hotkeyToggleAssistantPanel => '切换助手显示';
+
+  @override
+  String get hotkeyToggleTopicPanel => '切换话题显示';
+
+  @override
+  String get hotkeysPressShortcut => '按下快捷键';
+
+  @override
+  String get hotkeysResetDefault => '重置为默认';
+
+  @override
+  String get hotkeysClearShortcut => '清除快捷键';
+
+  @override
+  String get hotkeysResetAll => '重置所有快捷键为默认';
 
   @override
   String get assistantEditTemperatureTitle => '温度';
@@ -6113,6 +6173,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get settingsPageProviders => '供應商';
 
   @override
+  String get settingsPageHotkeys => '快捷鍵';
+
+  @override
   String get settingsPageSearch => '搜尋服務';
 
   @override
@@ -6865,6 +6928,33 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopSidebarTabTopics => '主題';
+
+  @override
+  String get hotkeyToggleAppVisibility => '顯示/隱藏應用';
+
+  @override
+  String get hotkeyOpenSettings => '打開設定';
+
+  @override
+  String get hotkeyNewTopic => '新建話題';
+
+  @override
+  String get hotkeyToggleAssistantPanel => '切換助理顯示';
+
+  @override
+  String get hotkeyToggleTopicPanel => '切換話題顯示';
+
+  @override
+  String get hotkeysPressShortcut => '按下快捷鍵';
+
+  @override
+  String get hotkeysResetDefault => '重置為預設';
+
+  @override
+  String get hotkeysClearShortcut => '清除快捷鍵';
+
+  @override
+  String get hotkeysResetAll => '重置所有快捷鍵為預設';
 
   @override
   String get assistantEditTemperatureTitle => '溫度';

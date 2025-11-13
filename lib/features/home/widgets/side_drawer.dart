@@ -39,6 +39,8 @@ import '../../../shared/widgets/emoji_text.dart';
 import '../../../core/providers/tag_provider.dart';
 import '../../assistant/pages/tags_manager_page.dart';
 import '../../assistant/widgets/tags_manager_dialog.dart';
+import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
+import 'dart:async';
 
 class SideDrawer extends StatefulWidget {
   const SideDrawer({
@@ -85,6 +87,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
   final ScrollController _listController = ScrollController();
   bool _assistantHeaderHovered = false;
   TabController? _tabController; // desktop tabs
+  StreamSubscription<int>? _tabBusSub;
 
   // Assistant avatar renderer shared across drawer views
   Widget _assistantAvatar(BuildContext context, Assistant? a, {double size = 28, VoidCallback? onTap}) {
@@ -217,10 +220,18 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     // Prepare desktop tabs controller (available when useDesktopTabs)
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
     _tabController!.addListener(_onDesktopTabChanged);
+    // Reflect current index to bus and listen for external switches
+    DesktopSidebarTabBus.instance.setCurrentIndex(_tabController!.index);
+    _tabBusSub = DesktopSidebarTabBus.instance.stream.listen((idx) {
+      if (widget.useDesktopTabs && mounted) {
+        try { _tabController!.animateTo(idx, duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic); } catch (_) {}
+      }
+    });
   }
 
   void _onDesktopTabChanged() {
     if (!mounted) return;
+    DesktopSidebarTabBus.instance.setCurrentIndex(_tabController?.index ?? 0);
     setState(() {}); // update search hint when switching tabs
   }
 
@@ -491,6 +502,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     _listController.dispose();
     _tabController?.removeListener(_onDesktopTabChanged);
     _tabController?.dispose();
+    try { _tabBusSub?.cancel(); } catch (_) {}
     super.dispose();
   }
 

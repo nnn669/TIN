@@ -25,6 +25,7 @@ import 'core/providers/update_provider.dart';
 import 'core/providers/quick_phrase_provider.dart';
 import 'core/providers/memory_provider.dart';
 import 'core/providers/backup_provider.dart';
+import 'core/providers/hotkey_provider.dart';
 import 'core/services/chat/chat_service.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
 import 'utils/sandbox_path_resolver.dart';
@@ -101,6 +102,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UpdateProvider()),
         ChangeNotifierProvider(create: (_) => QuickPhraseProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
+        // Desktop hotkeys provider
+        ChangeNotifierProvider(create: (_) => HotkeyProvider()),
         ChangeNotifierProvider(
           create: (ctx) => BackupProvider(
             chatService: ctx.read<ChatService>(),
@@ -160,6 +163,16 @@ class MyApp extends StatelessWidget {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 try {
                   settings.setDynamicColorSupported(dynSupported);
+                } catch (_) {}
+              });
+
+              // Initialize desktop hotkeys on supported platforms
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                try {
+                  final isDesktop = !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux);
+                  if (isDesktop) {
+                    await context.read<HotkeyProvider>().initialize();
+                  }
                 } catch (_) {}
               });
 

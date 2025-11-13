@@ -196,6 +196,12 @@ abstract class AppLocalizations {
   /// **'Providers'**
   String get settingsPageProviders;
 
+  /// No description provided for @settingsPageHotkeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotkeys'**
+  String get settingsPageHotkeys;
+
   /// No description provided for @settingsPageSearch.
   ///
   /// In en, this message translates to:
@@ -1666,6 +1672,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Topics'**
   String get desktopSidebarTabTopics;
+
+  /// No description provided for @hotkeyToggleAppVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Show/Hide App'**
+  String get hotkeyToggleAppVisibility;
+
+  /// No description provided for @hotkeyOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get hotkeyOpenSettings;
+
+  /// No description provided for @hotkeyNewTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'New Topic'**
+  String get hotkeyNewTopic;
+
+  /// No description provided for @hotkeyToggleAssistantPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Assistants'**
+  String get hotkeyToggleAssistantPanel;
+
+  /// No description provided for @hotkeyToggleTopicPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Topics'**
+  String get hotkeyToggleTopicPanel;
+
+  /// No description provided for @hotkeysPressShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a shortcut'**
+  String get hotkeysPressShortcut;
+
+  /// No description provided for @hotkeysResetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get hotkeysResetDefault;
+
+  /// No description provided for @hotkeysClearShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear shortcut'**
+  String get hotkeysClearShortcut;
+
+  /// No description provided for @hotkeysResetAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all to defaults'**
+  String get hotkeysResetAll;
 
   /// No description provided for @assistantEditTemperatureTitle.
   ///
