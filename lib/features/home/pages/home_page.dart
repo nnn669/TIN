@@ -775,10 +775,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // 监听键盘弹出
     _inputFocus.addListener(() {
       if (_inputFocus.hasFocus) {
-        // 延迟一下等待键盘完全弹出
-        Future.delayed(const Duration(milliseconds: 300), () {
-          _scrollToBottom();
-        });
+        // 移动端：键盘弹出后稍微滚到底部，避免遮挡输入框；
+        // 桌面端：仅聚焦，不再强制滚动，保留当前阅读位置。
+        if (!_isDesktopPlatform) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            _scrollToBottom();
+          });
+        }
       }
     });
 
