@@ -982,6 +982,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       final conversations = _chatService.getAllConversations();
       if (conversations.isNotEmpty) {
         final recent = conversations.first; // already sorted by updatedAt desc
+        // Ensure the current assistant matches the conversation's owner to avoid mismatched prompts
+        if ((recent.assistantId ?? '').isNotEmpty) {
+          try { await context.read<AssistantProvider>().setCurrentAssistant(recent.assistantId!); } catch (_) {}
+        }
         _chatService.setCurrentConversation(recent.id);
         final msgs = _chatService.getMessages(recent.id);
         setState(() {
