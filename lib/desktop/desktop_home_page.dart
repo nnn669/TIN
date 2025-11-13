@@ -33,6 +33,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (widget.initialTabIndex != null) {
       _tabIndex = widget.initialTabIndex!.clamp(0, 2);
     }
+    // 初始进入时如果就是聊天页，则聚焦聊天输入框
+    if (_tabIndex == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ChatActionBus.instance.fire(ChatAction.focusInput);
+      });
+    }
     // Listen to global hotkey actions affecting the main tabs/window
     _hotkeySub = HotkeyEventBus.instance.stream.listen((action) async {
       switch (action) {
@@ -47,6 +53,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
             if (shouldShow) {
               await windowManager.show();
               await windowManager.focus();
+              // 如果当前是聊天页，显示窗口时聚焦输入框
+              if (_tabIndex == 0) {
+                ChatActionBus.instance.fire(ChatAction.focusInput);
+              }
             } else {
               await windowManager.hide();
             }
@@ -87,7 +97,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           children: [
             DesktopNavRail(
               activeIndex: _tabIndex,
-              onTapChat: () => setState(() => _tabIndex = 0),
+              onTapChat: () {
+                setState(() => _tabIndex = 0);
+                // 切换到聊天页时聚焦输入框
+                ChatActionBus.instance.fire(ChatAction.focusInput);
+              },
               onTapTranslate: () => setState(() => _tabIndex = 1),
               onTapSettings: () {
                 setState(() => _tabIndex = 2);

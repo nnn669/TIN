@@ -4,6 +4,7 @@ enum ChatAction {
   newTopic,
   toggleLeftPanelAssistants,
   toggleLeftPanelTopics,
+  focusInput,
 }
 
 class ChatActionBus {
@@ -15,4 +16,3 @@ class ChatActionBus {
   void fire(ChatAction action) => _controller.add(action);
   void dispose() => _controller.close();
 }
-

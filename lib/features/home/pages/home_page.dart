@@ -785,11 +785,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Attach drawer value listener to catch swipe-open and close events
     _drawerController.addListener(_onDrawerValueChanged);
 
+    // 桌面端初次进入聊天页时自动聚焦输入框
+    if (_isDesktopPlatform) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _inputFocus.requestFocus();
+        }
+      });
+    }
+
     // Listen to desktop hotkey actions (chat-only)
     _chatActionSub = ChatActionBus.instance.stream.listen((action) async {
       switch (action) {
         case ChatAction.newTopic:
-          await _createNewConversation();
+          await _createNewConversationAnimated();
           break;
         case ChatAction.toggleLeftPanelTopics:
         case ChatAction.toggleLeftPanelAssistants:
@@ -807,6 +816,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             DesktopSidebarTabBus.instance.switchToAssistants();
           } else {
             DesktopSidebarTabBus.instance.switchToTopics();
+          }
+          break;
+        case ChatAction.focusInput:
+          if (_isDesktopPlatform) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _inputFocus.requestFocus();
+              }
+            });
           }
           break;
         default:
@@ -1005,6 +1023,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     if (mounted && !_isDesktopPlatform) {
       try { await _convoFadeController.forward(); } catch (_) {}
     }
+    // 桌面端：切换话题后自动聚焦输入框，方便继续输入
+    if (mounted && _isDesktopPlatform) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _inputFocus.requestFocus();
+        }
+      });
+    }
   }
 
   Future<void> _createNewConversationAnimated() async {
@@ -1017,6 +1043,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     if (mounted && !_isDesktopPlatform) {
       // Mobile: keep smooth fade for new conversation
       try { await _convoFadeController.forward(); } catch (_) {}
+    }
+    // 桌面端：新建话题后也自动聚焦输入框
+    if (mounted && _isDesktopPlatform) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _inputFocus.requestFocus();
+        }
+      });
     }
   }
 
@@ -5917,8 +5951,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   void didPopNext() {
-    // Returning to this page: ensure keyboard stays closed unless user taps.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _dismissKeyboard());
+    // 返回到本页：
+    // - 移动端保持原有行为，不自动弹出软键盘；
+    // - 桌面端则自动聚焦输入框，方便立即输入。
+    if (_isDesktopPlatform) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _inputFocus.requestFocus();
+        }
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _dismissKeyboard());
+    }
   }
 
 }
