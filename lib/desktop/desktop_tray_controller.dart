@@ -93,7 +93,7 @@ class DesktopTrayController with TrayListener, WindowListener {
       iconPath = 'assets/icons/kelivo.png';
     }
     try {
-      await trayManager.setIcon(iconPath);
+      await trayManager.setIcon(iconPath, isTemplate: true);
     } catch (_) {}
     try {
       await trayManager.setToolTip('Kelivo');
