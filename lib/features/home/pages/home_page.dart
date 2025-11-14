@@ -1515,7 +1515,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             })
         .toList();
 
-    // Build document prompts and clean markers in last user message
+    // Build document prompts (from current input + earlier attachments)
+    // and clean markers in last user message
     if (apiMessages.isNotEmpty) {
       // Find last user message index in apiMessages
       int lastUserIdx = -1;
@@ -1528,9 +1529,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             .replaceAll(RegExp(r"\[image:.*?\]"), '')
             .replaceAll(RegExp(r"\[file:.*?\]"), '')
             .trim();
+        // Collect unique document attachments from the entire (effective) conversation
+        // so previously uploaded files remain part of the context in subsequent turns.
+        final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
+        for (final m in source) {
+          if (m.role != 'user') continue;
+          final parsed = _parseInputFromRaw(m.content);
+          for (final d in parsed.documents) {
+            final path = d.path.trim();
+            if (path.isEmpty) continue;
+            allDocs[path] = d;
+          }
+        }
+        // Also include current input attachments (they may not yet be reflected in storage)
+        for (final d in input.documents) {
+          final path = d.path.trim();
+          if (path.isEmpty) continue;
+          allDocs[path] = d;
+        }
+
         // Build document prompts
         final filePrompts = StringBuffer();
-        for (final d in input.documents) {
+        for (final d in allDocs.values) {
           try {
             final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
             filePrompts.writeln('## user sent a file: ${d.fileName}');
@@ -2570,8 +2590,77 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final List<ChatMessage> source = _collapseVersions(sourceAll);
     final apiMessages = source
         .where((m) => m.content.isNotEmpty)
-        .map((m) => {'role': m.role == 'assistant' ? 'assistant' : 'user', 'content': m.content})
+        .map((m) => {
+              'role': m.role == 'assistant' ? 'assistant' : 'user',
+              'content': m.content,
+            })
         .toList();
+
+    // Capture image attachments from the last user message (for resend)
+    List<String>? lastUserImagePaths;
+
+    // Build document prompts from all user messages in the current effective context
+    if (apiMessages.isNotEmpty) {
+      // Find last user message index in apiMessages
+      int lastUserIdx = -1;
+      for (int i = apiMessages.length - 1; i >= 0; i--) {
+        if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
+      }
+      if (lastUserIdx != -1) {
+        final raw = (apiMessages[lastUserIdx]['content'] ?? '').toString();
+        // Parse the last user message once to capture its image attachments for the API call
+        final parsedLast = _parseInputFromRaw(raw);
+        if (parsedLast.imagePaths.isNotEmpty) {
+          lastUserImagePaths = List<String>.of(parsedLast.imagePaths);
+        }
+
+        final cleaned = raw
+            .replaceAll(RegExp(r"\[image:.*?\]"), '')
+            .replaceAll(RegExp(r"\[file:.*?\]"), '')
+            .trim();
+
+        // Collect unique document attachments from the entire (effective) conversation
+        final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
+        for (final m in source) {
+          if (m.role != 'user') continue;
+          final parsed = _parseInputFromRaw(m.content);
+          for (final d in parsed.documents) {
+            final path = d.path.trim();
+            if (path.isEmpty) continue;
+            allDocs[path] = d;
+          }
+        }
+
+        // Build document prompts
+        final filePrompts = StringBuffer();
+        for (final d in allDocs.values) {
+          try {
+            final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
+            filePrompts.writeln('## user sent a file: ${d.fileName}');
+            filePrompts.writeln('<content>');
+            filePrompts.writeln('```');
+            filePrompts.writeln(text);
+            filePrompts.writeln('```');
+            filePrompts.writeln('</content>');
+            filePrompts.writeln();
+          } catch (_) {}
+        }
+
+        final merged = (filePrompts.toString() + cleaned).trim();
+        final userText = merged.isEmpty ? cleaned : merged;
+        // Apply message template if set (reusing assistant's template to keep parity with normal send)
+        final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
+            ? '{{ message }}'
+            : (assistant!.messageTemplate);
+        final templated = PromptTransformer.applyMessageTemplate(
+          templ,
+          role: 'user',
+          message: userText,
+          now: DateTime.now(),
+        );
+        apiMessages[lastUserIdx]['content'] = templated;
+      }
+    }
 
     // Inject system prompt
     if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
@@ -2849,6 +2938,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       config: settings.getProviderConfig(providerKey),
       modelId: modelId,
       messages: apiMessages,
+      userImagePaths: lastUserImagePaths,
       thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
       temperature: assistant?.temperature,
       topP: assistant?.topP,
