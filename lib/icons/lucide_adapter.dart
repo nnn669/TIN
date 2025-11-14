@@ -136,4 +136,6 @@ class Lucide {
   static const IconData EthernetPort = lucide.LucideIcons.ethernetPort;
   static const IconData Cut = lucide.LucideIcons.scissors;
   static const IconData Keyboard = lucide.LucideIcons.keyboard;
+  static const IconData WrapText = lucide.LucideIcons.textWrap;
+
 }

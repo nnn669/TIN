@@ -920,6 +920,7 @@
   "displaySettingsPageEnableUserMarkdownTitle": "使用者訊息 Markdown 渲染",
   "displaySettingsPageEnableReasoningMarkdownTitle": "思维鏈 Markdown 渲染",
   "displaySettingsPageEnableMathSubtitle": "渲染 LaTeX 數學公式（行內與區塊）",
+  "displaySettingsPageMobileCodeBlockWrapTitle": "行動端程式碼區塊自動換行",
   "quickPhraseBackTooltip": "返回",
   "quickPhraseGlobalTitle": "快捷片語",
   "quickPhraseAssistantTitle": "助理快捷片語",

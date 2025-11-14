@@ -817,7 +817,6 @@ class _CollapsibleCodeBlock extends StatefulWidget {
 
 class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   bool _expanded = true;
-  late final ScrollController _vCodeScrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -1029,70 +1028,62 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     color: bodyBg,
                     padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
                     child: () {
-                      // Desktop: enable mouse-drag scrolling and cap height with vertical scroll
+                      // Desktop: enable word wrap, allow selection, no height limit, no scroll
+                      // Mobile: horizontal scroll by default, or word wrap if setting enabled
                       final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-                      if (!isDesktop) {
-                        return SelectionContainer.disabled(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            primary: false,
-                            child: HighlightView(
-                              _trimTrailingNewlines(widget.code),
-                              language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
-                              theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                                isDark ? atomOneDarkReasonableTheme : githubTheme,
-                              ),
-                              padding: EdgeInsets.zero,
-                              textStyle: TextStyle(
-                                fontFamily: codeFontFamily,
-                                fontSize: 13,
-                                height: 1.5,
-                              ),
-                            ),
+
+                      if (isDesktop) {
+                        // Desktop: auto wrap, selectable, no height limit, no scroll
+                        return HighlightView(
+                          _trimTrailingNewlines(widget.code),
+                          language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
+                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                          ),
+                          padding: EdgeInsets.zero,
+                          textStyle: TextStyle(
+                            fontFamily: codeFontFamily,
+                            fontSize: 13,
+                            height: 1.5,
                           ),
                         );
                       }
 
-                      final screenH = MediaQuery.of(context).size.height;
-                      final maxH = math.min(420.0, screenH * 0.55);
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(maxHeight: maxH),
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(
-                            dragDevices: {
-                              ui.PointerDeviceKind.touch,
-                              ui.PointerDeviceKind.mouse,
-                              ui.PointerDeviceKind.stylus,
-                              ui.PointerDeviceKind.unknown,
-                            },
+                      // Mobile: check settings for word wrap
+                      final bool shouldWrap = settings.mobileCodeBlockWrap;
+
+                      if (shouldWrap) {
+                        // Mobile with wrap enabled: selectable, auto wrap
+                        return HighlightView(
+                          _trimTrailingNewlines(widget.code),
+                          language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
+                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                            isDark ? atomOneDarkReasonableTheme : githubTheme,
                           ),
-                          child: Scrollbar(
-                            controller: _vCodeScrollController,
-                            thumbVisibility: true,
-                            interactive: true,
-                            notificationPredicate: (notif) => notif.metrics.axis == Axis.vertical,
-                            child: SingleChildScrollView(
-                              controller: _vCodeScrollController,
-                              child: SelectionContainer.disabled(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  primary: false,
-                                  child: HighlightView(
-                                    _trimTrailingNewlines(widget.code),
-                                    language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
-                                    theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                                      isDark ? atomOneDarkReasonableTheme : githubTheme,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    textStyle: TextStyle(
-                                      fontFamily: codeFontFamily,
-                                      fontSize: 13,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          padding: EdgeInsets.zero,
+                          textStyle: TextStyle(
+                            fontFamily: codeFontFamily,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        );
+                      }
+
+                      // Mobile without wrap: horizontal scroll, selectable
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        primary: false,
+                        child: HighlightView(
+                          _trimTrailingNewlines(widget.code),
+                          language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
+                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                          ),
+                          padding: EdgeInsets.zero,
+                          textStyle: TextStyle(
+                            fontFamily: codeFontFamily,
+                            fontSize: 13,
+                            height: 1.5,
                           ),
                         ),
                       );
@@ -1103,18 +1094,6 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
           ],
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _vCodeScrollController = ScrollController();
-  }
-
-  @override
-  void dispose() {
-    _vCodeScrollController.dispose();
-    super.dispose();
   }
 
   // Remove trailing newlines to avoid rendering an extra empty line at the bottom

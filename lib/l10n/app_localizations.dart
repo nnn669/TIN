@@ -2621,6 +2621,12 @@ abstract class AppLocalizations {
   /// **'Render reasoning (thinking) with Markdown'**
   String get displaySettingsPageEnableReasoningMarkdownTitle;
 
+  /// No description provided for @displaySettingsPageMobileCodeBlockWrapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile Code Block Word Wrap'**
+  String get displaySettingsPageMobileCodeBlockWrapTitle;
+
   /// No description provided for @messageExportSheetFormatTitle.
   ///
   /// In en, this message translates to:

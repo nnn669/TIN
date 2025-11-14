@@ -58,3 +58,4 @@ internationalization.md
 /macos/Podfile.lock
 /desiredFileName.txt
 /lib/secrets/fallback.dart
+.claude/settings.local.json

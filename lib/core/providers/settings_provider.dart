@@ -54,6 +54,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableUserMarkdownKey = 'display_enable_user_markdown_v1';
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
+  static const String _displayMobileCodeBlockWrapKey = 'display_mobile_code_block_wrap_v1';
   static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
   static const String _displayDesktopShowTrayKey = 'display_desktop_show_tray_v1';
   static const String _displayDesktopMinimizeToTrayOnCloseKey = 'display_desktop_minimize_to_tray_on_close_v1';
@@ -299,6 +300,7 @@ class SettingsProvider extends ChangeNotifier {
     _enableUserMarkdown = prefs.getBool(_displayEnableUserMarkdownKey) ?? true;
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
+    _mobileCodeBlockWrap = prefs.getBool(_displayMobileCodeBlockWrapKey) ?? false;
     _desktopAutoSwitchTopics = prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
     // Desktop: tray settings (default enabled on desktop platforms)
     final trayPref = prefs.getBool(_displayDesktopShowTrayKey);
@@ -1484,6 +1486,17 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_displayShowChatListDateKey, v);
+  }
+
+  // Display: mobile code block word wrap
+  bool _mobileCodeBlockWrap = false;
+  bool get mobileCodeBlockWrap => _mobileCodeBlockWrap;
+  Future<void> setMobileCodeBlockWrap(bool v) async {
+    if (_mobileCodeBlockWrap == v) return;
+    _mobileCodeBlockWrap = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayMobileCodeBlockWrapKey, v);
   }
 
   // Desktop-only: auto switch to Topics tab when changing assistant
