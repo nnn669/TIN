@@ -1673,6 +1673,18 @@ abstract class AppLocalizations {
   /// **'Topics'**
   String get desktopSidebarTabTopics;
 
+  /// No description provided for @desktopTrayMenuShowWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Window'**
+  String get desktopTrayMenuShowWindow;
+
+  /// No description provided for @desktopTrayMenuExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get desktopTrayMenuExit;
+
   /// No description provided for @hotkeyToggleAppVisibility.
   ///
   /// In en, this message translates to:
@@ -4912,6 +4924,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fonts'**
   String get desktopSettingsFontsTitle;
+
+  /// No description provided for @displaySettingsPageTrayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'System Tray'**
+  String get displaySettingsPageTrayTitle;
+
+  /// No description provided for @displaySettingsPageTrayShowTrayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tray icon'**
+  String get displaySettingsPageTrayShowTrayTitle;
+
+  /// No description provided for @displaySettingsPageTrayMinimizeOnCloseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize to tray on close'**
+  String get displaySettingsPageTrayMinimizeOnCloseTitle;
 
   /// No description provided for @desktopFontAppLabel.
   ///

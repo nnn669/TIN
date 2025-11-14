@@ -33,6 +33,7 @@ dependencies:
   logging: ^1.2.0
   
   window_manager: ^0.5.1
+  tray_manager: ^0.5.2
   desktop_drop: ^0.7.0
   hotkey_manager: ^0.2.3
 
@@ -127,6 +128,8 @@ flutter:
   assets:
     - assets/icons/
     - assets/app_icon.png
+    - assets/app_icon.ico
+    - assets/icon_mac.png
     - assets/mermaid.min.js
     - assets/html/mark.html
   #   - images/a_dot_ham.jpeg

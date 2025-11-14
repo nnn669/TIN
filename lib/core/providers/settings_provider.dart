@@ -55,6 +55,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
   static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
+  static const String _displayDesktopShowTrayKey = 'display_desktop_show_tray_v1';
+  static const String _displayDesktopMinimizeToTrayOnCloseKey = 'display_desktop_minimize_to_tray_on_close_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
   // Desktop topic panel placement + right sidebar open state
@@ -298,6 +300,26 @@ class SettingsProvider extends ChangeNotifier {
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
     _desktopAutoSwitchTopics = prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
+    // Desktop: tray settings (default enabled on desktop platforms)
+    final trayPref = prefs.getBool(_displayDesktopShowTrayKey);
+    if (trayPref == null) {
+      final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      _desktopShowTray = isDesktop;
+      await prefs.setBool(_displayDesktopShowTrayKey, _desktopShowTray);
+    } else {
+      _desktopShowTray = trayPref;
+    }
+    final minimizeTrayPref = prefs.getBool(_displayDesktopMinimizeToTrayOnCloseKey);
+    if (minimizeTrayPref == null) {
+      _desktopMinimizeToTrayOnClose = _desktopShowTray;
+      await prefs.setBool(_displayDesktopMinimizeToTrayOnCloseKey, _desktopMinimizeToTrayOnClose);
+    } else {
+      // Enforce invariant: cannot minimize to tray if tray is hidden.
+      _desktopMinimizeToTrayOnClose = minimizeTrayPref && _desktopShowTray;
+      if (minimizeTrayPref && !_desktopShowTray) {
+        await prefs.setBool(_displayDesktopMinimizeToTrayOnCloseKey, _desktopMinimizeToTrayOnClose);
+      }
+    }
     // desktop: topic panel placement + right sidebar open state
     final topicPos = prefs.getString(_desktopTopicPositionKey);
     switch (topicPos) {
@@ -1475,6 +1497,33 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayDesktopAutoSwitchTopicsKey, v);
   }
 
+  // Desktop-only: show system tray icon
+  bool _desktopShowTray = false;
+  bool get desktopShowTray => _desktopShowTray;
+  Future<void> setDesktopShowTray(bool v) async {
+    if (_desktopShowTray == v) return;
+    _desktopShowTray = v;
+    if (!_desktopShowTray && _desktopMinimizeToTrayOnClose) {
+      _desktopMinimizeToTrayOnClose = false;
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayDesktopShowTrayKey, _desktopShowTray);
+    await prefs.setBool(_displayDesktopMinimizeToTrayOnCloseKey, _desktopMinimizeToTrayOnClose);
+  }
+
+  // Desktop-only: minimize to tray when closing window
+  bool _desktopMinimizeToTrayOnClose = false;
+  bool get desktopMinimizeToTrayOnClose => _desktopMinimizeToTrayOnClose;
+  Future<void> setDesktopMinimizeToTrayOnClose(bool v) async {
+    final next = _desktopShowTray ? v : false;
+    if (_desktopMinimizeToTrayOnClose == next) return;
+    _desktopMinimizeToTrayOnClose = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayDesktopMinimizeToTrayOnCloseKey, _desktopMinimizeToTrayOnClose);
+  }
+
   // Display: haptics on message generation
   bool _hapticsOnGenerate = false;
   bool get hapticsOnGenerate => _hapticsOnGenerate;
@@ -1652,6 +1701,9 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._enableUserMarkdown = _enableUserMarkdown;
     copy._enableReasoningMarkdown = _enableReasoningMarkdown;
     copy._showChatListDate = _showChatListDate;
+    copy._desktopAutoSwitchTopics = _desktopAutoSwitchTopics;
+    copy._desktopShowTray = _desktopShowTray;
+    copy._desktopMinimizeToTrayOnClose = _desktopMinimizeToTrayOnClose;
     copy._usePureBackground = _usePureBackground;
     copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;
     return copy;

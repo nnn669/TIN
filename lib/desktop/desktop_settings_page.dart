@@ -3580,6 +3580,15 @@ class _DisplaySettingsBody extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _SettingsCard(
+                title: l10n.displaySettingsPageTrayTitle,
+                children: const [
+                  _DesktopTrayShowRow(),
+                  _RowDivider(),
+                  _DesktopTrayMinimizeOnCloseRow(),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SettingsCard(
                 title: l10n.displaySettingsPageChatItemDisplayTitle,
                 children: const [
                   _ToggleRowShowProviderInCapsule(),
@@ -4007,6 +4016,36 @@ class _TopicPositionRow extends StatelessWidget {
     return _LabeledRow(
       label: l10n.desktopDisplaySettingsTopicPositionTitle,
       trailing: const _TopicPositionDropdown(),
+    );
+  }
+}
+
+// --- Desktop tray settings ---
+class _DesktopTrayShowRow extends StatelessWidget {
+  const _DesktopTrayShowRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageTrayShowTrayTitle,
+      value: sp.desktopShowTray,
+      onChanged: (v) => context.read<SettingsProvider>().setDesktopShowTray(v),
+    );
+  }
+}
+
+class _DesktopTrayMinimizeOnCloseRow extends StatelessWidget {
+  const _DesktopTrayMinimizeOnCloseRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    final enabled = sp.desktopShowTray;
+    return _ToggleRow(
+      label: l10n.displaySettingsPageTrayMinimizeOnCloseTitle,
+      value: enabled && sp.desktopMinimizeToTrayOnClose,
+      onChanged: enabled ? (v) => context.read<SettingsProvider>().setDesktopMinimizeToTrayOnClose(v) : null,
     );
   }
 }
@@ -5808,14 +5847,14 @@ class _ToggleRow extends StatelessWidget {
   const _ToggleRow({required this.label, required this.value, required this.onChanged});
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        children: [
+          child: Row(
+            children: [
           Expanded(
             child: Text(
               label,

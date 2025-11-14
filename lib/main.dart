@@ -8,6 +8,7 @@ import 'desktop/desktop_home_page.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'desktop/desktop_window_controller.dart';
+import 'desktop/desktop_tray_controller.dart';
 // import 'package:logging/logging.dart' as logging;
 // Theme is now managed in SettingsProvider
 import 'theme/theme_factory.dart';
@@ -309,6 +310,25 @@ class MyApp extends StatelessWidget {
                       try { ctx.read<AssistantProvider>().ensureDefaults(ctx); } catch (_) {}
                       try { ctx.read<ChatService>().setDefaultConversationTitle(AppLocalizations.of(ctx)!.chatServiceDefaultConversationTitle); } catch (_) {}
                       try { ctx.read<UserProvider>().setDefaultNameIfUnset(AppLocalizations.of(ctx)!.userProviderDefaultUserName); } catch (_) {}
+                    });
+                  }
+
+                  // Desktop tray + close behaviour (minimize to tray) sync
+                  final l10n = AppLocalizations.of(ctx);
+                  if (l10n != null) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                      try {
+                        final isDesktop = !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows ||
+                            defaultTargetPlatform == TargetPlatform.macOS ||
+                            defaultTargetPlatform == TargetPlatform.linux);
+                        if (!isDesktop) return;
+                        final sp = ctx.read<SettingsProvider>();
+                        await DesktopTrayController.instance.syncFromSettings(
+                          l10n,
+                          showTray: sp.desktopShowTray,
+                          minimizeToTrayOnClose: sp.desktopMinimizeToTrayOnClose,
+                        );
+                      } catch (_) {}
                     });
                   }
 

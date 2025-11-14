@@ -837,6 +837,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarTabTopics => 'Topics';
 
   @override
+  String get desktopTrayMenuShowWindow => 'Show Window';
+
+  @override
+  String get desktopTrayMenuExit => 'Exit';
+
+  @override
   String get hotkeyToggleAppVisibility => 'Show/Hide App';
 
   @override
@@ -2581,6 +2587,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSettingsFontsTitle => 'Fonts';
+
+  @override
+  String get displaySettingsPageTrayTitle => 'System Tray';
+
+  @override
+  String get displaySettingsPageTrayShowTrayTitle => 'Show tray icon';
+
+  @override
+  String get displaySettingsPageTrayMinimizeOnCloseTitle =>
+      'Minimize to tray on close';
 
   @override
   String get desktopFontAppLabel => 'App Font';

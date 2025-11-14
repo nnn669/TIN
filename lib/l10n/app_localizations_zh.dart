@@ -814,6 +814,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopSidebarTabTopics => '话题';
 
   @override
+  String get desktopTrayMenuShowWindow => '显示窗口';
+
+  @override
+  String get desktopTrayMenuExit => '退出';
+
+  @override
   String get hotkeyToggleAppVisibility => '显示/隐藏应用';
 
   @override
@@ -2493,6 +2499,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
+  String get displaySettingsPageTrayTitle => '托盘';
+
+  @override
+  String get displaySettingsPageTrayShowTrayTitle => '显示托盘图标';
+
+  @override
+  String get displaySettingsPageTrayMinimizeOnCloseTitle => '关闭时最小化到托盘';
+
+  @override
   String get desktopFontAppLabel => '应用字体';
 
   @override
@@ -3873,6 +3888,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get desktopSidebarTabTopics => '话题';
+
+  @override
+  String get desktopTrayMenuShowWindow => '显示窗口';
+
+  @override
+  String get desktopTrayMenuExit => '退出';
 
   @override
   String get hotkeyToggleAppVisibility => '显示/隐藏应用';
@@ -5554,6 +5575,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
+  String get displaySettingsPageTrayTitle => '托盘';
+
+  @override
+  String get displaySettingsPageTrayShowTrayTitle => '显示托盘图标';
+
+  @override
+  String get displaySettingsPageTrayMinimizeOnCloseTitle => '关闭时最小化到托盘';
+
+  @override
   String get desktopFontAppLabel => '应用字体';
 
   @override
@@ -6934,6 +6964,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopSidebarTabTopics => '主題';
+
+  @override
+  String get desktopTrayMenuShowWindow => '顯示視窗';
+
+  @override
+  String get desktopTrayMenuExit => '結束';
 
   @override
   String get hotkeyToggleAppVisibility => '顯示/隱藏應用';
@@ -8612,6 +8648,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopSettingsFontsTitle => '字體設定';
+
+  @override
+  String get displaySettingsPageTrayTitle => '系統匣';
+
+  @override
+  String get displaySettingsPageTrayShowTrayTitle => '顯示系統匣圖示';
+
+  @override
+  String get displaySettingsPageTrayMinimizeOnCloseTitle => '關閉視窗時最小化到系統匣';
 
   @override
   String get desktopFontAppLabel => '應用字體';
