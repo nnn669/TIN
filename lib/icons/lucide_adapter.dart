@@ -137,5 +137,5 @@ class Lucide {
   static const IconData Cut = lucide.LucideIcons.scissors;
   static const IconData Keyboard = lucide.LucideIcons.keyboard;
   static const IconData WrapText = lucide.LucideIcons.textWrap;
-
+  static const IconData RefreshCcwDot = lucide.LucideIcons.refreshCcwDot;
 }

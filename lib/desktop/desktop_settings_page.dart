@@ -1648,7 +1648,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
               ],
 
               const SizedBox(height: 18),
-              // Models header with count + search + detect icon
+              // Models header with count + search + actions (test / add / fetch)
               Row(
                 children: [
                   Expanded(
@@ -1693,7 +1693,32 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                             }),
                           ),
                   ),
-                  _IconBtn(icon: lucide.Lucide.HeartPulse, onTap: () => _showTestConnectionDialog(context)),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: l10n.searchServicesPageTestConnectionTooltip,
+                    child: _IconBtn(icon: lucide.Lucide.HeartPulse, onTap: () => _showTestConnectionDialog(context)),
+                  ),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: l10n.providerDetailPageAddNewModelButton,
+                    child: _IconBtn(icon: lucide.Lucide.Plus, onTap: () => _createModel(context)),
+                  ),
+                  const SizedBox(width: 2),
+                  Tooltip(
+                    message: l10n.providerDetailPageFetchModelsButton,
+                    child: _IconTextBtn(
+                      icon: lucide.Lucide.RefreshCcwDot,
+                      label: l10n.providerDetailPageFetchModelsButton,
+                      onTap: () async {
+                        final providerName = widget.displayName;
+                        await showModelFetchDialog(
+                          context,
+                          providerKey: widget.providerKey,
+                          providerDisplayName: providerName,
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
 
@@ -1709,23 +1734,6 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                   ),
                 ),
 
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  _DeskIosButton(
-                    label: AppLocalizations.of(context)!.providerModelsGetButton,
-                    filled: true,
-                    dense: true,
-                    onTap: () async {
-                      final providerName = widget.displayName;
-                      await showModelFetchDialog(context, providerKey: widget.providerKey, providerDisplayName: providerName);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _DeskIosButton(label: l10n.addProviderSheetAddButton, filled: false, dense: true, onTap: () => _createModel(context)),
-                ]),
-              ),
             ],
           ),
         ),
@@ -3040,6 +3048,50 @@ class _IconBtnState extends State<_IconBtn> {
           decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: widget.color ?? cs.onSurface),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconTextBtn extends StatefulWidget {
+  const _IconTextBtn({super.key, required this.icon, required this.label, required this.onTap, this.color});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+  @override
+  State<_IconTextBtn> createState() => _IconTextBtnState();
+}
+
+class _IconTextBtnState extends State<_IconTextBtn> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 16, color: widget.color ?? cs.onSurface),
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: TextStyle(fontSize: 13, color: widget.color ?? cs.onSurface),
+              ),
+            ],
+          ),
         ),
       ),
     );
