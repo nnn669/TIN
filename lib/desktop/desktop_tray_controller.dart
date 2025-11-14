@@ -137,21 +137,9 @@ class DesktopTrayController with TrayListener, WindowListener {
 
   @override
   void onTrayIconMouseDown() {
-    // Left‑click: toggle window visibility (show/hide).
+    // Left‑click: bring main window to front.
     if (!_isDesktop) return;
-    () async {
-      try {
-        final visible = await windowManager.isVisible();
-        final minimized = await windowManager.isMinimized();
-        final shouldShow = (!visible) || minimized;
-        if (shouldShow) {
-          await windowManager.show();
-          await windowManager.focus();
-        } else {
-          await windowManager.hide();
-        }
-      } catch (_) {}
-    }();
+    _showWindow();
   }
 
   @override
