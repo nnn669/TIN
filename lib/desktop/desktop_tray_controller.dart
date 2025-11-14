@@ -101,13 +101,13 @@ class DesktopTrayController with TrayListener, WindowListener {
     try {
       final menu = Menu(items: [
         MenuItem(
-          key: 'show_window',
           label: l10n.desktopTrayMenuShowWindow,
+          onClick: (_) async => _showWindow(),
         ),
         MenuItem.separator(),
         MenuItem(
-          key: 'exit_app',
           label: l10n.desktopTrayMenuExit,
+          onClick: (_) async => _exitApp(),
         ),
       ]);
       await trayManager.setContextMenu(menu);
@@ -144,19 +144,10 @@ class DesktopTrayController with TrayListener, WindowListener {
 
   @override
   void onTrayIconRightMouseDown() {
-    // Right‑click: open context menu.
+    // Right‑click:弹出菜单
     try {
-      trayManager.popUpContextMenu();
+      trayManager.popUpContextMenu(bringAppToFront: true);
     } catch (_) {}
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
-    if (menuItem.key == 'show_window') {
-      _showWindow();
-    } else if (menuItem.key == 'exit_app') {
-      _exitApp();
-    }
   }
 
   // ===== WindowListener =====
