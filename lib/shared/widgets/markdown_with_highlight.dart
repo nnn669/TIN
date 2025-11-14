@@ -50,9 +50,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    final imageUrls = _extractImageUrls(text);
-
-    final normalized = _preprocessFences(text);
+    final sanitizedText = _sanitizeImageLinks(text);
+    final imageUrls = _extractImageUrls(sanitizedText);
+    final normalized = _preprocessFences(sanitizedText);
     // Base text style (can be overridden by caller)
     final baseTextStyle = (baseStyle ?? Theme.of(context).textTheme.bodyMedium)?.copyWith(
       fontSize: baseStyle?.fontSize ?? 15.5,
@@ -734,6 +734,50 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         .map((m) => (m.group(1) ?? '').trim())
         .where((s) => s.isNotEmpty)
         .toList();
+  }
+
+  static String _sanitizeImageLinks(String input) {
+    final re = RegExp(r'!\[([^\]]*)\]\(([^)]+)\)', multiLine: true);
+    return input.replaceAllMapped(re, (m) {
+      final alt = m.group(1) ?? '';
+      final inside = (m.group(2) ?? '').trim();
+      if (inside.isEmpty) return m[0]!;
+
+      // Leave remote URLs and data URLs untouched.
+      if (inside.startsWith('http://') ||
+          inside.startsWith('https://') ||
+          inside.startsWith('data:')) {
+        return m[0]!;
+      }
+
+      final url = inside;
+      final isFileUri = url.startsWith('file://');
+      final isRemote = url.startsWith('http://') || url.startsWith('https://');
+      final isData = url.startsWith('data:');
+      final isWindowsAbs = RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(url);
+      final isLikelyLocalPath = (!isRemote && !isData) &&
+          (isFileUri || url.startsWith('/') || isWindowsAbs);
+
+      if (!isLikelyLocalPath || !url.contains(' ')) {
+        return m[0]!;
+      }
+
+      String safeUrl;
+      try {
+        if (isFileUri) {
+          final uri = Uri.parse(url);
+          safeUrl = uri.toString();
+        } else {
+          // Plain absolute file system path -> file:// URI.
+          safeUrl = Uri.file(url).toString();
+        }
+      } catch (_) {
+        // Fallback: minimally escape spaces.
+        safeUrl = url.replaceAll(' ', '%20');
+      }
+
+      return '![${alt}](${safeUrl})';
+    });
   }
 
   static ImageProvider? _imageProviderFor(String src) {
