@@ -1654,44 +1654,67 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                   Expanded(
                     child: Row(
                       children: [
-                        Text(AppLocalizations.of(context)!.providerDetailPageModelsTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                        Text(
+                          AppLocalizations.of(context)!.providerDetailPageModelsTitle,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
                         const SizedBox(width: 8),
                         _GreyCapsule(label: '${models.length}'),
+                        const Spacer(),
+                        Flexible(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, anim) => SizeTransition(
+                              sizeFactor: anim,
+                              axis: Axis.horizontal,
+                              child: FadeTransition(opacity: anim, child: child),
+                            ),
+                            child: _showSearch
+                                ? LayoutBuilder(
+                                    key: const ValueKey('search-field'),
+                                    builder: (ctx, constraints) {
+                                      final maxWidth = constraints.maxWidth.isFinite
+                                          ? math.min(constraints.maxWidth, 180.0)
+                                          : 180.0;
+                                      return Align(
+                                        alignment: Alignment.centerRight,
+                                        child: SizedBox(
+                                          width: maxWidth,
+                                          child: TextField(
+                                            controller: _filterCtrl,
+                                            focusNode: _searchFocus,
+                                            autofocus: true,
+                                            style: const TextStyle(fontSize: 14),
+                                            decoration: _inputDecoration(context).copyWith(
+                                              hintText: l10n.providerDetailPageFilterHint,
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            ),
+                                            onChanged: (_) => setState(() {}),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Align(
+                                    alignment: Alignment.centerRight,
+                                    child: _IconBtn(
+                                      key: const ValueKey('search-icon'),
+                                      icon: lucide.Lucide.Search,
+                                      onTap: () => setState(() {
+                                        _showSearch = true;
+                                        _searchFocus.addListener(() {
+                                          if (!_searchFocus.hasFocus) setState(() => _showSearch = false);
+                                        });
+                                      }),
+                                    ),
+                                  ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, anim) => SizeTransition(sizeFactor: anim, axis: Axis.horizontal, child: FadeTransition(opacity: anim, child: child)),
-                    child: _showSearch
-                        ? SizedBox(
-                            key: const ValueKey('search-field'),
-                            width: 240,
-                            child: TextField(
-                              controller: _filterCtrl,
-                              focusNode: _searchFocus,
-                              autofocus: true,
-                              style: const TextStyle(fontSize: 14),
-                              decoration: _inputDecoration(context).copyWith(
-                                hintText: l10n.providerDetailPageFilterHint,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onChanged: (_) => setState(() {}),
-                            ),
-                          )
-                        : _IconBtn(
-                            key: const ValueKey('search-icon'),
-                            icon: lucide.Lucide.Search,
-                            onTap: () => setState(() {
-                              _showSearch = true;
-                              _searchFocus.addListener(() {
-                                if (!_searchFocus.hasFocus) setState(() => _showSearch = false);
-                              });
-                            }),
-                          ),
                   ),
                   const SizedBox(width: 6),
                   Tooltip(
@@ -1703,7 +1726,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                     message: l10n.providerDetailPageAddNewModelButton,
                     child: _IconBtn(icon: lucide.Lucide.Plus, onTap: () => _createModel(context)),
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 6),
                   Tooltip(
                     message: l10n.providerDetailPageFetchModelsButton,
                     child: _IconTextBtn(
