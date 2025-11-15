@@ -63,14 +63,16 @@ class BottomToolsSheet extends StatelessWidget {
           topRight: Radius.circular(20),
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -6)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
+          ),
         ],
       ),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           // Drag handle
           Container(
             width: 40,
@@ -81,32 +83,41 @@ class BottomToolsSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              roundedAction(
-                icon: Lucide.Camera,
-                label: l10n.bottomToolsSheetCamera,
-                onTap: onCamera,
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      roundedAction(
+                        icon: Lucide.Camera,
+                        label: l10n.bottomToolsSheetCamera,
+                        onTap: onCamera,
+                      ),
+                      const SizedBox(width: 12),
+                      roundedAction(
+                        icon: Lucide.Image,
+                        label: l10n.bottomToolsSheetPhotos,
+                        onTap: onPhotos,
+                      ),
+                      const SizedBox(width: 12),
+                      roundedAction(
+                        icon: Lucide.Paperclip,
+                        label: l10n.bottomToolsSheetUpload,
+                        onTap: onUpload,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _LearningAndClearSection(clearLabel: clearLabel, onClear: onClear),
+                ],
               ),
-              const SizedBox(width: 12),
-              roundedAction(
-                icon: Lucide.Image,
-                label: l10n.bottomToolsSheetPhotos,
-                onTap: onPhotos,
-              ),
-              const SizedBox(width: 12),
-              roundedAction(
-                icon: Lucide.Paperclip,
-                label: l10n.bottomToolsSheetUpload,
-                onTap: onUpload,
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          _LearningAndClearSection(clearLabel: clearLabel, onClear: onClear),
         ],
       ),
-    ),
     );
   }
 }
