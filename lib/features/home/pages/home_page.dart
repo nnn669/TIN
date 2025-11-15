@@ -875,7 +875,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final cs = Theme.of(context).colorScheme;
     await showModalBottomSheet(
       context: context,
-      isScrollControlled: false,
+      isScrollControlled: true,
       backgroundColor: cs.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

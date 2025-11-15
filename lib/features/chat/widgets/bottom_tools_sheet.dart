@@ -23,6 +23,7 @@ class BottomToolsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bg = Theme.of(context).colorScheme.surface;
+    final maxHeight = MediaQuery.of(context).size.height * 0.8;
 
     Widget roundedAction({required IconData icon, required String label, VoidCallback? onTap}) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -54,69 +55,72 @@ class BottomToolsSheet extends StatelessWidget {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, -6),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
             ),
-          ),
-          const SizedBox(height: 10),
-          Flexible(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      roundedAction(
-                        icon: Lucide.Camera,
-                        label: l10n.bottomToolsSheetCamera,
-                        onTap: onCamera,
-                      ),
-                      const SizedBox(width: 12),
-                      roundedAction(
-                        icon: Lucide.Image,
-                        label: l10n.bottomToolsSheetPhotos,
-                        onTap: onPhotos,
-                      ),
-                      const SizedBox(width: 12),
-                      roundedAction(
-                        icon: Lucide.Paperclip,
-                        label: l10n.bottomToolsSheetUpload,
-                        onTap: onUpload,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _LearningAndClearSection(clearLabel: clearLabel, onClear: onClear),
-                ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        roundedAction(
+                          icon: Lucide.Camera,
+                          label: l10n.bottomToolsSheetCamera,
+                          onTap: onCamera,
+                        ),
+                        const SizedBox(width: 12),
+                        roundedAction(
+                          icon: Lucide.Image,
+                          label: l10n.bottomToolsSheetPhotos,
+                          onTap: onPhotos,
+                        ),
+                        const SizedBox(width: 12),
+                        roundedAction(
+                          icon: Lucide.Paperclip,
+                          label: l10n.bottomToolsSheetUpload,
+                          onTap: onUpload,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _LearningAndClearSection(clearLabel: clearLabel, onClear: onClear),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
