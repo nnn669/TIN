@@ -734,12 +734,12 @@ class _ChatInputBarState extends State<ChatInputBar> {
             width: normalButtonW,
             builder: () => _CompactIconButton(
               tooltip: l10n.instructionInjectionTitle,
-              icon: Lucide.BookOpenText,
+              icon: Lucide.Layers,
               active: widget.learningModeActive,
               onTap: widget.onToggleLearningMode,
               onLongPress: widget.onLongPressLearning,
             ),
-            menu: DesktopContextMenuItem(icon: Lucide.BookOpenText, label: l10n.instructionInjectionTitle, onTap: widget.onToggleLearningMode),
+            menu: DesktopContextMenuItem(icon: Lucide.Layers, label: l10n.instructionInjectionTitle, onTap: widget.onToggleLearningMode),
           ));
         }
 

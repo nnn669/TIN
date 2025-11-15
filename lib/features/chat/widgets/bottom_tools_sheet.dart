@@ -157,7 +157,7 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
       children: [
         if (items.isEmpty)
           _row(
-            icon: Lucide.BookOpenText,
+            icon: Lucide.Layers,
             label: l10n.instructionInjectionTitle,
             selected: false,
             onTap: () {},
@@ -168,7 +168,7 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
             Padding(
               padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 8),
               child: _row(
-                icon: Lucide.BookOpenText,
+                icon: Lucide.Layers,
                 label: items[i].title.trim().isEmpty
                     ? l10n.instructionInjectionDefaultTitle
                     : items[i].title,

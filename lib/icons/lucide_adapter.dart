@@ -138,4 +138,6 @@ class Lucide {
   static const IconData Keyboard = lucide.LucideIcons.keyboard;
   static const IconData WrapText = lucide.LucideIcons.textWrap;
   static const IconData RefreshCcwDot = lucide.LucideIcons.refreshCcwDot;
+  static const IconData Layers = lucide.LucideIcons.layers2;
+  static const IconData Shapes = lucide.LucideIcons.shapes;
 }

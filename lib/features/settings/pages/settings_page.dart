@@ -237,7 +237,7 @@ class SettingsPage extends StatelessWidget {
             _iosDivider(context),
             _iosNavRow(
               context,
-              icon: Lucide.BookOpenText,
+              icon: Lucide.Layers,
               label: l10n.settingsPageInstructionInjection,
               onTap: () {
                 Navigator.of(context).push(

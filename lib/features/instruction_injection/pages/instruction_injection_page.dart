@@ -107,7 +107,7 @@ class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Lucide.BookOpenText,
+                    Lucide.Layers,
                     size: 64,
                     color: cs.onSurface.withOpacity(0.3),
                   ),
@@ -230,7 +230,7 @@ class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
                                         children: [
                                           Row(
                                             children: [
-                                              Icon(Lucide.BookOpenText, size: 18, color: cs.primary),
+                                              Icon(Lucide.Layers, size: 18, color: cs.primary),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(

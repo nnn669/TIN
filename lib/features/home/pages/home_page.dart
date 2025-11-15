@@ -370,7 +370,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                             borderRadius: BorderRadius.circular(10),
                                           ),
                                           alignment: Alignment.center,
-                                          child: Icon(Lucide.BookOpenText, size: 20, color: cs.primary),
+                                          child: Icon(Lucide.Layers, size: 20, color: cs.primary),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(

@@ -394,7 +394,7 @@ class _RowItemState extends State<_RowItem> {
           child: Row(
             children: [
               Icon(
-                Lucide.BookOpenText,
+                Lucide.Layers,
                 size: 16,
                 color: widget.active
                     ? cs.primary

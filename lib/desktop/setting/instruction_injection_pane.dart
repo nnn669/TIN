@@ -72,10 +72,10 @@ class _DesktopInstructionInjectionPaneState extends State<DesktopInstructionInje
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 32),
                     child: Center(
-                      child: Column(
+                          child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(lucide.Lucide.BookOpenText, size: 56, color: cs.onSurface.withOpacity(0.28)),
+                          Icon(lucide.Lucide.Layers, size: 56, color: cs.onSurface.withOpacity(0.28)),
                           const SizedBox(height: 12),
                           Text(
                             l10n.instructionInjectionEmptyMessage,
@@ -202,7 +202,7 @@ class _InstructionInjectionCardState extends State<_InstructionInjectionCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(lucide.Lucide.BookOpenText, size: 20, color: cs.primary),
+              Icon(lucide.Lucide.Layers, size: 20, color: cs.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
