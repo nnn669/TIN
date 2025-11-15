@@ -241,25 +241,191 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _openInstructionInjectionPopover() async {
+    bool isDesktop = false;
     try {
-      if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
-        // Mobile/tablet use bottom sheets instead.
-        return;
-      }
+      isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     } catch (_) {
-      return;
+      isDesktop = false;
     }
     final provider = context.read<InstructionInjectionProvider>();
     await provider.initialize();
     final items = provider.items;
     if (items.isEmpty) return;
 
-    await showDesktopInstructionInjectionPopover(
-      context,
-      anchorKey: _inputBarKey,
-      items: items,
-      activeId: provider.activeId,
-    );
+    if (isDesktop) {
+      // 桌面端使用浮层样式（与搜索服务浮层一致）
+      await showDesktopInstructionInjectionPopover(
+        context,
+        anchorKey: _inputBarKey,
+        items: items,
+        activeId: provider.activeId,
+      );
+    } else {
+      // 平板 / 非桌面端使用 bottom sheet，样式与其它设置 bottom sheet 统一
+      final cs = Theme.of(context).colorScheme;
+      final l10n = AppLocalizations.of(context)!;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: cs.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetCtx) {
+          return SafeArea(
+            top: false,
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.55,
+              maxChildSize: 0.9,
+              minChildSize: 0.35,
+              builder: (ctx, controller) {
+                final p = ctx.watch<InstructionInjectionProvider>();
+                final list = p.items;
+                final activeId = p.activeId;
+                return Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.onSurface.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.instructionInjectionTitle,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  l10n.instructionInjectionSheetSubtitle,
+                                  style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: list.isEmpty
+                            ? Center(
+                                child: Text(
+                                  l10n.instructionInjectionEmptyMessage,
+                                  style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+                                ),
+                              )
+                            : ListView.separated(
+                                controller: controller,
+                                itemCount: list.length,
+                                itemBuilder: (ctx, index) {
+                                  final item = list[index];
+                                  final displayTitle = item.title.trim().isEmpty
+                                      ? l10n.instructionInjectionDefaultTitle
+                                      : item.title;
+                                  final active = item.id == activeId;
+                                  return IosCardPress(
+                                    borderRadius: BorderRadius.circular(14),
+                                    baseColor: Theme.of(ctx).brightness == Brightness.dark
+                                        ? Colors.white10
+                                        : Colors.white.withOpacity(0.96),
+                                    duration: const Duration(milliseconds: 260),
+                                    onTap: () async {
+                                      Haptics.light();
+                                      final prov = ctx.read<InstructionInjectionProvider>();
+                                      if (prov.activeId == item.id) {
+                                        await prov.setActiveId(null);
+                                      } else {
+                                        await prov.setActive(item);
+                                      }
+                                      if (Navigator.of(ctx).canPop()) {
+                                        Navigator.of(ctx).maybePop();
+                                      }
+                                    },
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(ctx).brightness == Brightness.dark
+                                                ? Colors.white10
+                                                : const Color(0xFFF2F3F5),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Icon(Lucide.BookOpenText, size: 20, color: cs.primary),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      displayTitle,
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.w700,
+                                                        color: active ? cs.primary : cs.onSurface,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  if (active) ...[
+                                                    const SizedBox(width: 6),
+                                                    Icon(Lucide.Check, size: 16, color: cs.primary),
+                                                  ],
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                item.prompt,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: cs.onSurface.withOpacity(0.72),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                              ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
     // 浮层内部已处理选中/取消，这里只同步底部按钮高亮状态
     await provider.initialize();
     if (mounted) {
@@ -315,6 +481,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
   // no-op placeholders removed
+
 
   Future<void> _showLearningPromptSheet() async {
     final provider = context.read<InstructionInjectionProvider>();
