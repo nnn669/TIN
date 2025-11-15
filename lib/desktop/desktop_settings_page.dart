@@ -1662,55 +1662,41 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                         _GreyCapsule(label: '${models.length}'),
                         const Spacer(),
                         Flexible(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            transitionBuilder: (child, anim) => SizeTransition(
-                              sizeFactor: anim,
-                              axis: Axis.horizontal,
-                              child: FadeTransition(opacity: anim, child: child),
-                            ),
-                            child: _showSearch
-                                ? LayoutBuilder(
-                                    key: const ValueKey('search-field'),
-                                    builder: (ctx, constraints) {
-                                      final maxWidth = constraints.maxWidth.isFinite
-                                          ? math.min(constraints.maxWidth, 180.0)
-                                          : 180.0;
-                                      return Align(
-                                        alignment: Alignment.centerRight,
-                                        child: SizedBox(
-                                          width: maxWidth,
-                                          child: TextField(
-                                            controller: _filterCtrl,
-                                            focusNode: _searchFocus,
-                                            autofocus: true,
-                                            style: const TextStyle(fontSize: 14),
-                                            decoration: _inputDecoration(context).copyWith(
-                                              hintText: l10n.providerDetailPageFilterHint,
-                                              isDense: true,
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                            ),
-                                            onChanged: (_) => setState(() {}),
-                                          ),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOutCubic,
+                              width: _showSearch ? 180 : 28,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 140),
+                                transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                                child: _showSearch
+                                    ? TextField(
+                                        key: const ValueKey('search-field'),
+                                        controller: _filterCtrl,
+                                        focusNode: _searchFocus,
+                                        autofocus: true,
+                                        style: const TextStyle(fontSize: 14),
+                                        decoration: _inputDecoration(context).copyWith(
+                                          hintText: l10n.providerDetailPageFilterHint,
+                                          isDense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         ),
-                                      );
-                                    },
-                                  )
-                                : Align(
-                                    alignment: Alignment.centerRight,
-                                    child: _IconBtn(
-                                      key: const ValueKey('search-icon'),
-                                      icon: lucide.Lucide.Search,
-                                      onTap: () => setState(() {
-                                        _showSearch = true;
-                                        _searchFocus.addListener(() {
-                                          if (!_searchFocus.hasFocus) setState(() => _showSearch = false);
-                                        });
-                                      }),
-                                    ),
-                                  ),
+                                        onChanged: (_) => setState(() {}),
+                                      )
+                                    : _IconBtn(
+                                        key: const ValueKey('search-icon'),
+                                        icon: lucide.Lucide.Search,
+                                        onTap: () => setState(() {
+                                          _showSearch = true;
+                                          _searchFocus.addListener(() {
+                                            if (!_searchFocus.hasFocus) setState(() => _showSearch = false);
+                                          });
+                                        }),
+                                      ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
