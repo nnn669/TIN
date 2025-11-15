@@ -3451,9 +3451,18 @@ class _ModelRow extends StatelessWidget {
     final sp = context.watch<SettingsProvider>();
     final cfg = sp.getProviderConfig(providerKey);
     ModelInfo _infer(String id) => ModelRegistry.infer(ModelInfo(id: id, displayName: id));
+    // Resolve upstream/api model id for inference + capsules
+    String baseId = modelId;
+    final ov = cfg.modelOverrides[modelId] as Map?;
+    if (ov != null) {
+      final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+      if (apiId != null && apiId.isNotEmpty) {
+        baseId = apiId;
+      }
+    }
+
     ModelInfo _effective() {
-      final base = _infer(modelId);
-      final ov = cfg.modelOverrides[modelId] as Map?;
+      final base = _infer(baseId);
       if (ov == null) return base;
       ModelType? type;
       final t = (ov['type'] as String?) ?? '';
@@ -3484,6 +3493,18 @@ class _ModelRow extends StatelessWidget {
       );
     }
     final info = _effective();
+    // Display label: prefer override name, then upstream model id, then logical key
+    String displayName = modelId;
+    if (ov != null) {
+      final overrideName = (ov['name'] as String?)?.trim();
+      if (overrideName != null && overrideName.isNotEmpty) {
+        displayName = overrideName;
+      } else {
+        displayName = baseId;
+      }
+    } else {
+      displayName = baseId;
+    }
 
     Widget cap(String text) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -3531,10 +3552,10 @@ class _ModelRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          _BrandCircle(name: modelId, size: 22),
+          _BrandCircle(name: displayName, size: 22),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(modelId, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
+            child: Text(displayName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
           ),
           const SizedBox(width: 8),
           Row(children: caps.map((w) => Padding(padding: const EdgeInsets.only(left: 4), child: w)).toList()),

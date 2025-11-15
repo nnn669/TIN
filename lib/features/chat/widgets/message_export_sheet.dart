@@ -56,23 +56,30 @@ String? _modelDisplayName(BuildContext context, ChatMessage msg) {
   if (modelId == null || modelId.isEmpty) return null;
   final settings = context.read<SettingsProvider>();
   String? name;
+  String baseId = modelId;
   final providerId = msg.providerId;
   if (providerId != null && providerId.isNotEmpty) {
     try {
       final cfg = settings.getProviderConfig(providerId);
       final ov = cfg.modelOverrides[modelId] as Map?;
-      final overrideName = (ov?['name'] as String?)?.trim();
-      if (overrideName != null && overrideName.isNotEmpty) {
-        name = overrideName;
+      if (ov != null) {
+        final overrideName = (ov['name'] as String?)?.trim();
+        if (overrideName != null && overrideName.isNotEmpty) {
+          name = overrideName;
+        }
+        final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+        if (apiId != null && apiId.isNotEmpty) {
+          baseId = apiId;
+        }
       }
     } catch (_) {
       // ignore lookup issues; fall back to inference below.
     }
   }
 
-  final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+  final inferred = ModelRegistry.infer(ModelInfo(id: baseId, displayName: baseId));
   final fallback = inferred.displayName.trim();
-  return name ?? (fallback.isNotEmpty ? fallback : modelId);
+  return name ?? (fallback.isNotEmpty ? fallback : baseId);
 }
 
 

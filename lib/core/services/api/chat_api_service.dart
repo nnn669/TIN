@@ -12,13 +12,28 @@ import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 
 class ChatApiService {
+  /// Resolve the upstream/vendor model id for a given logical model key.
+  /// When per-instance overrides specify `apiModelId`, that value is used for
+  /// outbound HTTP requests and vendor-specific heuristics. Otherwise the
+  /// logical `modelId` key is treated as the upstream id (backwards compatible).
+  static String _apiModelId(ProviderConfig cfg, String modelId) {
+    try {
+      final ov = cfg.modelOverrides[modelId];
+      if (ov is Map<String, dynamic>) {
+        final raw = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+        if (raw != null && raw.isNotEmpty) return raw;
+      }
+    } catch (_) {}
+    return modelId;
+  }
+
   static String _apiKeyForRequest(ProviderConfig cfg, String modelId) {
     final orig = _effectiveApiKey(cfg).trim();
     if (orig.isNotEmpty) return orig;
     if ((cfg.id) == 'SiliconFlow') {
       final host = Uri.tryParse(cfg.baseUrl)?.host.toLowerCase() ?? '';
       if (!host.contains('siliconflow')) return orig;
-      final m = modelId.toLowerCase();
+      final m = _apiModelId(cfg, modelId).toLowerCase();
       final allowed = m == 'thudm/glm-4-9b-0414' || m == 'qwen/qwen3-8b';
       final fallback = siliconflowFallbackKey.trim();
       if (allowed && fallback.isNotEmpty) {
@@ -105,7 +120,8 @@ class ChatApiService {
 
   // Resolve effective model info by respecting per-model overrides; fallback to inference
   static ModelInfo _effectiveModelInfo(ProviderConfig cfg, String modelId) {
-    final base = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+    final upstreamId = _apiModelId(cfg, modelId);
+    final base = ModelRegistry.infer(ModelInfo(id: upstreamId, displayName: upstreamId));
     final ov = _modelOverride(cfg, modelId);
     ModelType? type;
     final t = (ov['type'] as String?) ?? '';
@@ -394,6 +410,7 @@ class ChatApiService {
   }) async {
     final kind = ProviderConfig.classify(config.id, explicitType: config.providerType);
     final client = _clientFor(config);
+    final upstreamModelId = _apiModelId(config, modelId);
     try {
       if (kind == ProviderKind.openai) {
         final base = config.baseUrl.endsWith('/')
@@ -418,7 +435,7 @@ class ChatApiService {
             if (m.startsWith('gpt-5')) return true;
             return false;
           }
-          if (_isResponsesWebSearchSupported(modelId)) {
+          if (_isResponsesWebSearchSupported(upstreamModelId)) {
             final builtIns = _builtInTools(config, modelId);
             if (builtIns.contains('search')) {
               Map<String, dynamic> ws = const <String, dynamic>{};
@@ -437,7 +454,7 @@ class ChatApiService {
             }
           }
           body = {
-            'model': modelId,
+            'model': upstreamModelId,
             'input': [
               {'role': 'user', 'content': prompt}
             ],
@@ -451,7 +468,7 @@ class ChatApiService {
           };
         } else {
           body = {
-            'model': modelId,
+            'model': upstreamModelId,
             'messages': [
               {'role': 'user', 'content': prompt}
             ],
@@ -536,7 +553,7 @@ class ChatApiService {
             : config.baseUrl;
         final url = Uri.parse('$base/messages');
         final body = {
-          'model': modelId,
+          'model': upstreamModelId,
           'max_tokens': 512,
           'temperature': 0.3,
           'messages': [
@@ -574,12 +591,12 @@ class ChatApiService {
         if (config.vertexAI == true && (config.location?.isNotEmpty == true) && (config.projectId?.isNotEmpty == true)) {
           final loc = config.location!;
           final proj = config.projectId!;
-          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$modelId:generateContent';
+          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$upstreamModelId:generateContent';
         } else {
           final base = config.baseUrl.endsWith('/')
               ? config.baseUrl.substring(0, config.baseUrl.length - 1)
               : config.baseUrl;
-          url = '$base/models/$modelId:generateContent?key=${Uri.encodeComponent(_apiKeyForRequest(config, modelId))}';
+          url = '$base/models/$upstreamModelId:generateContent?key=${Uri.encodeComponent(_apiKeyForRequest(config, modelId))}';
         }
         final body = {
           'contents': [
@@ -750,6 +767,7 @@ class ChatApiService {
       List<Map<String, dynamic>> messages,
       {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
+    final upstreamModelId = _apiModelId(config, modelId);
     final base = config.baseUrl.endsWith('/')
         ? config.baseUrl.substring(0, config.baseUrl.length - 1)
         : config.baseUrl;
@@ -794,7 +812,7 @@ class ChatApiService {
         return false;
       }
 
-      if (_isResponsesWebSearchSupported(modelId)) {
+      if (_isResponsesWebSearchSupported(upstreamModelId)) {
         final builtIns = _builtInTools(config, modelId);
         if (builtIns.contains('search')) {
           // Optional per-model configuration under modelOverrides[modelId]['webSearch']
@@ -885,7 +903,7 @@ class ChatApiService {
         }
       }
       body = {
-        'model': modelId,
+        'model': upstreamModelId,
         'input': input,
         'stream': stream,
         if (instructions.isNotEmpty) 'instructions': instructions,
@@ -995,7 +1013,7 @@ class ChatApiService {
         }
       }
       body = {
-        'model': modelId,
+        'model': upstreamModelId,
         'messages': mm,
         'stream': stream,
         if (temperature != null) 'temperature': temperature,
@@ -1075,7 +1093,7 @@ class ChatApiService {
           (body as Map<String, dynamic>).remove('enable_thinking');
         }
         (body as Map<String, dynamic>).remove('reasoning_effort');
-      } else if (host.contains('deepseek') || modelId.toLowerCase().contains('deepseek')) {
+      } else if (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) {
         if (isReasoning) {
           if (off) {
             (body as Map<String, dynamic>)['reasoning_content'] = false;
@@ -1394,7 +1412,7 @@ class ChatApiService {
             var currentMessages = mm2;
             while (true) {
               final body2 = {
-                'model': modelId,
+                'model': upstreamModelId,
                 'messages': currentMessages,
                 'stream': true,
                 if (temperature != null) 'temperature': temperature,
@@ -1466,7 +1484,7 @@ class ChatApiService {
                   body2.remove('enable_thinking');
                 }
                 body2.remove('reasoning_effort');
-              } else if (host.contains('deepseek') || modelId.toLowerCase().contains('deepseek')) {
+              } else if (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) {
                 if (isReasoning) {
                   if (off) {
                     body2['reasoning_content'] = false;
@@ -1867,7 +1885,7 @@ class ChatApiService {
                 // Iteratively request until no more tool calls
                 for (int round = 0; round < 3; round++) {
                   final body2 = <String, dynamic>{
-                    'model': modelId,
+                    'model': upstreamModelId,
                     'input': currentInput,
                     'stream': true,
                     if (responsesToolsSpec.isNotEmpty) 'tools': responsesToolsSpec,
@@ -2309,7 +2327,7 @@ class ChatApiService {
             var currentMessages = mm2;
             while (true) {
               final body2 = {
-                'model': modelId,
+                'model': upstreamModelId,
                 'messages': currentMessages,
                 'stream': true,
                 if (temperature != null) 'temperature': temperature,
@@ -2379,7 +2397,7 @@ class ChatApiService {
                   body2.remove('enable_thinking');
                 }
                 body2.remove('reasoning_effort');
-              } else if (host.contains('deepseek') || modelId.toLowerCase().contains('deepseek')) {
+              } else if (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) {
                 if (isReasoning) {
                   if (off) {
                     body2['reasoning_content'] = false;
@@ -2658,7 +2676,7 @@ class ChatApiService {
                 var currentMessages = mm2;
                 while (true) {
                   final body2 = {
-                    'model': modelId,
+                    'model': upstreamModelId,
                     'messages': currentMessages,
                     'stream': true,
                     if (temperature != null) 'temperature': temperature,
@@ -2721,7 +2739,7 @@ class ChatApiService {
                       body2.remove('enable_thinking');
                     }
                     body2.remove('reasoning_effort');
-                  } else if (host.contains('deepseek') || modelId.toLowerCase().contains('deepseek')) {
+                  } else if (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) {
                     if (isReasoning) {
                       if (off) {
                         body2['reasoning_content'] = false;
@@ -3015,7 +3033,7 @@ class ChatApiService {
             }
 
             final body2 = {
-              'model': modelId,
+              'model': upstreamModelId,
               'messages': mm2,
               'stream': true,
               if (tools != null && tools.isNotEmpty) 'tools': _cleanToolsForCompatibility(tools),
@@ -3089,6 +3107,7 @@ class ChatApiService {
       List<Map<String, dynamic>> messages,
       {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
+    final upstreamModelId = _apiModelId(config, modelId);
     // Endpoint and headers (constant across rounds)
     final base = config.baseUrl.endsWith('/')
         ? config.baseUrl.substring(0, config.baseUrl.length - 1)
@@ -3211,7 +3230,7 @@ class ChatApiService {
     while (true) {
       // Prepare request body per round
       final body = <String, dynamic>{
-        'model': modelId,
+        'model': upstreamModelId,
         'max_tokens': maxTokens ?? 4096,
         'messages': convo,
         'stream': stream,

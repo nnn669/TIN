@@ -253,22 +253,29 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     }
 
     final providerId = widget.message.providerId;
+     String baseId = modelId;
     if (providerId != null && providerId.isNotEmpty) {
       try {
         final cfg = settings.getProviderConfig(providerId);
         final ov = cfg.modelOverrides[modelId] as Map?;
-        final name = (ov?['name'] as String?)?.trim();
-        if (name != null && name.isNotEmpty) {
-          return name;
+        if (ov != null) {
+          final name = (ov['name'] as String?)?.trim();
+          if (name != null && name.isNotEmpty) {
+            return name;
+          }
+          final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+          if (apiId != null && apiId.isNotEmpty) {
+            baseId = apiId;
+          }
         }
       } catch (_) {
         // ignore lookup failures; fall through to inferred name.
       }
     }
 
-    final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+    final inferred = ModelRegistry.infer(ModelInfo(id: baseId, displayName: baseId));
     final fallback = inferred.displayName.trim();
-    return fallback.isNotEmpty ? fallback : modelId;
+    return fallback.isNotEmpty ? fallback : baseId;
   }
 
   @override

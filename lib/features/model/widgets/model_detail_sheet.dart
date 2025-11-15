@@ -91,11 +91,30 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         _tab = (_tabCtrl.index == 0) ? _TabKind.basic : _TabKind.advanced;
       });
     });
-    _idCtrl = TextEditingController(text: widget.modelId);
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(widget.providerKey);
+    // Resolve display model id from per-model overrides when present (apiModelId),
+    // falling back to the logical key for backwards compatibility.
+    Map? _initialOv;
+    if (!widget.isNew) {
+      final raw = cfg.modelOverrides[widget.modelId];
+      if (raw is Map) _initialOv = raw;
+    }
+    String displayModelId = widget.modelId;
+    if (_initialOv != null) {
+      final raw = (_initialOv['apiModelId'] ?? _initialOv['api_model_id'])?.toString().trim();
+      if (raw != null && raw.isNotEmpty) {
+        displayModelId = raw;
+      }
+    }
+    _idCtrl = TextEditingController(text: displayModelId);
     // Defaults from inferred base if id provided; otherwise generic defaults for new
-    final base = ModelRegistry.infer(ModelInfo(id: widget.modelId.isEmpty ? 'custom' : widget.modelId, displayName: widget.modelId.isEmpty ? '' : widget.modelId));
+    final base = ModelRegistry.infer(
+      ModelInfo(
+        id: displayModelId.isEmpty ? 'custom' : displayModelId,
+        displayName: displayModelId.isEmpty ? '' : displayModelId,
+      ),
+    );
     _nameCtrl = TextEditingController(text: base.displayName);
     _type = base.type;
     _input..clear()..addAll(base.input);
@@ -103,7 +122,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
     _abilities..clear()..addAll(base.abilities);
 
     if (!widget.isNew) {
-      final ov = cfg.modelOverrides[widget.modelId] as Map?;
+      final ov = _initialOv ?? cfg.modelOverrides[widget.modelId] as Map?;
       if (ov != null) {
         _nameCtrl.text = (ov['name'] as String?)?.trim().isNotEmpty == true ? (ov['name'] as String) : _nameCtrl.text;
         final t = (ov['type'] as String?) ?? '';
@@ -479,28 +498,32 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
     return isDark ? cs.primary.withOpacity(0.20) : cs.primary.withOpacity(0.14);
   }
 
+  // Generate a unique logical key for a model instance within a provider.
+  // This allows multiple configurations to share the same upstream API model id.
+  String _nextModelKey(ProviderConfig cfg, String apiModelId) {
+    final existing = <String>{...cfg.models, ...cfg.modelOverrides.keys};
+    if (!existing.contains(apiModelId)) return apiModelId;
+    int i = 2;
+    while (true) {
+      final candidate = '$apiModelId#$i';
+      if (!existing.contains(candidate)) return candidate;
+      i++;
+    }
+  }
+
   Future<void> _save() async {
     final settings = context.read<SettingsProvider>();
     final old = settings.getProviderConfig(widget.providerKey);
-    // Determine target ID (allow editing even when not new)
-    final String prevId = widget.modelId;
-    String id = _idCtrl.text.trim();
+    // Logical key used inside configs (stable across edits)
+    final String prevKey = widget.modelId;
+    // Upstream/vendor model id typed by the user
+    final String apiModelId = _idCtrl.text.trim();
     // Basic validation
-    if (id.isEmpty || id.length < 2 || id.contains(' ')) {
+    if (apiModelId.isEmpty || apiModelId.length < 2 || apiModelId.contains(' ')) {
       final l10n = AppLocalizations.of(context)!;
       showAppSnackBar(
         context,
         message: l10n.modelDetailSheetInvalidIdError,
-        type: NotificationType.error,
-      );
-      return;
-    }
-    // Prevent duplicate IDs in models list (except self when unchanged)
-    if (old.models.contains(id) && id != prevId) {
-      final l10n = AppLocalizations.of(context)!;
-      showAppSnackBar(
-        context,
-        message: l10n.modelDetailSheetModelIdExistsError,
         type: NotificationType.error,
       );
       return;
@@ -517,7 +540,10 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         if (b.keyCtrl.text.trim().isNotEmpty)
           {'key': b.keyCtrl.text.trim(), 'value': b.valueCtrl.text}
     ];
-    ov[id] = {
+    // Decide which logical key to use for this instance
+    final String key = (prevKey.isEmpty || widget.isNew) ? _nextModelKey(old, apiModelId) : prevKey;
+    ov[key] = {
+      'apiModelId': apiModelId,
       'name': _nameCtrl.text.trim(),
       'type': _type == ModelType.chat ? 'chat' : 'embedding',
       'input': _input.map((e) => e == Modality.image ? 'image' : 'text').toList(),
@@ -530,48 +556,14 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         'urlContext': _urlContextTool,
       },
     };
-    // When editing, remove old override key if ID changed
-    if (id != prevId && ov.containsKey(prevId)) {
-      ov.remove(prevId);
-    }
 
     // Apply updates to provider config
-    if (prevId.isEmpty || widget.isNew) {
+    if (prevKey.isEmpty || widget.isNew) {
       // Creating a new model
-      final list = old.models.toList()..add(id);
+      final list = old.models.toList()..add(key);
       await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov, models: list));
-    } else if (id != prevId) {
-      // Renaming existing model ID: update models list entry
-      final list = <String>[for (final m in old.models) m == prevId ? id : m];
-      await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov, models: list));
-      // Update selections referencing this model
-      if (settings.currentModelProvider == widget.providerKey && settings.currentModelId == prevId) {
-        await settings.setCurrentModel(widget.providerKey, id);
-      }
-      if (settings.titleModelProvider == widget.providerKey && settings.titleModelId == prevId) {
-        await settings.setTitleModel(widget.providerKey, id);
-      }
-      if (settings.translateModelProvider == widget.providerKey && settings.translateModelId == prevId) {
-        await settings.setTranslateModel(widget.providerKey, id);
-      }
-      // Update pinned models
-      if (settings.isModelPinned(widget.providerKey, prevId)) {
-        await settings.togglePinModel(widget.providerKey, prevId); // remove old
-        if (!settings.isModelPinned(widget.providerKey, id)) {
-          await settings.togglePinModel(widget.providerKey, id); // add new
-        }
-      }
-      // Update assistants default model references
-      try {
-        final ap = context.read<AssistantProvider>();
-        for (final a in ap.assistants) {
-          if (a.chatModelProvider == widget.providerKey && a.chatModelId == prevId) {
-            await ap.updateAssistant(a.copyWith(chatModelId: id));
-          }
-        }
-      } catch (_) {}
     } else {
-      // ID unchanged; just persist overrides
+      // Existing model instance; keep logical key stable and just persist overrides
       await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov));
     }
     if (!mounted) return;

@@ -1780,8 +1780,10 @@ class ProviderConfig {
   // Google Vertex AI via service account JSON (paste or import)
   final String? serviceAccountJson; // google vertex ai only
   final List<String> models; // placeholder for future model management
-  // Per-model overrides (by model id)
-  // {'<modelId>': {'name': String?, 'type': 'chat'|'embedding', 'input': ['text','image'], 'output': [...], 'abilities': ['tool','reasoning']}}
+  // Per-model overrides (by logical model key).
+  // Each entry may point to an upstream/vendor model id via `apiModelId` so that
+  // multiple logical models can share the same backend model with different params.
+  // {'<key>': {'apiModelId': String?, 'name': String?, 'type': 'chat'|'embedding', 'input': ['text','image'], 'output': [...], 'abilities': ['tool','reasoning']}}
   final Map<String, dynamic> modelOverrides;
   // Per-provider proxy
   final bool? proxyEnabled;

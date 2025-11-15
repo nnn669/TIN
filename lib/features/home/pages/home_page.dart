@@ -3809,7 +3809,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final cfg = settings.getProviderConfig(providerKey);
         providerName = cfg.name.isNotEmpty ? cfg.name : providerKey;
         final ov = cfg.modelOverrides[modelId] as Map?;
-        modelDisplay = (ov != null && (ov['name'] as String?)?.isNotEmpty == true) ? (ov['name'] as String) : modelId;
+        if (ov != null) {
+          final overrideName = (ov['name'] as String?)?.trim();
+          if (overrideName != null && overrideName.isNotEmpty) {
+            modelDisplay = overrideName;
+          } else {
+            final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+            modelDisplay = (apiId != null && apiId.isNotEmpty) ? apiId : modelId;
+          }
+        } else {
+          modelDisplay = modelId;
+        }
       }
       return _buildTabletLayout(context, title: title, providerName: providerName, modelDisplay: modelDisplay, cs: cs);
     }
@@ -3830,7 +3840,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       final cfg = settings.getProviderConfig(providerKey);
       providerName = cfg.name.isNotEmpty ? cfg.name : providerKey;
       final ov = cfg.modelOverrides[modelId] as Map?;
-      modelDisplay = (ov != null && (ov['name'] as String?)?.isNotEmpty == true) ? (ov['name'] as String) : modelId;
+      if (ov != null) {
+        final overrideName = (ov['name'] as String?)?.trim();
+        if (overrideName != null && overrideName.isNotEmpty) {
+          modelDisplay = overrideName;
+        } else {
+          final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+          modelDisplay = (apiId != null && apiId.isNotEmpty) ? apiId : modelId;
+        }
+      } else {
+        modelDisplay = modelId;
+      }
     }
 
     // Chats are seeded via ChatProvider in main.dart

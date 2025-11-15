@@ -63,10 +63,27 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(() { if (!_tabCtrl.indexIsChanging) setState(() => _tab = _tabCtrl.index == 0 ? _TabKind.basic : _TabKind.advanced); });
-    _idCtrl = TextEditingController(text: widget.modelId);
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(widget.providerKey);
-    final base = ModelRegistry.infer(ModelInfo(id: widget.modelId.isEmpty ? 'custom' : widget.modelId, displayName: widget.modelId.isEmpty ? '' : widget.modelId));
+    // Resolve display model id from per-model overrides when present (apiModelId),
+    // falling back to the logical key for backwards compatibility.
+    Map? _initialOv;
+    if (!widget.isNew) {
+      final raw = cfg.modelOverrides[widget.modelId];
+      if (raw is Map) _initialOv = raw;
+    }
+    String displayModelId = widget.modelId;
+    if (_initialOv != null) {
+      final raw = (_initialOv['apiModelId'] ?? _initialOv['api_model_id'])?.toString().trim();
+      if (raw != null && raw.isNotEmpty) displayModelId = raw;
+    }
+    _idCtrl = TextEditingController(text: displayModelId);
+    final base = ModelRegistry.infer(
+      ModelInfo(
+        id: displayModelId.isEmpty ? 'custom' : displayModelId,
+        displayName: displayModelId.isEmpty ? '' : displayModelId,
+      ),
+    );
     _nameCtrl = TextEditingController(text: base.displayName);
     _type = base.type;
     _input..clear()..addAll(base.input);
@@ -74,7 +91,7 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
     _abilities..clear()..addAll(base.abilities);
 
     if (!widget.isNew) {
-      final ov = cfg.modelOverrides[widget.modelId] as Map?;
+      final ov = _initialOv ?? cfg.modelOverrides[widget.modelId] as Map?;
       if (ov != null) {
         _nameCtrl.text = (ov['name'] as String?)?.trim().isNotEmpty == true ? (ov['name'] as String) : _nameCtrl.text;
         final t = (ov['type'] as String?) ?? '';
@@ -302,25 +319,35 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
 
   Widget _label(BuildContext context, String text) => Text(text, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)));
 
+  // Generate a unique logical key for a model instance within a provider.
+  // This allows multiple configurations to share the same upstream API model id.
+  String _nextModelKey(ProviderConfig cfg, String apiModelId) {
+    final existing = <String>{...cfg.models, ...cfg.modelOverrides.keys};
+    if (!existing.contains(apiModelId)) return apiModelId;
+    int i = 2;
+    while (true) {
+      final candidate = '$apiModelId#$i';
+      if (!existing.contains(candidate)) return candidate;
+      i++;
+    }
+  }
+
   Future<void> _save() async {
     final settings = context.read<SettingsProvider>();
     final old = settings.getProviderConfig(widget.providerKey);
-    final String prevId = widget.modelId;
-    String id = _idCtrl.text.trim();
-    if (id.isEmpty || id.length < 2 || id.contains(' ')) {
+    final String prevKey = widget.modelId;
+    final String apiModelId = _idCtrl.text.trim();
+    if (apiModelId.isEmpty || apiModelId.length < 2 || apiModelId.contains(' ')) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.modelDetailSheetInvalidIdError), backgroundColor: Theme.of(context).colorScheme.error));
-      return;
-    }
-    if (old.models.contains(id) && id != prevId) {
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.modelDetailSheetModelIdExistsError), backgroundColor: Theme.of(context).colorScheme.error));
       return;
     }
     final ov = Map<String, dynamic>.from(old.modelOverrides);
     final headers = [for (final h in _headers) if (h.name.text.trim().isNotEmpty) {'name': h.name.text.trim(), 'value': h.value.text}];
     final bodies = [for (final b in _bodies) if (b.keyCtrl.text.trim().isNotEmpty) {'key': b.keyCtrl.text.trim(), 'value': b.valueCtrl.text}];
-    ov[id] = {
+    final String key = (prevKey.isEmpty || widget.isNew) ? _nextModelKey(old, apiModelId) : prevKey;
+    ov[key] = {
+      'apiModelId': apiModelId,
       'name': _nameCtrl.text.trim(),
       'type': _type == ModelType.chat ? 'chat' : 'embedding',
       'input': _input.map((e) => e == Modality.image ? 'image' : 'text').toList(),
@@ -329,37 +356,10 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
       'headers': headers,
       'body': bodies,
     };
-    if (id != prevId && ov.containsKey(prevId)) ov.remove(prevId);
 
-    if (prevId.isEmpty || widget.isNew) {
-      final list = old.models.toList()..add(id);
+    if (prevKey.isEmpty || widget.isNew) {
+      final list = old.models.toList()..add(key);
       await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov, models: list));
-    } else if (id != prevId) {
-      final list = <String>[for (final m in old.models) m == prevId ? id : m];
-      await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov, models: list));
-      if (settings.currentModelProvider == widget.providerKey && settings.currentModelId == prevId) {
-        await settings.setCurrentModel(widget.providerKey, id);
-      }
-      if (settings.titleModelProvider == widget.providerKey && settings.titleModelId == prevId) {
-        await settings.setTitleModel(widget.providerKey, id);
-      }
-      if (settings.translateModelProvider == widget.providerKey && settings.translateModelId == prevId) {
-        await settings.setTranslateModel(widget.providerKey, id);
-      }
-      if (settings.isModelPinned(widget.providerKey, prevId)) {
-        await settings.togglePinModel(widget.providerKey, prevId);
-        if (!settings.isModelPinned(widget.providerKey, id)) {
-          await settings.togglePinModel(widget.providerKey, id);
-        }
-      }
-      try {
-        final ap = context.read<AssistantProvider>();
-        for (final a in ap.assistants) {
-          if (a.chatModelProvider == widget.providerKey && a.chatModelId == prevId) {
-            await ap.updateAssistant(a.copyWith(chatModelId: id));
-          }
-        }
-      } catch (_) {}
     } else {
       await settings.setProviderConfig(widget.providerKey, old.copyWith(modelOverrides: ov));
     }

@@ -79,8 +79,16 @@ _ModelProcessingResult _processModelsInBackground(_ModelProcessingData data) {
       for (final id in models)
         () {
           final String mid = id.toString();
-          ModelInfo base = ModelRegistry.infer(ModelInfo(id: mid, displayName: mid));
           final ov = overrides[mid] as Map?;
+          // Use upstream/api model id for inference when available so that
+          // brand assets and default capabilities stay accurate even when the
+          // logical key is a custom alias.
+          String baseId = mid;
+          if (ov != null) {
+            final raw = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+            if (raw != null && raw.isNotEmpty) baseId = raw;
+          }
+          ModelInfo base = ModelRegistry.infer(ModelInfo(id: baseId, displayName: baseId));
           if (ov != null) {
             // display name override
             final n = (ov['name'] as String?)?.trim();
@@ -124,7 +132,7 @@ _ModelProcessingResult _processModelsInBackground(_ModelProcessingData data) {
             info: base,
             pinned: data.pinnedModels.contains('$key::$mid'),
             selected: data.currentModelKey == '$key::$mid',
-            asset: _assetForNameStatic(mid),
+            asset: _assetForNameStatic(baseId),
           );
         }()
     ];

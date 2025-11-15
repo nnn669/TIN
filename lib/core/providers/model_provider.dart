@@ -400,26 +400,33 @@ class ProviderManager {
         return;
       } else if (kind == ProviderKind.google) {
         // Generative Language API (default) or Vertex AI when vertexAI == true
+        final ov = _modelOverride(cfg, modelId);
+        // Resolve upstream/api model id for this logical key when present.
+        String upstreamId = modelId;
+        try {
+          final raw = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+          if (raw != null && raw.isNotEmpty) upstreamId = raw;
+        } catch (_) {}
+
         String url;
         if (cfg.vertexAI == true && (cfg.location?.isNotEmpty == true) && (cfg.projectId?.isNotEmpty == true)) {
           final loc = cfg.location!;
           final proj = cfg.projectId!;
-          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$modelId:generateContent';
+          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$upstreamId:generateContent';
         } else {
           final base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1) : cfg.baseUrl;
-          url = '$base/models/$modelId:generateContent';
+          url = '$base/models/$upstreamId:generateContent';
           if (cfg.apiKey.isNotEmpty) {
             url = '$url?key=${Uri.encodeQueryComponent(cfg.apiKey)}';
           }
         }
         // Determine if model outputs images (override wins; otherwise inference)
         bool wantsImageOutput = false;
-        final ov = _modelOverride(cfg, modelId);
         if (ov['output'] is List) {
           final outList = (ov['output'] as List).map((e) => e.toString().toLowerCase()).toList();
           wantsImageOutput = outList.contains('image');
         } else {
-          wantsImageOutput = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId)).output.contains(Modality.image);
+          wantsImageOutput = ModelRegistry.infer(ModelInfo(id: upstreamId, displayName: upstreamId)).output.contains(Modality.image);
         }
         final body = {
           'contents': [

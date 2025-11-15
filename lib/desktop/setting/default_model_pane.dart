@@ -277,7 +277,17 @@ class _ModelCardState extends State<_ModelCard> {
       final cfg = settings.getProviderConfig(effectiveProvider);
       providerName = cfg.name.isNotEmpty ? cfg.name : effectiveProvider;
       final ov = cfg.modelOverrides[effectiveModelId] as Map?;
-      modelDisplay = (ov != null && (ov['name'] as String?)?.isNotEmpty == true) ? (ov['name'] as String) : effectiveModelId;
+      if (ov != null) {
+        final overrideName = (ov['name'] as String?)?.trim();
+        if (overrideName != null && overrideName.isNotEmpty) {
+          modelDisplay = overrideName;
+        } else {
+          final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+          modelDisplay = (apiId != null && apiId.isNotEmpty) ? apiId : effectiveModelId;
+        }
+      } else {
+        modelDisplay = effectiveModelId;
+      }
     }
     if (usingFallback) {
       modelDisplay = l10n.defaultModelPageUseCurrentModel;
