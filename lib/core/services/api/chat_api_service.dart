@@ -131,10 +131,18 @@ class ChatApiService {
   }
   static String _mimeFromPath(String path) {
     final lower = path.toLowerCase();
+    // Images
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
     if (lower.endsWith('.png')) return 'image/png';
     if (lower.endsWith('.webp')) return 'image/webp';
     if (lower.endsWith('.gif')) return 'image/gif';
+    // Video
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    if (lower.endsWith('.avi')) return 'video/x-msvideo';
+    if (lower.endsWith('.mkv')) return 'video/x-matroska';
+    if (lower.endsWith('.flv')) return 'video/x-flv';
+    if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
     return 'image/png';
   }
 
@@ -962,9 +970,19 @@ class ChatApiService {
             parts.add({'type': 'image_url', 'image_url': {'url': url}});
           }
           if (hasAttachedImages) {
+            final bool isDashscope = host.contains('dashscope') || host.contains('aliyun');
             for (final p in userImagePaths!) {
-              final dataUrl = (p.startsWith('http') || p.startsWith('data:')) ? p : await _encodeBase64File(p, withPrefix: true);
-              parts.add({'type': 'image_url', 'image_url': {'url': dataUrl}});
+              final bool isInlineUrl = p.startsWith('http') || p.startsWith('data:');
+              final String mime = isInlineUrl ? _mimeFromDataUrl(p) : _mimeFromPath(p);
+              final bool isVideo = mime.toLowerCase().startsWith('video/');
+              // For non-DashScope providers, ignore video attachments to avoid invalid image payloads.
+              if (!isDashscope && isVideo) continue;
+              final String dataUrl = isInlineUrl ? p : await _encodeBase64File(p, withPrefix: true);
+              if (isDashscope && isVideo) {
+                parts.add({'type': 'video_url', 'video_url': {'url': dataUrl}});
+              } else {
+                parts.add({'type': 'image_url', 'image_url': {'url': dataUrl}});
+              }
             }
           }
           mm.add({'role': role, 'content': parts});

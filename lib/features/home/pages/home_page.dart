@@ -1177,6 +1177,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   String _inferMimeByExtension(String name) {
     final lower = name.toLowerCase();
+    // Video
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    if (lower.endsWith('.avi')) return 'video/x-msvideo';
+    if (lower.endsWith('.mkv')) return 'video/x-matroska';
+    if (lower.endsWith('.flv')) return 'video/x-flv';
+    if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
+    // Documents / text
     if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     if (lower.endsWith('.json')) return 'application/json';
@@ -1205,6 +1213,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         allowedExtensions: const [
           // images
           'png','jpg','jpeg','gif','webp','heic','heif',
+          // videos
+          'mp4','avi','mkv','mov','flv','wmv',
           // docs
           'txt','md','json','js','pdf','docx','html','xml','py','java','kt','dart','ts','tsx','markdown','mdx','yml','yaml'
         ],
@@ -1538,6 +1548,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           for (final d in parsed.documents) {
             final path = d.path.trim();
             if (path.isEmpty) continue;
+            // Skip video files for text extraction; they will be passed as video to models that support it.
+            if (d.mime.toLowerCase().startsWith('video/')) continue;
             allDocs[path] = d;
           }
         }
@@ -1545,6 +1557,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         for (final d in input.documents) {
           final path = d.path.trim();
           if (path.isEmpty) continue;
+           // Skip video files for text extraction; they will be passed as video to models that support it.
+           if (d.mime.toLowerCase().startsWith('video/')) continue;
           allDocs[path] = d;
         }
 
@@ -1890,11 +1904,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (aBody.isEmpty) aBody = null;
       }
 
+    // Collect video attachments from current input; only used for providers that support video (e.g. Qwen via DashScope).
+    final currentVideoPaths = <String>[
+      for (final d in input.documents)
+        if (d.mime.toLowerCase().startsWith('video/')) d.path,
+    ];
+
     final stream = ChatApiService.sendMessageStream(
       config: config,
       modelId: modelId,
       messages: apiMessages,
-      userImagePaths: input.imagePaths,
+      userImagePaths: [
+        ...input.imagePaths,
+        ...currentVideoPaths,
+      ],
       thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
       temperature: assistant?.temperature,
       topP: assistant?.topP,
@@ -2627,6 +2650,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           for (final d in parsed.documents) {
             final path = d.path.trim();
             if (path.isEmpty) continue;
+            if (d.mime.toLowerCase().startsWith('video/')) continue;
             allDocs[path] = d;
           }
         }
@@ -3289,7 +3313,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final path = fileMatch.group(1)?.trim() ?? '';
         final name = fileMatch.group(2)?.trim() ?? 'file';
         final mime = fileMatch.group(3)?.trim() ?? 'text/plain';
-        docs.add(DocumentAttachment(path: path, fileName: name, mime: mime));
+        final doc = DocumentAttachment(path: path, fileName: name, mime: mime);
+        docs.add(doc);
+        // Treat video attachments as image-style attachments for downstream APIs (e.g., Qwen video_url).
+        if (mime.toLowerCase().startsWith('video/') && path.isNotEmpty) {
+          images.add(path);
+        }
         idx = fileMatch.end;
         continue;
       }

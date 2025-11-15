@@ -834,6 +834,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   String _inferMimeByExtension(String name) {
     final lower = name.toLowerCase();
+    // Video
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    if (lower.endsWith('.avi')) return 'video/x-msvideo';
+    if (lower.endsWith('.mkv')) return 'video/x-matroska';
+    if (lower.endsWith('.flv')) return 'video/x-flv';
+    if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
+    // Documents / text
     if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     if (lower.endsWith('.json')) return 'application/json';
