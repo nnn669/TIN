@@ -138,11 +138,14 @@ class ChatApiService {
     if (lower.endsWith('.gif')) return 'image/gif';
     // Video
     if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mpeg') || lower.endsWith('.mpg')) return 'video/mpeg';
     if (lower.endsWith('.mov')) return 'video/quicktime';
     if (lower.endsWith('.avi')) return 'video/x-msvideo';
     if (lower.endsWith('.mkv')) return 'video/x-matroska';
     if (lower.endsWith('.flv')) return 'video/x-flv';
     if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
+    if (lower.endsWith('.webm')) return 'video/webm';
+    if (lower.endsWith('.3gp') || lower.endsWith('.3gpp')) return 'video/3gpp';
     return 'image/png';
   }
 

@@ -1179,11 +1179,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final lower = name.toLowerCase();
     // Video
     if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mpeg') || lower.endsWith('.mpg')) return 'video/mpeg';
     if (lower.endsWith('.mov')) return 'video/quicktime';
     if (lower.endsWith('.avi')) return 'video/x-msvideo';
     if (lower.endsWith('.mkv')) return 'video/x-matroska';
     if (lower.endsWith('.flv')) return 'video/x-flv';
     if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
+    if (lower.endsWith('.webm')) return 'video/webm';
+    if (lower.endsWith('.3gp') || lower.endsWith('.3gpp')) return 'video/3gpp';
     // Documents / text
     if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -1214,7 +1217,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           // images
           'png','jpg','jpeg','gif','webp','heic','heif',
           // videos
-          'mp4','avi','mkv','mov','flv','wmv',
+          'mp4','avi','mkv','mov','flv','wmv','mpeg','mpg','webm','3gp','3gpp',
           // docs
           'txt','md','json','js','pdf','docx','html','xml','py','java','kt','dart','ts','tsx','markdown','mdx','yml','yaml'
         ],
