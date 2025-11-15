@@ -150,7 +150,35 @@ class ChatApiService {
   }
 
   // Simple container for parsed text + image refs
-  static _ParsedTextAndImages _parseTextAndImages(String raw) {
+  static Future<bool> _isValidRemoteImageUrl(String url) async {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) return false;
+      final client = http.Client();
+      try {
+        final resp = await client.head(uri).timeout(const Duration(seconds: 5));
+        // Treat standard success / redirect as valid; 4xx/5xx (e.g. 404) as invalid.
+        final code = resp.statusCode;
+        if (code >= 200 && code < 400) return true;
+        // Some servers do not support HEAD and may return 405/501; treat them as indeterminate but valid.
+        if (code == 405 || code == 501) return true;
+        return false;
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      // Network errors / timeouts → treat as invalid so we fall back to plain text.
+      return false;
+    }
+  }
+
+  // Simple container for parsed text + image refs
+  static Future<_ParsedTextAndImages> _parseTextAndImages(
+    String raw, {
+    required bool allowRemoteImages,
+    required bool allowLocalImages,
+    bool keepRemoteMarkdownText = true,
+  }) async {
     if (raw.isEmpty) return const _ParsedTextAndImages('', <_ImageRef>[]);
     final mdImg = RegExp(r'!\[[^\]]*\]\(([^)]+)\)');
     // Match custom inline image markers like: [image:/absolute/path.png]
@@ -163,16 +191,67 @@ class ChatApiService {
       final m1 = mdImg.matchAsPrefix(raw, i);
       final m2 = customImg.matchAsPrefix(raw, i);
       if (m1 != null) {
+        final full = raw.substring(m1.start, m1.end);
         final url = (m1.group(1) ?? '').trim();
-        if (url.isNotEmpty) {
-          if (url.startsWith('data:')) {
-            images.add(_ImageRef('data', url));
-          } else if (url.startsWith('http://') || url.startsWith('https://')) {
-            images.add(_ImageRef('url', url));
-          } else {
-            images.add(_ImageRef('path', url));
-          }
+        if (url.isEmpty) {
+          // Empty URL: treat as plain text, do not try to interpret as image.
+          buf.write(full);
+          i = m1.end;
+          continue;
         }
+        // Inline base64 / data URLs: always treat as image but keep them out of text.
+        if (url.startsWith('data:')) {
+          images.add(_ImageRef('data', url));
+          i = m1.end;
+          continue;
+        }
+        // Remote http(s) URLs
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          if (!allowRemoteImages) {
+            // Model does not accept image input (or we intentionally skip http images):
+            // keep original markdown so the model can see the template.
+            buf.write(full);
+            i = m1.end;
+            continue;
+          }
+          final ok = await _isValidRemoteImageUrl(url);
+          if (!ok) {
+            // Invalid / unreachable image URL (e.g. 404) → keep as plain text.
+            buf.write(full);
+            i = m1.end;
+            continue;
+          }
+          images.add(_ImageRef('url', url));
+          if (keepRemoteMarkdownText) {
+            // Keep markdown so the model can see template syntax and URL.
+            buf.write(full);
+          }
+          i = m1.end;
+          continue;
+        }
+        // Local / relative path: only treat as image when the file exists.
+        if (!allowLocalImages) {
+          buf.write(full);
+          i = m1.end;
+          continue;
+        }
+        try {
+          final fixed = SandboxPathResolver.fix(url);
+          final file = File(fixed);
+          if (!file.existsSync()) {
+            // Missing local file: do NOT treat as image; keep original markdown.
+            buf.write(full);
+            i = m1.end;
+            continue;
+          }
+        } catch (_) {
+          // Any error probing the file → fall back to plain text.
+          buf.write(full);
+          i = m1.end;
+          continue;
+        }
+        images.add(_ImageRef('path', url));
+        // For real local files we keep previous behavior: only attach as image, omit markdown from text.
         i = m1.end;
         continue;
       }
@@ -671,6 +750,7 @@ class ChatApiService {
     final effectiveInfo = _effectiveModelInfo(config, modelId);
     final isReasoning = effectiveInfo.abilities.contains(ModelAbility.reasoning);
     final wantsImageOutput = effectiveInfo.output.contains(Modality.image);
+    final bool canImageInput = effectiveInfo.input.contains(Modality.image);
 
     final effort = _effortForBudget(thinkingBudget);
     final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
@@ -758,7 +838,12 @@ class ChatApiService {
         final hasAttachedImages = isLast && (userImagePaths?.isNotEmpty == true) && (m['role'] == 'user');
 
         if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
-          final parsed = _parseTextAndImages(raw);
+          final parsed = await _parseTextAndImages(
+            raw,
+            allowRemoteImages: canImageInput,
+            allowLocalImages: true,
+            keepRemoteMarkdownText: true,
+          );
           final parts = <Map<String, dynamic>>[];
           if (parsed.text.isNotEmpty) {
             parts.add({'type': 'input_text', 'text': parsed.text});
@@ -841,14 +926,26 @@ class ChatApiService {
         final m = messages[i];
         final isLast = i == messages.length - 1;
         final raw = (m['content'] ?? '').toString();
+        final role = (m['role'] ?? 'user').toString();
+
+        // System 消息保持为纯文本，不解析为图片
+        if (role == 'system') {
+          mm.add({'role': role, 'content': raw});
+          continue;
+        }
 
         // Only parse images if there are images to process
         final hasMarkdownImages = raw.contains('![') && raw.contains('](');
         final hasCustomImages = raw.contains('[image:');
-        final hasAttachedImages = isLast && (userImagePaths?.isNotEmpty == true) && (m['role'] == 'user');
+        final hasAttachedImages = isLast && (userImagePaths?.isNotEmpty == true) && (role == 'user');
 
         if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
-          final parsed = _parseTextAndImages(raw);
+          final parsed = await _parseTextAndImages(
+            raw,
+            allowRemoteImages: canImageInput,
+            allowLocalImages: true,
+            keepRemoteMarkdownText: true,
+          );
           final parts = <Map<String, dynamic>>[];
           if (parsed.text.isNotEmpty) {
             parts.add({'type': 'text', 'text': parsed.text});
@@ -870,10 +967,10 @@ class ChatApiService {
               parts.add({'type': 'image_url', 'image_url': {'url': dataUrl}});
             }
           }
-          mm.add({'role': m['role'] ?? 'user', 'content': parts});
+          mm.add({'role': role, 'content': parts});
         } else {
           // No images, use simple string content
-          mm.add({'role': m['role'] ?? 'user', 'content': raw});
+          mm.add({'role': role, 'content': raw});
         }
       }
       body = {
@@ -3481,7 +3578,13 @@ class ChatApiService {
         final hasCustomImages = raw.contains('[image:');
         final hasAttachedImages = isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
         if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
-          final parsed = _parseTextAndImages(raw);
+          final parsed = await _parseTextAndImages(
+            raw,
+            // Gemini API 目前无法直接拉取远程 http(s) 图片
+            allowRemoteImages: false,
+            allowLocalImages: true,
+            keepRemoteMarkdownText: true,
+          );
           if (parsed.text.isNotEmpty) parts.add({'text': parsed.text});
           for (final ref in parsed.images) {
             if (ref.kind == 'data') {
@@ -3663,7 +3766,13 @@ class ChatApiService {
       final hasAttachedImages = isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
 
       if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
-        final parsed = _parseTextAndImages(raw);
+        final parsed = await _parseTextAndImages(
+          raw,
+          // Gemini API 目前无法直接拉取远程 http(s) 图片
+          allowRemoteImages: false,
+          allowLocalImages: true,
+          keepRemoteMarkdownText: true,
+        );
         if (parsed.text.isNotEmpty) parts.add({'text': parsed.text});
         // Images extracted from this message's text
         for (final ref in parsed.images) {
