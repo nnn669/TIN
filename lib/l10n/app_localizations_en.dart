@@ -73,6 +73,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPageQuickPhrase => 'Quick Phrase';
 
   @override
+  String get settingsPageInstructionInjection => 'Instruction Injection';
+
+  @override
   String get settingsPageDataSection => 'Data';
 
   @override
@@ -1121,7 +1124,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bottomToolsSheetPrompt => 'Prompt';
 
   @override
-  String get bottomToolsSheetPromptHint => 'Enter prompt for learning mode';
+  String get bottomToolsSheetPromptHint => 'Enter prompt text to inject';
 
   @override
   String get bottomToolsSheetResetDefault => 'Reset to default';
@@ -2938,6 +2941,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickPhraseSaveButton => 'Save';
+
+  @override
+  String get instructionInjectionTitle => 'Instruction Injection';
+
+  @override
+  String get instructionInjectionBackTooltip => 'Back';
+
+  @override
+  String get instructionInjectionAddTooltip => 'Add Instruction';
+
+  @override
+  String get instructionInjectionEmptyMessage =>
+      'No instruction injection cards yet';
+
+  @override
+  String get instructionInjectionDefaultTitle => 'Learning Mode';
+
+  @override
+  String get instructionInjectionAddTitle => 'Add Instruction Injection';
+
+  @override
+  String get instructionInjectionEditTitle => 'Edit Instruction Injection';
+
+  @override
+  String get instructionInjectionNameLabel => 'Name';
+
+  @override
+  String get instructionInjectionPromptLabel => 'Prompt';
+
+  @override
+  String get instructionInjectionSheetSubtitle =>
+      'Choose a prompt to apply before chatting';
 
   @override
   String get mcpJsonEditButtonTooltip => 'Edit JSON';

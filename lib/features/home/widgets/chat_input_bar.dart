@@ -733,13 +733,13 @@ class _ChatInputBarState extends State<ChatInputBar> {
           actions.add(_OverflowAction(
             width: normalButtonW,
             builder: () => _CompactIconButton(
-              tooltip: l10n.bottomToolsSheetLearningMode,
+              tooltip: l10n.instructionInjectionTitle,
               icon: Lucide.BookOpenText,
               active: widget.learningModeActive,
               onTap: widget.onToggleLearningMode,
               onLongPress: widget.onLongPressLearning,
             ),
-            menu: DesktopContextMenuItem(icon: Lucide.BookOpenText, label: l10n.bottomToolsSheetLearningMode, onTap: widget.onToggleLearningMode),
+            menu: DesktopContextMenuItem(icon: Lucide.BookOpenText, label: l10n.instructionInjectionTitle, onTap: widget.onToggleLearningMode),
           ));
         }
 

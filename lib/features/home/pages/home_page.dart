@@ -61,7 +61,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
-import '../../../core/services/learning_mode_store.dart';
+import '../../../core/services/instruction_injection_store.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../shared/animations/widgets.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -73,10 +73,12 @@ import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
+import '../../../core/providers/instruction_injection_provider.dart';
 import '../../quick_phrase/widgets/quick_phrase_menu.dart';
 import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
+import '../../../desktop/instruction_injection_popover.dart';
 import '../../../utils/app_directories.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -238,6 +240,33 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  Future<void> _openInstructionInjectionPopover() async {
+    try {
+      if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+        // Mobile/tablet use bottom sheets instead.
+        return;
+      }
+    } catch (_) {
+      return;
+    }
+    final provider = context.read<InstructionInjectionProvider>();
+    await provider.initialize();
+    final items = provider.items;
+    if (items.isEmpty) return;
+
+    await showDesktopInstructionInjectionPopover(
+      context,
+      anchorKey: _inputBarKey,
+      items: items,
+      activeId: provider.activeId,
+    );
+    // 浮层内部已处理选中/取消，这里只同步底部按钮高亮状态
+    await provider.initialize();
+    if (mounted) {
+      setState(() => _learningModeEnabled = provider.activeId != null);
+    }
+  }
+
   // Drawer haptics for swipe-open
   double _lastDrawerValue = 0.0;
   // Removed early-open haptic; vibrate on open completion instead
@@ -288,10 +317,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // no-op placeholders removed
 
   Future<void> _showLearningPromptSheet() async {
+    final provider = context.read<InstructionInjectionProvider>();
+    await provider.initialize();
+    final items = provider.items;
+    if (items.isEmpty) return;
+    final target = provider.active ?? items.first;
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final prompt = await LearningModeStore.getPrompt();
-    final controller = TextEditingController(text: prompt);
+    final controller = TextEditingController(text: target.prompt);
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -336,17 +369,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    TextButton(
-                      onPressed: () async {
-                        await LearningModeStore.resetPrompt();
-                        controller.text = await LearningModeStore.getPrompt();
-                      },
-                      child: Text(l10n.bottomToolsSheetResetDefault),
-                    ),
                     const Spacer(),
                     FilledButton(
                       onPressed: () async {
-                        await LearningModeStore.setPrompt(controller.text.trim());
+                        final updated = target.copyWith(prompt: controller.text.trim());
+                        await ctx.read<InstructionInjectionProvider>().update(updated);
                         if (ctx.mounted) Navigator.of(ctx).pop();
                       },
                       child: Text(l10n.bottomToolsSheetSave),
@@ -752,16 +779,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _initChat();
     _scrollController.addListener(_onScrollControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
-    // Load learning mode for button highlight
+    // Load instruction-injection active state for button highlight
     Future.microtask(() async {
-      final v = await LearningModeStore.isEnabled();
-      if (mounted) setState(() => _learningModeEnabled = v);
+      try {
+        final active = await InstructionInjectionStore.getActive();
+        if (mounted) setState(() => _learningModeEnabled = active != null);
+      } catch (_) {}
     });
 
     // Initialize quick phrases provider
     Future.microtask(() async {
       try {
         await context.read<QuickPhraseProvider>().initialize();
+      } catch (_) {}
+    });
+    // Initialize instruction injection provider
+    Future.microtask(() async {
+      try {
+        await context.read<InstructionInjectionProvider>().initialize();
       } catch (_) {}
     });
 
@@ -1707,11 +1742,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject learning mode prompt when enabled (global)
+    // Inject instruction-injection prompt when an entry is active (global)
     try {
-      final lmEnabled = await LearningModeStore.isEnabled();
-      if (lmEnabled) {
-        final lp = await LearningModeStore.getPrompt();
+      final active = await InstructionInjectionStore.getActive();
+      final lp = active?.prompt;
+      if (lp != null && lp.trim().isNotEmpty) {
         if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
           apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
         } else {
@@ -2782,11 +2817,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject learning mode prompt when enabled (global)
+    // Inject instruction-injection prompt when an entry is active (global)
     try {
-      final lmEnabled = await LearningModeStore.isEnabled();
-      if (lmEnabled) {
-        final lp = await LearningModeStore.getPrompt();
+      final active = await InstructionInjectionStore.getActive();
+      final lp = active?.prompt;
+      if (lp != null && lp.trim().isNotEmpty) {
         if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
           apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
         } else {
@@ -5722,11 +5757,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     onPickCamera: isDesktop ? null : _onPickCamera,
                                     onPickPhotos: isDesktop ? null : _onPickPhotos,
                                     onUploadFiles: _onPickFiles,
-                                    onToggleLearningMode: () async {
-                                      final enabled = await LearningModeStore.isEnabled();
-                                      await LearningModeStore.setEnabled(!enabled);
-                                      if (mounted) setState(() => _learningModeEnabled = !enabled);
-                                    },
+                                    onToggleLearningMode: _openInstructionInjectionPopover,
                                     onLongPressLearning: _showLearningPromptSheet,
                                     learningModeActive: _learningModeEnabled,
                                     showMoreButton: false,

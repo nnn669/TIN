@@ -72,6 +72,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsPageQuickPhrase => '快捷短语';
 
   @override
+  String get settingsPageInstructionInjection => '指令注入';
+
+  @override
   String get settingsPageDataSection => '数据设置';
 
   @override
@@ -1090,7 +1093,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bottomToolsSheetPrompt => '提示词';
 
   @override
-  String get bottomToolsSheetPromptHint => '输入用于学习模式的提示词';
+  String get bottomToolsSheetPromptHint => '输入要注入的提示词内容';
 
   @override
   String get bottomToolsSheetResetDefault => '重置为默认';
@@ -2838,6 +2841,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get quickPhraseSaveButton => '保存';
 
   @override
+  String get instructionInjectionTitle => '指令注入';
+
+  @override
+  String get instructionInjectionBackTooltip => '返回';
+
+  @override
+  String get instructionInjectionAddTooltip => '添加指令注入';
+
+  @override
+  String get instructionInjectionEmptyMessage => '暂无指令注入卡片';
+
+  @override
+  String get instructionInjectionDefaultTitle => '学习模式';
+
+  @override
+  String get instructionInjectionAddTitle => '添加指令注入';
+
+  @override
+  String get instructionInjectionEditTitle => '编辑指令注入';
+
+  @override
+  String get instructionInjectionNameLabel => '名称';
+
+  @override
+  String get instructionInjectionPromptLabel => '提示词';
+
+  @override
+  String get instructionInjectionSheetSubtitle => '为当前对话选择并应用一条指令提示词';
+
+  @override
   String get mcpJsonEditButtonTooltip => '编辑 JSON';
 
   @override
@@ -3149,6 +3182,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get settingsPageQuickPhrase => '快捷短语';
+
+  @override
+  String get settingsPageInstructionInjection => '指令注入';
 
   @override
   String get settingsPageDataSection => '数据设置';
@@ -4169,7 +4205,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get bottomToolsSheetPrompt => '提示词';
 
   @override
-  String get bottomToolsSheetPromptHint => '输入用于学习模式的提示词';
+  String get bottomToolsSheetPromptHint => '输入要注入的提示词内容';
 
   @override
   String get bottomToolsSheetResetDefault => '重置为默认';
@@ -5917,6 +5953,36 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get quickPhraseSaveButton => '保存';
 
   @override
+  String get instructionInjectionTitle => '指令注入';
+
+  @override
+  String get instructionInjectionBackTooltip => '返回';
+
+  @override
+  String get instructionInjectionAddTooltip => '添加指令注入';
+
+  @override
+  String get instructionInjectionEmptyMessage => '暂无指令注入卡片';
+
+  @override
+  String get instructionInjectionDefaultTitle => '学习模式';
+
+  @override
+  String get instructionInjectionAddTitle => '添加指令注入';
+
+  @override
+  String get instructionInjectionEditTitle => '编辑指令注入';
+
+  @override
+  String get instructionInjectionNameLabel => '名称';
+
+  @override
+  String get instructionInjectionPromptLabel => '提示词';
+
+  @override
+  String get instructionInjectionSheetSubtitle => '为当前对话选择并应用一条指令提示词';
+
+  @override
   String get mcpJsonEditButtonTooltip => '编辑 JSON';
 
   @override
@@ -6228,6 +6294,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get settingsPageQuickPhrase => '快捷短语';
+
+  @override
+  String get settingsPageInstructionInjection => '指令注入';
 
   @override
   String get settingsPageDataSection => '資料設定';
@@ -7248,7 +7317,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get bottomToolsSheetPrompt => '提示詞';
 
   @override
-  String get bottomToolsSheetPromptHint => '輸入用於學習模式的提示詞';
+  String get bottomToolsSheetPromptHint => '輸入要注入的提示詞內容';
 
   @override
   String get bottomToolsSheetResetDefault => '重設為預設';
@@ -8994,6 +9063,36 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get quickPhraseSaveButton => '儲存';
+
+  @override
+  String get instructionInjectionTitle => '指令注入';
+
+  @override
+  String get instructionInjectionBackTooltip => '返回';
+
+  @override
+  String get instructionInjectionAddTooltip => '新增指令注入';
+
+  @override
+  String get instructionInjectionEmptyMessage => '暫無指令注入卡片';
+
+  @override
+  String get instructionInjectionDefaultTitle => '學習模式';
+
+  @override
+  String get instructionInjectionAddTitle => '新增指令注入';
+
+  @override
+  String get instructionInjectionEditTitle => '編輯指令注入';
+
+  @override
+  String get instructionInjectionNameLabel => '名稱';
+
+  @override
+  String get instructionInjectionPromptLabel => '提示詞';
+
+  @override
+  String get instructionInjectionSheetSubtitle => '為目前對話選擇並套用一條指令提示詞';
 
   @override
   String get mcpJsonEditButtonTooltip => '編輯 JSON';

@@ -226,6 +226,12 @@ abstract class AppLocalizations {
   /// **'Quick Phrase'**
   String get settingsPageQuickPhrase;
 
+  /// No description provided for @settingsPageInstructionInjection.
+  ///
+  /// In en, this message translates to:
+  /// **'Instruction Injection'**
+  String get settingsPageInstructionInjection;
+
   /// No description provided for @settingsPageDataSection.
   ///
   /// In en, this message translates to:
@@ -2228,7 +2234,7 @@ abstract class AppLocalizations {
   /// No description provided for @bottomToolsSheetPromptHint.
   ///
   /// In en, this message translates to:
-  /// **'Enter prompt for learning mode'**
+  /// **'Enter prompt text to inject'**
   String get bottomToolsSheetPromptHint;
 
   /// No description provided for @bottomToolsSheetResetDefault.
@@ -5572,6 +5578,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save'**
   String get quickPhraseSaveButton;
+
+  /// No description provided for @instructionInjectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Instruction Injection'**
+  String get instructionInjectionTitle;
+
+  /// No description provided for @instructionInjectionBackTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get instructionInjectionBackTooltip;
+
+  /// No description provided for @instructionInjectionAddTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Instruction'**
+  String get instructionInjectionAddTooltip;
+
+  /// No description provided for @instructionInjectionEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No instruction injection cards yet'**
+  String get instructionInjectionEmptyMessage;
+
+  /// No description provided for @instructionInjectionDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning Mode'**
+  String get instructionInjectionDefaultTitle;
+
+  /// No description provided for @instructionInjectionAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Instruction Injection'**
+  String get instructionInjectionAddTitle;
+
+  /// No description provided for @instructionInjectionEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Instruction Injection'**
+  String get instructionInjectionEditTitle;
+
+  /// No description provided for @instructionInjectionNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get instructionInjectionNameLabel;
+
+  /// No description provided for @instructionInjectionPromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get instructionInjectionPromptLabel;
+
+  /// No description provided for @instructionInjectionSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a prompt to apply before chatting'**
+  String get instructionInjectionSheetSubtitle;
 
   /// No description provided for @mcpJsonEditButtonTooltip.
   ///
