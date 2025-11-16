@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../widgets/model_select_sheet.dart';
+import '../widgets/ocr_prompt_sheet.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:characters/characters.dart';
 import '../../../l10n/app_localizations.dart';
@@ -111,6 +112,26 @@ class DefaultModelPage extends StatelessWidget {
               }
             },
             configAction: () => _showTranslatePromptSheet(context),
+          ),
+          const SizedBox(height: 16),
+          _ModelCard(
+            icon: Lucide.Eye,
+            title: l10n.defaultModelPageOcrModelTitle,
+            subtitle: l10n.defaultModelPageOcrModelSubtitle,
+            modelProvider: settings.ocrModelProvider,
+            modelId: settings.ocrModelId,
+            fallbackProvider: settings.currentModelProvider,
+            fallbackModelId: settings.currentModelId,
+            onReset: () async {
+              await context.read<SettingsProvider>().resetOcrModel();
+            },
+            onPick: () async {
+              final sel = await showModelSelector(context);
+              if (sel != null) {
+                await context.read<SettingsProvider>().setOcrModel(sel.providerKey, sel.modelId);
+              }
+            },
+            configAction: () => showOcrPromptSheet(context),
           ),
         ],
       ),

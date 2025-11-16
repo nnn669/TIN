@@ -635,6 +635,55 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return inferred.abilities.contains(ModelAbility.reasoning);
   }
 
+  Future<String?> _runOcrForImages(List<String> imagePaths) async {
+    if (imagePaths.isEmpty) return null;
+    final settings = context.read<SettingsProvider>();
+    final prov = settings.ocrModelProvider;
+    final model = settings.ocrModelId;
+    if (prov == null || model == null) return null;
+    final cfg = settings.getProviderConfig(prov);
+
+    final messages = <Map<String, dynamic>>[
+      {
+        'role': 'system',
+        'content': settings.ocrPrompt,
+      },
+      {
+        'role': 'user',
+        'content': 'Please perform OCR on the attached image(s) and return only the extracted text and visual descriptions.',
+      },
+    ];
+
+    final stream = ChatApiService.sendMessageStream(
+      config: cfg,
+      modelId: model,
+      messages: messages,
+      userImagePaths: imagePaths,
+      thinkingBudget: null,
+      temperature: 0.0,
+      topP: null,
+      maxTokens: null,
+      tools: null,
+      onToolCall: null,
+      extraHeaders: null,
+      extraBody: null,
+      stream: false,
+    );
+
+    String out = '';
+    try {
+      await for (final chunk in stream) {
+        if (chunk.content.isNotEmpty) {
+          out += chunk.content;
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+    out = out.trim();
+    return out.isEmpty ? null : out;
+  }
+
   // Whether current conversation is generating
   bool get _isCurrentConversationLoading {
     final cid = _currentConversation?.id;
@@ -917,6 +966,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
     return inferred.abilities.contains(ModelAbility.tool);
+  }
+
+  bool _isImageInputModel(String providerKey, String modelId) {
+    final settings = context.read<SettingsProvider>();
+    final cfg = settings.getProviderConfig(providerKey);
+    final ov = cfg.modelOverrides[modelId] as Map?;
+    if (ov != null && ov['input'] is List) {
+      final modes = (ov['input'] as List)
+          .map((e) => e.toString().toLowerCase())
+          .toList();
+      if (modes.contains('image')) return true;
+    }
+    final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+    return inferred.input.contains(Modality.image);
   }
 
   // More page entry is temporarily removed.
@@ -1731,7 +1794,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         .toList();
 
     // Build document prompts (from current input + earlier attachments)
-    // and clean markers in last user message
+    // and clean markers in last user message; optionally inject OCR text
     if (apiMessages.isNotEmpty) {
       // Find last user message index in apiMessages
       int lastUserIdx = -1;
@@ -1744,27 +1807,45 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             .replaceAll(RegExp(r"\[image:.*?\]"), '')
             .replaceAll(RegExp(r"\[file:.*?\]"), '')
             .trim();
-        // Collect unique document attachments from the entire (effective) conversation
-        // so previously uploaded files remain part of the context in subsequent turns.
+        // Collect unique document attachments and image attachments from the entire (effective) conversation
+        // so previously uploaded files/images remain part of the context in subsequent turns.
         final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
+        final Set<String> ocrImagePaths = <String>{};
+        final Set<String> videoPaths = <String>{};
         for (final m in source) {
           if (m.role != 'user') continue;
           final parsed = _parseInputFromRaw(m.content);
           for (final d in parsed.documents) {
             final path = d.path.trim();
             if (path.isEmpty) continue;
-            // Skip video files for text extraction; they will be passed as video to models that support it.
-            if (d.mime.toLowerCase().startsWith('video/')) continue;
+            if (d.mime.toLowerCase().startsWith('video/')) {
+              videoPaths.add(path);
+              continue;
+            }
             allDocs[path] = d;
+          }
+          for (final imgPath in parsed.imagePaths) {
+            final p = imgPath.trim();
+            if (p.isEmpty) continue;
+            if (videoPaths.contains(p)) continue;
+            ocrImagePaths.add(p);
           }
         }
         // Also include current input attachments (they may not yet be reflected in storage)
         for (final d in input.documents) {
           final path = d.path.trim();
           if (path.isEmpty) continue;
-           // Skip video files for text extraction; they will be passed as video to models that support it.
-           if (d.mime.toLowerCase().startsWith('video/')) continue;
+          if (d.mime.toLowerCase().startsWith('video/')) {
+            videoPaths.add(path);
+            continue;
+          }
           allDocs[path] = d;
+        }
+        for (final imgPath in input.imagePaths) {
+          final p = imgPath.trim();
+          if (p.isEmpty) continue;
+          if (videoPaths.contains(p)) continue;
+          ocrImagePaths.add(p);
         }
 
         // Build document prompts
@@ -1781,7 +1862,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             filePrompts.writeln();
           } catch (_) {}
         }
-        final merged = (filePrompts.toString() + cleaned).trim();
+        String merged = (filePrompts.toString() + cleaned).trim();
+
+        // When OCR is enabled and the chat model does NOT support image input,
+        // run OCR on all image attachments in the current effective context (including historical images)
+        // and prepend the recognized text.
+        if (settings.ocrEnabled &&
+            settings.ocrModelProvider != null &&
+            settings.ocrModelId != null &&
+            !_isImageInputModel(providerKey, modelId) &&
+            ocrImagePaths.isNotEmpty) {
+          try {
+            final ocrText = await _runOcrForImages(ocrImagePaths.toList());
+            if (ocrText != null && ocrText.trim().isNotEmpty) {
+              final buf = StringBuffer();
+              buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
+              buf.writeln('<image_file_ocr>');
+              buf.writeln(ocrText.trim());
+              buf.writeln('</image_file_ocr>');
+              buf.writeln();
+              merged = (buf.toString() + merged).trim();
+            }
+          } catch (_) {}
+        }
+
         final userText = merged.isEmpty ? cleaned : merged;
         // Apply message template if set
         final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
@@ -2115,14 +2219,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (d.mime.toLowerCase().startsWith('video/')) d.path,
     ];
 
+    // When OCR is enabled, we only send pure text (including OCR text) to the chat model
+    // and do not attach images/videos as binary inputs.
+    final bool ocrActive = settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null;
+
     final stream = ChatApiService.sendMessageStream(
       config: config,
       modelId: modelId,
       messages: apiMessages,
-      userImagePaths: [
-        ...input.imagePaths,
-        ...currentVideoPaths,
-      ],
+      userImagePaths: ocrActive
+          ? const <String>[]
+          : <String>[
+              ...input.imagePaths,
+              ...currentVideoPaths,
+            ],
       thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
       temperature: assistant?.temperature,
       topP: assistant?.topP,
@@ -2847,16 +2959,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             .replaceAll(RegExp(r"\[file:.*?\]"), '')
             .trim();
 
-        // Collect unique document attachments from the entire (effective) conversation
+        // Collect unique document and image attachments from the entire (effective) conversation
         final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
+        final Set<String> ocrImagePaths = <String>{};
+        final Set<String> videoPaths = <String>{};
         for (final m in source) {
           if (m.role != 'user') continue;
           final parsed = _parseInputFromRaw(m.content);
           for (final d in parsed.documents) {
             final path = d.path.trim();
             if (path.isEmpty) continue;
-            if (d.mime.toLowerCase().startsWith('video/')) continue;
+            if (d.mime.toLowerCase().startsWith('video/')) {
+              videoPaths.add(path);
+              continue;
+            }
             allDocs[path] = d;
+          }
+          for (final imgPath in parsed.imagePaths) {
+            final p = imgPath.trim();
+            if (p.isEmpty) continue;
+            if (videoPaths.contains(p)) continue;
+            ocrImagePaths.add(p);
           }
         }
 
@@ -2875,7 +2998,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           } catch (_) {}
         }
 
-        final merged = (filePrompts.toString() + cleaned).trim();
+        String merged = (filePrompts.toString() + cleaned).trim();
+
+        // OCR for historical + current images when chat model does not support direct image input.
+        if (settings.ocrEnabled &&
+            settings.ocrModelProvider != null &&
+            settings.ocrModelId != null &&
+            !_isImageInputModel(providerKey, modelId) &&
+            ocrImagePaths.isNotEmpty) {
+          try {
+            final ocrText = await _runOcrForImages(ocrImagePaths.toList());
+            if (ocrText != null && ocrText.trim().isNotEmpty) {
+              final buf = StringBuffer();
+              buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
+              buf.writeln('<image_file_ocr>');
+              buf.writeln(ocrText.trim());
+              buf.writeln('</image_file_ocr>');
+              buf.writeln();
+              merged = (buf.toString() + merged).trim();
+            }
+          } catch (_) {}
+        }
+
         final userText = merged.isEmpty ? cleaned : merged;
         // Apply message template if set (reusing assistant's template to keep parity with normal send)
         final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
@@ -3163,11 +3307,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Respect assistant streaming toggle: if off, buffer updates until done
     final bool streamOutput = assistant?.streamOutput ?? true;
 
+    // When OCR is enabled, resend/regenerate also uses pure text only for the chat model.
+    final bool ocrActive = settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null;
+
     final stream = ChatApiService.sendMessageStream(
       config: settings.getProviderConfig(providerKey),
       modelId: modelId,
       messages: apiMessages,
-      userImagePaths: lastUserImagePaths,
+      userImagePaths: ocrActive ? null : lastUserImagePaths,
       thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
       temperature: assistant?.temperature,
       topP: assistant?.topP,
@@ -4595,6 +4744,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
                                       defaultTargetPlatform == TargetPlatform.windows ||
                                       defaultTargetPlatform == TargetPlatform.linux;
+                                  final screenWidth = MediaQuery.sizeOf(context).width;
                                   final edited = isDesktop
                                       ? await showMessageEditDesktopDialog(context, message: message)
                                       : await showMessageEditSheet(context, message: message);
@@ -4785,8 +4935,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         if (isGeminiOfficial || isClaude || isOpenAIResponses) {
                           final ov = cfg.modelOverrides[mid2] as Map?;
                           final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-                          builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-                        }
+                                      builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
+                                    }
                       }
                       return ChatInputBar(
                         key: _inputBarKey,
@@ -4890,6 +5040,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
                           );
+                        },
+                        showOcrButton: (() {
+                          final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                              defaultTargetPlatform == TargetPlatform.windows ||
+                              defaultTargetPlatform == TargetPlatform.linux;
+                          if (!isDesktop) return false;
+                          return settings.ocrModelProvider != null && settings.ocrModelId != null;
+                        })(),
+                        ocrActive: settings.ocrEnabled,
+                        onToggleOcr: () async {
+                          final sp = context.read<SettingsProvider>();
+                          await sp.setOcrEnabled(!sp.ocrEnabled);
                         },
                       );
                     },
@@ -5903,6 +6065,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       Navigator.of(context).push(
                                         MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
                                       );
+                                    },
+                                    showOcrButton: settings.ocrModelProvider != null &&
+                                        settings.ocrModelId != null,
+                                    ocrActive: settings.ocrEnabled,
+                                    onToggleOcr: () async {
+                                      final sp = context.read<SettingsProvider>();
+                                      await sp.setOcrEnabled(!sp.ocrEnabled);
                                     },
                                     showMiniMapButton: true,
                                     onOpenMiniMap: () async {

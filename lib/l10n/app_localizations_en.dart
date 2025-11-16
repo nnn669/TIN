@@ -1136,6 +1136,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bottomToolsSheetSave => 'Save';
 
   @override
+  String get bottomToolsSheetOcr => 'Image OCR';
+
+  @override
   String get messageMoreSheetTitle => 'More Actions';
 
   @override
@@ -1764,6 +1767,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for translating message content; prefer fast & accurate models';
 
   @override
+  String get defaultModelPageOcrModelTitle => 'OCR Model';
+
+  @override
+  String get defaultModelPageOcrModelSubtitle =>
+      'Used for extracting text and descriptions from images';
+
+  @override
   String get defaultModelPagePromptLabel => 'Prompt';
 
   @override
@@ -1773,6 +1783,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get defaultModelPageTranslatePromptHint =>
       'Enter prompt template for translation';
+
+  @override
+  String get defaultModelPageOcrPromptHint =>
+      'Enter prompt template for OCR image understanding';
 
   @override
   String get defaultModelPageResetDefault => 'Reset to default';
@@ -3228,4 +3242,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messageWebViewForwardTooltip => 'Forward';
+
+  @override
+  String get chatInputBarOcrTooltip => 'Image OCR';
 }

@@ -1105,6 +1105,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bottomToolsSheetSave => '保存';
 
   @override
+  String get bottomToolsSheetOcr => 'OCR 文字识别';
+
+  @override
   String get messageMoreSheetTitle => '更多操作';
 
   @override
@@ -1710,6 +1713,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '用于翻译消息内容的模型，推荐使用快速且准确的模型';
 
   @override
+  String get defaultModelPageOcrModelTitle => 'OCR 模型';
+
+  @override
+  String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
+
+  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
@@ -1717,6 +1726,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
+
+  @override
+  String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -3117,6 +3129,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get messageWebViewForwardTooltip => '前进';
+
+  @override
+  String get chatInputBarOcrTooltip => 'OCR 文字识别';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -4220,6 +4235,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get bottomToolsSheetSave => '保存';
 
   @override
+  String get bottomToolsSheetOcr => 'OCR 文字识别';
+
+  @override
   String get messageMoreSheetTitle => '更多操作';
 
   @override
@@ -4825,6 +4843,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '用于翻译消息内容的模型，推荐使用快速且准确的模型';
 
   @override
+  String get defaultModelPageOcrModelTitle => 'OCR 模型';
+
+  @override
+  String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
+
+  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
@@ -4832,6 +4856,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
+
+  @override
+  String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -6232,6 +6259,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get messageWebViewForwardTooltip => '前进';
+
+  @override
+  String get chatInputBarOcrTooltip => 'OCR 文字识别';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7335,6 +7365,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get bottomToolsSheetSave => '儲存';
 
   @override
+  String get bottomToolsSheetOcr => 'OCR 文字辨識';
+
+  @override
   String get messageMoreSheetTitle => '更多操作';
 
   @override
@@ -7940,6 +7973,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '用於翻譯訊息內容的模型，推薦使用快速且準確的模型';
 
   @override
+  String get defaultModelPageOcrModelTitle => 'OCR 模型';
+
+  @override
+  String get defaultModelPageOcrModelSubtitle => '用於對圖片執行文字辨識的模型';
+
+  @override
   String get defaultModelPagePromptLabel => '提示詞';
 
   @override
@@ -7947,6 +7986,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get defaultModelPageTranslatePromptHint => '輸入用於翻譯的提示詞範本';
+
+  @override
+  String get defaultModelPageOcrPromptHint => '輸入用於 OCR 辨識的提示詞範本';
 
   @override
   String get defaultModelPageResetDefault => '重設為預設';
@@ -9348,4 +9390,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get messageWebViewForwardTooltip => '前進';
+
+  @override
+  String get chatInputBarOcrTooltip => 'OCR 文字辨識';
 }

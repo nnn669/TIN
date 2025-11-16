@@ -423,6 +423,7 @@
   "bottomToolsSheetPromptHint": "Enter prompt text to inject",
   "bottomToolsSheetResetDefault": "Reset to default",
   "bottomToolsSheetSave": "Save",
+  "bottomToolsSheetOcr": "Image OCR",
   "messageMoreSheetTitle": "More Actions",
   "messageMoreSheetSelectCopy": "Select & Copy",
   "messageMoreSheetRenderWebView": "Render Web View",
@@ -746,9 +747,12 @@
   "defaultModelPageTitleModelSubtitle": "Used for summarizing conversation titles; prefer fast & cheap models",
   "defaultModelPageTranslateModelTitle": "Translation Model",
   "defaultModelPageTranslateModelSubtitle": "Used for translating message content; prefer fast & accurate models",
+  "defaultModelPageOcrModelTitle": "OCR Model",
+  "defaultModelPageOcrModelSubtitle": "Used for extracting text and descriptions from images",
   "defaultModelPagePromptLabel": "Prompt",
   "defaultModelPageTitlePromptHint": "Enter prompt template for title summarization",
   "defaultModelPageTranslatePromptHint": "Enter prompt template for translation",
+  "defaultModelPageOcrPromptHint": "Enter prompt template for OCR image understanding",
   "defaultModelPageResetDefault": "Reset to default",
   "defaultModelPageSave": "Save",
   "defaultModelPageTitleVars": "Vars: content: {contentVar}, locale: {localeVar}",
@@ -1288,5 +1292,6 @@
   "messageWebViewConsoleLogs": "Console Logs",
   "messageWebViewNoConsoleMessages": "No console messages",
   "messageWebViewRefreshTooltip": "Refresh",
-  "messageWebViewForwardTooltip": "Forward"
+  "messageWebViewForwardTooltip": "Forward",
+  "chatInputBarOcrTooltip": "Image OCR"
 }

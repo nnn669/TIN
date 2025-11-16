@@ -75,6 +75,9 @@ class ChatInputBar extends StatefulWidget {
     this.showQuickPhraseButton = false,
     this.onQuickPhrase,
     this.onLongPressQuickPhrase,
+    this.showOcrButton = false,
+    this.ocrActive = false,
+    this.onToggleOcr,
   });
 
   final ValueChanged<ChatInputData>? onSend;
@@ -111,6 +114,9 @@ class ChatInputBar extends StatefulWidget {
   final bool showQuickPhraseButton;
   final VoidCallback? onQuickPhrase;
   final VoidCallback? onLongPressQuickPhrase;
+  final bool showOcrButton;
+  final bool ocrActive;
+  final VoidCallback? onToggleOcr;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -764,6 +770,23 @@ class _ChatInputBarState extends State<ChatInputBar> {
               onTap: widget.onOpenMiniMap,
             ),
             menu: DesktopContextMenuItem(icon: Lucide.Map, label: l10n.miniMapTooltip, onTap: widget.onOpenMiniMap),
+          ));
+        }
+
+        if (widget.showOcrButton && widget.onToggleOcr != null) {
+          actions.add(_OverflowAction(
+            width: normalButtonW,
+            builder: () => _CompactIconButton(
+              tooltip: l10n.chatInputBarOcrTooltip,
+              icon: Lucide.Eye,
+              active: widget.ocrActive,
+              onTap: widget.onToggleOcr,
+            ),
+            menu: DesktopContextMenuItem(
+              icon: Lucide.Eye,
+              label: l10n.chatInputBarOcrTooltip,
+              onTap: widget.onToggleOcr,
+            ),
           ));
         }
 

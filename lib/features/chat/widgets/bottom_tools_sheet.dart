@@ -7,8 +7,10 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../core/services/instruction_injection_store.dart';
 import '../../../core/models/instruction_injection.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
+import '../../model/widgets/ocr_prompt_sheet.dart';
 
 class BottomToolsSheet extends StatelessWidget {
   const BottomToolsSheet({super.key, this.onCamera, this.onPhotos, this.onUpload, this.onClear, this.clearLabel});
@@ -165,8 +167,10 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<InstructionInjectionProvider>();
+    final settings = context.watch<SettingsProvider>();
     final items = provider.items;
     final activeId = provider.activeId;
+    final hasOcrModel = settings.ocrModelProvider != null && settings.ocrModelId != null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -203,6 +207,23 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
                 onLongPress: () => _editInstructionInjectionPrompt(context, items[i]),
               ),
             ),
+        ],
+        if (hasOcrModel) ...[
+          const SizedBox(height: 8),
+          _row(
+            icon: Lucide.Eye,
+            label: l10n.bottomToolsSheetOcr,
+            selected: settings.ocrEnabled,
+            onTap: () async {
+              Haptics.light();
+              final sp = context.read<SettingsProvider>();
+              await sp.setOcrEnabled(!sp.ocrEnabled);
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).maybePop();
+              }
+            },
+            onLongPress: () => showOcrPromptSheet(context),
+          ),
         ],
         const SizedBox(height: 8),
         _row(

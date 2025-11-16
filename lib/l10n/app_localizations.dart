@@ -2255,6 +2255,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get bottomToolsSheetSave;
 
+  /// No description provided for @bottomToolsSheetOcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Image OCR'**
+  String get bottomToolsSheetOcr;
+
   /// No description provided for @messageMoreSheetTitle.
   ///
   /// In en, this message translates to:
@@ -3383,6 +3389,18 @@ abstract class AppLocalizations {
   /// **'Used for translating message content; prefer fast & accurate models'**
   String get defaultModelPageTranslateModelSubtitle;
 
+  /// No description provided for @defaultModelPageOcrModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'OCR Model'**
+  String get defaultModelPageOcrModelTitle;
+
+  /// No description provided for @defaultModelPageOcrModelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for extracting text and descriptions from images'**
+  String get defaultModelPageOcrModelSubtitle;
+
   /// No description provided for @defaultModelPagePromptLabel.
   ///
   /// In en, this message translates to:
@@ -3400,6 +3418,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter prompt template for translation'**
   String get defaultModelPageTranslatePromptHint;
+
+  /// No description provided for @defaultModelPageOcrPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter prompt template for OCR image understanding'**
+  String get defaultModelPageOcrPromptHint;
 
   /// No description provided for @defaultModelPageResetDefault.
   ///
@@ -6118,6 +6142,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward'**
   String get messageWebViewForwardTooltip;
+
+  /// No description provided for @chatInputBarOcrTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Image OCR'**
+  String get chatInputBarOcrTooltip;
 }
 
 class _AppLocalizationsDelegate
