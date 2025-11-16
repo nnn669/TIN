@@ -19,6 +19,7 @@ class DesktopTrayController with TrayListener, WindowListener {
   bool _showTraySetting = false;
   bool _minimizeToTrayOnClose = false;
   String _localeKey = '';
+  bool _contextMenuOpen = false;
 
   /// Sync tray state from settings & current localization.
   /// Safe to call multiple times; initialization is performed lazily.
@@ -79,25 +80,29 @@ class DesktopTrayController with TrayListener, WindowListener {
 
   Future<void> _ensureTrayIconAndMenu(AppLocalizations l10n) async {
     if (!_isDesktop) return;
-    // Use platform-specific tray icons:
-    // - Windows: .ico (recommended by tray_manager)
-    // - macOS: dedicated PNG (assets/icon_mac.png)
-    // - Linux/others: fallback PNG in assets/icons/
+
+    // Use platform-specific tray icons (mirrors Gopeed's approach):
+    // - Windows: multi-size ICO for crisp scaling
+    // - macOS: template PNG so the system can adapt to light/dark menu bar
+    // - Linux/others: regular PNG asset
     final platform = defaultTargetPlatform;
-    String iconPath;
-    if (platform == TargetPlatform.windows) {
-      iconPath = 'assets/app_icon.ico';
-    } else if (platform == TargetPlatform.macOS) {
-      iconPath = 'assets/icon_mac.png';
-    } else {
-      iconPath = 'assets/icons/kelivo.png';
+    try {
+      if (platform == TargetPlatform.windows) {
+        await trayManager.setIcon('assets/app_icon.ico');
+      } else if (platform == TargetPlatform.macOS) {
+        await trayManager.setIcon('assets/icon_mac.png', isTemplate: true);
+      } else {
+        await trayManager.setIcon('assets/icons/kelivo.png');
+      }
+    } catch (_) {}
+
+    // Some Linux environments do not support tooltip; keep the call
+    // consistent with Gopeed and skip it there.
+    if (platform != TargetPlatform.linux) {
+      try {
+        await trayManager.setToolTip('Kelivo');
+      } catch (_) {}
     }
-    try {
-      await trayManager.setIcon(iconPath, isTemplate: true);
-    } catch (_) {}
-    try {
-      await trayManager.setToolTip('Kelivo');
-    } catch (_) {}
     try {
       final menu = Menu(items: [
         MenuItem(
@@ -125,11 +130,23 @@ class DesktopTrayController with TrayListener, WindowListener {
   Future<void> _exitApp() async {
     if (!_isDesktop) return;
     try {
-      // Allow window to actually close, then close it.
-      await windowManager.setPreventClose(false);
-    } catch (_) {}
-    try {
-      await windowManager.close();
+      // On Windows we may have `preventClose` enabled to support
+      // "close to tray". Temporarily disable it and send a normal
+      // close so the window can exit immediately without being
+      // intercepted by the minimize‑to‑tray logic.
+      if (defaultTargetPlatform == TargetPlatform.windows) {
+        try {
+          await windowManager.setPreventClose(false);
+        } catch (_) {}
+        try {
+          await windowManager.close();
+          return;
+        } catch (_) {}
+      }
+
+      // Other desktop platforms (and Windows fallback): destroy the
+      // window so the process exits cleanly.
+      await windowManager.destroy();
     } catch (_) {}
   }
 
@@ -143,11 +160,29 @@ class DesktopTrayController with TrayListener, WindowListener {
   }
 
   @override
-  void onTrayIconRightMouseDown() {
-    // Right‑click:弹出菜单
+  void onTrayIconRightMouseDown() async {
+    // Right‑click: 弹出托盘菜单。
+    // 使用内部标记防止在一次交互周期内重复弹出，
+    // 否则在某些 Windows 环境下会看到第二个偏移的菜单。
+    if (_contextMenuOpen) {
+      return;
+    }
+    _contextMenuOpen = true;
     try {
-      trayManager.popUpContextMenu(bringAppToFront: true);
+      // Windows 需要在调用 TrackPopupMenu 前把窗口置为前台，
+      // 否则点击其他地方时菜单可能不会自动关闭。
+      await trayManager.popUpContextMenu(bringAppToFront: true);
     } catch (_) {}
+    // 无论是点击菜单项还是点击其他地方关闭菜单，
+    // popUpContextMenu 都会在菜单关闭后返回，这里统一重置标记。
+    _contextMenuOpen = false;
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    // 任一菜单项被点击视为一次菜单交互结束，
+    // 额外保险地解除防抖标记（即使 Future 尚未完成）。
+    _contextMenuOpen = false;
   }
 
   // ===== WindowListener =====

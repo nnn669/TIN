@@ -223,6 +223,14 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
+
+    case WM_CONTEXTMENU:
+      // Swallow default system context-menu for the main window.
+      // Otherwise, when the tray plugin brings the app to front and
+      // shows its own popup menu, Windows may also show the standard
+      // window system menu at an offset position, making it look like
+      // a "second" phantom menu and causing clicks to appear invalid.
+      return 0;
   }
 
   return DefWindowProc(window_handle_, message, wparam, lparam);
