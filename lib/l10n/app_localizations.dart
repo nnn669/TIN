@@ -1535,6 +1535,12 @@ abstract class AppLocalizations {
   /// **'Nickname'**
   String get assistantEditVariableNickname;
 
+  /// No description provided for @assistantEditVariableAssistantName.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant Name'**
+  String get assistantEditVariableAssistantName;
+
   /// No description provided for @assistantEditMessageTemplateTitle.
   ///
   /// In en, this message translates to:

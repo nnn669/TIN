@@ -34,6 +34,7 @@ class PromptTransformer {
       '{device_info}': device,
       '{battery_level}': battery,
       '{nickname}': userNickname,
+      '{assistant_name}': assistant.name,
     };
   }
 
@@ -61,4 +62,3 @@ class PromptTransformer {
         .replaceAll('{{ date }}', date);
   }
 }
-

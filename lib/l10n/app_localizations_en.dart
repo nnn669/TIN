@@ -765,6 +765,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantEditVariableNickname => 'Nickname';
 
   @override
+  String get assistantEditVariableAssistantName => 'Assistant Name';
+
+  @override
   String get assistantEditMessageTemplateTitle => 'Message Template';
 
   @override

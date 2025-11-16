@@ -743,6 +743,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditVariableNickname => '用户昵称';
 
   @override
+  String get assistantEditVariableAssistantName => '助手名称';
+
+  @override
   String get assistantEditMessageTemplateTitle => '聊天内容模板';
 
   @override
@@ -3855,6 +3858,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantEditVariableNickname => '用户昵称';
 
   @override
+  String get assistantEditVariableAssistantName => '助手名称';
+
+  @override
   String get assistantEditMessageTemplateTitle => '聊天内容模板';
 
   @override
@@ -6965,6 +6971,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantEditVariableNickname => '使用者暱稱';
+
+  @override
+  String get assistantEditVariableAssistantName => '助理名稱';
 
   @override
   String get assistantEditMessageTemplateTitle => '聊天內容範本';

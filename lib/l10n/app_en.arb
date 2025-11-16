@@ -293,6 +293,7 @@
   "assistantEditVariableDeviceInfo": "Device Info",
   "assistantEditVariableBatteryLevel": "Battery Level",
   "assistantEditVariableNickname": "Nickname",
+  "assistantEditVariableAssistantName": "Assistant Name",
   "assistantEditMessageTemplateTitle": "Message Template",
   "assistantEditVariableRole": "Role",
   "assistantEditVariableMessage": "Message",

@@ -181,6 +181,7 @@
   "assistantEditVariableDeviceInfo": "裝置資訊",
   "assistantEditVariableBatteryLevel": "電池電量",
   "assistantEditVariableNickname": "使用者暱稱",
+  "assistantEditVariableAssistantName": "助理名稱",
   "assistantEditMessageTemplateTitle": "聊天內容範本",
   "assistantEditVariableRole": "角色",
   "assistantEditVariableMessage": "內容",
