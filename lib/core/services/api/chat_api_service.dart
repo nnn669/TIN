@@ -991,15 +991,12 @@ class ChatApiService {
             parts.add({'type': 'image_url', 'image_url': {'url': url}});
           }
           if (hasAttachedImages) {
-            final bool isDashscope = host.contains('dashscope') || host.contains('aliyun');
             for (final p in userImagePaths!) {
               final bool isInlineUrl = p.startsWith('http') || p.startsWith('data:');
               final String mime = isInlineUrl ? _mimeFromDataUrl(p) : _mimeFromPath(p);
               final bool isVideo = mime.toLowerCase().startsWith('video/');
-              // For non-DashScope providers, ignore video attachments to avoid invalid image payloads.
-              if (!isDashscope && isVideo) continue;
               final String dataUrl = isInlineUrl ? p : await _encodeBase64File(p, withPrefix: true);
-              if (isDashscope && isVideo) {
+              if (isVideo) {
                 parts.add({'type': 'video_url', 'video_url': {'url': dataUrl}});
               } else {
                 parts.add({'type': 'image_url', 'image_url': {'url': dataUrl}});
