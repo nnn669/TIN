@@ -125,6 +125,13 @@ bool Win32Window::Create(const std::wstring& title,
                          const Size& size) {
   Destroy();
 
+  // Before creating a new window, first check whether there is already an
+  // existing window with the same class name and title. If so, bring that
+  // window to the foreground instead of creating another one.
+  if (SendAppLinkToInstance(title)) {
+    return false;
+  }
+
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
 
@@ -253,6 +260,45 @@ RECT Win32Window::GetClientArea() {
   RECT frame;
   GetClientRect(window_handle_, &frame);
   return frame;
+}
+
+// static
+bool Win32Window::SendAppLinkToInstance(const std::wstring& title) {
+  // 1. Look for a window that matches the Flutter runner window class and the
+  //    given title.
+  HWND hwnd = ::FindWindow(kWindowClassName, title.c_str());
+
+  if (hwnd) {
+    // 2. Query the current placement so we can restore it appropriately.
+    WINDOWPLACEMENT place;
+    place.length = sizeof(WINDOWPLACEMENT);
+    if (::GetWindowPlacement(hwnd, &place)) {
+      switch (place.showCmd) {
+        case SW_SHOWMAXIMIZED:
+          ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+          break;
+        case SW_SHOWMINIMIZED:
+          ::ShowWindow(hwnd, SW_RESTORE);
+          break;
+        default:
+          ::ShowWindow(hwnd, SW_NORMAL);
+          break;
+      }
+    } else {
+      // If we cannot query placement, just try to show it normally.
+      ::ShowWindow(hwnd, SW_NORMAL);
+    }
+
+    // 3. Bring the window to the front.
+    ::SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+                   SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE);
+    ::SetForegroundWindow(hwnd);
+
+    return true;
+  }
+
+  // No existing window found.
+  return false;
 }
 
 HWND Win32Window::GetHandle() {

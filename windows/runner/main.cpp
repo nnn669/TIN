@@ -13,6 +13,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     CreateAndAttachConsole();
   }
 
+  // Enforce a single running instance on Windows using a named mutex.
+  HANDLE instance_mutex =
+      ::CreateMutexW(nullptr, TRUE, L"KelivoMutex");
+  if (instance_mutex != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {
+    // Another instance is already running; try to bring its window to front
+    // instead of creating a new one.
+    Win32Window::SendAppLinkToInstance(L"kelivo");
+    return 0;
+  }
+
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -31,6 +41,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"kelivo", origin, size)) {
+    ::CoUninitialize();
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
