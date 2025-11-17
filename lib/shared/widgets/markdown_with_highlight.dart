@@ -6,6 +6,7 @@ import 'package:gpt_markdown/custom_widgets/markdown_config.dart' show GptMarkdo
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark-reasonable.dart';
+import 'package:highlight/highlight.dart' show highlight, Node;
 import '../../icons/lucide_adapter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
@@ -1034,7 +1035,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
 
                       if (isDesktop) {
                         // Desktop: auto wrap, selectable, no height limit, no scroll
-                        return HighlightView(
+                        return SelectableHighlightView(
                           _trimTrailingNewlines(widget.code),
                           language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
@@ -1054,7 +1055,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
 
                       if (shouldWrap) {
                         // Mobile with wrap enabled: selectable, auto wrap
-                        return HighlightView(
+                        return SelectableHighlightView(
                           _trimTrailingNewlines(widget.code),
                           language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
@@ -1073,7 +1074,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         primary: false,
-                        child: HighlightView(
+                        child: SelectableHighlightView(
                           _trimTrailingNewlines(widget.code),
                           language: MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ?? 'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
@@ -1373,23 +1374,21 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                           () {
                             final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
                             if (!isDesktop) {
-                              return SelectionContainer.disabled(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: HighlightView(
-                                    widget.code,
-                                    language: 'plaintext',
-                                    theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                                      Theme.of(context).brightness == Brightness.dark
-                                          ? atomOneDarkReasonableTheme
-                                          : githubTheme,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    textStyle: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 13,
-                                      height: 1.5,
-                                    ),
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: SelectableHighlightView(
+                                  widget.code,
+                                  language: 'plaintext',
+                                  theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                    Theme.of(context).brightness == Brightness.dark
+                                        ? atomOneDarkReasonableTheme
+                                        : githubTheme,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  textStyle: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 13,
+                                    height: 1.5,
                                   ),
                                 ),
                               );
@@ -1414,23 +1413,21 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                   notificationPredicate: (notif) => notif.metrics.axis == Axis.vertical,
                                   child: SingleChildScrollView(
                                     controller: _vMermaidScrollController,
-                                    child: SelectionContainer.disabled(
-                                      child: SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: HighlightView(
-                                          widget.code,
-                                          language: 'plaintext',
-                                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                                            Theme.of(context).brightness == Brightness.dark
-                                                ? atomOneDarkReasonableTheme
-                                                : githubTheme,
-                                          ),
-                                          padding: EdgeInsets.zero,
-                                          textStyle: const TextStyle(
-                                            fontFamily: 'monospace',
-                                            fontSize: 13,
-                                            height: 1.5,
-                                          ),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SelectableHighlightView(
+                                        widget.code,
+                                        language: 'plaintext',
+                                        theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                          Theme.of(context).brightness == Brightness.dark
+                                              ? atomOneDarkReasonableTheme
+                                              : githubTheme,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        textStyle: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 13,
+                                          height: 1.5,
                                         ),
                                       ),
                                     ),
@@ -2094,5 +2091,62 @@ class BackslashEscapeMd extends InlineMd {
     final ch = m.group(1) ?? '';
     // Render only the escaped character (drop the backslash)
     return TextSpan(text: ch, style: config.style);
+  }
+}
+
+/// A selectable version of HighlightView that allows users to select
+/// and copy portions of the code instead of just the entire block.
+class SelectableHighlightView extends StatelessWidget {
+  const SelectableHighlightView(
+    this.source, {
+    super.key,
+    this.language,
+    this.theme = const {},
+    this.padding,
+    this.textStyle,
+  });
+
+  final String source;
+  final String? language;
+  final Map<String, TextStyle> theme;
+  final EdgeInsetsGeometry? padding;
+  final TextStyle? textStyle;
+
+  /// Converts a highlight Node tree to a TextSpan tree with appropriate styling
+  List<TextSpan> _convertNodes(List<Node> nodes) {
+    final List<TextSpan> spans = [];
+
+    for (final node in nodes) {
+      if (node.value != null) {
+        // Leaf node with text content
+        spans.add(TextSpan(
+          text: node.value,
+          style: theme[node.className],
+        ));
+      } else if (node.children != null) {
+        // Node with children - recurse
+        spans.add(TextSpan(
+          children: _convertNodes(node.children!),
+          style: theme[node.className],
+        ));
+      }
+    }
+
+    return spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final result = highlight.parse(source, language: language);
+    final codeTextSpans = _convertNodes(result.nodes ?? []);
+
+    return SelectableText.rich(
+      TextSpan(
+        style: textStyle,
+        children: codeTextSpans.isEmpty
+            ? [TextSpan(text: source)]
+            : codeTextSpans,
+      ),
+    );
   }
 }

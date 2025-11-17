@@ -1195,25 +1195,110 @@ class _ChatInputBarState extends State<ChatInputBar> {
                               keyboardType: TextInputType.multiline,
                               textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
                               onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
-                              // Unify context menu across platforms; add extra item on iOS only.
+                              // Custom context menu: on iOS we build our own toolbar
+                              // so there is exactly one "Paste" entry that also supports images.
                               contextMenuBuilder: (BuildContext context, EditableTextState state) {
-                                final items = <ContextMenuButtonItem>[
-                                  ...state.contextMenuButtonItems,
-                                ];
-                                try {
-                                  if (Platform.isIOS) {
-                                    final l10n = AppLocalizations.of(context)!;
+                                if (Platform.isIOS) {
+                                  final items = <ContextMenuButtonItem>[];
+                                  try {
+                                    final appL10n = AppLocalizations.of(context)!;
+                                    final materialL10n = MaterialLocalizations.of(context);
+                                    final value = _controller.value;
+                                    final selection = value.selection;
+                                    final hasSelection = selection.isValid && !selection.isCollapsed;
+                                    final hasText = value.text.isNotEmpty;
+
+                                    // Cut
+                                    if (hasSelection) {
+                                      items.add(
+                                        ContextMenuButtonItem(
+                                          onPressed: () async {
+                                            try {
+                                              final start = selection.start;
+                                              final end = selection.end;
+                                              final text = value.text.substring(start, end);
+                                              await Clipboard.setData(ClipboardData(text: text));
+                                              final newText = value.text.replaceRange(start, end, '');
+                                              _controller.value = value.copyWith(
+                                                text: newText,
+                                                selection: TextSelection.collapsed(offset: start),
+                                              );
+                                            } catch (_) {}
+                                            state.hideToolbar();
+                                          },
+                                          label: materialL10n.cutButtonLabel,
+                                        ),
+                                      );
+                                    }
+
+                                    // Copy
+                                    if (hasSelection) {
+                                      items.add(
+                                        ContextMenuButtonItem(
+                                          onPressed: () async {
+                                            try {
+                                              final start = selection.start;
+                                              final end = selection.end;
+                                              final text = value.text.substring(start, end);
+                                              await Clipboard.setData(ClipboardData(text: text));
+                                            } catch (_) {}
+                                            state.hideToolbar();
+                                          },
+                                          label: materialL10n.copyButtonLabel,
+                                        ),
+                                      );
+                                    }
+
+                                    // Paste (text or image via _handlePasteFromClipboard)
+                                    items.add(
+                                      ContextMenuButtonItem(
+                                        onPressed: () {
+                                          _handlePasteFromClipboard();
+                                          state.hideToolbar();
+                                        },
+                                        label: materialL10n.pasteButtonLabel,
+                                      ),
+                                    );
+
+                                    // Insert newline
                                     items.add(
                                       ContextMenuButtonItem(
                                         onPressed: () {
                                           _insertNewlineAtCursor();
                                           state.hideToolbar();
                                         },
-                                        label: l10n.chatInputBarInsertNewline,
+                                        label: appL10n.chatInputBarInsertNewline,
                                       ),
                                     );
-                                  }
-                                } catch (_) {}
+
+                                    // Select all
+                                    if (hasText) {
+                                      items.add(
+                                        ContextMenuButtonItem(
+                                          onPressed: () {
+                                            try {
+                                              _controller.selection = TextSelection(
+                                                baseOffset: 0,
+                                                extentOffset: value.text.length,
+                                              );
+                                            } catch (_) {}
+                                            state.hideToolbar();
+                                          },
+                                          label: materialL10n.selectAllButtonLabel,
+                                        ),
+                                      );
+                                    }
+                                  } catch (_) {}
+                                  return AdaptiveTextSelectionToolbar.buttonItems(
+                                    anchors: state.contextMenuAnchors,
+                                    buttonItems: items,
+                                  );
+                                }
+
+                                // Other platforms: keep default behavior.
+                                final items = <ContextMenuButtonItem>[
+                                  ...state.contextMenuButtonItems,
+                                ];
                                 return AdaptiveTextSelectionToolbar.buttonItems(
                                   anchors: state.contextMenuAnchors,
                                   buttonItems: items,
