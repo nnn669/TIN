@@ -885,6 +885,7 @@
   "providerDetailPageTestConnectionTitle": "Test Connection",
   "providerDetailPageSelectModelButton": "Select Model",
   "providerDetailPageChangeButton": "Change",
+  "providerDetailPageUseStreamingLabel": "Use Streaming",
   "providerDetailPageTestingMessage": "Testing…",
   "providerDetailPageTestSuccessMessage": "Success",
   "providersPageTitle": "Providers",

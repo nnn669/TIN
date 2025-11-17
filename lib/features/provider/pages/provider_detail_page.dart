@@ -1987,6 +1987,7 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
   String? _selectedModelId;
   _TestState _state = _TestState.idle;
   String _errorMessage = '';
+  bool _useStream = false;
 
   @override
   Widget build(BuildContext context) {
@@ -2072,6 +2073,23 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
               TextButton(onPressed: _pickModel, child: Text(l10n.providerDetailPageChangeButton)),
             ],
           ),
+        if (_selectedModelId != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                l10n.providerDetailPageUseStreamingLabel,
+                style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.9)),
+              ),
+              const SizedBox(width: 8),
+              IosSwitch(
+                value: _useStream,
+                onChanged: (v) => setState(() => _useStream = v),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -2166,7 +2184,7 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
     });
     try {
       final cfg = context.read<SettingsProvider>().getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
-      await ProviderManager.testConnection(cfg, _selectedModelId!);
+      await ProviderManager.testConnection(cfg, _selectedModelId!, useStream: _useStream);
       if (!mounted) return;
       setState(() => _state = _TestState.success);
     } catch (e) {

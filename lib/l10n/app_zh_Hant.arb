@@ -664,6 +664,7 @@
   "providerDetailPageTestConnectionTitle": "測試連線",
   "providerDetailPageSelectModelButton": "選擇模型",
   "providerDetailPageChangeButton": "更換",
+  "providerDetailPageUseStreamingLabel": "使用串流",
   "providerDetailPageTestingMessage": "正在測試…",
   "providerDetailPageTestSuccessMessage": "測試成功",
   "providersPageTitle": "供應商",

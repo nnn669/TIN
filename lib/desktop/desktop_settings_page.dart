@@ -2662,6 +2662,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
     String? selectedModelId;
     _TestState state = _TestState.idle;
     String errorMessage = '';
+    bool useStream = false;
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -2682,7 +2683,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
           try {
             final sp = context.read<SettingsProvider>();
             final cfg = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
-            await ProviderManager.testConnection(cfg, selectedModelId!);
+            await ProviderManager.testConnection(cfg, selectedModelId!, useStream: useStream);
             state = _TestState.success;
           } catch (e) {
             state = _TestState.error;
@@ -2712,64 +2713,83 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
             color = cs.error;
             break;
         }
-        return Dialog(
-          backgroundColor: cs.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(child: Text(l10n.providerDetailPageTestConnectionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
-                  const SizedBox(height: 14),
-                  GestureDetector(
-                    onTap: pickModel,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.outlineVariant.withOpacity(0.12), width: 0.6),
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return Dialog(
+              backgroundColor: cs.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(child: Text(l10n.providerDetailPageTestConnectionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+                      const SizedBox(height: 14),
+                      GestureDetector(
+                        onTap: pickModel,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cs.outlineVariant.withOpacity(0.12), width: 0.6),
+                          ),
+                          child: Row(
+                            children: [
+                              if (selectedModelId != null) _BrandCircle(name: selectedModelId!, size: 22),
+                              if (selectedModelId != null) const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  selectedModelId ?? l10n.providerDetailPageSelectModelButton,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: Row(
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          if (selectedModelId != null) _BrandCircle(name: selectedModelId!, size: 22),
-                          if (selectedModelId != null) const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              selectedModelId ?? l10n.providerDetailPageSelectModelButton,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              l10n.providerDetailPageUseStreamingLabel,
+                              style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.9)),
                             ),
+                          ),
+                          IosSwitch(
+                            value: useStream,
+                            onChanged: (v) => setState(() => useStream = v),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (state == _TestState.loading)
-                    Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)))
-                  else if (state != _TestState.idle)
-                    Center(child: Text(message, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 14, fontWeight: state == _TestState.success ? FontWeight.w700 : FontWeight.w600))),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      _DeskIosButton(label: l10n.providerDetailPageCancelButton, filled: false, dense: true, onTap: () => Navigator.of(ctx).maybePop()),
-                      const SizedBox(width: 8),
-                      _DeskIosButton(label: l10n.providerDetailPageTestButton, filled: true, dense: true, onTap: canTest ? doTest : () {}),
+                      const SizedBox(height: 14),
+                      if (state == _TestState.loading)
+                        Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)))
+                      else if (state != _TestState.idle)
+                        Center(child: Text(message, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 14, fontWeight: state == _TestState.success ? FontWeight.w700 : FontWeight.w600))),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _DeskIosButton(label: l10n.providerDetailPageCancelButton, filled: false, dense: true, onTap: () => Navigator.of(ctx).maybePop()),
+                          const SizedBox(width: 8),
+                          _DeskIosButton(label: l10n.providerDetailPageTestButton, filled: true, dense: true, onTap: canTest ? doTest : () {}),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
