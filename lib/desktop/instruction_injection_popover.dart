@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -9,48 +8,37 @@ import '../core/providers/instruction_injection_provider.dart';
 import '../icons/lucide_adapter.dart';
 import '../l10n/app_localizations.dart';
 
-Future<InstructionInjection?> showDesktopInstructionInjectionPopover(
+Future<void> showDesktopInstructionInjectionPopover(
   BuildContext context, {
   required GlobalKey anchorKey,
   required List<InstructionInjection> items,
-  required String? activeId,
 }) async {
-  if (items.isEmpty) return null;
+  if (items.isEmpty) return;
   final overlay = Overlay.of(context);
-  if (overlay == null) return null;
+  if (overlay == null) return;
   final keyContext = anchorKey.currentContext;
-  if (keyContext == null) return null;
+  if (keyContext == null) return;
 
   final box = keyContext.findRenderObject() as RenderBox?;
-  if (box == null) return null;
+  if (box == null) return;
   final offset = box.localToGlobal(Offset.zero);
   final size = box.size;
   final anchorRect = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
 
-  final completer = Completer<InstructionInjection?>();
   late OverlayEntry entry;
   entry = OverlayEntry(
     builder: (ctx) => _InstructionInjectionPopover(
       anchorRect: anchorRect,
       anchorWidth: size.width,
       items: items,
-      activeId: activeId,
-      onSelect: (p) {
-        try {
-          entry.remove();
-        } catch (_) {}
-        if (!completer.isCompleted) completer.complete(p);
-      },
       onClose: () {
         try {
           entry.remove();
         } catch (_) {}
-        if (!completer.isCompleted) completer.complete(null);
       },
     ),
   );
   overlay.insert(entry);
-  return completer.future;
 }
 
 class _InstructionInjectionPopover extends StatefulWidget {
@@ -58,16 +46,12 @@ class _InstructionInjectionPopover extends StatefulWidget {
     required this.anchorRect,
     required this.anchorWidth,
     required this.items,
-    required this.activeId,
-    required this.onSelect,
     required this.onClose,
   });
 
   final Rect anchorRect;
   final double anchorWidth;
   final List<InstructionInjection> items;
-  final String? activeId;
-  final ValueChanged<InstructionInjection> onSelect;
   final VoidCallback onClose;
 
   @override
@@ -150,11 +134,6 @@ class _InstructionInjectionPopoverState extends State<_InstructionInjectionPopov
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                         child: _InstructionInjectionList(
                           items: widget.items,
-                          activeId: widget.activeId,
-                          onSelect: (p) async {
-                            if (_closing) return;
-                            widget.onSelect(p);
-                          },
                           onClose: _close,
                         ),
                       ),
@@ -204,13 +183,9 @@ class _GlassPanel extends StatelessWidget {
 class _InstructionInjectionList extends StatelessWidget {
   const _InstructionInjectionList({
     required this.items,
-    required this.activeId,
-    required this.onSelect,
     required this.onClose,
   });
   final List<InstructionInjection> items;
-  final String? activeId;
-  final ValueChanged<InstructionInjection> onSelect;
   final VoidCallback onClose;
 
   @override
@@ -221,8 +196,6 @@ class _InstructionInjectionList extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 420),
         child: _InstructionInjectionListInner(
           items: items,
-          activeId: activeId,
-          onSelect: onSelect,
           onClose: onClose,
         ),
       ),
@@ -233,19 +206,17 @@ class _InstructionInjectionList extends StatelessWidget {
 class _InstructionInjectionListInner extends StatelessWidget {
   const _InstructionInjectionListInner({
     required this.items,
-    required this.activeId,
-    required this.onSelect,
     required this.onClose,
   });
   final List<InstructionInjection> items;
-  final String? activeId;
-  final ValueChanged<InstructionInjection> onSelect;
   final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final provider = context.watch<InstructionInjectionProvider>();
+    final selected = provider.activeIds.toSet();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
       child: Column(
@@ -258,7 +229,7 @@ class _InstructionInjectionListInner extends StatelessWidget {
               label: l10n.homePageCancel,
               onTap: () async {
                 try {
-                  await context.read<InstructionInjectionProvider>().setActiveId(null);
+                  await context.read<InstructionInjectionProvider>().setActiveIds(const <String>[]);
                 } catch (_) {}
                 onClose();
               },
@@ -270,17 +241,12 @@ class _InstructionInjectionListInner extends StatelessWidget {
               child: _RowItem(
                 title: p.title.trim().isEmpty ? l10n.instructionInjectionDefaultTitle : p.title,
                 preview: p.prompt,
-                active: p.id == activeId,
+                active: selected.contains(p.id),
                 onTap: () async {
                   try {
                     final prov = context.read<InstructionInjectionProvider>();
-                    if (prov.activeId == p.id) {
-                      await prov.setActiveId(null);
-                    } else {
-                      await prov.setActive(p);
-                    }
+                    await prov.toggleActiveId(p.id);
                   } catch (_) {}
-                  onClose();
                 },
               ),
             ),

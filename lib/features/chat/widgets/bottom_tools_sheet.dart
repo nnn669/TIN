@@ -169,7 +169,6 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
     final provider = context.watch<InstructionInjectionProvider>();
     final settings = context.watch<SettingsProvider>();
     final items = provider.items;
-    final activeId = provider.activeId;
     final hasOcrModel = settings.ocrModelProvider != null && settings.ocrModelId != null;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -191,18 +190,11 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
                 label: items[i].title.trim().isEmpty
                     ? l10n.instructionInjectionDefaultTitle
                     : items[i].title,
-                selected: items[i].id == activeId,
+                selected: provider.isActive(items[i].id),
                 onTap: () async {
                   Haptics.light();
                   final p = context.read<InstructionInjectionProvider>();
-                  if (p.activeId == items[i].id) {
-                    await p.setActiveId(null);
-                  } else {
-                    await p.setActive(items[i]);
-                  }
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).maybePop();
-                  }
+                  await p.toggleActiveId(items[i].id);
                 },
                 onLongPress: () => _editInstructionInjectionPrompt(context, items[i]),
               ),

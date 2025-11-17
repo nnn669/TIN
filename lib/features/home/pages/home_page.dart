@@ -81,6 +81,7 @@ import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
 import '../../../utils/app_directories.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../core/models/instruction_injection.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -203,7 +204,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _tabletSidebarOpen = true;
   // Desktop: whether the right embedded topics sidebar is visible
   bool _rightSidebarOpen = true;
-  bool _learningModeEnabled = false;
   static const Duration _sidebarAnimDuration = Duration(milliseconds: 260);
   static const Curve _sidebarAnimCurve = Curves.easeOutCubic;
   // Desktop: resizable embedded sidebar width
@@ -258,7 +258,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         context,
         anchorKey: _inputBarKey,
         items: items,
-        activeId: provider.activeId,
       );
     } else {
       // 平板 / 非桌面端使用 bottom sheet，样式与其它设置 bottom sheet 统一
@@ -282,7 +281,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               builder: (ctx, controller) {
                 final p = ctx.watch<InstructionInjectionProvider>();
                 final list = p.items;
-                final activeId = p.activeId;
+                final activeIds = p.activeIds.toSet();
                 return Column(
                   children: [
                     const SizedBox(height: 8),
@@ -337,7 +336,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   final displayTitle = item.title.trim().isEmpty
                                       ? l10n.instructionInjectionDefaultTitle
                                       : item.title;
-                                  final active = item.id == activeId;
+                                  final active = activeIds.contains(item.id);
                                   return IosCardPress(
                                     borderRadius: BorderRadius.circular(14),
                                     baseColor: Theme.of(ctx).brightness == Brightness.dark
@@ -347,14 +346,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     onTap: () async {
                                       Haptics.light();
                                       final prov = ctx.read<InstructionInjectionProvider>();
-                                      if (prov.activeId == item.id) {
-                                        await prov.setActiveId(null);
-                                      } else {
-                                        await prov.setActive(item);
-                                      }
-                                      if (Navigator.of(ctx).canPop()) {
-                                        Navigator.of(ctx).maybePop();
-                                      }
+                                      await prov.toggleActiveId(item.id);
                                     },
                                     padding: const EdgeInsets.all(12),
                                     child: Row(
@@ -425,11 +417,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           );
         },
       );
-    }
-    // 浮层内部已处理选中/取消，这里只同步底部按钮高亮状态
-    await provider.initialize();
-    if (mounted) {
-      setState(() => _learningModeEnabled = provider.activeId != null);
     }
   }
 
@@ -1009,13 +996,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _initChat();
     _scrollController.addListener(_onScrollControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
-    // Load instruction-injection active state for button highlight
-    Future.microtask(() async {
-      try {
-        final active = await InstructionInjectionStore.getActive();
-        if (mounted) setState(() => _learningModeEnabled = active != null);
-      } catch (_) {}
-    });
 
     // Initialize quick phrases provider
     Future.microtask(() async {
@@ -2013,11 +1993,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject instruction-injection prompt when an entry is active (global)
+    // Inject instruction-injection prompts when entries are active (global, multi-select)
     try {
-      final active = await InstructionInjectionStore.getActive();
-      final lp = active?.prompt;
-      if (lp != null && lp.trim().isNotEmpty) {
+      List<InstructionInjection> actives = const <InstructionInjection>[];
+      try {
+        final ip = context.read<InstructionInjectionProvider>();
+        actives = ip.actives;
+        if (actives.isEmpty) {
+          actives = await InstructionInjectionStore.getActives();
+        }
+      } catch (_) {
+        actives = await InstructionInjectionStore.getActives();
+      }
+      final prompts = actives
+          .map((e) => e.prompt.trim())
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      if (prompts.isNotEmpty) {
+        final lp = prompts.join('\n\n');
         if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
           apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
         } else {
@@ -3128,11 +3121,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject instruction-injection prompt when an entry is active (global)
+    // Inject instruction-injection prompts when entries are active (global, multi-select)
     try {
-      final active = await InstructionInjectionStore.getActive();
-      final lp = active?.prompt;
-      if (lp != null && lp.trim().isNotEmpty) {
+      List<InstructionInjection> actives = const <InstructionInjection>[];
+      try {
+        final ip = context.read<InstructionInjectionProvider>();
+        actives = ip.actives;
+        if (actives.isEmpty) {
+          actives = await InstructionInjectionStore.getActives();
+        }
+      } catch (_) {
+        actives = await InstructionInjectionStore.getActives();
+      }
+      final prompts = actives
+          .map((e) => e.prompt.trim())
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      if (prompts.isNotEmpty) {
+        final lp = prompts.join('\n\n');
         if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
           apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
         } else {
@@ -6095,7 +6101,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     onUploadFiles: _onPickFiles,
                                     onToggleLearningMode: _openInstructionInjectionPopover,
                                     onLongPressLearning: _showLearningPromptSheet,
-                                    learningModeActive: _learningModeEnabled,
+                                    learningModeActive: context.watch<InstructionInjectionProvider>().activeIds.isNotEmpty,
                                     showMoreButton: false,
                                     onClearContext: _onClearContext,
                                     onStop: _cancelStreaming,

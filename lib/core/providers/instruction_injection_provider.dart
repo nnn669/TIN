@@ -6,12 +6,15 @@ import '../services/instruction_injection_store.dart';
 class InstructionInjectionProvider with ChangeNotifier {
   List<InstructionInjection> _items = const <InstructionInjection>[];
   bool _initialized = false;
-  String? _activeId;
+  List<String> _activeIds = const <String>[];
 
   List<InstructionInjection> get items => List<InstructionInjection>.unmodifiable(_items);
-  String? get activeId => _activeId;
-  InstructionInjection? get active =>
-      (_activeId == null) ? null : _items.where((e) => e.id == _activeId).cast<InstructionInjection?>().firstWhere((e) => e != null, orElse: () => null);
+  List<String> get activeIds => List<String>.unmodifiable(_activeIds);
+  bool isActive(String id) => _activeIds.contains(id);
+  List<InstructionInjection> get actives =>
+      _items.where((e) => _activeIds.contains(e.id)).toList(growable: false);
+  String? get activeId => _activeIds.isEmpty ? null : _activeIds.first;
+  InstructionInjection? get active => actives.isEmpty ? null : actives.first;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -22,12 +25,12 @@ class InstructionInjectionProvider with ChangeNotifier {
   Future<void> loadAll() async {
     try {
       _items = await InstructionInjectionStore.getAll();
-      _activeId = await InstructionInjectionStore.getActiveId();
+      _activeIds = await InstructionInjectionStore.getActiveIds();
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to load instruction injections: $e');
       _items = const <InstructionInjection>[];
-      _activeId = null;
+      _activeIds = const <String>[];
       notifyListeners();
     }
   }
@@ -50,7 +53,7 @@ class InstructionInjectionProvider with ChangeNotifier {
   Future<void> clear() async {
     await InstructionInjectionStore.clear();
     _items = const <InstructionInjection>[];
-    _activeId = null;
+    _activeIds = const <String>[];
     notifyListeners();
   }
 
@@ -67,9 +70,27 @@ class InstructionInjectionProvider with ChangeNotifier {
   }
 
   Future<void> setActiveId(String? id) async {
-    _activeId = id;
+    if (id == null || id.isEmpty) {
+      await setActiveIds(const <String>[]);
+      return;
+    }
+    await setActiveIds(<String>[id]);
+  }
+
+  Future<void> setActiveIds(List<String> ids) async {
+    _activeIds = ids.toSet().toList(growable: false);
     notifyListeners();
-    await InstructionInjectionStore.setActiveId(id);
+    await InstructionInjectionStore.setActiveIds(_activeIds);
+  }
+
+  Future<void> toggleActiveId(String id) async {
+    final set = _activeIds.toSet();
+    if (set.contains(id)) {
+      set.remove(id);
+    } else {
+      set.add(id);
+    }
+    await setActiveIds(set.toList(growable: false));
   }
 
   Future<void> setActive(InstructionInjection? item) => setActiveId(item?.id);
