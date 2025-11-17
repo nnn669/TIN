@@ -10,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import '../icons/lucide_adapter.dart' as lucide;
 import '../utils/brand_assets.dart';
 import 'package:characters/characters.dart';
+import '../utils/model_grouping.dart';
 
 Future<void> showModelFetchDialog(
   BuildContext context, {
@@ -106,27 +107,11 @@ class _ModelFetchDialogBodyState extends State<_ModelFetchDialogBody> {
 
   String _groupFor(BuildContext context, ModelInfo m) {
     final l10n = AppLocalizations.of(context)!;
-    final id = m.id.toLowerCase();
-    if (m.type == ModelType.embedding || id.contains('embedding') || id.contains('embed')) {
-      return l10n.providerDetailPageEmbeddingsGroupTitle;
-    }
-    if (id.contains('gpt') || RegExp(r'(^|[^a-z])o[134]').hasMatch(id)) return 'GPT';
-    if (id.contains('gemini-2.0')) return 'Gemini 2.0';
-    if (id.contains('gemini-2.5')) return 'Gemini 2.5';
-    if (id.contains('gemini-1.5')) return 'Gemini 1.5';
-    if (id.contains('gemini')) return 'Gemini';
-    if (id.contains('claude-3.5')) return 'Claude 3.5';
-    if (id.contains('claude-3')) return 'Claude 3';
-    if (id.contains('claude-4')) return 'Claude 4';
-    if (id.contains('claude-sonnet')) return 'Claude Sonnet';
-    if (id.contains('claude-opus')) return 'Claude Opus';
-    if (id.contains('deepseek')) return 'DeepSeek';
-    if (RegExp(r'qwen|qwq|qvq|dashscope').hasMatch(id)) return 'Qwen';
-    if (RegExp(r'doubao|ark|volc').hasMatch(id)) return 'Doubao';
-    if (id.contains('glm') || id.contains('zhipu')) return 'GLM';
-    if (id.contains('mistral')) return 'Mistral';
-    if (id.contains('grok') || id.contains('xai')) return 'Grok';
-    return l10n.providerDetailPageOtherModelsGroupTitle;
+    return ModelGrouping.groupFor(
+      m,
+      embeddingsLabel: l10n.providerDetailPageEmbeddingsGroupTitle,
+      otherLabel: l10n.providerDetailPageOtherModelsGroupTitle,
+    );
   }
 
   @override
