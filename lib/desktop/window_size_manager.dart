@@ -50,6 +50,16 @@ class WindowSizeManager {
     if (x == null || y == null) return null;
     // Simple sanity: avoid infinities
     if (!x.isFinite || !y.isFinite) return null;
+
+    // Additional guard: if the stored coordinates are extremely far
+    // from the origin, treat them as invalid instead of restoring
+    // the window completely off-screen (which makes the app appear
+    // "unopenable" until the prefs are manually deleted).
+    const maxAbsCoord = 10000.0;
+    if (x < -maxAbsCoord || x > maxAbsCoord || y < -maxAbsCoord || y > maxAbsCoord) {
+      return null;
+    }
+
     return Offset(x, y);
   }
 
