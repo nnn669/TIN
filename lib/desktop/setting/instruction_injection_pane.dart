@@ -388,7 +388,7 @@ class _DeskIosButtonState extends State<_DeskIosButton> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = widget.filled ? Colors.white : cs.onSurface.withOpacity(0.9);
+    final textColor = widget.filled ? cs.onPrimary : cs.onSurface.withOpacity(0.9);
     final bg = widget.filled
         ? (_hover ? cs.primary.withOpacity(0.92) : cs.primary)
         : (_hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent);

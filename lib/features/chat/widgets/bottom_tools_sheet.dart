@@ -497,8 +497,8 @@ class _IosFilledButtonState extends State<_IosFilledButton> {
           ),
           child: Text(
             widget.label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: cs.onPrimary,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
