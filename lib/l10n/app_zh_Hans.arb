@@ -706,6 +706,7 @@
   "providerDetailPageTestConnectionTitle": "测试连接",
   "providerDetailPageSelectModelButton": "选择模型",
   "providerDetailPageChangeButton": "更换",
+  "providerDetailPageUseStreamingLabel": "使用流式",
   "providerDetailPageTestingMessage": "正在测试…",
   "providerDetailPageTestSuccessMessage": "测试成功",
   "providersPageTitle": "供应商",

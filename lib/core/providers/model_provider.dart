@@ -324,7 +324,7 @@ class ProviderManager {
     return forConfig(cfg).listModels(cfg);
   }
 
-  static Future<void> testConnection(ProviderConfig cfg, String modelId) async {
+  static Future<void> testConnection(ProviderConfig cfg, String modelId, {bool useStream = false}) async {
     final kind = ProviderConfig.classify(cfg.id, explicitType: cfg.providerType);
     final client = _Http.clientFor(cfg);
     try {
@@ -338,12 +338,14 @@ class ProviderManager {
                 'input': [
                   {'role': 'user', 'content': 'hello'}
                 ],
+                if (useStream) 'stream': true,
               }
             : {
                 'model': modelId,
                 'messages': [
                   {'role': 'user', 'content': 'hello'}
                 ],
+                if (useStream) 'stream': true,
               };
         // Merge custom body overrides
         final extra = _customBody(cfg, modelId);
@@ -371,6 +373,13 @@ class ProviderManager {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           throw HttpException('HTTP ${res.statusCode}: ${res.body}');
         }
+        // For streaming, verify the response contains SSE data
+        if (useStream) {
+          final contentType = res.headers['content-type'] ?? '';
+          if (!contentType.contains('text/event-stream') && res.body.isEmpty) {
+            throw HttpException('Stream response expected but not received');
+          }
+        }
         return;
       } else if (kind == ProviderKind.claude) {
         final base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1) : cfg.baseUrl;
@@ -383,7 +392,8 @@ class ProviderManager {
               'role': 'user',
               'content': 'hello',
             }
-          ]
+          ],
+          if (useStream) 'stream': true,
         };
         final extra = _customBody(cfg, modelId);
         if (extra.isNotEmpty) (body as Map<String, dynamic>).addAll(extra);
@@ -397,6 +407,13 @@ class ProviderManager {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           throw HttpException('HTTP ${res.statusCode}: ${res.body}');
         }
+        // For streaming, verify the response contains SSE data
+        if (useStream) {
+          final contentType = res.headers['content-type'] ?? '';
+          if (!contentType.contains('text/event-stream') && res.body.isEmpty) {
+            throw HttpException('Stream response expected but not received');
+          }
+        }
         return;
       } else if (kind == ProviderKind.google) {
         // Generative Language API (default) or Vertex AI when vertexAI == true
@@ -409,13 +426,14 @@ class ProviderManager {
         } catch (_) {}
 
         String url;
+        final endpoint = useStream ? 'streamGenerateContent' : 'generateContent';
         if (cfg.vertexAI == true && (cfg.location?.isNotEmpty == true) && (cfg.projectId?.isNotEmpty == true)) {
           final loc = cfg.location!;
           final proj = cfg.projectId!;
-          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$upstreamId:generateContent';
+          url = 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models/$upstreamId:$endpoint';
         } else {
           final base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1) : cfg.baseUrl;
-          url = '$base/models/$upstreamId:generateContent';
+          url = '$base/models/$upstreamId:$endpoint';
           if (cfg.apiKey.isNotEmpty) {
             url = '$url?key=${Uri.encodeQueryComponent(cfg.apiKey)}';
           }
@@ -460,6 +478,10 @@ class ProviderManager {
         final res = await client.post(Uri.parse(url), headers: headers, body: jsonEncode(body));
         if (res.statusCode < 200 || res.statusCode >= 300) {
           throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+        }
+        // For streaming, verify the response is not empty
+        if (useStream && res.body.isEmpty) {
+          throw HttpException('Stream response expected but not received');
         }
         return;
       }

@@ -2120,6 +2120,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerDetailPageChangeButton => 'Change';
 
   @override
+  String get providerDetailPageUseStreamingLabel => 'Use Streaming';
+
+  @override
   String get providerDetailPageTestingMessage => 'Testing…';
 
   @override

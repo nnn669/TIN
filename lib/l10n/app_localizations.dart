@@ -4055,6 +4055,12 @@ abstract class AppLocalizations {
   /// **'Change'**
   String get providerDetailPageChangeButton;
 
+  /// No description provided for @providerDetailPageUseStreamingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Streaming'**
+  String get providerDetailPageUseStreamingLabel;
+
   /// No description provided for @providerDetailPageTestingMessage.
   ///
   /// In en, this message translates to:

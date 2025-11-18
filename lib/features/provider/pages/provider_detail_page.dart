@@ -26,6 +26,7 @@ import 'multi_key_manager_page.dart';
 import 'provider_network_page.dart';
 import '../../../core/services/haptics.dart';
 import '../../provider/widgets/provider_avatar.dart';
+import '../../../utils/model_grouping.dart';
 
 class ProviderDetailPage extends StatefulWidget {
   const ProviderDetailPage({super.key, required this.keyName, required this.displayName});
@@ -1499,35 +1500,11 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
           ];
 
           String _groupFor(ModelInfo m) {
-            final id = m.id.toLowerCase();
-            // Embeddings first
-            if (m.type == ModelType.embedding || id.contains('embedding') || id.contains('embed')) {
-              return l10n.providerDetailPageEmbeddingsGroupTitle;
-            }
-            // OpenAI families
-            // if (RegExp(r'gpt-4o|gpt-4\.1|gpt-4|gpt4').hasMatch(id)) return 'GPT-4';
-            if (id.contains('gpt') || RegExp(r'(^|[^a-z])o[134]').hasMatch(id)) return 'GPT';
-            // if (RegExp(r'(^|[^a-z])o[134]').hasMatch(id)) return zhLocal ? 'o 系列' : 'o Series';
-            // if (id.contains('gpt-5')) return 'GPT-5';
-            // Google Gemini
-            if (id.contains('gemini-2.0')) return 'Gemini 2.0';
-            if (id.contains('gemini-2.5')) return 'Gemini 2.5';
-            if (id.contains('gemini-1.5')) return 'Gemini 1.5';
-            if (id.contains('gemini')) return 'Gemini';
-            // Anthropic Claude
-            if (id.contains('claude-3.5')) return 'Claude 3.5';
-            if (id.contains('claude-3')) return 'Claude 3';
-            if (id.contains('claude-4')) return 'Claude 4';
-            if (id.contains('claude-sonnet')) return 'Claude Sonnet';
-            if (id.contains('claude-opus')) return 'Claude Opus';
-            // Others by vendor keyword
-            if (id.contains('deepseek')) return 'DeepSeek';
-            if (RegExp(r'qwen|qwq|qvq|dashscope').hasMatch(id)) return 'Qwen';
-            if (RegExp(r'doubao|ark|volc').hasMatch(id)) return 'Doubao';
-            if (id.contains('glm') || id.contains('zhipu')) return 'GLM';
-            if (id.contains('mistral')) return 'Mistral';
-            if (id.contains('grok') || id.contains('xai')) return 'Grok';
-            return l10n.providerDetailPageOtherModelsGroupTitle;
+            return ModelGrouping.groupFor(
+              m,
+              embeddingsLabel: l10n.providerDetailPageEmbeddingsGroupTitle,
+              otherLabel: l10n.providerDetailPageOtherModelsGroupTitle,
+            );
           }
 
           final Map<String, List<ModelInfo>> grouped = {};
@@ -1987,6 +1964,7 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
   String? _selectedModelId;
   _TestState _state = _TestState.idle;
   String _errorMessage = '';
+  bool _useStream = false;
 
   @override
   Widget build(BuildContext context) {
@@ -2072,6 +2050,23 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
               TextButton(onPressed: _pickModel, child: Text(l10n.providerDetailPageChangeButton)),
             ],
           ),
+        if (_selectedModelId != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                l10n.providerDetailPageUseStreamingLabel,
+                style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.9)),
+              ),
+              const SizedBox(width: 8),
+              IosSwitch(
+                value: _useStream,
+                onChanged: (v) => setState(() => _useStream = v),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -2166,7 +2161,7 @@ class _ConnectionTestDialogState extends State<_ConnectionTestDialog> {
     });
     try {
       final cfg = context.read<SettingsProvider>().getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
-      await ProviderManager.testConnection(cfg, _selectedModelId!);
+      await ProviderManager.testConnection(cfg, _selectedModelId!, useStream: _useStream);
       if (!mounted) return;
       setState(() => _state = _TestState.success);
     } catch (e) {
