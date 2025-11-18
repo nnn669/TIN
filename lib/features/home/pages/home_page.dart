@@ -4664,7 +4664,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
                                       final delIndex = versBefore.indexWhere((m) => m.id == id);
                                       setState(() {
-                                        _messages.removeWhere((m) => m.id == id);
                                         _reasoning.remove(id);
                                         _translations.remove(id);
                                         _toolParts.remove(id);
@@ -4690,6 +4689,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
                                       }
                                       await _chatService.deleteMessage(id);
+                                      if (!mounted || _currentConversation == null) return;
+                                      final msgs = _chatService.getMessages(_currentConversation!.id);
+                                      setState(() {
+                                        _messages = List.of(msgs);
+                                      });
                                     }
                                   } : null,
                               onMore: () async {
@@ -4721,7 +4725,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
                                     final delIndex = versBefore.indexWhere((m) => m.id == id);
                                     setState(() {
-                                      _messages.removeWhere((m) => m.id == id);
                                       _reasoning.remove(id);
                                       _translations.remove(id);
                                       _toolParts.remove(id);
@@ -4745,6 +4748,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
                                     }
                                     await _chatService.deleteMessage(id);
+                                    if (!mounted || _currentConversation == null) return;
+                                    final msgs = _chatService.getMessages(_currentConversation!.id);
+                                    setState(() {
+                                      _messages = List.of(msgs);
+                                    });
                                   }
                                 } else if (action == MessageMoreAction.edit) {
                                   final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
@@ -5756,7 +5764,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                               final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
                                                               final delIndex = versBefore.indexWhere((m) => m.id == id);
                                                               setState(() {
-                                                                _messages.removeWhere((m) => m.id == id);
                                                                 _reasoning.remove(id);
                                                                 _translations.remove(id);
                                                                 _toolParts.remove(id);
@@ -5780,6 +5787,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                                 try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
                                                               }
                                                               await _chatService.deleteMessage(id);
+                                                              if (!mounted || _currentConversation == null) return;
+                                                              final msgs = _chatService.getMessages(_currentConversation!.id);
+                                                              setState(() {
+                                                                _messages = List.of(msgs);
+                                                              });
                                                             }
                                                           }
                                                         : null,
@@ -5799,39 +5811,43 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                             ],
                                                           ),
                                                         );
-                                                        if (confirm == true) {
-                                                          final id = message.id;
-                                                          final gid = (message.groupId ?? message.id);
-                                                          final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
-                                                          final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
-                                                          final delIndex = versBefore.indexWhere((m) => m.id == id);
-                                                          setState(() {
-                                                            _messages.removeWhere((m) => m.id == id);
-                                                            _reasoning.remove(id);
-                                                            _translations.remove(id);
-                                                            _toolParts.remove(id);
-                                                            _reasoningSegments.remove(id);
-                                                            final newTotal = versBefore.length - 1;
-                                                            if (newTotal <= 0) {
-                                                              _versionSelections.remove(gid);
-                                                            } else {
-                                                              int newSel = oldSel;
-                                                              if (delIndex >= 0) {
-                                                                if (delIndex < oldSel) newSel = oldSel - 1;
-                                                                else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
-                                                              }
-                                                              if (newSel < 0) newSel = 0;
-                                                              if (newSel > newTotal - 1) newSel = newTotal - 1;
-                                                              _versionSelections[gid] = newSel;
-                                                            }
-                                                          });
-                                                          final sel = _versionSelections[gid];
-                                                          if (sel != null && _currentConversation != null) {
-                                                            try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                                    if (confirm == true) {
+                                                      final id = message.id;
+                                                      final gid = (message.groupId ?? message.id);
+                                                      final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                                      final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                                      final delIndex = versBefore.indexWhere((m) => m.id == id);
+                                                      setState(() {
+                                                        _reasoning.remove(id);
+                                                        _translations.remove(id);
+                                                        _toolParts.remove(id);
+                                                        _reasoningSegments.remove(id);
+                                                        final newTotal = versBefore.length - 1;
+                                                        if (newTotal <= 0) {
+                                                          _versionSelections.remove(gid);
+                                                        } else {
+                                                          int newSel = oldSel;
+                                                          if (delIndex >= 0) {
+                                                            if (delIndex < oldSel) newSel = oldSel - 1;
+                                                            else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
                                                           }
-                                                          await _chatService.deleteMessage(id);
+                                                          if (newSel < 0) newSel = 0;
+                                                          if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                                          _versionSelections[gid] = newSel;
                                                         }
-                                                      } else if (action == MessageMoreAction.edit) {
+                                                      });
+                                                      final sel = _versionSelections[gid];
+                                                      if (sel != null && _currentConversation != null) {
+                                                        try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                                      }
+                                                      await _chatService.deleteMessage(id);
+                                                      if (!mounted || _currentConversation == null) return;
+                                                      final msgs = _chatService.getMessages(_currentConversation!.id);
+                                                      setState(() {
+                                                        _messages = List.of(msgs);
+                                                      });
+                                                    }
+                                                  } else if (action == MessageMoreAction.edit) {
                                                         final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
                                                             defaultTargetPlatform == TargetPlatform.windows ||
                                                             defaultTargetPlatform == TargetPlatform.linux;

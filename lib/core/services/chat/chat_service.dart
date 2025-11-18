@@ -734,7 +734,41 @@ class ChatService extends ChangeNotifier {
 
     final conversation = _conversationsBox.get(message.conversationId);
     if (conversation != null) {
-      conversation.messageIds.remove(messageId);
+      // Preserve stable ordering for message groups when deleting a single
+      // version of a message. Without this, deleting the first version of a
+      // user message after editing (which appends new versions at the tail)
+      // would cause the remaining version to "move" after the assistant
+      // reply when collapsing versions in the UI.
+
+      final gid = message.groupId ?? message.id;
+      final ids = conversation.messageIds;
+      final removedIndex = ids.indexOf(messageId);
+
+      // Remove the message id from the conversation first.
+      ids.remove(messageId);
+
+      // If there are other versions in the same group, move one of them
+      // into the original slot so that the group keeps its relative order.
+      if (removedIndex >= 0) {
+        String? replacementId;
+        for (final mid in ids) {
+          if (mid == messageId) continue;
+          final m = _messagesBox.get(mid);
+          if (m == null) continue;
+          final mgid = m.groupId ?? m.id;
+          if (mgid == gid) {
+            replacementId = mid;
+            break;
+          }
+        }
+
+        if (replacementId != null) {
+          ids.remove(replacementId);
+          final insertAt = removedIndex <= ids.length ? removedIndex : ids.length;
+          ids.insert(insertAt, replacementId);
+        }
+      }
+
       await conversation.save();
     }
 
@@ -744,10 +778,9 @@ class ChatService extends ChangeNotifier {
       try { await _toolEventsBox.delete(message.id); } catch (_) {}
     }
 
-    // Update cache
-    if (_messagesCache.containsKey(message.conversationId)) {
-      _messagesCache[message.conversationId]!.removeWhere((m) => m.id == messageId);
-    }
+    // Update cache: clear this conversation so that next getMessages()
+    // reloads messages in the updated order from conversation.messageIds.
+    _messagesCache.remove(message.conversationId);
 
     // Clean up orphaned upload files that are no longer referenced by any message
     await _cleanupOrphanUploads();
