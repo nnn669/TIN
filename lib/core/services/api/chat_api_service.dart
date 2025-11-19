@@ -4084,6 +4084,19 @@ class ChatApiService {
                       try { args = (jsonDecode(rawArgs) as Map).cast<String, dynamic>(); } catch (_) {}
                     }
                     final id = 'call_${DateTime.now().microsecondsSinceEpoch}';
+                    
+                    // Capture thought signature (Gemini 3 Pro requirement)
+                    // Preserve exact key/value as received
+                    String? thoughtSigKey;
+                    dynamic thoughtSigVal;
+                    if (p.containsKey('thoughtSignature')) {
+                      thoughtSigKey = 'thoughtSignature';
+                      thoughtSigVal = p['thoughtSignature'];
+                    } else if (p.containsKey('thought_signature')) {
+                      thoughtSigKey = 'thought_signature';
+                      thoughtSigVal = p['thought_signature'];
+                    }
+
                     // Emit placeholder immediately
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: totalTokens, usage: usage, toolCalls: [ToolCallInfo(id: id, name: name, arguments: args)]);
                     String resText = '';
@@ -4091,7 +4104,14 @@ class ChatApiService {
                       resText = await onToolCall(name, args) ?? '';
                       yield ChatStreamChunk(content: '', isDone: false, totalTokens: totalTokens, usage: usage, toolResults: [ToolResultInfo(id: id, name: name, arguments: args, content: resText)]);
                     }
-                    calls.add({'id': id, 'name': name, 'args': args, 'result': resText});
+                    calls.add({
+                      'id': id,
+                      'name': name,
+                      'args': args,
+                      'result': resText,
+                      'thoughtSigKey': thoughtSigKey,
+                      'thoughtSigVal': thoughtSigVal,
+                    });
                   }
                 }
                 // Capture explicit finish reason if present
@@ -4171,10 +4191,18 @@ class ChatApiService {
         final name = (c['name'] ?? '').toString();
         final args = (c['args'] as Map<String, dynamic>? ?? const <String, dynamic>{});
         final resText = (c['result'] ?? '').toString();
+        final thoughtSigKey = c['thoughtSigKey'] as String?;
+        final thoughtSigVal = c['thoughtSigVal'];
+
         // Add the model's functionCall turn
-        convo.add({'role': 'model', 'parts': [
-          {'functionCall': {'name': name, 'args': args}},
-        ]});
+        final part = <String, dynamic>{
+          'functionCall': {'name': name, 'args': args},
+        };
+        if (thoughtSigKey != null && thoughtSigVal != null) {
+          part[thoughtSigKey] = thoughtSigVal;
+        }
+
+        convo.add({'role': 'model', 'parts': [part]});
         // Prepare JSON response object
         Map<String, dynamic> responseObj;
         try {
