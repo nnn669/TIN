@@ -3940,11 +3940,23 @@ class ChatApiService {
         // Enable IMAGE+TEXT output modalities when model is configured to output images
         if (wantsImageOutput) 'responseModalities': ['TEXT', 'IMAGE'],
         if (isReasoning)
-          'thinkingConfig': {
-            'includeThoughts': off ? false : true,
-            if (!off && thinkingBudget != null && thinkingBudget >= 0)
-              'thinkingBudget': thinkingBudget,
-          },
+          'thinkingConfig': () {
+            final isGemini3 = modelId.contains(RegExp(r'gemini-3', caseSensitive: false));
+            if (off) return {'includeThoughts': false};
+            if (isGemini3) {
+              String level = 'high';
+              if (thinkingBudget != null && thinkingBudget > 0) {
+                if (thinkingBudget < 2048) level = 'low';
+                else level = 'high';
+              }
+              return {'includeThoughts': true, 'thinkingLevel': level};
+            }
+            return {
+              'includeThoughts': true,
+              if (thinkingBudget != null && thinkingBudget >= 0)
+                'thinkingBudget': thinkingBudget,
+            };
+          }(),
       };
       final body = <String, dynamic>{
         'contents': convo,
