@@ -20,6 +20,7 @@ import 'snackbar.dart';
 import 'mermaid_bridge.dart';
 import 'export_capture_scope.dart';
 import 'mermaid_image_cache.dart';
+import 'plantuml_block.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:Kelivo/theme/theme_factory.dart' show getPlatformFontFallback;
 import 'package:provider/provider.dart';
@@ -518,6 +519,8 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final lang = name.trim();
         if (lang.toLowerCase() == 'mermaid') {
           return _MermaidBlock(code: code);
+        } else if (lang.toLowerCase() == 'plantuml') {
+          return PlantUMLBlock(code: code);
         }
         return _CollapsibleCodeBlock(language: lang, code: code);
       },
@@ -1565,6 +1568,8 @@ class FencedCodeBlockMd extends BlockMd {
     final code = (m.group(2) ?? '');
     if (lang.toLowerCase() == 'mermaid') {
       return _MermaidBlock(code: code);
+    } else if (lang.toLowerCase() == 'plantuml') {
+      return PlantUMLBlock(code: code);
     }
     return _CollapsibleCodeBlock(language: lang, code: code);
   }
