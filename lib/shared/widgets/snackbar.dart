@@ -391,73 +391,52 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: BackdropFilter(
-              filter: ColorFilter.mode(
-                cs.surface.withValues(alpha: 0.1),
-                BlendMode.overlay,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(
-                      _getIcon(),
-                      size: 22,
-                      color: _getIconColor(cs),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    _getIcon(),
+                    size: 22,
+                    color: _getIconColor(cs),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.notification.message,
+                      style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface,
+                        height: 1.3,
+                        decoration: TextDecoration.none,
+                      ),
                     ),
+                  ),
+                  if (widget.notification.actionLabel != null) ...[
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.notification.message,
-                        style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: cs.onSurface,
-                          height: 1.3,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                    if (widget.notification.actionLabel != null) ...[
-                      const SizedBox(width: 12),
-                      TextButton(
-                        onPressed: () {
-                          Haptics.light();
-                          widget.notification.onAction?.call();
-                          widget.onDismiss();
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          widget.notification.actionLabel!,
-                          style: (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: cs.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    // 始终显示关闭按钮以保持布局一致，但只有顶部的可以交互
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: widget.isTop ? () {
+                    TextButton(
+                      onPressed: () {
                         Haptics.light();
+                        widget.notification.onAction?.call();
                         widget.onDismiss();
-                      } : null,
-                      child: Icon(
-                        Icons.close,
-                        size: 18,
-                        color: widget.isTop 
-                          ? cs.onSurface.withValues(alpha: 0.4)
-                          : cs.onSurface.withValues(alpha: 0.2), // 非顶部的更透明
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        widget.notification.actionLabel!,
+                        style: (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
