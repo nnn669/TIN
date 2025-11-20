@@ -4001,6 +4001,10 @@ class ChatApiService {
       String buffer = '';
       // Collect any function calls in this round
       final List<Map<String, dynamic>> calls = <Map<String, dynamic>>[]; // {id,name,args,res}
+      
+      // Track thought signature across chunks (Gemini 3 requirement)
+      String? persistentThoughtSigKey;
+      dynamic persistentThoughtSigVal;
 
       // Track a streaming inline image (append base64 progressively)
       bool _imageOpen = false; // true after we emit the data URL prefix
@@ -4044,6 +4048,16 @@ class ChatApiService {
                   if (p is! Map) continue;
                   final t = (p['text'] ?? '') as String? ?? '';
                   final thought = p['thought'] as bool? ?? false;
+
+                  // Check for thought signature in this part and update persistence
+                  if (p.containsKey('thoughtSignature')) {
+                    persistentThoughtSigKey = 'thoughtSignature';
+                    persistentThoughtSigVal = p['thoughtSignature'];
+                  } else if (p.containsKey('thought_signature')) {
+                    persistentThoughtSigKey = 'thought_signature';
+                    persistentThoughtSigVal = p['thought_signature'];
+                  }
+
                   if (t.isNotEmpty) {
                     if (thought) {
                       reasoningDelta += t;
@@ -4107,6 +4121,12 @@ class ChatApiService {
                     } else if (p.containsKey('thought_signature')) {
                       thoughtSigKey = 'thought_signature';
                       thoughtSigVal = p['thought_signature'];
+                    }
+                    
+                    // Fallback to persistent signature if not found in this part
+                    if (thoughtSigKey == null && persistentThoughtSigKey != null) {
+                      thoughtSigKey = persistentThoughtSigKey;
+                      thoughtSigVal = persistentThoughtSigVal;
                     }
 
                     // Emit placeholder immediately
