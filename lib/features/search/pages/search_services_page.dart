@@ -60,7 +60,9 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) => _EditServiceSheet(
         service: service,
         onSave: (updated) {
@@ -83,7 +85,7 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
       );
       return;
     }
-    
+
     setState(() {
       _services.removeAt(index);
       if (_selectedIndex >= _services.length) {
@@ -177,13 +179,19 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          _sectionHeader(l10n.searchServicesPageSearchProviders, cs, first: true),
-          _iosSectionCard(children: [
-            for (int i = 0; i < _services.length; i++) ...[
-              _iosProviderRow(context, index: i),
-              if (i != _services.length - 1) _iosDivider(context),
+          _sectionHeader(
+            l10n.searchServicesPageSearchProviders,
+            cs,
+            first: true,
+          ),
+          _iosSectionCard(
+            children: [
+              for (int i = 0; i < _services.length; i++) ...[
+                _iosProviderRow(context, index: i),
+                if (i != _services.length - 1) _iosDivider(context),
+              ],
             ],
-          ]),
+          ),
           const SizedBox(height: 16),
           _sectionHeader(l10n.searchServicesPageGeneralOptions, cs),
           _buildCommonOptionsSection(context),
@@ -192,9 +200,17 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
     );
   }
 
-  Widget _sectionHeader(String text, ColorScheme cs, {bool first = false}) => Padding(
+  Widget _sectionHeader(String text, ColorScheme cs, {bool first = false}) =>
+      Padding(
         padding: EdgeInsets.fromLTRB(12, first ? 2 : 18, 12, 6),
-        child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.8))),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: cs.onSurface.withOpacity(0.8),
+          ),
+        ),
       );
 
   Widget _buildCommonOptionsSection(BuildContext context) {
@@ -202,113 +218,160 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
     final settings = context.watch<SettingsProvider>();
     final common = settings.searchCommonOptions;
     final l10n = AppLocalizations.of(context)!;
-    
-    Widget stepper({required int value, required VoidCallback onMinus, required VoidCallback onPlus, String? unit}) {
+
+    Widget stepper({
+      required int value,
+      required VoidCallback onMinus,
+      required VoidCallback onPlus,
+      String? unit,
+    }) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _SmallTactileIcon(
-            icon: Lucide.Minus,
-            onTap: onMinus,
-            enabled: true,
+          _SmallTactileIcon(icon: Lucide.Minus, onTap: onMinus, enabled: true),
+          const SizedBox(width: 8),
+          Text(
+            unit == null ? '$value' : '$value$unit',
+            style: TextStyle(
+              fontSize: 14,
+              color: cs.onSurface.withOpacity(0.8),
+            ),
           ),
           const SizedBox(width: 8),
-          Text(unit == null ? '$value' : '$value$unit', style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.8))),
-          const SizedBox(width: 8),
-          _SmallTactileIcon(
-            icon: Lucide.Plus,
-            onTap: onPlus,
-            enabled: true,
-          ),
+          _SmallTactileIcon(icon: Lucide.Plus, onTap: onPlus, enabled: true),
         ],
       );
     }
 
-    return _iosSectionCard(children: [
-      _TactileRow(
-        onTap: null, // no navigation, so no chevron
-        pressedScale: 1.00,
-        haptics: false,
-        builder: (pressed) {
-          final baseColor = cs.onSurface.withOpacity(0.9);
-          return _AnimatedPressColor(
-            pressed: pressed,
-            base: baseColor,
-            builder: (c) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                child: Row(
-                  children: [
-                    SizedBox(width: 36, child: Icon(Lucide.ListOrdered, size: 18, color: c)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(l10n.searchServicesPageMaxResults, style: TextStyle(fontSize: 15, color: c))),
-                    stepper(
-                      value: common.resultSize,
-                      onMinus: common.resultSize > 1
-                          ? () => context.read<SettingsProvider>().updateSettings(
-                                settings.copyWith(
-                                  searchCommonOptions: SearchCommonOptions(resultSize: common.resultSize - 1, timeout: common.timeout),
-                                ),
-                              )
-                          : () {},
-                      onPlus: common.resultSize < 20
-                          ? () => context.read<SettingsProvider>().updateSettings(
-                                settings.copyWith(
-                                  searchCommonOptions: SearchCommonOptions(resultSize: common.resultSize + 1, timeout: common.timeout),
-                                ),
-                              )
-                          : () {},
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
-      _iosDivider(context),
-      _TactileRow(
-        onTap: null,
-        pressedScale: 1.00,
-        haptics: false,
-        builder: (pressed) {
-          final baseColor = cs.onSurface.withOpacity(0.9);
-          return _AnimatedPressColor(
-            pressed: pressed,
-            base: baseColor,
-            builder: (c) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                child: Row(
-                  children: [
-                    SizedBox(width: 36, child: Icon(Lucide.History, size: 18, color: c)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(l10n.searchServicesPageTimeoutSeconds, style: TextStyle(fontSize: 15, color: c))),
-                    stepper(
-                      value: common.timeout ~/ 1000,
-                      onMinus: common.timeout > 1000
-                          ? () => context.read<SettingsProvider>().updateSettings(
-                                settings.copyWith(
-                                  searchCommonOptions: SearchCommonOptions(resultSize: common.resultSize, timeout: common.timeout - 1000),
-                                ),
-                              )
-                          : () {},
-                      onPlus: common.timeout < 30000
-                          ? () => context.read<SettingsProvider>().updateSettings(
-                                settings.copyWith(
-                                  searchCommonOptions: SearchCommonOptions(resultSize: common.resultSize, timeout: common.timeout + 1000),
-                                ),
-                              )
-                          : () {},
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
-    ]);
+    return _iosSectionCard(
+      children: [
+        _TactileRow(
+          onTap: null, // no navigation, so no chevron
+          pressedScale: 1.00,
+          haptics: false,
+          builder: (pressed) {
+            final baseColor = cs.onSurface.withOpacity(0.9);
+            return _AnimatedPressColor(
+              pressed: pressed,
+              base: baseColor,
+              builder: (c) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 36,
+                        child: Icon(Lucide.ListOrdered, size: 18, color: c),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.searchServicesPageMaxResults,
+                          style: TextStyle(fontSize: 15, color: c),
+                        ),
+                      ),
+                      stepper(
+                        value: common.resultSize,
+                        onMinus: common.resultSize > 1
+                            ? () => context
+                                  .read<SettingsProvider>()
+                                  .updateSettings(
+                                    settings.copyWith(
+                                      searchCommonOptions: SearchCommonOptions(
+                                        resultSize: common.resultSize - 1,
+                                        timeout: common.timeout,
+                                      ),
+                                    ),
+                                  )
+                            : () {},
+                        onPlus: common.resultSize < 20
+                            ? () => context
+                                  .read<SettingsProvider>()
+                                  .updateSettings(
+                                    settings.copyWith(
+                                      searchCommonOptions: SearchCommonOptions(
+                                        resultSize: common.resultSize + 1,
+                                        timeout: common.timeout,
+                                      ),
+                                    ),
+                                  )
+                            : () {},
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        _iosDivider(context),
+        _TactileRow(
+          onTap: null,
+          pressedScale: 1.00,
+          haptics: false,
+          builder: (pressed) {
+            final baseColor = cs.onSurface.withOpacity(0.9);
+            return _AnimatedPressColor(
+              pressed: pressed,
+              base: baseColor,
+              builder: (c) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 36,
+                        child: Icon(Lucide.History, size: 18, color: c),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.searchServicesPageTimeoutSeconds,
+                          style: TextStyle(fontSize: 15, color: c),
+                        ),
+                      ),
+                      stepper(
+                        value: common.timeout ~/ 1000,
+                        onMinus: common.timeout > 1000
+                            ? () => context
+                                  .read<SettingsProvider>()
+                                  .updateSettings(
+                                    settings.copyWith(
+                                      searchCommonOptions: SearchCommonOptions(
+                                        resultSize: common.resultSize,
+                                        timeout: common.timeout - 1000,
+                                      ),
+                                    ),
+                                  )
+                            : () {},
+                        onPlus: common.timeout < 30000
+                            ? () => context
+                                  .read<SettingsProvider>()
+                                  .updateSettings(
+                                    settings.copyWith(
+                                      searchCommonOptions: SearchCommonOptions(
+                                        resultSize: common.resultSize,
+                                        timeout: common.timeout + 1000,
+                                      ),
+                                    ),
+                                  )
+                            : () {},
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
   }
 
   Widget _iosProviderRow(BuildContext context, {required int index}) {
@@ -357,23 +420,36 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
               behavior: HitTestBehavior.opaque,
               onLongPress: () => _showServiceActions(context, index),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
                 child: Row(
                   children: [
-                    SizedBox(width: 36, child: Center(child: _BrandBadge.forService(s, size: 22))),
+                    SizedBox(
+                      width: 36,
+                      child: Center(child: _BrandBadge.forService(s, size: 22)),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: c,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     if (s is! BingLocalOptions && statusText.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(999),
@@ -404,7 +480,9 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
@@ -412,15 +490,25 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _sheetOption(ctx, icon: Lucide.Activity, label: l10n.searchServicesPageTestConnectionTooltip, onTap: () {
-                  Navigator.of(ctx).pop();
-                  _testConnection(index);
-                }),
+                _sheetOption(
+                  ctx,
+                  icon: Lucide.Activity,
+                  label: l10n.searchServicesPageTestConnectionTooltip,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _testConnection(index);
+                  },
+                ),
                 _sheetDivider(ctx),
-                _sheetOption(ctx, icon: Lucide.Trash2, label: l10n.providerDetailPageDeleteButton, onTap: () {
-                  Navigator.of(ctx).pop();
-                  _deleteService(index);
-                }),
+                _sheetOption(
+                  ctx,
+                  icon: Lucide.Trash2,
+                  label: l10n.providerDetailPageDeleteButton,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _deleteService(index);
+                  },
+                ),
               ],
             ),
           ),
@@ -431,6 +519,7 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
 
   IconData _getServiceIcon(SearchServiceOptions service) {
     if (service is BingLocalOptions) return Lucide.Search;
+    if (service is DuckDuckGoOptions) return Lucide.Search;
     if (service is TavilyOptions) return Lucide.Sparkles;
     if (service is ExaOptions) return Lucide.Brain;
     if (service is ZhipuOptions) return Lucide.Languages;
@@ -447,22 +536,55 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
   String? _getServiceStatus(SearchServiceOptions service) {
     final l10n = AppLocalizations.of(context)!;
     if (service is BingLocalOptions) return null;
-    if (service is TavilyOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is ExaOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is ZhipuOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is SearXNGOptions) return service.url.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageUrlRequiredStatus;
-    if (service is LinkUpOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is BraveOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is MetasoOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is OllamaOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is JinaOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
-    if (service is BochaOptions) return service.apiKey.isNotEmpty ? l10n.searchServicesPageConfiguredStatus : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is DuckDuckGoOptions)
+      return l10n.searchServicesPageConfiguredStatus;
+    if (service is TavilyOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is ExaOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is ZhipuOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is SearXNGOptions)
+      return service.url.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageUrlRequiredStatus;
+    if (service is LinkUpOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is BraveOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is MetasoOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is OllamaOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is JinaOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
+    if (service is BochaOptions)
+      return service.apiKey.isNotEmpty
+          ? l10n.searchServicesPageConfiguredStatus
+          : l10n.searchServicesPageApiKeyRequiredStatus;
     return null;
   }
 
   // Brand badge for known services using assets/icons; falls back to letter if unknown
   // ignore: unused_element
-  Widget _brandBadgeForName(String name, {double size = 20}) => _BrandBadge(name: name, size: size);
+  Widget _brandBadgeForName(String name, {double size = 20}) =>
+      _BrandBadge(name: name, size: size);
 }
 
 class _BrandBadge extends StatelessWidget {
@@ -477,6 +599,7 @@ class _BrandBadge extends StatelessWidget {
 
   static String _nameForService(SearchServiceOptions s) {
     if (s is BingLocalOptions) return 'bing';
+    if (s is DuckDuckGoOptions) return 'duckduckgo';
     if (s is TavilyOptions) return 'tavily';
     if (s is ExaOptions) return 'exa';
     if (s is ZhipuOptions) return 'zhipu';
@@ -501,13 +624,20 @@ class _BrandBadge extends StatelessWidget {
     if (asset != null) {
       if (asset!.endsWith('.svg')) {
         final isColorful = asset!.contains('color');
-        final ColorFilter? tint = (isDark && !isColorful) ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) : null;
+        final ColorFilter? tint = (isDark && !isColorful)
+            ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+            : null;
         return Container(
           width: size,
           height: size,
           decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
           alignment: Alignment.center,
-          child: SvgPicture.asset(asset!, width: size * 0.62, height: size * 0.62, colorFilter: tint),
+          child: SvgPicture.asset(
+            asset!,
+            width: size * 0.62,
+            height: size * 0.62,
+            colorFilter: tint,
+          ),
         );
       } else {
         return Container(
@@ -515,7 +645,12 @@ class _BrandBadge extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
           alignment: Alignment.center,
-          child: Image.asset(asset!, width: size * 0.62, height: size * 0.62, fit: BoxFit.contain),
+          child: Image.asset(
+            asset!,
+            width: size * 0.62,
+            height: size * 0.62,
+            fit: BoxFit.contain,
+          ),
         );
       }
     }
@@ -524,7 +659,14 @@ class _BrandBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: Text(name.isNotEmpty ? name.characters.first.toUpperCase() : '?', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.42)),
+      child: Text(
+        name.isNotEmpty ? name.characters.first.toUpperCase() : '?',
+        style: TextStyle(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.42,
+        ),
+      ),
     );
   }
 }
@@ -557,9 +699,11 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -572,54 +716,53 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurface.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // Title with animation
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                child: Padding(
-                  key: ValueKey<String?>(_selectedType),
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                  child: Text(
-                    _selectedType == null ? l10n.searchServicesAddDialogTitle : _getServiceName(_selectedType!),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 4),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              
-              // Service type selection or form with fade animation
-              Flexible(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
+                // Title with animation
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
                   transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
+                    return FadeTransition(opacity: animation, child: child);
                   },
-                  child: _selectedType == null
-                      ? _buildServiceTypeList()
-                      : _buildFormView(),
+                  child: Padding(
+                    key: ValueKey<String?>(_selectedType),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                    child: Text(
+                      _selectedType == null
+                          ? l10n.searchServicesAddDialogTitle
+                          : _getServiceName(_selectedType!),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+
+                // Service type selection or form with fade animation
+                Flexible(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: _selectedType == null
+                        ? _buildServiceTypeList()
+                        : _buildFormView(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -628,6 +771,7 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
     final l10n = AppLocalizations.of(context)!;
     final services = [
       {'type': 'bing_local', 'name': l10n.searchServiceNameBingLocal},
+      {'type': 'duckduckgo', 'name': l10n.searchServiceNameDuckDuckGo},
       {'type': 'tavily', 'name': l10n.searchServiceNameTavily},
       {'type': 'exa', 'name': l10n.searchServiceNameExa},
       {'type': 'zhipu', 'name': l10n.searchServiceNameZhipu},
@@ -647,19 +791,25 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
       itemCount: services.length,
       itemBuilder: (context, index) {
         final item = services[index];
-        return Column(children: [
-          _sheetOption(
-            context,
-            icon: Lucide.Globe,
-            label: item['name'] as String,
-            leading: _ServiceIcon(type: item['type'] as String, name: item['name'] as String, size: 36),
-            bgOnPress: false,
-            onTap: () {
-              setState(() => _selectedType = item['type'] as String);
-            },
-          ),
-          if (index != services.length - 1) _sheetDivider(context),
-        ]);
+        return Column(
+          children: [
+            _sheetOption(
+              context,
+              icon: Lucide.Globe,
+              label: item['name'] as String,
+              leading: _ServiceIcon(
+                type: item['type'] as String,
+                name: item['name'] as String,
+                size: 36,
+              ),
+              bgOnPress: false,
+              onTap: () {
+                setState(() => _selectedType = item['type'] as String);
+              },
+            ),
+            if (index != services.length - 1) _sheetDivider(context),
+          ],
+        );
       },
     );
   }
@@ -667,25 +817,40 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
   String _getServiceName(String type) {
     final l10n = AppLocalizations.of(context)!;
     switch (type) {
-      case 'bing_local': return l10n.searchServiceNameBingLocal;
-      case 'tavily': return l10n.searchServiceNameTavily;
-      case 'exa': return l10n.searchServiceNameExa;
-      case 'zhipu': return l10n.searchServiceNameZhipu;
-      case 'searxng': return l10n.searchServiceNameSearXNG;
-      case 'linkup': return l10n.searchServiceNameLinkUp;
-      case 'brave': return l10n.searchServiceNameBrave;
-      case 'metaso': return l10n.searchServiceNameMetaso;
-      case 'jina': return l10n.searchServiceNameJina;
-      case 'ollama': return l10n.searchServiceNameOllama;
-      case 'perplexity': return l10n.searchServiceNamePerplexity;
-      case 'bocha': return l10n.searchServiceNameBocha;
-      default: return '';
+      case 'bing_local':
+        return l10n.searchServiceNameBingLocal;
+      case 'duckduckgo':
+        return l10n.searchServiceNameDuckDuckGo;
+      case 'tavily':
+        return l10n.searchServiceNameTavily;
+      case 'exa':
+        return l10n.searchServiceNameExa;
+      case 'zhipu':
+        return l10n.searchServiceNameZhipu;
+      case 'searxng':
+        return l10n.searchServiceNameSearXNG;
+      case 'linkup':
+        return l10n.searchServiceNameLinkUp;
+      case 'brave':
+        return l10n.searchServiceNameBrave;
+      case 'metaso':
+        return l10n.searchServiceNameMetaso;
+      case 'jina':
+        return l10n.searchServiceNameJina;
+      case 'ollama':
+        return l10n.searchServiceNameOllama;
+      case 'perplexity':
+        return l10n.searchServiceNamePerplexity;
+      case 'bocha':
+        return l10n.searchServiceNameBocha;
+      default:
+        return '';
     }
   }
 
   Widget _buildFormView() {
     final l10n = AppLocalizations.of(context)!;
-    
+
     return SingleChildScrollView(
       key: const ValueKey('form_view'),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -714,7 +879,10 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
                 ),
                 child: Text(
                   l10n.searchServicesAddDialogAdd,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -728,15 +896,16 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     Widget _buildTextField({
       required String key,
       required String label,
       String? hint,
       bool obscureText = false,
+      String? initialValue,
       String? Function(String?)? validator,
     }) {
-      _controllers[key] ??= TextEditingController();
+      _controllers[key] ??= TextEditingController(text: initialValue);
       return Container(
         decoration: BoxDecoration(
           color: cs.surfaceVariant.withOpacity(isDark ? 0.18 : 0.5),
@@ -753,13 +922,16 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
           validator: validator,
         ),
       );
     }
-    
+
     switch (type) {
       case 'bing_local':
         return [
@@ -784,6 +956,15 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
                 ),
               ],
             ),
+          ),
+        ];
+      case 'duckduckgo':
+        return [
+          _buildTextField(
+            key: 'region',
+            label: l10n.searchServicesAddDialogRegionOptional,
+            hint: 'us-en',
+            initialValue: 'us-en',
           ),
         ];
       case 'tavily':
@@ -852,25 +1033,22 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
   SearchServiceOptions _createService() {
     final uuid = const Uuid();
     final id = uuid.v4().substring(0, 8);
-    
+
     switch (_selectedType) {
       case 'bing_local':
         return BingLocalOptions(id: id);
+      case 'duckduckgo':
+        final region = (_controllers['region']?.text ?? 'us-en').trim();
+        return DuckDuckGoOptions(
+          id: id,
+          region: region.isEmpty ? 'us-en' : region,
+        );
       case 'tavily':
-        return TavilyOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return TavilyOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'exa':
-        return ExaOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return ExaOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'zhipu':
-        return ZhipuOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return ZhipuOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'searxng':
         return SearXNGOptions(
           id: id,
@@ -881,40 +1059,19 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
           password: _controllers['password']!.text,
         );
       case 'linkup':
-        return LinkUpOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return LinkUpOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'brave':
-        return BraveOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return BraveOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'metaso':
-        return MetasoOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return MetasoOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'jina':
-        return JinaOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return JinaOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'ollama':
-        return OllamaOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return OllamaOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'perplexity':
-        return PerplexityOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return PerplexityOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'bocha':
-        return BochaOptions(
-          id: id,
-          apiKey: _controllers['apiKey']!.text,
-        );
+        return BochaOptions(id: id, apiKey: _controllers['apiKey']!.text);
       default:
         return BingLocalOptions(id: id);
     }
@@ -926,10 +1083,7 @@ class _EditServiceSheet extends StatefulWidget {
   final SearchServiceOptions service;
   final Function(SearchServiceOptions) onSave;
 
-  const _EditServiceSheet({
-    required this.service,
-    required this.onSave,
-  });
+  const _EditServiceSheet({required this.service, required this.onSave});
 
   @override
   State<_EditServiceSheet> createState() => _EditServiceSheetState();
@@ -949,6 +1103,8 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
     final service = widget.service;
     if (service is TavilyOptions) {
       _controllers['apiKey'] = TextEditingController(text: service.apiKey);
+    } else if (service is DuckDuckGoOptions) {
+      _controllers['region'] = TextEditingController(text: service.region);
     } else if (service is ExaOptions) {
       _controllers['apiKey'] = TextEditingController(text: service.apiKey);
     } else if (service is ZhipuOptions) {
@@ -1004,7 +1160,10 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
             // Title (match Add sheet style: centered name)
@@ -1013,7 +1172,10 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               child: Center(
                 child: Text(
                   searchService.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -1039,9 +1201,17 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
                 },
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text(l10n.searchServicesEditDialogSave, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Text(
+                  l10n.searchServicesEditDialogSave,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1080,7 +1250,10 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
           validator: validator,
         ),
@@ -1089,6 +1262,14 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
 
     if (service is BingLocalOptions) {
       return [Text(l10n.searchServicesEditDialogBingLocalNoConfig)];
+    } else if (service is DuckDuckGoOptions) {
+      return [
+        _buildTextField(
+          key: 'region',
+          label: l10n.searchServicesEditDialogRegionOptional,
+          hint: 'us-en',
+        ),
+      ];
     } else if (service is TavilyOptions ||
         service is ExaOptions ||
         service is ZhipuOptions ||
@@ -1153,22 +1334,22 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
 
   SearchServiceOptions _updateService() {
     final service = widget.service;
-    
+
     if (service is TavilyOptions) {
       return TavilyOptions(
         id: service.id,
         apiKey: _controllers['apiKey']!.text,
       );
+    } else if (service is DuckDuckGoOptions) {
+      final region = (_controllers['region']?.text ?? service.region).trim();
+      return DuckDuckGoOptions(
+        id: service.id,
+        region: region.isEmpty ? 'us-en' : region,
+      );
     } else if (service is ExaOptions) {
-      return ExaOptions(
-        id: service.id,
-        apiKey: _controllers['apiKey']!.text,
-      );
+      return ExaOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
     } else if (service is ZhipuOptions) {
-      return ZhipuOptions(
-        id: service.id,
-        apiKey: _controllers['apiKey']!.text,
-      );
+      return ZhipuOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
     } else if (service is SearXNGOptions) {
       return SearXNGOptions(
         id: service.id,
@@ -1184,10 +1365,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
         apiKey: _controllers['apiKey']!.text,
       );
     } else if (service is BraveOptions) {
-      return BraveOptions(
-        id: service.id,
-        apiKey: _controllers['apiKey']!.text,
-      );
+      return BraveOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
     } else if (service is MetasoOptions) {
       return MetasoOptions(
         id: service.id,
@@ -1199,10 +1377,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
         apiKey: _controllers['apiKey']!.text,
       );
     } else if (service is JinaOptions) {
-      return JinaOptions(
-        id: service.id,
-        apiKey: _controllers['apiKey']!.text,
-      );
+      return JinaOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
     } else if (service is PerplexityOptions) {
       return PerplexityOptions(
         id: service.id,
@@ -1221,21 +1396,17 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
         exclude: service.exclude,
       );
     }
-    
+
     return service;
   }
 }
 
 // Service Icon Widget - Uses BrandAssets
 class _ServiceIcon extends StatelessWidget {
-  const _ServiceIcon({
-    required this.type,
-    required this.name,
-    this.size = 40,
-  });
+  const _ServiceIcon({required this.type, required this.name, this.size = 40});
 
-  final String type;  // Service type like 'bing_local', 'tavily', etc.
-  final String name;  // Display name for fallback
+  final String type; // Service type like 'bing_local', 'tavily', etc.
+  final String name; // Display name for fallback
   final double size;
 
   @override
@@ -1246,7 +1417,7 @@ class _ServiceIcon extends StatelessWidget {
     final matchName = _getMatchName(type);
     final asset = BrandAssets.assetForName(matchName);
     final bg = isDark ? Colors.white10 : cs.primary.withOpacity(0.1);
-    
+
     return Container(
       width: size,
       height: size,
@@ -1265,8 +1436,8 @@ class _ServiceIcon extends StatelessWidget {
     final iconSize = size * 0.62;
     if (asset.endsWith('.svg')) {
       final isColorful = asset.contains('color');
-      final ColorFilter? tint = (isDark && !isColorful) 
-          ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) 
+      final ColorFilter? tint = (isDark && !isColorful)
+          ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
           : null;
       return SvgPicture.asset(
         asset,
@@ -1355,7 +1526,12 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
   Widget build(BuildContext context) {
     final base = widget.color;
     final pressColor = base.withOpacity(0.7);
-    final icon = Icon(widget.icon, size: widget.size, color: _pressed ? pressColor : base, semanticLabel: widget.semanticLabel);
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: _pressed ? pressColor : base,
+      semanticLabel: widget.semanticLabel,
+    );
     return Semantics(
       button: true,
       label: widget.semanticLabel,
@@ -1364,16 +1540,32 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () { if (widget.haptics) Haptics.light(); widget.onTap(); },
-        onLongPress: widget.onLongPress == null ? null : () { if (widget.haptics) Haptics.light(); widget.onLongPress!.call(); },
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), child: icon),
+        onTap: () {
+          if (widget.haptics) Haptics.light();
+          widget.onTap();
+        },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                if (widget.haptics) Haptics.light();
+                widget.onLongPress!.call();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: icon,
+        ),
       ),
     );
   }
 }
 
 class _TactileRow extends StatefulWidget {
-  const _TactileRow({required this.builder, this.onTap, this.pressedScale = 1.00, this.haptics = true});
+  const _TactileRow({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 1.00,
+    this.haptics = true,
+  });
   final Widget Function(bool pressed) builder;
   final VoidCallback? onTap;
   final double pressedScale;
@@ -1384,7 +1576,10 @@ class _TactileRow extends StatefulWidget {
 
 class _TactileRowState extends State<_TactileRow> {
   bool _pressed = false;
-  void _setPressed(bool v) { if (_pressed != v) setState(() => _pressed = v); }
+  void _setPressed(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1392,24 +1587,34 @@ class _TactileRowState extends State<_TactileRow> {
       onTapDown: widget.onTap == null ? null : (_) => _setPressed(true),
       onTapUp: widget.onTap == null ? null : (_) => _setPressed(false),
       onTapCancel: widget.onTap == null ? null : () => _setPressed(false),
-      onTap: widget.onTap == null ? null : () {
-        if (widget.haptics && context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
-        widget.onTap!.call();
-      },
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptics &&
+                  context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
+              widget.onTap!.call();
+            },
       child: widget.builder(_pressed),
     );
   }
 }
 
 class _AnimatedPressColor extends StatelessWidget {
-  const _AnimatedPressColor({required this.pressed, required this.base, required this.builder});
+  const _AnimatedPressColor({
+    required this.pressed,
+    required this.base,
+    required this.builder,
+  });
   final bool pressed;
   final Color base;
   final Widget Function(Color color) builder;
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
+    final target = pressed
+        ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base)
+        : base;
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(end: target),
       duration: const Duration(milliseconds: 220),
@@ -1420,29 +1625,40 @@ class _AnimatedPressColor extends StatelessWidget {
 }
 
 Widget _iosSectionCard({required List<Widget> children}) {
-  return Builder(builder: (context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(children: children),
-      ),
-    );
-  });
+  return Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final isDark = theme.brightness == Brightness.dark;
+      final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+            width: 0.6,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: children),
+        ),
+      );
+    },
+  );
 }
 
 Widget _iosDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 6, thickness: 0.6, indent: 54, endIndent: 12, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 6,
+    thickness: 0.6,
+    indent: 54,
+    endIndent: 12,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
 // Sheet helpers (align with settings page)
@@ -1463,7 +1679,9 @@ Widget _sheetOption(
     builder: (pressed) {
       final base = cs.onSurface;
       final bgTarget = (bgOnPress && pressed)
-          ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05))
+          ? (isDark
+                ? Colors.white.withOpacity(0.06)
+                : Colors.black.withOpacity(0.05))
           : Colors.transparent;
       return _AnimatedPressColor(
         pressed: pressed,
@@ -1478,10 +1696,16 @@ Widget _sheetOption(
               children: [
                 SizedBox.square(
                   dimension: 36,
-                  child: Center(child: leading ?? Icon(icon ?? Lucide.ChevronRight, size: 20, color: c)),
+                  child: Center(
+                    child:
+                        leading ??
+                        Icon(icon ?? Lucide.ChevronRight, size: 20, color: c),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: c))),
+                Expanded(
+                  child: Text(label, style: TextStyle(fontSize: 15, color: c)),
+                ),
               ],
             ),
           );
@@ -1493,11 +1717,21 @@ Widget _sheetOption(
 
 Widget _sheetDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 1, thickness: 0.6, indent: 56, endIndent: 16, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 1,
+    thickness: 0.6,
+    indent: 56,
+    endIndent: 16,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
 class _SmallTactileIcon extends StatefulWidget {
-  const _SmallTactileIcon({required this.icon, required this.onTap, this.enabled = true});
+  const _SmallTactileIcon({
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final bool enabled;
@@ -1510,12 +1744,16 @@ class _SmallTactileIconState extends State<_SmallTactileIcon> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final c = widget.enabled ? cs.onSurface.withOpacity(_pressed ? 0.6 : 0.9) : cs.onSurface.withOpacity(0.3);
+    final c = widget.enabled
+        ? cs.onSurface.withOpacity(_pressed ? 0.6 : 0.9)
+        : cs.onSurface.withOpacity(0.3);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
       onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.enabled ? () => setState(() => _pressed = false) : null,
+      onTapCancel: widget.enabled
+          ? () => setState(() => _pressed = false)
+          : null,
       onTap: widget.enabled
           ? () {
               Haptics.soft();

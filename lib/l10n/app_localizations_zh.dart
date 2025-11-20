@@ -2306,6 +2306,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchServicesAddDialogPasswordOptional => '密码（可选）';
 
   @override
+  String get searchServicesAddDialogRegionOptional => '地区（可选，默认 us-en）';
+
+  @override
   String get searchServicesEditDialogEdit => '编辑';
 
   @override
@@ -2337,6 +2340,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchServicesEditDialogPasswordOptional => '密码（可选）';
+
+  @override
+  String get searchServicesEditDialogRegionOptional => '地区（可选，默认 us-en）';
 
   @override
   String get searchSettingsSheetTitle => '搜索设置';
@@ -2745,6 +2751,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '使用网络抓取工具获取必应搜索结果。无需 API 密钥，但可能不够稳定。';
 
   @override
+  String get searchProviderDuckDuckGoDescription =>
+      '基于 DDGS 的 DuckDuckGo 隐私搜索，无需 API 密钥，支持设置地区。';
+
+  @override
   String get searchProviderBraveDescription => 'Brave 独立搜索引擎。注重隐私，无跟踪或画像。';
 
   @override
@@ -2777,6 +2787,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchServiceNameBingLocal => 'Bing（Local）';
+
+  @override
+  String get searchServiceNameDuckDuckGo => 'DuckDuckGo';
 
   @override
   String get searchServiceNameTavily => 'Tavily';
@@ -5439,6 +5452,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get searchServicesAddDialogPasswordOptional => '密码（可选）';
 
   @override
+  String get searchServicesAddDialogRegionOptional => '地区（可选，默认 us-en）';
+
+  @override
   String get searchServicesEditDialogEdit => '编辑';
 
   @override
@@ -5470,6 +5486,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get searchServicesEditDialogPasswordOptional => '密码（可选）';
+
+  @override
+  String get searchServicesEditDialogRegionOptional => '地区（可选，默认 us-en）';
 
   @override
   String get searchSettingsSheetTitle => '搜索设置';
@@ -5878,6 +5897,10 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '使用网络抓取工具获取必应搜索结果。无需 API 密钥，但可能不够稳定。';
 
   @override
+  String get searchProviderDuckDuckGoDescription =>
+      '基于 DDGS 的 DuckDuckGo 隐私搜索，无需 API 密钥，支持设置地区。';
+
+  @override
   String get searchProviderBraveDescription => 'Brave 独立搜索引擎。注重隐私，无跟踪或画像。';
 
   @override
@@ -5910,6 +5933,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get searchServiceNameBingLocal => 'Bing（Local）';
+
+  @override
+  String get searchServiceNameDuckDuckGo => 'DuckDuckGo';
 
   @override
   String get searchServiceNameTavily => 'Tavily';
@@ -8571,6 +8597,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get searchServicesAddDialogPasswordOptional => '密碼（可選）';
 
   @override
+  String get searchServicesAddDialogRegionOptional => '地區（可選，預設 us-en）';
+
+  @override
   String get searchServicesEditDialogEdit => '編輯';
 
   @override
@@ -8602,6 +8631,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchServicesEditDialogPasswordOptional => '密碼（可選）';
+
+  @override
+  String get searchServicesEditDialogRegionOptional => '地區（可選，預設 us-en）';
 
   @override
   String get searchSettingsSheetTitle => '搜尋設定';
@@ -9010,6 +9042,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '使用網路抓取工具取得 Bing 搜尋結果。無需 API 金鑰，但可能不夠穩定。';
 
   @override
+  String get searchProviderDuckDuckGoDescription =>
+      '基於 DDGS 的 DuckDuckGo 隱私搜尋，無需 API 金鑰，支援設定地區。';
+
+  @override
   String get searchProviderBraveDescription => 'Brave 獨立搜尋引擎。注重隱私，無追蹤或建立個人檔案。';
 
   @override
@@ -9043,6 +9079,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchServiceNameBingLocal => 'Bing（本機）';
+
+  @override
+  String get searchServiceNameDuckDuckGo => 'DuckDuckGo';
 
   @override
   String get searchServiceNameTavily => 'Tavily';

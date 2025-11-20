@@ -4547,6 +4547,12 @@ abstract class AppLocalizations {
   /// **'Password (optional)'**
   String get searchServicesAddDialogPasswordOptional;
 
+  /// No description provided for @searchServicesAddDialogRegionOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Region (optional, default: us-en)'**
+  String get searchServicesAddDialogRegionOptional;
+
   /// No description provided for @searchServicesEditDialogEdit.
   ///
   /// In en, this message translates to:
@@ -4612,6 +4618,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Password (optional)'**
   String get searchServicesEditDialogPasswordOptional;
+
+  /// No description provided for @searchServicesEditDialogRegionOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Region (optional, default: us-en)'**
+  String get searchServicesEditDialogRegionOptional;
 
   /// No description provided for @searchSettingsSheetTitle.
   ///
@@ -5399,6 +5411,12 @@ abstract class AppLocalizations {
   /// **'Uses web scraping to fetch Bing results. No API key required; may be unstable.'**
   String get searchProviderBingLocalDescription;
 
+  /// No description provided for @searchProviderDuckDuckGoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy-focused DuckDuckGo search via DDGS. No API key required; supports region selection.'**
+  String get searchProviderDuckDuckGoDescription;
+
   /// No description provided for @searchProviderBraveDescription.
   ///
   /// In en, this message translates to:
@@ -5458,6 +5476,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bing (Local)'**
   String get searchServiceNameBingLocal;
+
+  /// No description provided for @searchServiceNameDuckDuckGo.
+  ///
+  /// In en, this message translates to:
+  /// **'DuckDuckGo'**
+  String get searchServiceNameDuckDuckGo;
 
   /// No description provided for @searchServiceNameTavily.
   ///

@@ -8,7 +8,8 @@ class BrandAssets {
   static String? assetForName(String name) {
     final key = name.trim().toLowerCase();
     if (key.isEmpty) return null;
-    if (_cache.containsKey(key)) return _cache[key];
+    // Recompute if previously cached as null so newly added mappings take effect without restart.
+    if (_cache.containsKey(key) && _cache[key] != null) return _cache[key];
     String? result;
     for (final e in _mapping) {
       if (e.key.hasMatch(key)) { result = 'assets/icons/${e.value}'; break; }
@@ -70,6 +71,7 @@ class BrandAssets {
     MapEntry(RegExp(r'searxng'), 'searxng-color.svg'),
     MapEntry(RegExp(r'bocha|博查'), 'bocha-color.svg'),
     MapEntry(RegExp(r'kat'), 'katkwaipilot-color.svg'),
+    MapEntry(RegExp(r'duckduckgo'), 'duckduckgo-color.svg'),
     MapEntry(RegExp(r'inclusionai'), 'ling.png'),
   ];
 }
