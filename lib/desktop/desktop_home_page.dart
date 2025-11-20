@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import '../shared/responsive/breakpoints.dart';
 import 'desktop_nav_rail.dart';
 import 'desktop_chat_page.dart';
@@ -14,7 +15,11 @@ import 'hotkeys/chat_action_bus.dart';
 /// Desktop home screen: left compact rail + main content.
 /// Phase 1 focuses on structure and platform-appropriate interactions/hover.
 class DesktopHomePage extends StatefulWidget {
-  const DesktopHomePage({super.key, this.initialTabIndex, this.initialProviderKey});
+  const DesktopHomePage({
+    super.key,
+    this.initialTabIndex,
+    this.initialProviderKey,
+  });
 
   final int? initialTabIndex; // 0=Chat,1=Translate,2=Settings
   final String? initialProviderKey;
@@ -49,11 +54,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           try {
             final visible = await windowManager.isVisible();
             final minimized = await windowManager.isMinimized();
-            final shouldShow = (!visible) || minimized;
-            if (shouldShow) {
+            final focused = await windowManager.isFocused();
+
+            // 优先级：
+            // 1. 如果窗口不可见或最小化，则显示并聚焦
+            // 2. 如果窗口可见但未聚焦，则聚焦
+            // 3. 如果窗口可见且已聚焦，则隐藏
+            if (!visible || minimized) {
               await windowManager.show();
               await windowManager.focus();
               // 如果当前是聊天页，显示窗口时聚焦输入框
+              if (_tabIndex == 0) {
+                ChatActionBus.instance.fire(ChatAction.focusInput);
+              }
+            } else if (!focused) {
+              await windowManager.focus();
+              // 如果当前是聊天页，聚焦窗口时也聚焦输入框
               if (_tabIndex == 0) {
                 ChatActionBus.instance.fire(ChatAction.focusInput);
               }
@@ -66,10 +82,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           if (_tabIndex == 0) ChatActionBus.instance.fire(ChatAction.newTopic);
           break;
         case HotkeyAction.toggleLeftPanelAssistants:
-          if (_tabIndex == 0) ChatActionBus.instance.fire(ChatAction.toggleLeftPanelAssistants);
+          if (_tabIndex == 0)
+            ChatActionBus.instance.fire(ChatAction.toggleLeftPanelAssistants);
           break;
         case HotkeyAction.toggleLeftPanelTopics:
-          if (_tabIndex == 0) ChatActionBus.instance.fire(ChatAction.toggleLeftPanelTopics);
+          if (_tabIndex == 0)
+            ChatActionBus.instance.fire(ChatAction.toggleLeftPanelTopics);
           break;
         default:
           // Other actions handled in page-specific widgets
@@ -144,8 +162,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         body,
                         // Inject the lazily-built settings page into the IndexedStack when needed
                         // to pass initialProviderKey without dropping chat state.
-                        if (_tabIndex == 2)
-                          const SizedBox.shrink(),
+                        if (_tabIndex == 2) const SizedBox.shrink(),
                       ],
                     ),
                   ),
@@ -158,7 +175,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         // Center a constrained area if window is smaller than our minimum
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: minWidth, minHeight: minHeight),
+            constraints: const BoxConstraints(
+              minWidth: minWidth,
+              minHeight: minHeight,
+            ),
             child: SizedBox(
               width: needsWidthPad ? minWidth : w,
               height: needsHeightPad ? minHeight : h,
@@ -172,7 +192,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   @override
   void dispose() {
-    try { _hotkeySub?.cancel(); } catch (_) {}
+    try {
+      _hotkeySub?.cancel();
+    } catch (_) {}
     super.dispose();
   }
 }
