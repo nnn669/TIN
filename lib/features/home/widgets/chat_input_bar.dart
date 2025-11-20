@@ -224,6 +224,26 @@ class _ChatInputBarState extends State<ChatInputBar> {
       );
     }
     setState(() {});
+    _ensureCaretVisible();
+  }
+
+  // Keep the caret visible after programmatic edits (e.g., Shift+Enter insert)
+  void _ensureCaretVisible() {
+    try {
+      final selection = _controller.selection;
+      if (!selection.isValid) return;
+      final focusNode = widget.focusNode ?? Focus.maybeOf(context);
+      final focusContext = focusNode?.context;
+      if (focusContext == null) return;
+      final editable = focusContext.findAncestorStateOfType<EditableTextState>();
+      if (editable == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        try {
+          editable.bringIntoView(selection.extent);
+        } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, RawKeyEvent event) {
