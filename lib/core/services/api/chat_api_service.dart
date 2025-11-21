@@ -4210,9 +4210,57 @@ class ChatApiService {
       dynamic responseTextThoughtSigVal;
       final List<Map<String, dynamic>> responseImageThoughtSigs = <Map<String, dynamic>>[];
 
-      // Track a streaming inline image (append base64 progressively)
-      bool _imageOpen = false; // true after we emit the data URL prefix
+      // Track a streaming inline image; buffer chunks and emit only the latest frame once finished
       String _imageMime = 'image/png';
+      String _pendingImageData = '';
+      String _pendingImageTrailingText = '';
+      bool _bufferingInlineImage = false;
+
+      bool _looksLikeImageStart(String data) {
+        const prefixes = <String>[
+          '/9j/', // jpeg
+          'iVBOR', // png
+          'R0lGOD', // gif
+          'UklGR', // webp
+          'Qk', // bmp variants
+          'SUkq', // tiff
+        ];
+        for (final p in prefixes) {
+          if (data.startsWith(p)) return true;
+        }
+        return false;
+      }
+
+      void _bufferInlineImageChunk(String mime, String data) {
+        _imageMime = mime.isNotEmpty ? mime : 'image/png';
+        final hasExisting = _pendingImageData.isNotEmpty;
+        // Gemini image-preview streams often send full preview frames instead of deltas.
+        // If the previous chunk already looks complete (padding) or a new frame header appears, replace it.
+        final prevLooksComplete = hasExisting && _pendingImageData.endsWith('=');
+        final newFrame = hasExisting && _looksLikeImageStart(data);
+        if (prevLooksComplete || newFrame) {
+          _pendingImageData = data;
+        } else {
+          _pendingImageData += data;
+        }
+        _bufferingInlineImage = true;
+        _receivedImage = true;
+      }
+
+      String _takeBufferedImageMarkdown() {
+        if (!_bufferingInlineImage || _pendingImageData.isEmpty) return '';
+        final sb = StringBuffer()
+          ..write('\n\n![image](data:${_imageMime};base64,')
+          ..write(_pendingImageData)
+          ..write(')');
+        if (_pendingImageTrailingText.isNotEmpty) {
+          sb.write(_pendingImageTrailingText);
+        }
+        _bufferingInlineImage = false;
+        _pendingImageData = '';
+        _pendingImageTrailingText = '';
+        return sb.toString();
+      }
 
       await for (final chunk in sse) {
         buffer += chunk;
@@ -4279,6 +4327,8 @@ class ChatApiService {
                   if (t.isNotEmpty) {
                     if (thought) {
                       reasoningDelta += t;
+                    } else if (_bufferingInlineImage) {
+                      _pendingImageTrailingText += t;
                     } else {
                       textDelta += t;
                     }
@@ -4294,13 +4344,7 @@ class ChatApiService {
                         final exists = responseImageThoughtSigs.any((e) => e['k'] == partThoughtSigKey && e['v'] == partThoughtSigVal);
                         if (!exists) responseImageThoughtSigs.add({'k': partThoughtSigKey, 'v': partThoughtSigVal});
                       }
-                      _imageMime = mime.isNotEmpty ? mime : 'image/png';
-                      if (!_imageOpen) {
-                        textDelta += '\n\n![image](data:${_imageMime};base64,';
-                        _imageOpen = true;
-                      }
-                      textDelta += data;
-                      _receivedImage = true;
+                      _bufferInlineImageChunk(mime, data);
                     }
                   }
                   // Parse fileData: { fileUri: 'https://...', mimeType: 'image/png' }
@@ -4315,13 +4359,7 @@ class ChatApiService {
                           final exists = responseImageThoughtSigs.any((e) => e['k'] == partThoughtSigKey && e['v'] == partThoughtSigVal);
                           if (!exists) responseImageThoughtSigs.add({'k': partThoughtSigKey, 'v': partThoughtSigVal});
                         }
-                        _imageMime = mime.isNotEmpty ? mime : 'image/png';
-                        if (!_imageOpen) {
-                          textDelta += '\n\n![image](data:${_imageMime};base64,';
-                          _imageOpen = true;
-                        }
-                        textDelta += b64;
-                        _receivedImage = true;
+                        _bufferInlineImageChunk(mime, b64);
                       } catch (_) {}
                     }
                   }
@@ -4400,6 +4438,14 @@ class ChatApiService {
                 }
               }
 
+              // When finishing, emit any buffered inline image (and trailing text) in one batch to avoid partial base64 during streaming.
+              if (finishReason != null) {
+                final pendingImage = _takeBufferedImageMarkdown();
+                if (pendingImage.isNotEmpty) {
+                  textDelta += pendingImage;
+                }
+              }
+
               if (reasoningDelta.isNotEmpty) {
                 yield ChatStreamChunk(content: '', reasoning: reasoningDelta, isDone: false, totalTokens: totalTokens, usage: usage);
               }
@@ -4407,12 +4453,8 @@ class ChatApiService {
                 yield ChatStreamChunk(content: textDelta, isDone: false, totalTokens: totalTokens, usage: usage);
               }
 
-              // If server signaled finish, close image markdown and end stream immediately
+              // If server signaled finish, end stream immediately
               if (finishReason != null && calls.isEmpty && (!_expectImage || _receivedImage)) {
-                if (_imageOpen) {
-                  yield ChatStreamChunk(content: ')', isDone: false, totalTokens: totalTokens, usage: usage);
-                  _imageOpen = false;
-                }
                 // Emit final citations if any not emitted
                 if (_builtinCitations.isNotEmpty) {
                   final payload = jsonEncode({'items': _builtinCitations});
@@ -4438,18 +4480,14 @@ class ChatApiService {
         }
       }
 
-      // If we streamed an inline image but never closed the markdown, close it now
-      if (_imageOpen) {
-        yield ChatStreamChunk(content: ')', isDone: false, totalTokens: totalTokens, usage: usage);
-        _imageOpen = false;
+      // Flush any buffered inline image (e.g., when stream ends without explicit finishReason)
+      final pendingImage = _takeBufferedImageMarkdown();
+      if (pendingImage.isNotEmpty) {
+        yield ChatStreamChunk(content: pendingImage, isDone: false, totalTokens: totalTokens, usage: usage);
       }
 
       if (calls.isEmpty) {
         // No tool calls; this round finished
-        if (_imageOpen) {
-          yield ChatStreamChunk(content: ')', isDone: false, totalTokens: totalTokens, usage: usage);
-          _imageOpen = false;
-        }
         if (_persistGeminiThoughtSigs) {
           final metaComment = _buildGeminiThoughtSigComment(
             textKey: responseTextThoughtSigKey,

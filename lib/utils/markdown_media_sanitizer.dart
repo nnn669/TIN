@@ -53,7 +53,15 @@ class MarkdownMediaSanitizer {
 
       // Decode in a background isolate (pure Dart decode)
       final normalized = payload.replaceAll('\n', '');
-      final bytes = await compute(_decodeBase64, normalized);
+      List<int> bytes;
+      try {
+        bytes = await compute(_decodeBase64, normalized);
+      } catch (_) {
+        // Skip malformed base64 to avoid crashing streaming responses; keep original markup.
+        sb.write(markdown.substring(m.start, m.end));
+        last = m.end;
+        continue;
+      }
 
       // Deterministic filename by content hash to prevent duplicates
       // Same base64 -> same filename across runs
