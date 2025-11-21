@@ -3941,9 +3941,9 @@ class ChatApiService {
         if (wantsImageOutput) 'responseModalities': ['TEXT', 'IMAGE'],
         if (isReasoning)
           'thinkingConfig': () {
-            final isGemini3 = modelId.contains(RegExp(r'gemini-3', caseSensitive: false));
+            final isGemini3Pro = modelId.contains(RegExp(r'gemini-3-pro-preview', caseSensitive: false));
             if (off) return {'includeThoughts': false};
-            if (isGemini3) {
+            if (isGemini3Pro) {
               String level = 'high';
               if (thinkingBudget != null && thinkingBudget > 0) {
                 if (thinkingBudget < 2048) level = 'low';
