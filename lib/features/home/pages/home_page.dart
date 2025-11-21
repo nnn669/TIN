@@ -124,6 +124,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final Map<String, _TranslationData> _translations = <String, _TranslationData>{};
   final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{}; // assistantMessageId -> parts
   final Map<String, List<_ReasoningSegmentData>> _reasoningSegments = <String, List<_ReasoningSegmentData>>{}; // assistantMessageId -> reasoning segments
+  final Map<String, String> _geminiThoughtSigs = <String, String>{}; // assistantMessageId -> signature comment
+  static final RegExp _geminiThoughtSigRe = RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
   bool _appInForeground = true; // used to gate notifications only when app is background
   // Message widget keys for navigation to previous question
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
@@ -768,6 +770,32 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return budget >= 1024;
   }
 
+  String _captureGeminiThoughtSignature(String content, String messageId) {
+    if (content.isEmpty) return content;
+    final m = _geminiThoughtSigRe.firstMatch(content);
+    if (m != null) {
+      final sig = m.group(0) ?? '';
+      if (sig.isNotEmpty) {
+        if (_geminiThoughtSigs[messageId] != sig) {
+          _geminiThoughtSigs[messageId] = sig;
+          unawaited(_chatService.setGeminiThoughtSignature(messageId, sig));
+        }
+      }
+      content = content.replaceAll(_geminiThoughtSigRe, '').trimRight();
+    }
+    return content;
+  }
+
+  String _appendGeminiThoughtSignatureForApi(ChatMessage message, String content) {
+    String? sig = _geminiThoughtSigs[message.id];
+    sig ??= _chatService.getGeminiThoughtSignature(message.id);
+    if (sig != null && sig.isNotEmpty && !content.contains('gemini_thought_signatures:')) {
+      if (content.isEmpty) return sig;
+      return '$content\n$sig';
+    }
+    return content;
+  }
+
   String _titleForLocale(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return l10n.titleForLocale;
@@ -793,8 +821,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void _restoreMessageUiState() {
     // Do NOT clear global maps here; other conversations might still be streaming.
     // We will simply populate/overwrite entries for messages in the current conversation.
-    for (final m in _messages) {
+    for (int i = 0; i < _messages.length; i++) {
+      final m = _messages[i];
       if (m.role == 'assistant') {
+        final storedSig = _chatService.getGeminiThoughtSignature(m.id);
+        if (storedSig != null && storedSig.isNotEmpty) {
+          _geminiThoughtSigs[m.id] = storedSig;
+        }
+        final cleanedContent = _captureGeminiThoughtSignature(m.content, m.id);
+        if (cleanedContent != m.content) {
+          final updated = m.copyWith(content: cleanedContent);
+          _messages[i] = updated;
+          unawaited(_chatService.updateMessage(m.id, content: cleanedContent));
+        }
         // Restore reasoning state
         final txt = m.reasoningText ?? '';
         if (txt.isNotEmpty || m.reasoningStartAt != null || m.reasoningFinishedAt != null) {
@@ -1240,6 +1279,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         setState(() {
           _currentConversation = recent;
           _messages = List.of(msgs);
+          _geminiThoughtSigs.clear();
           _loadVersionSelections();
           _restoreMessageUiState();
         });
@@ -1268,6 +1308,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         setState(() {
           _currentConversation = convo;
           _messages = List.of(msgs);
+          _geminiThoughtSigs.clear();
           _loadVersionSelections();
           _restoreMessageUiState();
         });
@@ -1612,6 +1653,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _translations.clear();
       _toolParts.clear();
       _reasoningSegments.clear();
+      _geminiThoughtSigs.clear();
     });
     // Inject assistant preset messages into new conversation (ordered)
     try {
@@ -1772,10 +1814,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final List<ChatMessage> source = _collapseVersions(sourceAll);
     final apiMessages = source
         .where((m) => m.content.isNotEmpty)
-        .map((m) => {
-              'role': m.role == 'assistant' ? 'assistant' : 'user',
-              'content': m.content,
-            })
+        .map((m) {
+          var content = m.content;
+          if (m.role == 'assistant') {
+            content = _appendGeminiThoughtSignatureForApi(m, content);
+          }
+          return {
+            'role': m.role == 'assistant' ? 'assistant' : 'user',
+            'content': content,
+          };
+        })
         .toList();
 
     // Build document prompts (from current input + earlier attachments)
@@ -2319,6 +2367,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       await _conversationStreams[_cidForStream]?.cancel();
       final _sub = stream.listen(
             (chunk) async {
+          final chunkContent = chunk.content.isNotEmpty ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id) : '';
           // Capture reasoning deltas only when reasoning is enabled
           if ((chunk.reasoning ?? '').isNotEmpty && supportsReasoning) {
             if (streamOutput) {
@@ -2487,8 +2536,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
           if (chunk.isDone) {
             // Ensure final content from non-streaming path is captured before finish()
-            if (chunk.content.isNotEmpty) {
-              fullContent += chunk.content;
+            if (chunkContent.isNotEmpty) {
+              fullContent += chunkContent;
             }
             // Guard: if we have any loading tool-call placeholders, a follow-up round is coming.
             final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
@@ -2544,7 +2593,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               );
             }
           } else {
-            fullContent += chunk.content;
+            fullContent += chunkContent;
             if (chunk.totalTokens > 0) {
               totalTokens = chunk.totalTokens;
             }
@@ -2562,7 +2611,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
             if (streamOutput) {
               // If content has started, consider reasoning finished and collapse (respect setting)
-              if ((chunk.content).isNotEmpty) {
+              if ((chunkContent).isNotEmpty) {
                 final r = _reasoning[assistantMessage.id];
                 if (r != null && r.startAt != null && r.finishedAt == null) {
                   r.finishedAt = DateTime.now();
@@ -2929,10 +2978,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final List<ChatMessage> source = _collapseVersions(sourceAll);
     final apiMessages = source
         .where((m) => m.content.isNotEmpty)
-        .map((m) => {
-              'role': m.role == 'assistant' ? 'assistant' : 'user',
-              'content': m.content,
-            })
+        .map((m) {
+          var content = m.content;
+          if (m.role == 'assistant') {
+            content = _appendGeminiThoughtSignatureForApi(m, content);
+          }
+          return {
+            'role': m.role == 'assistant' ? 'assistant' : 'user',
+            'content': content,
+          };
+        })
         .toList();
 
     // Capture image attachments from the last user message (for resend)
@@ -3378,6 +3433,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final String _cid = assistantMessage.conversationId;
     await _conversationStreams[_cid]?.cancel();
     final _sub2 = stream.listen((chunk) async {
+      final chunkContent = chunk.content.isNotEmpty ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id) : '';
       // Always capture reasoning if provided by model, even when toggle is off
       if ((chunk.reasoning ?? '').isNotEmpty) {
         if (streamOutput) {
@@ -3486,8 +3542,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
       }
 
-      if (chunk.content.isNotEmpty) {
-        fullContent += chunk.content;
+      if (chunkContent.isNotEmpty) {
+        fullContent += chunkContent;
 
         // Respect auto-collapse setting when main content starts: always stop timer, collapse only if enabled
         final rd = _reasoning[assistantMessage.id];

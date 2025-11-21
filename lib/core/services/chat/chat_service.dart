@@ -16,6 +16,7 @@ class ChatService extends ChangeNotifier {
   late Box<Conversation> _conversationsBox;
   late Box<ChatMessage> _messagesBox;
   late Box _toolEventsBox; // key: assistantMessageId, value: List<Map<String,dynamic>>
+  String _sigKey(String id) => 'sig_$id';
   
   String? _currentConversationId;
   final Map<String, List<ChatMessage>> _messagesCache = {};
@@ -169,6 +170,7 @@ class ChatService extends ChangeNotifier {
       final msg = _messagesBox.get(messageId);
       if (msg != null && msg.role == 'assistant') {
         try { await _toolEventsBox.delete(msg.id); } catch (_) {}
+        try { await _toolEventsBox.delete(_sigKey(msg.id)); } catch (_) {}
       }
       await _messagesBox.delete(messageId);
     }
@@ -570,6 +572,25 @@ class ChatService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Gemini thought signature persistence (per assistant message)
+  String? getGeminiThoughtSignature(String assistantMessageId) {
+    if (!_initialized) return null;
+    final v = _toolEventsBox.get(_sigKey(assistantMessageId));
+    if (v is String && v.trim().isNotEmpty) return v;
+    return null;
+  }
+
+  Future<void> setGeminiThoughtSignature(String assistantMessageId, String signature) async {
+    if (!_initialized) await init();
+    await _toolEventsBox.put(_sigKey(assistantMessageId), signature);
+    notifyListeners();
+  }
+
+  Future<void> removeGeminiThoughtSignature(String assistantMessageId) async {
+    if (!_initialized) await init();
+    try { await _toolEventsBox.delete(_sigKey(assistantMessageId)); } catch (_) {}
+  }
+
   Future<Conversation> forkConversation({
     required String title,
     required String? assistantId,
@@ -776,6 +797,7 @@ class ChatService extends ChangeNotifier {
     // Remove any tool events linked to this assistant message
     if (message.role == 'assistant') {
       try { await _toolEventsBox.delete(message.id); } catch (_) {}
+      try { await _toolEventsBox.delete(_sigKey(message.id)); } catch (_) {}
     }
 
     // Update cache: clear this conversation so that next getMessages()

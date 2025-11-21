@@ -328,6 +328,7 @@ class DataSync {
     final conversations = chatService.getAllConversations();
     final allMsgs = <ChatMessage>[];
     final toolEvents = <String, List<Map<String, dynamic>>>{};
+    final geminiThoughtSigs = <String, String>{};
     for (final c in conversations) {
       final msgs = chatService.getMessages(c.id);
       allMsgs.addAll(msgs);
@@ -335,6 +336,8 @@ class DataSync {
         if (m.role == 'assistant') {
           final ev = chatService.getToolEvents(m.id);
           if (ev.isNotEmpty) toolEvents[m.id] = ev;
+          final sig = chatService.getGeminiThoughtSignature(m.id);
+          if (sig != null && sig.isNotEmpty) geminiThoughtSigs[m.id] = sig;
         }
       }
     }
@@ -343,6 +346,7 @@ class DataSync {
       'conversations': conversations.map((c) => c.toJson()).toList(),
       'messages': allMsgs.map((m) => m.toJson()).toList(),
       'toolEvents': toolEvents,
+      'geminiThoughtSigs': geminiThoughtSigs,
     };
     return jsonEncode(obj);
   }
@@ -593,6 +597,8 @@ class DataSync {
             const <ChatMessage>[];
         final toolEvents = ((obj['toolEvents'] as Map?) ?? const <String, dynamic>{})
             .map((k, v) => MapEntry(k.toString(), (v as List).cast<Map>().map((e) => e.cast<String, dynamic>()).toList()));
+        final geminiThoughtSigs = ((obj['geminiThoughtSigs'] as Map?) ?? const <String, dynamic>{})
+            .map((k, v) => MapEntry(k.toString(), v.toString()));
         
         if (mode == RestoreMode.overwrite) {
           // Clear and restore via ChatService
@@ -608,6 +614,9 @@ class DataSync {
           // Tool events
           for (final entry in toolEvents.entries) {
             try { await chatService.setToolEvents(entry.key, entry.value); } catch (_) {}
+          }
+          for (final entry in geminiThoughtSigs.entries) {
+            try { await chatService.setGeminiThoughtSignature(entry.key, entry.value); } catch (_) {}
           }
         } else {
           // Merge mode: Add only non-existing conversations and messages
@@ -648,6 +657,12 @@ class DataSync {
             final existing = chatService.getToolEvents(entry.key);
             if (existing.isEmpty) {
               try { await chatService.setToolEvents(entry.key, entry.value); } catch (_) {}
+            }
+          }
+          for (final entry in geminiThoughtSigs.entries) {
+            final existingSig = chatService.getGeminiThoughtSignature(entry.key);
+            if (existingSig == null || existingSig.isEmpty) {
+              try { await chatService.setGeminiThoughtSignature(entry.key, entry.value); } catch (_) {}
             }
           }
         }
