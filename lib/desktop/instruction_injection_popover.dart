@@ -12,6 +12,7 @@ Future<void> showDesktopInstructionInjectionPopover(
   BuildContext context, {
   required GlobalKey anchorKey,
   required List<InstructionInjection> items,
+  String? assistantId,
 }) async {
   if (items.isEmpty) return;
   final overlay = Overlay.of(context);
@@ -31,6 +32,7 @@ Future<void> showDesktopInstructionInjectionPopover(
       anchorRect: anchorRect,
       anchorWidth: size.width,
       items: items,
+      assistantId: assistantId,
       onClose: () {
         try {
           entry.remove();
@@ -46,12 +48,14 @@ class _InstructionInjectionPopover extends StatefulWidget {
     required this.anchorRect,
     required this.anchorWidth,
     required this.items,
+    required this.assistantId,
     required this.onClose,
   });
 
   final Rect anchorRect;
   final double anchorWidth;
   final List<InstructionInjection> items;
+  final String? assistantId;
   final VoidCallback onClose;
 
   @override
@@ -134,6 +138,7 @@ class _InstructionInjectionPopoverState extends State<_InstructionInjectionPopov
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                         child: _InstructionInjectionList(
                           items: widget.items,
+                          assistantId: widget.assistantId,
                           onClose: _close,
                         ),
                       ),
@@ -183,9 +188,11 @@ class _GlassPanel extends StatelessWidget {
 class _InstructionInjectionList extends StatelessWidget {
   const _InstructionInjectionList({
     required this.items,
+    required this.assistantId,
     required this.onClose,
   });
   final List<InstructionInjection> items;
+  final String? assistantId;
   final VoidCallback onClose;
 
   @override
@@ -196,6 +203,7 @@ class _InstructionInjectionList extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 420),
         child: _InstructionInjectionListInner(
           items: items,
+          assistantId: assistantId,
           onClose: onClose,
         ),
       ),
@@ -206,9 +214,11 @@ class _InstructionInjectionList extends StatelessWidget {
 class _InstructionInjectionListInner extends StatelessWidget {
   const _InstructionInjectionListInner({
     required this.items,
+    required this.assistantId,
     required this.onClose,
   });
   final List<InstructionInjection> items;
+  final String? assistantId;
   final VoidCallback onClose;
 
   @override
@@ -216,7 +226,7 @@ class _InstructionInjectionListInner extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final provider = context.watch<InstructionInjectionProvider>();
-    final selected = provider.activeIds.toSet();
+    final selected = provider.activeIdsFor(assistantId).toSet();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
       child: Column(
@@ -229,7 +239,7 @@ class _InstructionInjectionListInner extends StatelessWidget {
               label: l10n.homePageCancel,
               onTap: () async {
                 try {
-                  await context.read<InstructionInjectionProvider>().setActiveIds(const <String>[]);
+                  await context.read<InstructionInjectionProvider>().setActiveIds(const <String>[], assistantId: assistantId);
                 } catch (_) {}
                 onClose();
               },
@@ -245,7 +255,7 @@ class _InstructionInjectionListInner extends StatelessWidget {
                 onTap: () async {
                   try {
                     final prov = context.read<InstructionInjectionProvider>();
-                    await prov.toggleActiveId(p.id);
+                    await prov.toggleActiveId(p.id, assistantId: assistantId);
                   } catch (_) {}
                 },
               ),

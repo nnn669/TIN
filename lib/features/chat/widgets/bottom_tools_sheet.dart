@@ -13,13 +13,22 @@ import '../../../shared/widgets/ios_tactile.dart';
 import '../../model/widgets/ocr_prompt_sheet.dart';
 
 class BottomToolsSheet extends StatelessWidget {
-  const BottomToolsSheet({super.key, this.onCamera, this.onPhotos, this.onUpload, this.onClear, this.clearLabel});
+  const BottomToolsSheet({
+    super.key,
+    this.onCamera,
+    this.onPhotos,
+    this.onUpload,
+    this.onClear,
+    this.clearLabel,
+    this.assistantId,
+  });
 
   final VoidCallback? onCamera;
   final VoidCallback? onPhotos;
   final VoidCallback? onUpload;
   final VoidCallback? onClear;
   final String? clearLabel;
+  final String? assistantId;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +125,11 @@ class BottomToolsSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _LearningAndClearSection(clearLabel: clearLabel, onClear: onClear),
+                    _LearningAndClearSection(
+                      clearLabel: clearLabel,
+                      onClear: onClear,
+                      assistantId: assistantId,
+                    ),
                   ],
                 ),
               ),
@@ -129,9 +142,10 @@ class BottomToolsSheet extends StatelessWidget {
 }
 
 class _LearningAndClearSection extends StatefulWidget {
-  const _LearningAndClearSection({this.onClear, this.clearLabel});
+  const _LearningAndClearSection({this.onClear, this.clearLabel, this.assistantId});
   final VoidCallback? onClear;
   final String? clearLabel;
+  final String? assistantId;
 
   @override
   State<_LearningAndClearSection> createState() => _LearningAndClearSectionState();
@@ -190,11 +204,11 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
                 label: items[i].title.trim().isEmpty
                     ? l10n.instructionInjectionDefaultTitle
                     : items[i].title,
-                selected: provider.isActive(items[i].id),
+                selected: provider.isActive(items[i].id, assistantId: widget.assistantId),
                 onTap: () async {
                   Haptics.light();
                   final p = context.read<InstructionInjectionProvider>();
-                  await p.toggleActiveId(items[i].id);
+                  await p.toggleActiveId(items[i].id, assistantId: widget.assistantId);
                 },
                 onLongPress: () => _editInstructionInjectionPrompt(context, items[i]),
               ),
@@ -235,7 +249,7 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
     await provider.initialize();
     final items = provider.items;
     if (items.isEmpty) return;
-    final target = provider.active ?? items.first;
+    final target = provider.activeFor(widget.assistantId) ?? items.first;
     await _editInstructionInjectionPrompt(context, target);
   }
 }

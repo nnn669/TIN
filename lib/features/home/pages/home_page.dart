@@ -247,6 +247,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     } catch (_) {
       isDesktop = false;
     }
+    final assistantId = context.read<AssistantProvider>().currentAssistantId;
     final provider = context.read<InstructionInjectionProvider>();
     await provider.initialize();
     final items = provider.items;
@@ -258,6 +259,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         context,
         anchorKey: _inputBarKey,
         items: items,
+        assistantId: assistantId,
       );
     } else {
       // 平板 / 非桌面端使用 bottom sheet，样式与其它设置 bottom sheet 统一
@@ -281,7 +283,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               builder: (ctx, controller) {
                 final p = ctx.watch<InstructionInjectionProvider>();
                 final list = p.items;
-                final activeIds = p.activeIds.toSet();
+                final activeIds = p.activeIdsFor(assistantId).toSet();
                 return Column(
                   children: [
                     const SizedBox(height: 8),
@@ -346,7 +348,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     onTap: () async {
                                       Haptics.light();
                                       final prov = ctx.read<InstructionInjectionProvider>();
-                                      await prov.toggleActiveId(item.id);
+                                      await prov.toggleActiveId(item.id, assistantId: assistantId);
                                     },
                                     padding: const EdgeInsets.all(12),
                                     child: Row(
@@ -909,6 +911,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Open as modal bottom sheet instead of inline overlay
     _dismissKeyboard();
     final cs = Theme.of(context).colorScheme;
+    final assistantId = context.read<AssistantProvider>().currentAssistantId;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -937,6 +940,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               await _onClearContext();
             },
             clearLabel: _clearContextLabel(),
+            assistantId: assistantId,
           ),
         );
       },
@@ -1682,6 +1686,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
+    final assistantId = assistant?.id;
     
     // Use assistant's model if set, otherwise fall back to global default
     final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
@@ -1993,17 +1998,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject instruction-injection prompts when entries are active (global, multi-select)
+    // Inject instruction-injection prompts when entries are active (per assistant, multi-select)
     try {
       List<InstructionInjection> actives = const <InstructionInjection>[];
       try {
         final ip = context.read<InstructionInjectionProvider>();
-        actives = ip.actives;
+        actives = ip.activesFor(assistantId);
         if (actives.isEmpty) {
-          actives = await InstructionInjectionStore.getActives();
+          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
         }
       } catch (_) {
-        actives = await InstructionInjectionStore.getActives();
+        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
       }
       final prompts = actives
           .map((e) => e.prompt.trim())
@@ -2862,6 +2867,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Start a new assistant generation from current context
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
+    final assistantId = assistant?.id;
     
     // Use assistant's model if set, otherwise fall back to global default
     final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
@@ -3121,17 +3127,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         apiMessages.insert(0, {'role': 'system', 'content': prompt});
       }
     }
-    // Inject instruction-injection prompts when entries are active (global, multi-select)
+    // Inject instruction-injection prompts when entries are active (per assistant, multi-select)
     try {
       List<InstructionInjection> actives = const <InstructionInjection>[];
       try {
         final ip = context.read<InstructionInjectionProvider>();
-        actives = ip.actives;
+        actives = ip.activesFor(assistantId);
         if (actives.isEmpty) {
-          actives = await InstructionInjectionStore.getActives();
+          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
         }
       } catch (_) {
-        actives = await InstructionInjectionStore.getActives();
+        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
       }
       final prompts = actives
           .map((e) => e.prompt.trim())
@@ -5996,6 +6002,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   final settings = context.watch<SettingsProvider>();
                                   final ap = context.watch<AssistantProvider>();
                                   final a = ap.currentAssistant;
+                                  final assistantId = a?.id;
                                   final pk = a?.chatModelProvider ?? settings.currentModelProvider;
                                   final mid = a?.chatModelId ?? settings.currentModelId;
                                   if (pk != null && mid != null) {
@@ -6117,7 +6124,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     onUploadFiles: _onPickFiles,
                                     onToggleLearningMode: _openInstructionInjectionPopover,
                                     onLongPressLearning: _showLearningPromptSheet,
-                                    learningModeActive: context.watch<InstructionInjectionProvider>().activeIds.isNotEmpty,
+                                    learningModeActive: context
+                                            .watch<InstructionInjectionProvider>()
+                                            .activeIdsFor(assistantId)
+                                            .isNotEmpty,
                                     showMoreButton: false,
                                     onClearContext: _onClearContext,
                                     onStop: _cancelStreaming,
