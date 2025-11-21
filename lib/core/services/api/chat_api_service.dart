@@ -1127,6 +1127,17 @@ class ChatApiService {
         (body as Map<String, dynamic>)['stream_options'] = {'include_usage': true};
       }
     }
+    // Inject Grok built-in search if configured
+    if (upstreamModelId.toLowerCase().contains('grok')) {
+      final builtIns = _builtInTools(config, modelId);
+      if (builtIns.contains('search')) {
+        (body as Map<String, dynamic>)['search_parameters'] = {
+          'mode': 'auto',
+          'return_citations': true,
+        };
+      }
+    }
+
     // Merge custom body keys (override takes precedence)
     final extraBodyCfg = _customBody(config, modelId);
     if (extraBodyCfg.isNotEmpty) {
@@ -1562,6 +1573,25 @@ class ChatApiService {
                         final cached = (u['prompt_tokens_details']?['cached_tokens'] ?? 0) as int? ?? 0;
                         usage = (usage ?? const TokenUsage()).merge(TokenUsage(promptTokens: prompt, completionTokens: completion, cachedTokens: cached));
                         totalTokens = usage!.totalTokens;
+                      }
+                      // Capture Grok citations
+                      final gCitations = o['citations'];
+                      if (gCitations is List && gCitations.isNotEmpty) {
+                        final items = <Map<String, dynamic>>[];
+                        for (int k = 0; k < gCitations.length; k++) {
+                          final u = gCitations[k].toString();
+                          items.add({'index': k + 1, 'url': u, 'title': u});
+                        }
+                        if (items.isNotEmpty) {
+                          final payload = jsonEncode({'items': items});
+                          yield ChatStreamChunk(
+                            content: '',
+                            isDone: false,
+                            totalTokens: usage?.totalTokens ?? 0,
+                            usage: usage,
+                            toolResults: [ToolResultInfo(id: 'builtin_search', name: 'search_web', arguments: const <String, dynamic>{}, content: payload)],
+                          );
+                        }
                       }
                       if (rc is String && rc.isNotEmpty) {
                         yield ChatStreamChunk(content: '', reasoning: rc, isDone: false, totalTokens: 0, usage: usage);
@@ -2466,6 +2496,25 @@ class ChatApiService {
                         final cached = (u['prompt_tokens_details']?['cached_tokens'] ?? 0) as int? ?? 0;
                         usage = (usage ?? const TokenUsage()).merge(TokenUsage(promptTokens: prompt, completionTokens: completion, cachedTokens: cached));
                         totalTokens = usage!.totalTokens;
+                      }
+                      // Capture Grok citations
+                      final gCitations = o['citations'];
+                      if (gCitations is List && gCitations.isNotEmpty) {
+                        final items = <Map<String, dynamic>>[];
+                        for (int k = 0; k < gCitations.length; k++) {
+                          final u = gCitations[k].toString();
+                          items.add({'index': k + 1, 'url': u, 'title': u});
+                        }
+                        if (items.isNotEmpty) {
+                          final payload = jsonEncode({'items': items});
+                          yield ChatStreamChunk(
+                            content: '',
+                            isDone: false,
+                            totalTokens: usage?.totalTokens ?? 0,
+                            usage: usage,
+                            toolResults: [ToolResultInfo(id: 'builtin_search', name: 'search_web', arguments: const <String, dynamic>{}, content: payload)],
+                          );
+                        }
                       }
                       if (rc is String && rc.isNotEmpty) {
                         yield ChatStreamChunk(content: '', reasoning: rc, isDone: false, totalTokens: 0, usage: usage);

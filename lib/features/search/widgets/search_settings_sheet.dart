@@ -113,9 +113,14 @@ class _SearchSettingsSheet extends StatelessWidget {
         cfg != null &&
         cfg.providerType == ProviderKind.openai &&
         (cfg.useResponseApi == true);
+    final isGrok =
+        cfg != null &&
+        cfg.providerType == ProviderKind.openai &&
+        (modelId ?? '').toLowerCase().contains('grok');
+
     // Read current built-in search toggle from modelOverrides
     bool hasBuiltInSearch = false;
-    if ((isOfficialGemini || isClaude || isOpenAIResponses) &&
+    if ((isOfficialGemini || isClaude || isOpenAIResponses || isGrok) &&
         providerKey != null &&
         (modelId ?? '').isNotEmpty) {
       final mid = modelId!;
@@ -192,7 +197,8 @@ class _SearchSettingsSheet extends StatelessWidget {
                 // Built-in search toggle (Gemini official, Claude supported, or OpenAI Responses supported)
                 if ((isOfficialGemini ||
                         isClaudeSupportedModel ||
-                        isOpenAIResponsesSupportedModel) &&
+                        isOpenAIResponsesSupportedModel ||
+                        isGrok) &&
                     (providerKey != null) &&
                     (modelId ?? '').isNotEmpty) ...[
                   IosCardPress(

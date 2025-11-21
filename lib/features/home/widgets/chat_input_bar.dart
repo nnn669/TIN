@@ -589,7 +589,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
           final isGeminiOfficial = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
           final isClaude = cfg.providerType == ProviderKind.claude;
           final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-          if (isGeminiOfficial || isClaude || isOpenAIResponses) {
+          final isGrok = cfg.providerType == ProviderKind.openai && (currentModelId.toLowerCase().contains('grok'));
+          if (isGeminiOfficial || isClaude || isOpenAIResponses || isGrok) {
             final ov = cfg.modelOverrides[currentModelId] as Map?;
             final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
             builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
