@@ -1722,12 +1722,12 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                   const SizedBox(width: 6),
                   if (_isSelectionMode) ...[
                     Tooltip(
-                      message: '取消',
+                      message: l10n.homePageCancel,
                       child: _IconBtn(icon: lucide.Lucide.X, onTap: _exitSelectionMode),
                     ),
                     const SizedBox(width: 6),
                     Tooltip(
-                      message: '全选',
+                      message: l10n.mcpAssistantSheetSelectAll,
                       child: _IconBtn(icon: lucide.Lucide.CheckSquare, onTap: () {
                         setState(() {
                           _selectedModels.clear();
@@ -1738,7 +1738,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                     const SizedBox(width: 6),
                     if (_selectedModels.isNotEmpty)
                       Tooltip(
-                        message: _isDetecting ? '检测中...' : '开始检测',
+                        message: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectStart,
                         child: _IconTextBtn(
                           icon: _isDetecting ? lucide.Lucide.Loader : lucide.Lucide.HeartPulse,
                           label: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectButton,
@@ -1753,7 +1753,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                       )
                     else
                       Tooltip(
-                        message: '检测中...',
+                        message: l10n.providerDetailPageBatchDetecting,
                         child: _IconBtn(icon: lucide.Lucide.Loader, onTap: () {}),
                       ),
                     const SizedBox(width: 6),
@@ -3659,6 +3659,7 @@ class _ModelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final sp = context.watch<SettingsProvider>();
     final cfg = sp.getProviderConfig(providerKey);
     ModelInfo _infer(String id) => ModelRegistry.infer(ModelInfo(id: id, displayName: id));
@@ -3799,7 +3800,7 @@ class _ModelRow extends StatelessWidget {
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Tooltip(
-                  message: detectionResult! ? '检测成功' : (detectionErrorMessage ?? '检测失败：模型连接异常'),
+                  message: detectionResult! ? l10n.providerDetailPageDetectSuccess : (detectionErrorMessage ?? l10n.providerDetailPageDetectFailed),
                   child: Icon(
                     detectionResult! ? lucide.Lucide.CheckCircle : lucide.Lucide.XCircle,
                     size: 16,

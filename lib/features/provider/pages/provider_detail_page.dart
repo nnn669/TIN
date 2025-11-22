@@ -173,11 +173,11 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
             )
           else
             Tooltip(
-              message: _isDetecting ? '检测中...' : l10n.providerDetailPageTestButton,
+              message: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageTestButton,
               child: _TactileIconButton(
                 icon: _isDetecting ? Lucide.Loader : Lucide.HeartPulse,
                 color: cs.onSurface,
-                semanticLabel: _isDetecting ? '检测中...' : l10n.providerDetailPageTestButton,
+                semanticLabel: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageTestButton,
                 size: 22,
                 onTap: _isDetecting ? () {} : _enterSelectionMode,
               ),
@@ -957,7 +957,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                             children: [
                               Icon(_isDetecting ? Lucide.Loader : Lucide.HeartPulse, size: 20, color: _selectedModels.isEmpty ? cs.onSurface.withOpacity(0.5) : cs.primary),
                               const SizedBox(width: 8),
-                              Text(_isDetecting ? '检测中...' : '检测', style: TextStyle(color: _selectedModels.isEmpty ? cs.onSurface.withOpacity(0.5) : cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text(_isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectButton, style: TextStyle(color: _selectedModels.isEmpty ? cs.onSurface.withOpacity(0.5) : cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         );
@@ -2121,7 +2121,7 @@ class _ModelCard extends StatelessWidget {
                             MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: Tooltip(
-                                message: detectionResult! ? '检测成功' : (detectionErrorMessage ?? '检测失败：模型连接异常'),
+                                message: detectionResult! ? l10n.providerDetailPageDetectSuccess : (detectionErrorMessage ?? l10n.providerDetailPageDetectFailed),
                                 child: Icon(
                                   detectionResult! ? Lucide.CheckCircle : Lucide.XCircle,
                                   size: 16,
