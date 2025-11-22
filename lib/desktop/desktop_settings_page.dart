@@ -1740,7 +1740,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                         message: _isDetecting ? '检测中...' : '开始检测',
                         child: _IconTextBtn(
                           icon: _isDetecting ? lucide.Lucide.Loader : lucide.Lucide.HeartPulse,
-                          label: _isDetecting ? '检测中...' : '检测',
+                          label: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectButton,
                           onTap: () => _startDetection(),
                         ),
                       ),
