@@ -124,6 +124,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final Map<String, _TranslationData> _translations = <String, _TranslationData>{};
   final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{}; // assistantMessageId -> parts
   final Map<String, List<_ReasoningSegmentData>> _reasoningSegments = <String, List<_ReasoningSegmentData>>{}; // assistantMessageId -> reasoning segments
+  static const int _maxOcrCacheEntries = 48;
+  final Map<String, _OcrCacheEntry> _ocrCache = <String, _OcrCacheEntry>{}; // path -> cached OCR
+  final List<String> _ocrCacheOrder = <String>[]; // LRU order of paths
   final Map<String, String> _geminiThoughtSigs = <String, String>{}; // assistantMessageId -> signature comment
   static final RegExp _geminiThoughtSigRe = RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
   bool _appInForeground = true; // used to gate notifications only when app is background
@@ -672,6 +675,74 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       return null;
     }
     out = out.trim();
+    return out.isEmpty ? null : out;
+  }
+
+  void _cacheOcrText(String path, String text) {
+    final p = path.trim();
+    if (p.isEmpty) return;
+    _ocrCache[p] = _OcrCacheEntry(text: text);
+    _ocrCacheOrder.remove(p);
+    _ocrCacheOrder.add(p);
+    while (_ocrCacheOrder.length > _maxOcrCacheEntries) {
+      final oldest = _ocrCacheOrder.removeAt(0);
+      _ocrCache.remove(oldest);
+    }
+  }
+
+  String? _cachedOcrText(String path) {
+    final p = path.trim();
+    if (p.isEmpty) return null;
+    final entry = _ocrCache[p];
+    if (entry != null) {
+      // bump to most-recent
+      _ocrCacheOrder.remove(p);
+      _ocrCacheOrder.add(p);
+      return entry.text;
+    }
+    return null;
+  }
+
+  String _wrapOcrBlock(String ocrText) {
+    final buf = StringBuffer();
+    buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
+    buf.writeln('<image_file_ocr>');
+    buf.writeln(ocrText.trim());
+    buf.writeln('</image_file_ocr>');
+    buf.writeln();
+    return buf.toString();
+  }
+
+  Future<String?> _getOcrTextForImages(List<String> imagePaths) async {
+    if (imagePaths.isEmpty) return null;
+    final settings = context.read<SettingsProvider>();
+    if (!(settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null)) {
+      return null;
+    }
+    final combined = StringBuffer();
+    final List<String> uncached = <String>[];
+    for (final raw in imagePaths) {
+      final path = raw.trim();
+      if (path.isEmpty) continue;
+      final cached = _cachedOcrText(path);
+      if (cached != null && cached.trim().isNotEmpty) {
+        combined.writeln(cached.trim());
+      } else {
+        uncached.add(path);
+      }
+    }
+    // Fetch OCR for uncached images one-by-one to populate cache and avoid huge combined prompts.
+    for (final path in uncached) {
+      final text = await _runOcrForImages([path]);
+      if (text != null && text.trim().isNotEmpty) {
+        final t = text.trim();
+        _cacheOcrText(path, t);
+        combined.writeln(t);
+      }
+    }
+    final out = combined.toString().trim();
     return out.isEmpty ? null : out;
   }
 
@@ -1834,8 +1905,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       for (int i = apiMessages.length - 1; i >= 0; i--) {
         if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
       }
+
+      // When OCR is enabled, strip image/file markers from earlier user messages and
+      // inject cached OCR text so we never send binary images to non-vision models.
+      if (lastUserIdx != -1 &&
+          settings.ocrEnabled &&
+          settings.ocrModelProvider != null &&
+          settings.ocrModelId != null) {
+        for (int i = 0; i < apiMessages.length; i++) {
+          if (i == lastUserIdx) continue; // handled separately below
+          if (apiMessages[i]['role'] != 'user') continue;
+          final rawUser = (apiMessages[i]['content'] ?? '').toString();
+          final parsedUser = _parseInputFromRaw(rawUser);
+          final cleanedUser = rawUser
+              .replaceAll(RegExp(r"\[image:.*?\]"), '')
+              .replaceAll(RegExp(r"\[file:.*?\]"), '')
+              .trim();
+          String updated = cleanedUser;
+          final ocrText = await _getOcrTextForImages(parsedUser.imagePaths);
+          if (ocrText != null && ocrText.trim().isNotEmpty) {
+            updated = (_wrapOcrBlock(ocrText) + cleanedUser).trim();
+          }
+          apiMessages[i]['content'] = updated;
+        }
+      }
+
       if (lastUserIdx != -1) {
         final raw = (apiMessages[lastUserIdx]['content'] ?? '').toString();
+        final parsedLast = _parseInputFromRaw(raw);
         final cleaned = raw
             .replaceAll(RegExp(r"\[image:.*?\]"), '')
             .replaceAll(RegExp(r"\[file:.*?\]"), '')
@@ -1843,7 +1940,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         // Collect unique document attachments and image attachments from the entire (effective) conversation
         // so previously uploaded files/images remain part of the context in subsequent turns.
         final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
-        final Set<String> ocrImagePaths = <String>{};
         final Set<String> videoPaths = <String>{};
         for (final m in source) {
           if (m.role != 'user') continue;
@@ -1857,12 +1953,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             }
             allDocs[path] = d;
           }
-          for (final imgPath in parsed.imagePaths) {
-            final p = imgPath.trim();
-            if (p.isEmpty) continue;
-            if (videoPaths.contains(p)) continue;
-            ocrImagePaths.add(p);
-          }
         }
         // Also include current input attachments (they may not yet be reflected in storage)
         for (final d in input.documents) {
@@ -1874,7 +1964,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           }
           allDocs[path] = d;
         }
-        for (final imgPath in input.imagePaths) {
+
+        // Only OCR the images from the last user message (current turn) to avoid stale cross-turn matches.
+        final Set<String> ocrImagePaths = <String>{};
+        for (final imgPath in parsedLast.imagePaths) {
           final p = imgPath.trim();
           if (p.isEmpty) continue;
           if (videoPaths.contains(p)) continue;
@@ -1897,24 +1990,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
         String merged = (filePrompts.toString() + cleaned).trim();
 
-        // When OCR is enabled and the chat model does NOT support image input,
-        // run OCR on all image attachments in the current effective context (including historical images)
-        // and prepend the recognized text.
+        // When OCR is enabled, run it on the images from the last user message (current turn) to avoid stale matches.
         if (settings.ocrEnabled &&
             settings.ocrModelProvider != null &&
             settings.ocrModelId != null &&
-            !_isImageInputModel(providerKey, modelId) &&
             ocrImagePaths.isNotEmpty) {
           try {
-            final ocrText = await _runOcrForImages(ocrImagePaths.toList());
+            final ocrText = await _getOcrTextForImages(ocrImagePaths.toList());
             if (ocrText != null && ocrText.trim().isNotEmpty) {
-              final buf = StringBuffer();
-              buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
-              buf.writeln('<image_file_ocr>');
-              buf.writeln(ocrText.trim());
-              buf.writeln('</image_file_ocr>');
-              buf.writeln();
-              merged = (buf.toString() + merged).trim();
+              merged = (_wrapOcrBlock(ocrText) + merged).trim();
             }
           } catch (_) {}
         }
@@ -3000,6 +3084,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       for (int i = apiMessages.length - 1; i >= 0; i--) {
         if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
       }
+      // When OCR is enabled, strip markers from earlier user messages and inject cached OCR text only.
+      if (lastUserIdx != -1 &&
+          settings.ocrEnabled &&
+          settings.ocrModelProvider != null &&
+          settings.ocrModelId != null) {
+        for (int i = 0; i < apiMessages.length; i++) {
+          if (i == lastUserIdx) continue;
+          if (apiMessages[i]['role'] != 'user') continue;
+          final rawUser = (apiMessages[i]['content'] ?? '').toString();
+          final parsedUser = _parseInputFromRaw(rawUser);
+          final cleanedUser = rawUser
+              .replaceAll(RegExp(r"\[image:.*?\]"), '')
+              .replaceAll(RegExp(r"\[file:.*?\]"), '')
+              .trim();
+          String updated = cleanedUser;
+          final ocrText = await _getOcrTextForImages(parsedUser.imagePaths);
+          if (ocrText != null && ocrText.trim().isNotEmpty) {
+            updated = (_wrapOcrBlock(ocrText) + cleanedUser).trim();
+          }
+          apiMessages[i]['content'] = updated;
+        }
+      }
       if (lastUserIdx != -1) {
         final raw = (apiMessages[lastUserIdx]['content'] ?? '').toString();
         // Parse the last user message once to capture its image attachments for the API call
@@ -3013,9 +3119,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             .replaceAll(RegExp(r"\[file:.*?\]"), '')
             .trim();
 
-        // Collect unique document and image attachments from the entire (effective) conversation
+        // Collect documents from the entire context, but OCR only the images from the last user message
+        // to avoid stale cross-turn matches.
         final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
-        final Set<String> ocrImagePaths = <String>{};
         final Set<String> videoPaths = <String>{};
         for (final m in source) {
           if (m.role != 'user') continue;
@@ -3028,12 +3134,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               continue;
             }
             allDocs[path] = d;
-          }
-          for (final imgPath in parsed.imagePaths) {
-            final p = imgPath.trim();
-            if (p.isEmpty) continue;
-            if (videoPaths.contains(p)) continue;
-            ocrImagePaths.add(p);
           }
         }
 
@@ -3054,22 +3154,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
         String merged = (filePrompts.toString() + cleaned).trim();
 
-        // OCR for historical + current images when chat model does not support direct image input.
+        // OCR only the images from the last user message to avoid stale cross-turn matches.
         if (settings.ocrEnabled &&
             settings.ocrModelProvider != null &&
             settings.ocrModelId != null &&
-            !_isImageInputModel(providerKey, modelId) &&
-            ocrImagePaths.isNotEmpty) {
+            parsedLast.imagePaths.isNotEmpty) {
           try {
-            final ocrText = await _runOcrForImages(ocrImagePaths.toList());
-            if (ocrText != null && ocrText.trim().isNotEmpty) {
-              final buf = StringBuffer();
-              buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
-              buf.writeln('<image_file_ocr>');
-              buf.writeln(ocrText.trim());
-              buf.writeln('</image_file_ocr>');
-              buf.writeln();
-              merged = (buf.toString() + merged).trim();
+            final filteredImages = parsedLast.imagePaths
+                .where((p) => p.trim().isNotEmpty && !videoPaths.contains(p.trim()))
+                .toSet()
+                .toList();
+            if (filteredImages.isNotEmpty) {
+              final ocrText = await _getOcrTextForImages(filteredImages);
+              if (ocrText != null && ocrText.trim().isNotEmpty) {
+                merged = (_wrapOcrBlock(ocrText) + merged).trim();
+              }
             }
           } catch (_) {}
         }
@@ -3383,7 +3482,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       config: settings.getProviderConfig(providerKey),
       modelId: modelId,
       messages: apiMessages,
-      userImagePaths: ocrActive ? null : lastUserImagePaths,
+      userImagePaths: ocrActive ? const <String>[] : lastUserImagePaths,
       thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
       temperature: assistant?.temperature,
       topP: assistant?.topP,
@@ -6628,6 +6727,11 @@ class _ReasoningSegmentData {
 
 class _TranslationData {
   bool expanded = true; // default to expanded when translation is added
+}
+
+class _OcrCacheEntry {
+  _OcrCacheEntry({required this.text});
+  final String text;
 }
 
 class _CurrentModelIcon extends StatelessWidget {
