@@ -1146,6 +1146,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
   final Set<String> _selectedModels = {};
   bool _isDetecting = false;
   final Map<String, bool> _detectionResults = {};
+  final Map<String, String> _detectionErrorMessages = {};
   String? _currentDetectingModel;
   final Set<String> _pendingModels = {};
   
@@ -1798,6 +1799,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                       });
                     },
                     detectionResults: _detectionResults,
+                    detectionErrorMessages: _detectionErrorMessages,
                     currentDetectingModel: _currentDetectingModel,
                     pendingModels: _pendingModels,
                   ),
@@ -2853,6 +2855,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
       _isSelectionMode = true;
       _selectedModels.clear();
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
     });
   }
 
@@ -2861,6 +2864,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
       _isSelectionMode = false;
       _selectedModels.clear();
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
     });
   }
 
@@ -2872,6 +2876,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
     setState(() {
       _isDetecting = true;
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
       _isSelectionMode = false;
       _selectedModels.clear();
       _pendingModels.clear();
@@ -2895,12 +2900,14 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
         if (mounted) {
           setState(() {
             _detectionResults[modelId] = true;
+            _detectionErrorMessages.remove(modelId);
           });
         }
       } catch (e) {
         if (mounted) {
           setState(() {
             _detectionResults[modelId] = false;
+            _detectionErrorMessages[modelId] = e.toString();
           });
         }
       }
@@ -3528,6 +3535,7 @@ class _ModelGroupAccordion extends StatefulWidget {
     this.selectedModels = const {},
     this.onSelectionChanged,
     this.detectionResults = const {},
+    this.detectionErrorMessages = const {},
     this.currentDetectingModel,
     this.pendingModels = const {},
   });
@@ -3536,6 +3544,7 @@ class _ModelGroupAccordion extends StatefulWidget {
   final String providerKey;
   final bool isSelectionMode;
   final Set<String> selectedModels;
+  final Map<String, String> detectionErrorMessages;
   final ValueChanged<Set<String>>? onSelectionChanged;
   final Map<String, bool> detectionResults;
   final String? currentDetectingModel;
@@ -3609,6 +3618,7 @@ class _ModelGroupAccordionState extends State<_ModelGroupAccordion> {
                       }
                       widget.onSelectionChanged?.call(newSelection);
                     },
+                    detectionErrorMessage: widget.detectionErrorMessages[id],
                     detectionResult: widget.detectionResults[id],
                     isDetecting: widget.currentDetectingModel == id,
                     isPending: widget.pendingModels.contains(id),
@@ -3631,6 +3641,7 @@ class _ModelRow extends StatelessWidget {
     required this.providerKey,
     this.isSelectionMode = false,
     this.isSelected = false,
+    this.detectionErrorMessage,
     this.onSelectionChanged,
     this.detectionResult,
     this.isDetecting = false,
@@ -3640,6 +3651,7 @@ class _ModelRow extends StatelessWidget {
   final String providerKey;
   final bool isSelectionMode;
   final bool isSelected;
+  final String? detectionErrorMessage;
   final ValueChanged<bool>? onSelectionChanged;
   final bool? detectionResult;
   final bool isDetecting;
@@ -3784,10 +3796,16 @@ class _ModelRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
             ] else if (detectionResult != null) ...[
-              Icon(
-                detectionResult! ? lucide.Lucide.CheckCircle : lucide.Lucide.XCircle,
-                size: 16,
-                color: detectionResult! ? Colors.green : cs.error,
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Tooltip(
+                  message: detectionResult! ? '检测成功' : (detectionErrorMessage ?? '检测失败：模型连接异常'),
+                  child: Icon(
+                    detectionResult! ? lucide.Lucide.CheckCircle : lucide.Lucide.XCircle,
+                    size: 16,
+                    color: detectionResult! ? Colors.green : cs.error,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
             ],

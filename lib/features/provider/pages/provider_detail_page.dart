@@ -67,6 +67,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
   final Set<String> _selectedModels = {};
   bool _isDetecting = false;
   final Map<String, bool> _detectionResults = {};
+  final Map<String, String> _detectionErrorMessages = {};
   String? _currentDetectingModel;
   final Set<String> _pendingModels = {};
 
@@ -889,6 +890,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                         });
                       },
                       detectionResult: _detectionResults[id],
+                      detectionErrorMessage: _detectionErrorMessages[id],
                       isDetecting: _currentDetectingModel == id,
                       isPending: _pendingModels.contains(id),
                     ),
@@ -1421,6 +1423,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
       _isSelectionMode = true;
       _selectedModels.clear();
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
     });
   }
 
@@ -1429,6 +1432,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
       _isSelectionMode = false;
       _selectedModels.clear();
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
     });
   }
 
@@ -1462,6 +1466,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
     setState(() {
       _isDetecting = true;
       _detectionResults.clear();
+      _detectionErrorMessages.clear();
       _isSelectionMode = false;
       _selectedModels.clear();
       _pendingModels.clear();
@@ -1491,6 +1496,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
         if (mounted) {
           setState(() {
             _detectionResults[modelId] = false;
+            _detectionErrorMessages[modelId] = e.toString();
           });
         }
       }
@@ -2043,6 +2049,7 @@ class _ModelCard extends StatelessWidget {
     this.isSelected = false,
     this.onSelectionChanged,
     this.detectionResult,
+    this.detectionErrorMessage,
     this.isDetecting = false,
     this.isPending = false,
   });
@@ -2052,6 +2059,7 @@ class _ModelCard extends StatelessWidget {
   final bool isSelected;
   final ValueChanged<bool>? onSelectionChanged;
   final bool? detectionResult;
+  final String? detectionErrorMessage;
   final bool isDetecting;
   final bool isPending;
 
@@ -2110,10 +2118,16 @@ class _ModelCard extends StatelessWidget {
                             ),
                           ] else if (detectionResult != null) ...[
                             const SizedBox(width: 8),
-                            Icon(
-                              detectionResult! ? Lucide.CheckCircle : Lucide.XCircle,
-                              size: 16,
-                              color: detectionResult! ? Colors.green : cs.error,
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Tooltip(
+                                message: detectionResult! ? '检测成功' : (detectionErrorMessage ?? '检测失败：模型连接异常'),
+                                child: Icon(
+                                  detectionResult! ? Lucide.CheckCircle : Lucide.XCircle,
+                                  size: 16,
+                                  color: detectionResult! ? Colors.green : cs.error,
+                                ),
+                              ),
                             ),
                           ],
                         ],
