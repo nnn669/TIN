@@ -67,6 +67,8 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
   final Set<String> _selectedModels = {};
   bool _isDetecting = false;
   final Map<String, bool> _detectionResults = {};
+  String? _currentDetectingModel;
+  final Set<String> _pendingModels = {};
 
   @override
   void initState() {
@@ -170,13 +172,13 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
             )
           else
             Tooltip(
-              message: l10n.providerDetailPageTestButton,
+              message: _isDetecting ? '检测中...' : l10n.providerDetailPageTestButton,
               child: _TactileIconButton(
-                icon: Lucide.HeartPulse,
+                icon: _isDetecting ? Lucide.Loader : Lucide.HeartPulse,
                 color: cs.onSurface,
-                semanticLabel: l10n.providerDetailPageTestButton,
+                semanticLabel: _isDetecting ? '检测中...' : l10n.providerDetailPageTestButton,
                 size: 22,
-                onTap: _enterSelectionMode,
+                onTap: _isDetecting ? () {} : _enterSelectionMode,
               ),
             ),
           Tooltip(
@@ -752,17 +754,21 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
           ReorderableListView.builder(
             padding: EdgeInsets.fromLTRB(16, 16, 16, _isSelectionMode ? 160 : 100),
             itemCount: models.length,
-            onReorder: _isSelectionMode ? null : (oldIndex, newIndex) async {
+            onReorder: (oldIndex, newIndex) {
+              if (_isSelectionMode) return;
               if (newIndex > oldIndex) newIndex -= 1;
               final id = models[oldIndex];
               final list = List<String>.from(models);
               final item = list.removeAt(oldIndex);
               list.insert(newIndex, item);
               setState(() {});
-              await context.read<SettingsProvider>().setProviderConfig(
-                widget.keyName,
-                cfg.copyWith(models: list),
-              );
+              // 使用 Future.microtask 来异步执行，避免阻塞回调
+              Future.microtask(() async {
+                await context.read<SettingsProvider>().setProviderConfig(
+                  widget.keyName,
+                  cfg.copyWith(models: list),
+                );
+              });
             },
             proxyDecorator: (child, index, animation) {
               return AnimatedBuilder(
@@ -869,7 +875,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                       ],
                     ),
                     child: _ModelCard(
-                      providerKey: widget.keyName, 
+                      providerKey: widget.keyName,
                       modelId: id,
                       isSelectionMode: _isSelectionMode,
                       isSelected: _selectedModels.contains(id),
@@ -883,6 +889,8 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                         });
                       },
                       detectionResult: _detectionResults[id],
+                      isDetecting: _currentDetectingModel == id,
+                      isPending: _pendingModels.contains(id),
                     ),
                   ),
                 ),
@@ -923,29 +931,6 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                               Icon(Lucide.CheckSquare, size: 20, color: cs.primary),
                               const SizedBox(width: 8),
                               Text('全选', style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    _TactileRow(
-                      pressedScale: 0.97,
-                      haptics: false,
-                      onTap: _invertSelection,
-                      builder: (pressed) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: cs.primary.withOpacity(0.35)),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Lucide.Repeat, size: 20, color: cs.primary),
-                              const SizedBox(width: 8),
-                              Text('反选', style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         );
@@ -1448,16 +1433,18 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
   }
 
   void _selectAll() {
+    final cfg = context.read<SettingsProvider>().getProviderConfig(widget.keyName, defaultName: widget.displayName);
     setState(() {
       _selectedModels.clear();
-      _selectedModels.addAll(models);
+      _selectedModels.addAll(cfg.models);
     });
   }
 
   void _invertSelection() {
+    final cfg = context.read<SettingsProvider>().getProviderConfig(widget.keyName, defaultName: widget.displayName);
     setState(() {
       final newSelection = <String>{};
-      for (final model in models) {
+      for (final model in cfg.models) {
         if (!_selectedModels.contains(model)) {
           newSelection.add(model);
         }
@@ -1468,90 +1455,53 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
   }
 
   Future<void> _startDetection() async {
-    if (_selectedModels.isEmpty) return;
+    if (_selectedModels.isEmpty || _isDetecting) return;
     
-    // 显示检测模式选择对话框
-    final detectionMode = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('选择检测模式'),
-        content: const Text('请选择检测模式：'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('concurrent'),
-            child: const Text('并发检测'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('sequential'),
-            child: const Text('顺序检测'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
-    
-    if (detectionMode == null) return;
-    
-    final concurrent = detectionMode == 'concurrent';
-    await _performDetection(concurrent: concurrent);
-  }
-
-  Future<void> _performDetection({required bool concurrent}) async {
-    if (_selectedModels.isEmpty) return;
+    final modelsToTest = Set<String>.from(_selectedModels);
     
     setState(() {
       _isDetecting = true;
       _detectionResults.clear();
+      _isSelectionMode = false;
+      _selectedModels.clear();
+      _pendingModels.clear();
+      _pendingModels.addAll(modelsToTest);
+      _currentDetectingModel = null;
     });
 
     final cfg = context.read<SettingsProvider>().getProviderConfig(widget.keyName, defaultName: widget.displayName);
     
-    if (concurrent) {
-      // 并发检测
-      await Future.wait(_selectedModels.map((modelId) async {
-        try {
-          await ProviderManager.testConnection(cfg, modelId);
-          if (mounted) {
-            setState(() {
-              _detectionResults[modelId] = true;
-            });
-          }
-        } catch (e) {
-          if (mounted) {
-            setState(() {
-              _detectionResults[modelId] = false;
-            });
-          }
-        }
-      }));
-    } else {
-      // 顺序检测
-      for (final modelId in _selectedModels) {
-        try {
-          await ProviderManager.testConnection(cfg, modelId);
-          if (mounted) {
-            setState(() {
-              _detectionResults[modelId] = true;
-            });
-          }
-        } catch (e) {
-          if (mounted) {
-            setState(() {
-              _detectionResults[modelId] = false;
-            });
-          }
-        }
-        // 添加小延迟以避免请求过于频繁
-        await Future.delayed(const Duration(milliseconds: 500));
+    // 顺序检测,防止并发导致API被封锁
+    for (final modelId in modelsToTest) {
+      if (mounted) {
+        setState(() {
+          _currentDetectingModel = modelId;
+          _pendingModels.remove(modelId);
+        });
       }
+      
+      try {
+        await ProviderManager.testConnection(cfg, modelId);
+        if (mounted) {
+          setState(() {
+            _detectionResults[modelId] = true;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _detectionResults[modelId] = false;
+          });
+        }
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
     }
 
     if (mounted) {
       setState(() {
         _isDetecting = false;
+        _currentDetectingModel = null;
+        _pendingModels.clear();
       });
     }
   }
@@ -2087,12 +2037,14 @@ Widget _buildDismissBg(BuildContext context, {required bool alignStart}) {
 
 class _ModelCard extends StatelessWidget {
   const _ModelCard({
-    required this.providerKey, 
+    required this.providerKey,
     required this.modelId,
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onSelectionChanged,
     this.detectionResult,
+    this.isDetecting = false,
+    this.isPending = false,
   });
   final String providerKey;
   final String modelId;
@@ -2100,6 +2052,8 @@ class _ModelCard extends StatelessWidget {
   final bool isSelected;
   final ValueChanged<bool>? onSelectionChanged;
   final bool? detectionResult;
+  final bool isDetecting;
+  final bool isPending;
 
   @override
   Widget build(BuildContext context) {
@@ -2114,14 +2068,6 @@ class _ModelCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(12),
-            border: isSelectionMode 
-                ? Border.all(
-                    color: isSelected 
-                        ? cs.primary.withOpacity(0.5)
-                        : cs.outlineVariant.withOpacity(0.3),
-                    width: 2,
-                  )
-                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2145,7 +2091,24 @@ class _ModelCard extends StatelessWidget {
                           Expanded(
                             child: Text(_displayName(context), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                           ),
-                          if (detectionResult != null) ...[
+                          if (isDetecting) ...[
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+                            ),
+                          ] else if (isPending) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: cs.onSurface.withOpacity(0.3), width: 2),
+                              ),
+                            ),
+                          ] else if (detectionResult != null) ...[
                             const SizedBox(width: 8),
                             Icon(
                               detectionResult! ? Lucide.CheckCircle : Lucide.XCircle,
