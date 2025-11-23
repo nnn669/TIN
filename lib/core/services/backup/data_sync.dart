@@ -104,7 +104,7 @@ class DataSync {
   }
 
   Future<File> prepareBackupFile(WebDavConfig cfg) async {
-    final tmp = await getTemporaryDirectory();
+    final tmp = await _ensureTempDir();
     final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
     final outFile = File(p.join(tmp.path, 'kelivo_backup_$timestamp.zip'));
     if (await outFile.exists()) await outFile.delete();
@@ -272,7 +272,7 @@ class DataSync {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Download failed: ${res.statusCode}');
     }
-    final tmpDir = await getTemporaryDirectory();
+    final tmpDir = await _ensureTempDir();
     final file = File(p.join(tmpDir.path, item.displayName));
     await file.writeAsBytes(res.bodyBytes);
     await _restoreFromBackupFile(file, cfg, mode: mode);
@@ -296,8 +296,20 @@ class DataSync {
   }
 
   // ===== Internal helpers =====
+  /// Ensures the temporary directory exists (some macOS installs may not create the cache folder until first use).
+  Future<Directory> _ensureTempDir() async {
+    Directory dir = await getTemporaryDirectory();
+    if (!await dir.exists()) {
+      try { await dir.create(recursive: true); } catch (_) {}
+    }
+    if (!await dir.exists()) {
+      dir = await Directory.systemTemp.createTemp('kelivo_tmp_');
+    }
+    return dir;
+  }
+
   Future<File> _writeTempText(String name, String content) async {
-    final tmp = await getTemporaryDirectory();
+    final tmp = await _ensureTempDir();
     final f = File(p.join(tmp.path, name));
     await f.writeAsString(content);
     return f;
@@ -353,7 +365,7 @@ class DataSync {
 
   Future<void> _restoreFromBackupFile(File file, WebDavConfig cfg, {RestoreMode mode = RestoreMode.overwrite}) async {
     // Extract to temp
-    final tmp = await getTemporaryDirectory();
+    final tmp = await _ensureTempDir();
     final extractDir = Directory(p.join(tmp.path, 'restore_${DateTime.now().millisecondsSinceEpoch}'));
     await extractDir.create(recursive: true);
     final bytes = await file.readAsBytes();
