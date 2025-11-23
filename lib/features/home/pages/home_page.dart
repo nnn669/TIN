@@ -1905,8 +1905,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         })
         .toList();
 
-    // Build document prompts (from current input + earlier attachments)
-    // and clean markers in last user message; optionally inject OCR text
+    final bool ocrActive = settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null;
+
+    // Build document prompts per user message (inline) to avoid re-sending attachments every turn
     if (apiMessages.isNotEmpty) {
       // Find last user message index in apiMessages
       int lastUserIdx = -1;
@@ -1914,104 +1917,68 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
       }
 
-      // When OCR is enabled, strip image/file markers from earlier user messages and
-      // inject cached OCR text so we never send binary images to non-vision models.
-      if (lastUserIdx != -1 &&
-          settings.ocrEnabled &&
-          settings.ocrModelProvider != null &&
-          settings.ocrModelId != null) {
-        for (int i = 0; i < apiMessages.length; i++) {
-          if (i == lastUserIdx) continue; // handled separately below
-          if (apiMessages[i]['role'] != 'user') continue;
-          final rawUser = (apiMessages[i]['content'] ?? '').toString();
-          final parsedUser = _parseInputFromRaw(rawUser);
-          final cleanedUser = rawUser
-              .replaceAll(RegExp(r"\[image:.*?\]"), '')
-              .replaceAll(RegExp(r"\[file:.*?\]"), '')
-              .trim();
-          String updated = cleanedUser;
-          final ocrText = await _getOcrTextForImages(parsedUser.imagePaths);
-          if (ocrText != null && ocrText.trim().isNotEmpty) {
-            updated = (_wrapOcrBlock(ocrText) + cleanedUser).trim();
-          }
-          apiMessages[i]['content'] = updated;
+      final Map<String, String?> docTextCache = <String, String?>{};
+      Future<String?> _readDocument(DocumentAttachment d) async {
+        if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
+        try {
+          final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
+          docTextCache[d.path] = text;
+          return text;
+        } catch (_) {
+          docTextCache[d.path] = null;
+          return null;
         }
       }
 
-      if (lastUserIdx != -1) {
-        final raw = (apiMessages[lastUserIdx]['content'] ?? '').toString();
-        final parsedLast = _parseInputFromRaw(raw);
-        final cleaned = raw
-            .replaceAll(RegExp(r"\[image:.*?\]"), '')
-            .replaceAll(RegExp(r"\[file:.*?\]"), '')
-            .trim();
-        // Collect unique document attachments and image attachments from the entire (effective) conversation
-        // so previously uploaded files/images remain part of the context in subsequent turns.
-        final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
-        final Set<String> videoPaths = <String>{};
-        for (final m in source) {
-          if (m.role != 'user') continue;
-          final parsed = _parseInputFromRaw(m.content);
-          for (final d in parsed.documents) {
-            final path = d.path.trim();
-            if (path.isEmpty) continue;
-            if (d.mime.toLowerCase().startsWith('video/')) {
-              videoPaths.add(path);
-              continue;
-            }
-            allDocs[path] = d;
-          }
-        }
-        // Also include current input attachments (they may not yet be reflected in storage)
-        for (final d in input.documents) {
-          final path = d.path.trim();
-          if (path.isEmpty) continue;
-          if (d.mime.toLowerCase().startsWith('video/')) {
-            videoPaths.add(path);
-            continue;
-          }
-          allDocs[path] = d;
+      for (int i = 0; i < apiMessages.length; i++) {
+        if (apiMessages[i]['role'] != 'user') continue;
+        final rawUser = (apiMessages[i]['content'] ?? '').toString();
+        final parsedUser = _parseInputFromRaw(rawUser);
+        final videoPaths = <String>{
+          for (final d in parsedUser.documents)
+            if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
+        }..removeWhere((p) => p.isEmpty);
+
+        String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
+        if (ocrActive) {
+          cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
         }
 
-        // Only OCR the images from the last user message (current turn) to avoid stale cross-turn matches.
-        final Set<String> ocrImagePaths = <String>{};
-        for (final imgPath in parsedLast.imagePaths) {
-          final p = imgPath.trim();
-          if (p.isEmpty) continue;
-          if (videoPaths.contains(p)) continue;
-          ocrImagePaths.add(p);
-        }
-
-        // Build document prompts
         final filePrompts = StringBuffer();
-        for (final d in allDocs.values) {
-          try {
-            final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
-            filePrompts.writeln('## user sent a file: ${d.fileName}');
-            filePrompts.writeln('<content>');
-            filePrompts.writeln('```');
-            filePrompts.writeln(text);
-            filePrompts.writeln('```');
-            filePrompts.writeln('</content>');
-            filePrompts.writeln();
-          } catch (_) {}
+        for (final d in parsedUser.documents) {
+          if (d.mime.toLowerCase().startsWith('video/')) continue;
+          final text = await _readDocument(d);
+          if (text == null || text.trim().isEmpty) continue;
+          filePrompts.writeln('## user sent a file: ${d.fileName}');
+          filePrompts.writeln('<content>');
+          filePrompts.writeln('```');
+          filePrompts.writeln(text);
+          filePrompts.writeln('```');
+          filePrompts.writeln('</content>');
+          filePrompts.writeln();
         }
-        String merged = (filePrompts.toString() + cleaned).trim();
 
-        // When OCR is enabled, run it on the images from the last user message (current turn) to avoid stale matches.
-        if (settings.ocrEnabled &&
-            settings.ocrModelProvider != null &&
-            settings.ocrModelId != null &&
-            ocrImagePaths.isNotEmpty) {
-          try {
-            final ocrText = await _getOcrTextForImages(ocrImagePaths.toList());
+        String merged = (filePrompts.toString() + cleanedUser).trim();
+
+        if (ocrActive) {
+          final ocrTargets = parsedUser.imagePaths
+              .map((p) => p.trim())
+              .where((p) => p.isNotEmpty && !videoPaths.contains(p))
+              .toSet()
+              .toList();
+          if (ocrTargets.isNotEmpty) {
+            final ocrText = await _getOcrTextForImages(ocrTargets);
             if (ocrText != null && ocrText.trim().isNotEmpty) {
               merged = (_wrapOcrBlock(ocrText) + merged).trim();
             }
-          } catch (_) {}
+          }
         }
 
-        final userText = merged.isEmpty ? cleaned : merged;
+        apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
+      }
+
+      if (lastUserIdx != -1) {
+        final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
         // Apply message template if set
         final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
             ? '{{ message }}'
@@ -2364,12 +2331,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       for (final d in input.documents)
         if (d.mime.toLowerCase().startsWith('video/')) d.path,
     ];
-
-    // When OCR is enabled, we only send pure text (including OCR text) to the chat model
-    // and do not attach images/videos as binary inputs.
-    final bool ocrActive = settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null;
 
     final stream = ChatApiService.sendMessageStream(
       config: config,
@@ -3097,103 +3058,83 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Capture image attachments from the last user message (for resend)
     List<String>? lastUserImagePaths;
 
-    // Build document prompts from all user messages in the current effective context
+    final bool ocrActive = settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null;
+
+    // Inline document prompts per user message (avoid duplicating past uploads on every regenerate)
     if (apiMessages.isNotEmpty) {
       // Find last user message index in apiMessages
       int lastUserIdx = -1;
       for (int i = apiMessages.length - 1; i >= 0; i--) {
         if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
       }
-      // When OCR is enabled, strip markers from earlier user messages and inject cached OCR text only.
-      if (lastUserIdx != -1 &&
-          settings.ocrEnabled &&
-          settings.ocrModelProvider != null &&
-          settings.ocrModelId != null) {
-        for (int i = 0; i < apiMessages.length; i++) {
-          if (i == lastUserIdx) continue;
-          if (apiMessages[i]['role'] != 'user') continue;
-          final rawUser = (apiMessages[i]['content'] ?? '').toString();
-          final parsedUser = _parseInputFromRaw(rawUser);
-          final cleanedUser = rawUser
-              .replaceAll(RegExp(r"\[image:.*?\]"), '')
-              .replaceAll(RegExp(r"\[file:.*?\]"), '')
-              .trim();
-          String updated = cleanedUser;
-          final ocrText = await _getOcrTextForImages(parsedUser.imagePaths);
-          if (ocrText != null && ocrText.trim().isNotEmpty) {
-            updated = (_wrapOcrBlock(ocrText) + cleanedUser).trim();
-          }
-          apiMessages[i]['content'] = updated;
+      final Map<String, String?> docTextCache = <String, String?>{};
+      Future<String?> _readDocument(DocumentAttachment d) async {
+        if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
+        try {
+          final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
+          docTextCache[d.path] = text;
+          return text;
+        } catch (_) {
+          docTextCache[d.path] = null;
+          return null;
         }
       }
-      if (lastUserIdx != -1) {
-        final raw = (apiMessages[lastUserIdx]['content'] ?? '').toString();
-        // Parse the last user message once to capture its image attachments for the API call
-        final parsedLast = _parseInputFromRaw(raw);
-        if (parsedLast.imagePaths.isNotEmpty) {
-          lastUserImagePaths = List<String>.of(parsedLast.imagePaths);
+
+      for (int i = 0; i < apiMessages.length; i++) {
+        if (apiMessages[i]['role'] != 'user') continue;
+        final rawUser = (apiMessages[i]['content'] ?? '').toString();
+        final parsedUser = _parseInputFromRaw(rawUser);
+        if (i == lastUserIdx && lastUserImagePaths == null && parsedUser.imagePaths.isNotEmpty) {
+          lastUserImagePaths = List<String>.of(parsedUser.imagePaths);
         }
 
-        final cleaned = raw
-            .replaceAll(RegExp(r"\[image:.*?\]"), '')
-            .replaceAll(RegExp(r"\[file:.*?\]"), '')
-            .trim();
+        final videoPaths = <String>{
+          for (final d in parsedUser.documents)
+            if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
+        }..removeWhere((p) => p.isEmpty);
 
-        // Collect documents from the entire context, but OCR only the images from the last user message
-        // to avoid stale cross-turn matches.
-        final Map<String, DocumentAttachment> allDocs = <String, DocumentAttachment>{};
-        final Set<String> videoPaths = <String>{};
-        for (final m in source) {
-          if (m.role != 'user') continue;
-          final parsed = _parseInputFromRaw(m.content);
-          for (final d in parsed.documents) {
-            final path = d.path.trim();
-            if (path.isEmpty) continue;
-            if (d.mime.toLowerCase().startsWith('video/')) {
-              videoPaths.add(path);
-              continue;
+        String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
+        if (ocrActive) {
+          cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
+        }
+
+        final filePrompts = StringBuffer();
+        for (final d in parsedUser.documents) {
+          if (d.mime.toLowerCase().startsWith('video/')) continue;
+          final text = await _readDocument(d);
+          if (text == null || text.trim().isEmpty) continue;
+          filePrompts.writeln('## user sent a file: ${d.fileName}');
+          filePrompts.writeln('<content>');
+          filePrompts.writeln('```');
+          filePrompts.writeln(text);
+          filePrompts.writeln('```');
+          filePrompts.writeln('</content>');
+          filePrompts.writeln();
+        }
+
+        String merged = (filePrompts.toString() + cleanedUser).trim();
+
+        if (ocrActive) {
+          final ocrTargets = parsedUser.imagePaths
+              .map((p) => p.trim())
+              .where((p) => p.isNotEmpty && !videoPaths.contains(p))
+              .toSet()
+              .toList();
+          if (ocrTargets.isNotEmpty) {
+            final ocrText = await _getOcrTextForImages(ocrTargets);
+            if (ocrText != null && ocrText.trim().isNotEmpty) {
+              merged = (_wrapOcrBlock(ocrText) + merged).trim();
             }
-            allDocs[path] = d;
           }
         }
 
-        // Build document prompts
-        final filePrompts = StringBuffer();
-        for (final d in allDocs.values) {
-          try {
-            final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
-            filePrompts.writeln('## user sent a file: ${d.fileName}');
-            filePrompts.writeln('<content>');
-            filePrompts.writeln('```');
-            filePrompts.writeln(text);
-            filePrompts.writeln('```');
-            filePrompts.writeln('</content>');
-            filePrompts.writeln();
-          } catch (_) {}
-        }
+        apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
+      }
 
-        String merged = (filePrompts.toString() + cleaned).trim();
-
-        // OCR only the images from the last user message to avoid stale cross-turn matches.
-        if (settings.ocrEnabled &&
-            settings.ocrModelProvider != null &&
-            settings.ocrModelId != null &&
-            parsedLast.imagePaths.isNotEmpty) {
-          try {
-            final filteredImages = parsedLast.imagePaths
-                .where((p) => p.trim().isNotEmpty && !videoPaths.contains(p.trim()))
-                .toSet()
-                .toList();
-            if (filteredImages.isNotEmpty) {
-              final ocrText = await _getOcrTextForImages(filteredImages);
-              if (ocrText != null && ocrText.trim().isNotEmpty) {
-                merged = (_wrapOcrBlock(ocrText) + merged).trim();
-              }
-            }
-          } catch (_) {}
-        }
-
-        final userText = merged.isEmpty ? cleaned : merged;
+      if (lastUserIdx != -1) {
+        final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
         // Apply message template if set (reusing assistant's template to keep parity with normal send)
         final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
             ? '{{ message }}'
@@ -3492,11 +3433,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     // Respect assistant streaming toggle: if off, buffer updates until done
     final bool streamOutput = assistant?.streamOutput ?? true;
-
-    // When OCR is enabled, resend/regenerate also uses pure text only for the chat model.
-    final bool ocrActive = settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null;
 
     final stream = ChatApiService.sendMessageStream(
       config: settings.getProviderConfig(providerKey),
