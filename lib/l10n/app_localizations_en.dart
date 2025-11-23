@@ -376,6 +376,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantEditPageCustomTab => 'Custom';
 
   @override
+  String get assistantEditPageRegexTab => 'Regex Replace';
+
+  @override
+  String get assistantEditRegexDescription =>
+      'Create regex rules to rewrite or visually adjust user/assistant messages.';
+
+  @override
+  String get assistantEditAddRegexButton => 'Add Regex Rule';
+
+  @override
+  String get assistantRegexAddTitle => 'Add Regex Rule';
+
+  @override
+  String get assistantRegexEditTitle => 'Edit Regex Rule';
+
+  @override
+  String get assistantRegexNameLabel => 'Rule Name';
+
+  @override
+  String get assistantRegexPatternLabel => 'Regular Expression';
+
+  @override
+  String get assistantRegexReplacementLabel => 'Replacement String';
+
+  @override
+  String get assistantRegexScopeLabel => 'Affecting Scope';
+
+  @override
+  String get assistantRegexScopeUser => 'User';
+
+  @override
+  String get assistantRegexScopeAssistant => 'Assistant';
+
+  @override
+  String get assistantRegexScopeVisualOnly => 'Visual Only';
+
+  @override
+  String get assistantRegexAddAction => 'Add';
+
+  @override
+  String get assistantRegexSaveAction => 'Save';
+
+  @override
+  String get assistantRegexDeleteButton => 'Delete';
+
+  @override
+  String get assistantRegexValidationError =>
+      'Please fill in the name, regex, and select at least one scope.';
+
+  @override
+  String get assistantRegexInvalidPattern => 'Invalid regular expression';
+
+  @override
+  String get assistantRegexCancelButton => 'Cancel';
+
+  @override
+  String get assistantRegexUntitled => 'Untitled Rule';
+
+  @override
   String get assistantEditCustomHeadersTitle => 'Custom Headers';
 
   @override

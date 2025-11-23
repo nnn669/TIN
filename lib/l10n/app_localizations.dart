@@ -797,6 +797,120 @@ abstract class AppLocalizations {
   /// **'Custom'**
   String get assistantEditPageCustomTab;
 
+  /// No description provided for @assistantEditPageRegexTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Regex Replace'**
+  String get assistantEditPageRegexTab;
+
+  /// No description provided for @assistantEditRegexDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create regex rules to rewrite or visually adjust user/assistant messages.'**
+  String get assistantEditRegexDescription;
+
+  /// No description provided for @assistantEditAddRegexButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Regex Rule'**
+  String get assistantEditAddRegexButton;
+
+  /// No description provided for @assistantRegexAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Regex Rule'**
+  String get assistantRegexAddTitle;
+
+  /// No description provided for @assistantRegexEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Regex Rule'**
+  String get assistantRegexEditTitle;
+
+  /// No description provided for @assistantRegexNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule Name'**
+  String get assistantRegexNameLabel;
+
+  /// No description provided for @assistantRegexPatternLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular Expression'**
+  String get assistantRegexPatternLabel;
+
+  /// No description provided for @assistantRegexReplacementLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Replacement String'**
+  String get assistantRegexReplacementLabel;
+
+  /// No description provided for @assistantRegexScopeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Affecting Scope'**
+  String get assistantRegexScopeLabel;
+
+  /// No description provided for @assistantRegexScopeUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get assistantRegexScopeUser;
+
+  /// No description provided for @assistantRegexScopeAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get assistantRegexScopeAssistant;
+
+  /// No description provided for @assistantRegexScopeVisualOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Only'**
+  String get assistantRegexScopeVisualOnly;
+
+  /// No description provided for @assistantRegexAddAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get assistantRegexAddAction;
+
+  /// No description provided for @assistantRegexSaveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get assistantRegexSaveAction;
+
+  /// No description provided for @assistantRegexDeleteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get assistantRegexDeleteButton;
+
+  /// No description provided for @assistantRegexValidationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in the name, regex, and select at least one scope.'**
+  String get assistantRegexValidationError;
+
+  /// No description provided for @assistantRegexInvalidPattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid regular expression'**
+  String get assistantRegexInvalidPattern;
+
+  /// No description provided for @assistantRegexCancelButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get assistantRegexCancelButton;
+
+  /// No description provided for @assistantRegexUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled Rule'**
+  String get assistantRegexUntitled;
+
   /// No description provided for @assistantEditCustomHeadersTitle.
   ///
   /// In en, this message translates to:

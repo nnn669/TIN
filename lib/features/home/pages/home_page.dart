@@ -60,6 +60,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import '../../../core/services/search/search_tool_service.dart';
+import '../../../utils/assistant_regex.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../core/services/instruction_injection_store.dart';
 import '../../../utils/sandbox_path_resolver.dart';
@@ -71,6 +72,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../desktop/hotkeys/chat_action_bus.dart';
 import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import '../../../core/models/quick_phrase.dart';
+import '../../../core/models/assistant_regex.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
@@ -1815,14 +1817,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Add user message
+    // Add user message (apply regex rules before persisting)
     // Persist user message; append image and document markers for display
     final imageMarkers = input.imagePaths.map((p) => '\n[image:$p]').join();
     final docMarkers = input.documents.map((d) => '\n[file:${d.path}|${d.fileName}|${d.mime}]').join();
+    final processedUserText = applyAssistantRegexes(
+      content,
+      assistant: assistant,
+      scope: AssistantRegexScope.user,
+      visual: false,
+    );
     final userMessage = await _chatService.addMessage(
       conversationId: _currentConversation!.id,
       role: 'user',
-      content: content + imageMarkers + docMarkers,
+      content: processedUserText + imageMarkers + docMarkers,
     );
 
     setState(() {
@@ -2185,9 +2193,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final config = settings.getProviderConfig(providerKey);
 
     // Stream response
-    String fullContent = '';
+    String fullContentRaw = '';
     int totalTokens = 0;
     TokenUsage? usage;
+    String _transformAssistantContent([String? raw]) {
+      return applyAssistantRegexes(
+        raw ?? fullContentRaw,
+        assistant: assistant,
+        scope: AssistantRegexScope.assistant,
+        visual: false,
+      );
+    }
     // Respect assistant streaming toggle: if off, buffer updates until done
     final bool streamOutput = assistant?.streamOutput ?? true;
     String _bufferedReasoning = '';
@@ -2390,10 +2406,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           _titleQueued = true;
         }
         // Replace extremely long inline base64 images with local files to avoid jank
-        final processedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(fullContent);
+        final processedContent = _transformAssistantContent();
+        final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
         await _chatService.updateMessage(
           assistantMessage.id,
-          content: processedContent,
+          content: sanitizedContent,
           totalTokens: totalTokens,
           isStreaming: false,
         );
@@ -2402,7 +2419,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
           if (index != -1) {
             _messages[index] = _messages[index].copyWith(
-              content: processedContent,
+              content: sanitizedContent,
               totalTokens: totalTokens,
               isStreaming: false,
             );
@@ -2621,7 +2638,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           if (chunk.isDone) {
             // Ensure final content from non-streaming path is captured before finish()
             if (chunkContent.isNotEmpty) {
-              fullContent += chunkContent;
+              fullContentRaw += chunkContent;
             }
             // Guard: if we have any loading tool-call placeholders, a follow-up round is coming.
             final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
@@ -2677,7 +2694,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               );
             }
           } else {
-            fullContent += chunkContent;
+            fullContentRaw += chunkContent;
             if (chunk.totalTokens > 0) {
               totalTokens = chunk.totalTokens;
             }
@@ -2687,9 +2704,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             }
 
             // Always persist partial content so switching away doesn’t lose it
+            final streamingProcessed = _transformAssistantContent();
             await _chatService.updateMessage(
               assistantMessage.id,
-              content: fullContent,
+              content: streamingProcessed,
               totalTokens: totalTokens,
             );
 
@@ -2738,7 +2756,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
                   if (index != -1) {
                     _messages[index] = _messages[index].copyWith(
-                      content: fullContent,
+                      content: streamingProcessed,
                       totalTokens: totalTokens,
                     );
                   }
@@ -2756,7 +2774,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         onError: (e) async {
           // Preserve partial content; if empty, write error message into bubble
           final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-          final displayContent = fullContent.isNotEmpty ? fullContent : errText;
+          final processed = _transformAssistantContent();
+          final displayContent = processed.isNotEmpty ? processed : errText;
           await _chatService.updateMessage(
             assistantMessage.id,
             content: displayContent,
@@ -2843,7 +2862,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     } catch (e) {
       // Preserve partial content on outer error as well; if empty, show error text in bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-      final displayContent = fullContent.isNotEmpty ? fullContent : errText;
+      final processed = _transformAssistantContent();
+      final displayContent = processed.isNotEmpty ? processed : errText;
       await _chatService.updateMessage(
         assistantMessage.id,
         content: displayContent,
@@ -3494,22 +3514,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       stream: streamOutput,
     );
 
-    String fullContent = '';
+    String fullContentRaw = '';
     int totalTokens = 0;
     TokenUsage? usage;
+    String _transformAssistantContent2([String? raw]) {
+      return applyAssistantRegexes(
+        raw ?? fullContentRaw,
+        assistant: assistant,
+        scope: AssistantRegexScope.assistant,
+        visual: false,
+      );
+    }
 
     // Respect assistant streaming toggle: if off, buffer updates until done
     String _bufferedReasoning2 = '';
     DateTime? _reasoningStartAt2;
 
     Future<void> finish({bool generateTitle = false}) async {
-      final processedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(fullContent);
-      await _chatService.updateMessage(assistantMessage.id, content: processedContent, totalTokens: totalTokens, isStreaming: false);
+      final processedContent = _transformAssistantContent2();
+      final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
+      await _chatService.updateMessage(assistantMessage.id, content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
       if (!mounted) return;
       setState(() {
         final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
         if (index != -1) {
-          _messages[index] = _messages[index].copyWith(content: processedContent, totalTokens: totalTokens, isStreaming: false);
+          _messages[index] = _messages[index].copyWith(content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
         }
       });
       _setConversationLoading(assistantMessage.conversationId, false);
@@ -3642,7 +3671,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
 
       if (chunkContent.isNotEmpty) {
-        fullContent += chunkContent;
+        fullContentRaw += chunkContent;
 
         // Respect auto-collapse setting when main content starts: always stop timer, collapse only if enabled
         final rd = _reasoning[assistantMessage.id];
@@ -3676,10 +3705,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
 
         // Always persist partial content, even if streaming UI is off
+        final streamingProcessed = _transformAssistantContent2();
         try {
           await _chatService.updateMessage(
             assistantMessage.id,
-            content: fullContent,
+            content: streamingProcessed,
             totalTokens: totalTokens,
           );
         } catch (_) {}
@@ -3687,7 +3717,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (streamOutput) {
           setState(() {
             final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
-            if (i != -1) _messages[i] = _messages[i].copyWith(content: fullContent);
+            if (i != -1) _messages[i] = _messages[i].copyWith(content: streamingProcessed);
           });
         }
       }
@@ -3734,7 +3764,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     onError: (e) async {
       // When regenerate fails, persist error text into this assistant bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-      final displayContent = fullContent.isNotEmpty ? fullContent : errText;
+      final processed = _transformAssistantContent2();
+      final displayContent = processed.isNotEmpty ? processed : errText;
       await _chatService.updateMessage(
         assistantMessage.id,
         content: displayContent,

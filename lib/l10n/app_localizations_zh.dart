@@ -369,6 +369,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditPageCustomTab => '自定义请求';
 
   @override
+  String get assistantEditPageRegexTab => '正则替换';
+
+  @override
+  String get assistantEditRegexDescription => '为用户/助手消息配置正则规则，可修改或仅调整显示效果。';
+
+  @override
+  String get assistantEditAddRegexButton => '添加正则规则';
+
+  @override
+  String get assistantRegexAddTitle => '添加正则规则';
+
+  @override
+  String get assistantRegexEditTitle => '编辑正则规则';
+
+  @override
+  String get assistantRegexNameLabel => '规则名称';
+
+  @override
+  String get assistantRegexPatternLabel => '正则表达式';
+
+  @override
+  String get assistantRegexReplacementLabel => '替换字符串';
+
+  @override
+  String get assistantRegexScopeLabel => '影响范围';
+
+  @override
+  String get assistantRegexScopeUser => '用户';
+
+  @override
+  String get assistantRegexScopeAssistant => '助手';
+
+  @override
+  String get assistantRegexScopeVisualOnly => '仅视觉';
+
+  @override
+  String get assistantRegexAddAction => '添加';
+
+  @override
+  String get assistantRegexSaveAction => '保存';
+
+  @override
+  String get assistantRegexDeleteButton => '删除';
+
+  @override
+  String get assistantRegexValidationError => '请填写名称、正则表达式，并至少选择一个范围。';
+
+  @override
+  String get assistantRegexInvalidPattern => '正则表达式无效';
+
+  @override
+  String get assistantRegexCancelButton => '取消';
+
+  @override
+  String get assistantRegexUntitled => '未命名规则';
+
+  @override
   String get assistantEditCustomHeadersTitle => '自定义 Header';
 
   @override
@@ -3515,6 +3572,63 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantEditPageCustomTab => '自定义请求';
 
   @override
+  String get assistantEditPageRegexTab => '正则替换';
+
+  @override
+  String get assistantEditRegexDescription => '为用户/助手消息配置正则规则，可修改或仅调整显示效果。';
+
+  @override
+  String get assistantEditAddRegexButton => '添加正则规则';
+
+  @override
+  String get assistantRegexAddTitle => '添加正则规则';
+
+  @override
+  String get assistantRegexEditTitle => '编辑正则规则';
+
+  @override
+  String get assistantRegexNameLabel => '规则名称';
+
+  @override
+  String get assistantRegexPatternLabel => '正则表达式';
+
+  @override
+  String get assistantRegexReplacementLabel => '替换字符串';
+
+  @override
+  String get assistantRegexScopeLabel => '影响范围';
+
+  @override
+  String get assistantRegexScopeUser => '用户';
+
+  @override
+  String get assistantRegexScopeAssistant => '助手';
+
+  @override
+  String get assistantRegexScopeVisualOnly => '仅视觉';
+
+  @override
+  String get assistantRegexAddAction => '添加';
+
+  @override
+  String get assistantRegexSaveAction => '保存';
+
+  @override
+  String get assistantRegexDeleteButton => '删除';
+
+  @override
+  String get assistantRegexValidationError => '请填写名称、正则表达式，并至少选择一个范围。';
+
+  @override
+  String get assistantRegexInvalidPattern => '正则表达式无效';
+
+  @override
+  String get assistantRegexCancelButton => '取消';
+
+  @override
+  String get assistantRegexUntitled => '未命名规则';
+
+  @override
   String get assistantEditCustomHeadersTitle => '自定义 Header';
 
   @override
@@ -6659,6 +6773,63 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantEditPageCustomTab => '自訂請求';
+
+  @override
+  String get assistantEditPageRegexTab => '正則替換';
+
+  @override
+  String get assistantEditRegexDescription => '為使用者/助理訊息配置正則規則，可修改或僅調整顯示效果。';
+
+  @override
+  String get assistantEditAddRegexButton => '新增正則規則';
+
+  @override
+  String get assistantRegexAddTitle => '新增正則規則';
+
+  @override
+  String get assistantRegexEditTitle => '編輯正則規則';
+
+  @override
+  String get assistantRegexNameLabel => '規則名稱';
+
+  @override
+  String get assistantRegexPatternLabel => '正則表達式';
+
+  @override
+  String get assistantRegexReplacementLabel => '替換字串';
+
+  @override
+  String get assistantRegexScopeLabel => '影響範圍';
+
+  @override
+  String get assistantRegexScopeUser => '使用者';
+
+  @override
+  String get assistantRegexScopeAssistant => '助理';
+
+  @override
+  String get assistantRegexScopeVisualOnly => '僅視覺';
+
+  @override
+  String get assistantRegexAddAction => '新增';
+
+  @override
+  String get assistantRegexSaveAction => '儲存';
+
+  @override
+  String get assistantRegexDeleteButton => '刪除';
+
+  @override
+  String get assistantRegexValidationError => '請填寫名稱、正則表達式，並至少選擇一個範圍。';
+
+  @override
+  String get assistantRegexInvalidPattern => '正則表達式無效';
+
+  @override
+  String get assistantRegexCancelButton => '取消';
+
+  @override
+  String get assistantRegexUntitled => '未命名規則';
 
   @override
   String get assistantEditCustomHeadersTitle => '自訂 Header';

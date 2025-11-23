@@ -26,6 +26,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../chat/widgets/reasoning_budget_sheet.dart';
+import 'assistant_regex_tab.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
@@ -61,7 +62,7 @@ class _AssistantSettingsEditPageState extends State<AssistantSettingsEditPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this); //mcp
+    _tabController = TabController(length: 6, vsync: this); //mcp
     _tabController.addListener(() {
       // Close IME when switching tabs and refresh state
       FocusManager.instance.primaryFocus?.unfocus();
@@ -134,6 +135,7 @@ class _AssistantSettingsEditPageState extends State<AssistantSettingsEditPage>
                       // l10n.assistantEditPageMcpTab,
                       l10n.assistantEditPageQuickPhraseTab,
                       l10n.assistantEditPageCustomTab,
+                      l10n.assistantEditPageRegexTab,
                     ],
                   ),
                 ),
@@ -154,6 +156,7 @@ class _AssistantSettingsEditPageState extends State<AssistantSettingsEditPage>
             // _McpTab(assistantId: assistant.id),
             _QuickPhraseTab(assistantId: assistant.id),
             _CustomRequestTab(assistantId: assistant.id),
+            AssistantRegexTab(assistantId: assistant.id),
           ],
         ),
       ),
@@ -5180,7 +5183,7 @@ class _IosButtonState extends State<_IosButton> {
 
 // ===== Desktop Assistant Dialog (reuses mobile tabs) =====
 
-enum _AssistantDesktopMenu { basic, prompts, memory, quick, custom }
+enum _AssistantDesktopMenu { basic, prompts, memory, quick, custom, regex }
 
 Future<void> showAssistantDesktopDialog(BuildContext context, {required String assistantId}) async {
   final cs = Theme.of(context).colorScheme;
@@ -5269,6 +5272,8 @@ class _DesktopAssistantDialogShellState extends State<_DesktopAssistantDialogShe
                         return _QuickPhraseTab(assistantId: widget.assistantId);
                       case _AssistantDesktopMenu.custom:
                         return _CustomRequestTab(assistantId: widget.assistantId);
+                      case _AssistantDesktopMenu.regex:
+                        return AssistantRegexDesktopPane(assistantId: widget.assistantId);
                     }
                   }(),
                 ),
@@ -5302,6 +5307,7 @@ class _DesktopAssistantMenuState extends State<_DesktopAssistantMenu> {
       (_AssistantDesktopMenu.memory, l10n.assistantEditPageMemoryTab),
       (_AssistantDesktopMenu.quick, l10n.assistantEditPageQuickPhraseTab),
       (_AssistantDesktopMenu.custom, l10n.assistantEditPageCustomTab),
+      (_AssistantDesktopMenu.regex, l10n.assistantEditPageRegexTab),
     ];
     return SizedBox(
       width: 220,

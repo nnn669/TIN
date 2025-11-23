@@ -22,6 +22,8 @@ import '../../../core/providers/assistant_provider.dart';
 import 'package:intl/intl.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/avatar_cache.dart';
+import '../../../utils/assistant_regex.dart';
+import '../../../core/models/assistant.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../shared/widgets/markdown_with_highlight.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -29,6 +31,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/model_provider.dart';
+import '../../../core/models/assistant_regex.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
@@ -243,6 +246,19 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       }
     } catch (_) {}
     return 'AI Assistant';
+  }
+
+  Assistant? _assistantForMessage() {
+    try {
+      final chat = context.read<ChatService>();
+      final convo = chat.getConversation(widget.message.conversationId);
+      final aId = convo?.assistantId;
+      if (aId == null || aId.isEmpty) return null;
+      final ap = context.watch<AssistantProvider>();
+      return ap.getById(aId);
+    } catch (_) {
+      return null;
+    }
   }
 
   String _resolveModelDisplayName(SettingsProvider settings) {
@@ -566,6 +582,13 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final parsed = _parseUserContent(widget.message.content);
+    final assistant = _assistantForMessage();
+    final visualText = applyAssistantRegexes(
+      parsed.text,
+      assistant: assistant,
+      scope: AssistantRegexScope.user,
+      visual: true,
+    );
     final showUserActions = settings.showUserMessageActions;
     final showVersionSwitcher = (widget.versionCount ?? 1) > 1;
 
@@ -636,7 +659,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                if (parsed.text.isNotEmpty)
+                if (visualText.isNotEmpty)
                   Builder(builder: (context) {
                     final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
                         defaultTargetPlatform == TargetPlatform.windows ||
@@ -648,13 +671,13 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                       content = DefaultTextStyle.merge(
                         style: TextStyle(fontSize: baseUser, height: 1.45),
                         child: MarkdownWithCodeHighlight(
-                          text: parsed.text,
+                          text: visualText,
                           baseStyle: TextStyle(fontSize: baseUser, height: 1.45),
                         ),
                       );
                     } else {
                       content = Text(
-                        parsed.text,
+                        visualText,
                         style: TextStyle(
                           fontSize: baseUser, // slightly smaller on desktop for readability
                           height: 1.4,
@@ -1039,6 +1062,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
+    final assistant = _assistantForMessage();
 
     // Extract vendor inline <think>...</think> content (if present)
     final extractedThinking = THINKING_REGEX
@@ -1050,6 +1074,23 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final contentWithoutThink = extractedThinking.isNotEmpty
         ? widget.message.content.replaceAll(THINKING_REGEX, '').trim()
         : widget.message.content;
+    final visualContent = applyAssistantRegexes(
+      contentWithoutThink,
+      assistant: assistant,
+      scope: AssistantRegexScope.assistant,
+      visual: true,
+    );
+    final visualTranslation = widget.message.translation != null
+        ? applyAssistantRegexes(
+            widget.message.translation!,
+            assistant: assistant,
+            scope: AssistantRegexScope.assistant,
+            visual: true,
+          )
+        : null;
+    final translationText = visualTranslation ?? widget.message.translation;
+    final bool hasTranslation = (translationText != null && translationText.isNotEmpty);
+    final bool isTranslating = translationText == l10n.chatMessageWidgetTranslating;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1225,7 +1266,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             width: double.infinity,
             child: _buildAssistantBubbleContainer(
               context: context,
-              child: (widget.message.isStreaming && contentWithoutThink.isEmpty)
+              child: (widget.message.isStreaming && visualContent.isEmpty)
                 ? Row(
               children: [
                 _LoadingIndicator(),
@@ -1252,7 +1293,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                     child: DefaultTextStyle.merge(
                       style: TextStyle(fontSize: baseAssistant, height: 1.5),
                       child: MarkdownWithCodeHighlight(
-                        text: contentWithoutThink,
+                        text: visualContent,
                         onCitationTap: (id) => _handleCitationTap(id),
                         baseStyle: TextStyle(fontSize: baseAssistant, height: 1.5),
                       ),
@@ -1266,7 +1307,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                     child: _LoadingIndicator(),
                   ),
                 // Translation section (collapsible)
-                if (widget.message.translation != null && widget.message.translation!.isNotEmpty) ...[
+                if (hasTranslation) ...[
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
@@ -1319,7 +1360,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                           ),
                           if (widget.translationExpanded) ...[
                             const SizedBox(height: 8),
-                            if (widget.message.translation == l10n.chatMessageWidgetTranslating)
+                            if (isTranslating)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
                                 child: Row(
@@ -1354,7 +1395,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                     return DefaultTextStyle.merge(
                                       style: TextStyle(fontSize: baseTranslation, height: 1.4),
                                       child: MarkdownWithCodeHighlight(
-                                        text: widget.message.translation!,
+                                        text: translationText!,
                                         onCitationTap: (id) => _handleCitationTap(id),
                                         baseStyle: TextStyle(fontSize: baseTranslation, height: 1.4),
                                       ),

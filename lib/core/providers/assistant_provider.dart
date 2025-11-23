@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:io';
 import '../../utils/sandbox_path_resolver.dart';
 import '../models/assistant.dart';
+import '../models/assistant_regex.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/avatar_cache.dart';
 import '../../utils/app_directories.dart';
@@ -274,6 +275,23 @@ class AssistantProvider extends ChangeNotifier {
     _assistants[idx] = next;
     await _persist();
     notifyListeners();
+  }
+
+  Future<void> reorderAssistantRegex({
+    required String assistantId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final idx = _assistants.indexWhere((a) => a.id == assistantId);
+    if (idx == -1) return;
+    final list = List<AssistantRegex>.of(_assistants[idx].regexRules);
+    if (oldIndex < 0 || oldIndex >= list.length) return;
+    if (newIndex < 0 || newIndex >= list.length) return;
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    _assistants[idx] = _assistants[idx].copyWith(regexRules: list);
+    notifyListeners();
+    await _persist();
   }
 
   Future<bool> deleteAssistant(String id) async {
