@@ -1414,147 +1414,162 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               onTap: () => _showCitationsSheet(_latestSearchItems()),
             ),
           ],
-          // Action buttons
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: IosIconButton(
-                    size: 16,
-                    padding: EdgeInsets.all(4),
-                    icon: Lucide.Copy,
-                    color: cs.onSurface.withOpacity(0.9),
-                    onTap: widget.onCopy ?? () {
-                      Clipboard.setData(ClipboardData(text: widget.message.content));
-                      showAppSnackBar(
-                        context,
-                        message: l10n.chatMessageWidgetCopiedToClipboard,
-                        type: NotificationType.success,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: IosIconButton(
-                    size: 16,
-                    padding: EdgeInsets.all(4),
-                    icon: Lucide.RefreshCw,
-                    color: cs.onSurface.withOpacity(0.9),
-                    onTap: widget.onRegenerate,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Consumer<TtsProvider>(
-                builder: (context, tts, _) => SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: Center(
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      onTap: widget.onSpeak,
-                      color: cs.onSurface.withOpacity(0.9),
-                      builder: (color) => AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
-                        child: Icon(
-                          tts.isSpeaking ? Lucide.CircleStop : Lucide.Volume2,
-                          key: ValueKey(tts.isSpeaking ? 'stop' : 'speak'),
-                          size: 16,
-                          color: color,
+          // Action buttons (hidden while generating)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, anim) => SizeTransition(
+              sizeFactor: anim,
+              axisAlignment: -1,
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: widget.message.isStreaming
+                ? const SizedBox.shrink()
+                : Padding(
+                    key: const ValueKey('assistant-actions'),
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.Copy,
+                              color: cs.onSurface.withOpacity(0.9),
+                              onTap: widget.onCopy ?? () {
+                                Clipboard.setData(ClipboardData(text: widget.message.content));
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.chatMessageWidgetCopiedToClipboard,
+                                  type: NotificationType.success,
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.RefreshCw,
+                              color: cs.onSurface.withOpacity(0.9),
+                              onTap: widget.onRegenerate,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Consumer<TtsProvider>(
+                          builder: (context, tts, _) => SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: Center(
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                onTap: widget.onSpeak,
+                                color: cs.onSurface.withOpacity(0.9),
+                                builder: (color) => AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+                                  child: Icon(
+                                    tts.isSpeaking ? Lucide.CircleStop : Lucide.Volume2,
+                                    key: ValueKey(tts.isSpeaking ? 'stop' : 'speak'),
+                                    size: 16,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: GestureDetector(
+                              key: _translateBtnKey2,
+                              onTapDown: (d) {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
+                                }
+                              },
+                              onTap: () {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  _setAnchorFromKey(_translateBtnKey2);
+                                }
+                                widget.onTranslate?.call();
+                              },
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                icon: Lucide.Languages,
+                                color: cs.onSurface.withOpacity(0.9),
+                                onTap: null,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: GestureDetector(
+                              key: _moreBtnKey2,
+                              onTapDown: (d) {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
+                                }
+                              },
+                              onTap: () {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  _setAnchorFromKey(_moreBtnKey2);
+                                }
+                                widget.onMore?.call();
+                              },
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                icon: Lucide.Ellipsis,
+                                color: cs.onSurface.withOpacity(0.9),
+                                onTap: null,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if ((widget.versionCount ?? 1) > 1) ...[
+                          const SizedBox(width: 6),
+                          _BranchSelector(
+                            index: widget.versionIndex ?? 0,
+                            total: widget.versionCount ?? 1,
+                            onPrev: widget.onPrevVersion,
+                            onNext: widget.onNextVersion,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: GestureDetector(
-                    key: _translateBtnKey2,
-                    onTapDown: (d) {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
-                      }
-                    },
-                    onTap: () {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        _setAnchorFromKey(_translateBtnKey2);
-                      }
-                      widget.onTranslate?.call();
-                    },
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      icon: Lucide.Languages,
-                      color: cs.onSurface.withOpacity(0.9),
-                      onTap: null,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: GestureDetector(
-                    key: _moreBtnKey2,
-                    onTapDown: (d) {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
-                      }
-                    },
-                    onTap: () {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        _setAnchorFromKey(_moreBtnKey2);
-                      }
-                      widget.onMore?.call();
-                    },
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      icon: Lucide.Ellipsis,
-                      color: cs.onSurface.withOpacity(0.9),
-                      onTap: null,
-                    ),
-                  ),
-                ),
-              ),
-              if ((widget.versionCount ?? 1) > 1) ...[
-                const SizedBox(width: 6),
-                _BranchSelector(
-                  index: widget.versionIndex ?? 0,
-                  total: widget.versionCount ?? 1,
-                  onPrev: widget.onPrevVersion,
-                  onNext: widget.onNextVersion,
-                ),
-              ],
-            ],
           ),
         ],
       ),
