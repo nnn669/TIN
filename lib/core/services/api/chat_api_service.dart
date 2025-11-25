@@ -1556,7 +1556,7 @@ class ChatApiService {
             // Follow-up request(s) with multi-round tool calls
             var currentMessages = mm2;
             while (true) {
-              final body2 = {
+              final Map<String, dynamic> body2 = {
                 'model': upstreamModelId,
                 'messages': currentMessages,
                 'stream': true,
@@ -1654,6 +1654,9 @@ class ChatApiService {
               }
 
               // Apply custom body overrides
+              if (extraBodyCfg.isNotEmpty) {
+                body2.addAll(extraBodyCfg);
+              }
               if (extraBody != null && extraBody.isNotEmpty) {
                 extraBody.forEach((k, v) {
                   body2[k] = (v is String) ? _parseOverrideValue(v) : v;
@@ -2490,7 +2493,7 @@ class ChatApiService {
             // Continue streaming with follow-up request
             var currentMessages = mm2;
             while (true) {
-              final body2 = {
+              final Map<String, dynamic> body2 = {
                 'model': upstreamModelId,
                 'messages': currentMessages,
                 'stream': true,
@@ -2581,6 +2584,9 @@ class ChatApiService {
               }
               if (!host.contains('mistral.ai')) {
                 body2['stream_options'] = {'include_usage': true};
+              }
+              if (extraBodyCfg.isNotEmpty) {
+                body2.addAll(extraBodyCfg);
               }
               if (extraBody != null && extraBody.isNotEmpty) {
                 extraBody.forEach((k, v) {
@@ -2858,7 +2864,7 @@ class ChatApiService {
                 // Continue streaming with follow-up request - reuse existing multi-round logic from [DONE] handler
                 var currentMessages = mm2;
                 while (true) {
-                  final body2 = {
+                  final Map<String, dynamic> body2 = {
                     'model': upstreamModelId,
                     'messages': currentMessages,
                     'stream': true,
@@ -2942,6 +2948,9 @@ class ChatApiService {
                   }
                   if (!host.contains('mistral.ai')) {
                     body2['stream_options'] = {'include_usage': true};
+                  }
+                  if (extraBodyCfg.isNotEmpty) {
+                    body2.addAll(extraBodyCfg);
                   }
                   if (extraBody != null && extraBody.isNotEmpty) {
                     extraBody.forEach((k, v) {
@@ -3215,7 +3224,7 @@ class ChatApiService {
               mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
             }
 
-            final body2 = {
+            final Map<String, dynamic> body2 = {
               'model': upstreamModelId,
               'messages': mm2,
               'stream': true,
