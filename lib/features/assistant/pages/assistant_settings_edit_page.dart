@@ -47,6 +47,91 @@ import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/haptics.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 
+const int _contextMessageMin = 1;
+const int _contextMessageMax = 256;
+
+int _clampContextMessages(num value) =>
+    value.clamp(_contextMessageMin, _contextMessageMax).toInt();
+
+Future<int?> _showContextMessageInputDialog(
+  BuildContext context, {
+  required int initialValue,
+}) async {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  final controller = TextEditingController(
+    text: _clampContextMessages(initialValue).toString(),
+  );
+
+  int? parseValue() => int.tryParse(controller.text);
+
+  try {
+    return await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final parsed = parseValue();
+            void submit() {
+              if (parsed == null) return;
+              Navigator.of(ctx).pop(_clampContextMessages(parsed));
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(l10n.assistantEditContextMessagesTitle),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: InputDecoration(
+                        labelText:
+                            '${l10n.assistantEditContextMessagesTitle} ($_contextMessageMin-$_contextMessageMax)',
+                        helperText: '$_contextMessageMin-$_contextMessageMax',
+                      ),
+                      onChanged: (_) => setLocal(() {}),
+                      onSubmitted: (_) => submit(),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${l10n.assistantEditContextMessagesDescription} ($_contextMessageMin-$_contextMessageMax)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurface.withOpacity(0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.assistantEditEmojiDialogCancel),
+                ),
+                TextButton(
+                  onPressed: parsed == null ? null : submit,
+                  child: Text(l10n.assistantEditEmojiDialogSave),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+  }
+}
+
 class AssistantSettingsEditPage extends StatefulWidget {
   const AssistantSettingsEditPage({super.key, required this.assistantId});
   final String assistantId;
@@ -1752,10 +1837,10 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
             child: Builder(builder: (context) {
-              final theme = Theme.of(context);
-              final cs = theme.colorScheme;
-              final isDark = theme.brightness == Brightness.dark;
-              final value = context.watch<AssistantProvider>().getById(widget.assistantId)?.contextMessageSize ?? 20;
+              final cs = Theme.of(context).colorScheme;
+              final value = _clampContextMessages(
+                context.watch<AssistantProvider>().getById(widget.assistantId)?.contextMessageSize ?? 20,
+              );
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1783,9 +1868,10 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                       IosSwitch(
                         value: a.limitContextMessages,
                         onChanged: (v) async {
-                          await context.read<AssistantProvider>().updateAssistant(
-                            a.copyWith(limitContextMessages: v),
-                          );
+                          final next = v && a.contextMessageSize < _contextMessageMin
+                              ? a.copyWith(limitContextMessages: v, contextMessageSize: _contextMessageMin)
+                              : a.copyWith(limitContextMessages: v);
+                          await context.read<AssistantProvider>().updateAssistant(next);
                           // Close the bottom sheet after toggle
                           Navigator.of(ctx).pop();
                         },
@@ -1795,13 +1881,25 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                   const SizedBox(height: 8),
                   if (a.limitContextMessages) ...[
                     _SliderTileNew(
-                      value: value.toDouble().clamp(0, 256),
-                      min: 0,
-                      max: 256,
-                      divisions: 64,
+                      value: value.toDouble(),
+                      min: _contextMessageMin.toDouble(),
+                      max: _contextMessageMax.toDouble(),
+                      divisions: _contextMessageMax - _contextMessageMin,
                       label: value.toString(),
+                      customLabelStops: const <double>[1.0, 32.0, 64.0, 128.0, 256.0],
+                      onLabelTap: () async {
+                        final chosen = await _showContextMessageInputDialog(
+                          context,
+                          initialValue: value,
+                        );
+                        if (chosen != null) {
+                          await context.read<AssistantProvider>().updateAssistant(
+                                a.copyWith(contextMessageSize: chosen),
+                              );
+                        }
+                      },
                       onChanged: (v) => context.read<AssistantProvider>().updateAssistant(
-                        a.copyWith(contextMessageSize: v.round()),
+                        a.copyWith(contextMessageSize: _clampContextMessages(v)),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -2019,6 +2117,8 @@ class _SliderTileNew extends StatelessWidget {
     this.divisions,
     required this.label,
     required this.onChanged,
+    this.customLabelStops,
+    this.onLabelTap,
   });
 
   final double value;
@@ -2027,13 +2127,23 @@ class _SliderTileNew extends StatelessWidget {
   final int? divisions;
   final String label;
   final ValueChanged<double> onChanged;
+  final List<double>? customLabelStops;
+  final VoidCallback? onLabelTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    
+    final useCustomLabels = customLabelStops != null && customLabelStops!.isNotEmpty;
+    final stops = useCustomLabels
+        ? (customLabelStops!
+            .where((v) => v >= min && v <= max)
+            .toSet()
+            .toList()
+          ..sort())
+        : const <double>[];
+
     final active = cs.primary;
     final inactive = cs.onSurface.withOpacity(isDark ? 0.25 : 0.20);
     final double clamped = value.clamp(min, max);
@@ -2053,7 +2163,6 @@ class _SliderTileNew extends StatelessWidget {
       interval = total / 8;
     }
     if (interval <= 0) interval = 1;
-    final int majorCount = (total / interval).round().clamp(1, 10);
     int minor = 0;
     if (step != null && step > 0) {
       // Ensure minor ticks align with the chosen step size
@@ -2068,81 +2177,115 @@ class _SliderTileNew extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: SfSliderTheme(
-                data: SfSliderThemeData(
-                  activeTrackHeight: 8,
-                  inactiveTrackHeight: 8,
-                  overlayRadius: 14,
-                  activeTrackColor: active,
-                  inactiveTrackColor: inactive,
-                  // Waterdrop tooltip uses theme primary background with onPrimary text
-                  tooltipBackgroundColor: cs.primary,
-                  tooltipTextStyle: TextStyle(
-                    color: cs.onPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  thumbStrokeColor: Colors.transparent,
-                  thumbStrokeWidth: 0,
-                  activeTickColor: cs.onSurface.withOpacity(
-                    isDark ? 0.45 : 0.35,
-                  ),
-                  inactiveTickColor: cs.onSurface.withOpacity(
-                    isDark ? 0.30 : 0.25,
-                  ),
-                  activeMinorTickColor: cs.onSurface.withOpacity(
-                    isDark ? 0.34 : 0.28,
-                  ),
-                  inactiveMinorTickColor: cs.onSurface.withOpacity(
-                    isDark ? 0.24 : 0.20,
-                  ),
-                ),
-                child: SfSlider(
-                  value: clamped,
-                  min: min,
-                  max: max,
-                  stepSize: step,
-                  enableTooltip: true,
-                  // Show the paddle tooltip only while interacting
-                  shouldAlwaysShowTooltip: false,
-                  showTicks: true,
-                  showLabels: true,
-                  interval: interval,
-                  minorTicksPerInterval: minor,
-                  activeColor: active,
-                  inactiveColor: inactive,
-                  tooltipTextFormatterCallback: (actual, text) => label,
-                  tooltipShape: const SfPaddleTooltipShape(),
-                  labelFormatterCallback: (actual, formattedText) {
-                    // Prefer integers for wide ranges, keep 2 decimals for 0..1
-                    if (total <= 2.0) return actual.toStringAsFixed(2);
-                    if (actual == actual.roundToDouble())
-                      return actual.toStringAsFixed(0);
-                    return actual.toStringAsFixed(1);
-                  },
-                  thumbIcon: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: isDark
-                          ? []
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SfSliderTheme(
+                    data: SfSliderThemeData(
+                      activeTrackHeight: 8,
+                      inactiveTrackHeight: 8,
+                      overlayRadius: 14,
+                      activeTrackColor: active,
+                      inactiveTrackColor: inactive,
+                      // Waterdrop tooltip uses theme primary background with onPrimary text
+                      tooltipBackgroundColor: cs.primary,
+                      tooltipTextStyle: TextStyle(
+                        color: cs.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      thumbStrokeColor: Colors.transparent,
+                      thumbStrokeWidth: 0,
+                      activeTickColor: cs.onSurface.withOpacity(
+                        isDark ? 0.45 : 0.35,
+                      ),
+                      inactiveTickColor: cs.onSurface.withOpacity(
+                        isDark ? 0.30 : 0.25,
+                      ),
+                      activeMinorTickColor: cs.onSurface.withOpacity(
+                        isDark ? 0.34 : 0.28,
+                      ),
+                      inactiveMinorTickColor: cs.onSurface.withOpacity(
+                        isDark ? 0.24 : 0.20,
+                      ),
+                    ),
+                    child: SfSlider(
+                      value: clamped,
+                      min: min,
+                      max: max,
+                      stepSize: step,
+                      enableTooltip: true,
+                      // Show the paddle tooltip only while interacting
+                      shouldAlwaysShowTooltip: false,
+                      showTicks: true,
+                      showLabels: !useCustomLabels,
+                      interval: interval,
+                      minorTicksPerInterval: minor,
+                      activeColor: active,
+                      inactiveColor: inactive,
+                      tooltipTextFormatterCallback: (actual, text) => label,
+                      tooltipShape: const SfPaddleTooltipShape(),
+                      labelFormatterCallback: (actual, formattedText) {
+                        // Prefer integers for wide ranges, keep 2 decimals for 0..1
+                        if (total <= 2.0) return actual.toStringAsFixed(2);
+                        if (actual == actual.roundToDouble())
+                          return actual.toStringAsFixed(0);
+                        return actual.toStringAsFixed(1);
+                      },
+                      thumbIcon: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: isDark
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                        ),
+                      ),
+                      onChanged: (v) =>
+                          onChanged(v is num ? v.toDouble() : (v as double)),
                     ),
                   ),
-                  onChanged: (v) =>
-                      onChanged(v is num ? v.toDouble() : (v as double)),
-                ),
+                  if (useCustomLabels && stops.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (_, __) {
+                        final range = (max - min).abs();
+                        return SizedBox(
+                          height: 18,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: stops.map((v) {
+                              final t = range == 0 ? 0.0 : ((v - min) / range).clamp(0.0, 1.0);
+                              return Align(
+                                alignment: Alignment(-1 + t * 2, 0),
+                                child: Text(
+                                  v == v.roundToDouble()
+                                      ? v.toInt().toString()
+                                      : v.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: cs.onSurface.withOpacity(0.65),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 8),
-            _ValuePill(text: label),
+            _ValuePill(text: label, onTap: onLabelTap),
           ],
         ),
         // Remove explicit min/max captions since ticks already indicate range
@@ -2152,27 +2295,32 @@ class _SliderTileNew extends StatelessWidget {
 }
 
 class _ValuePill extends StatelessWidget {
-  const _ValuePill({required this.text});
+  const _ValuePill({required this.text, this.onTap});
   final String text;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white10 : cs.primary.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.primary.withOpacity(isDark ? 0.28 : 0.22)),
-        boxShadow: isDark ? [] : AppShadows.soft,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: cs.primary,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: onTap != null ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white10 : cs.primary.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.primary.withOpacity(isDark ? 0.28 : 0.22)),
+          boxShadow: isDark ? [] : AppShadows.soft,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: cs.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
         ),
       ),
@@ -5711,7 +5859,12 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
                   headerWithSwitch(
                     title: labelWithHelp(l10n.assistantEditContextMessagesTitle, l10n.assistantEditContextMessagesDescription),
                     value: a.limitContextMessages,
-                    onChanged: (v) => context.read<AssistantProvider>().updateAssistant(a.copyWith(limitContextMessages: v)),
+                    onChanged: (v) {
+                      final next = v && a.contextMessageSize < _contextMessageMin
+                          ? a.copyWith(limitContextMessages: v, contextMessageSize: _contextMessageMin)
+                          : a.copyWith(limitContextMessages: v);
+                      context.read<AssistantProvider>().updateAssistant(next);
+                    },
                   ),
                   const SizedBox(height: 8),
                   IgnorePointer(
@@ -5719,13 +5872,27 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
                     child: Opacity(
                       opacity: a.limitContextMessages ? 1.0 : 0.5,
                       child: _SliderTileNew(
-                        value: a.contextMessageSize.toDouble().clamp(0, 256),
-                        min: 0,
-                        max: 256,
-                        divisions: 64,
-                        label: a.contextMessageSize.toString(),
+                        value: _clampContextMessages(a.contextMessageSize).toDouble(),
+                        min: _contextMessageMin.toDouble(),
+                        max: _contextMessageMax.toDouble(),
+                        divisions: _contextMessageMax - _contextMessageMin,
+                        label: _clampContextMessages(a.contextMessageSize).toString(),
+                        customLabelStops: const <double>[1.0, 32.0, 64.0, 128.0, 256.0],
+                        onLabelTap: a.limitContextMessages
+                            ? () async {
+                                final chosen = await _showContextMessageInputDialog(
+                                  context,
+                                  initialValue: _clampContextMessages(a.contextMessageSize),
+                                );
+                                if (chosen != null) {
+                                  await context.read<AssistantProvider>().updateAssistant(
+                                        a.copyWith(contextMessageSize: chosen),
+                                      );
+                                }
+                              }
+                            : null,
                         onChanged: (v) => context.read<AssistantProvider>().updateAssistant(
-                          a.copyWith(contextMessageSize: v.round()),
+                          a.copyWith(contextMessageSize: _clampContextMessages(v)),
                         ),
                       ),
                     ),
