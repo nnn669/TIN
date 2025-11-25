@@ -1577,6 +1577,30 @@ abstract class AppLocalizations {
   /// **'Enter system prompt…'**
   String get assistantEditSystemPromptHint;
 
+  /// No description provided for @assistantEditSystemPromptImportButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Import file'**
+  String get assistantEditSystemPromptImportButton;
+
+  /// No description provided for @assistantEditSystemPromptImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'System prompt updated from file'**
+  String get assistantEditSystemPromptImportSuccess;
+
+  /// No description provided for @assistantEditSystemPromptImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import file'**
+  String get assistantEditSystemPromptImportFailed;
+
+  /// No description provided for @assistantEditSystemPromptImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'File is empty'**
+  String get assistantEditSystemPromptImportEmpty;
+
   /// No description provided for @assistantEditAvailableVariables.
   ///
   /// In en, this message translates to:

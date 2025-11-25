@@ -788,6 +788,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantEditSystemPromptHint => 'Enter system prompt…';
 
   @override
+  String get assistantEditSystemPromptImportButton => 'Import file';
+
+  @override
+  String get assistantEditSystemPromptImportSuccess =>
+      'System prompt updated from file';
+
+  @override
+  String get assistantEditSystemPromptImportFailed => 'Failed to import file';
+
+  @override
+  String get assistantEditSystemPromptImportEmpty => 'File is empty';
+
+  @override
   String get assistantEditAvailableVariables => 'Available variables:';
 
   @override

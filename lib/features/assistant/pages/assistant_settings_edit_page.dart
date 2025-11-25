@@ -8,6 +8,7 @@ import 'package:syncfusion_flutter_core/theme.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -2808,6 +2809,56 @@ class _PromptTabState extends State<_PromptTab> {
     setState(() {});
   }
 
+  Future<void> _importSystemPrompt() async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const ['txt','md','json','js','pdf','docx','html','xml','py','java','kt','dart','ts','tsx','markdown','mdx','yml','yaml'],
+      );
+      if (res == null || res.files.isEmpty) return;
+      final picked = res.files.first;
+      String? content;
+      if (picked.bytes != null && picked.bytes!.isNotEmpty) {
+        content = utf8.decode(picked.bytes!, allowMalformed: true);
+      } else if (!kIsWeb && picked.path != null && picked.path!.isNotEmpty) {
+        content = await File(picked.path!).readAsString();
+      }
+      if (!mounted) return;
+      if (content == null || content.trim().isEmpty) {
+        showAppSnackBar(
+          context,
+          message: l10n.assistantEditSystemPromptImportEmpty,
+          type: NotificationType.error,
+        );
+        return;
+      }
+      _sysCtrl.text = content;
+      _sysCtrl.selection =
+          TextSelection.collapsed(offset: _sysCtrl.text.length);
+      final ap = context.read<AssistantProvider>();
+      final a = ap.getById(widget.assistantId);
+      if (a != null) {
+        await ap.updateAssistant(a.copyWith(systemPrompt: _sysCtrl.text));
+      }
+      showAppSnackBar(
+        context,
+        message: l10n.assistantEditSystemPromptImportSuccess,
+        type: NotificationType.success,
+      );
+      Future.microtask(() => _sysFocus.requestFocus());
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.assistantEditSystemPromptImportFailed,
+        type: NotificationType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -2916,9 +2967,22 @@ class _PromptTabState extends State<_PromptTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.assistantEditSystemPromptTitle,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.assistantEditSystemPromptTitle,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                _IosButton(
+                  label: l10n.assistantEditSystemPromptImportButton,
+                  icon: Icons.file_open,
+                  dense: true,
+                  neutral: false,
+                  onTap: _importSystemPrompt,
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             TextField(

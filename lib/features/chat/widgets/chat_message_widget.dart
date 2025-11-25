@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import '../../../core/services/haptics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -1267,23 +1267,16 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: _buildAssistantBubbleContainer(
               context: context,
               child: (widget.message.isStreaming && visualContent.isEmpty)
-                ? Row(
-              children: [
-                _LoadingIndicator(),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.chatMessageWidgetThinking,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: cs.onSurface.withOpacity(0.5),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            )
-                : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  ? Align(
+                      alignment: Alignment.centerLeft,
+                      child: Semantics(
+                        label: l10n.chatMessageWidgetThinking,
+                        child: _LoadingIndicator(),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                 Builder(builder: (context) {
                   final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
                       defaultTargetPlatform == TargetPlatform.windows ||
@@ -1423,147 +1416,162 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               onTap: () => _showCitationsSheet(_latestSearchItems()),
             ),
           ],
-          // Action buttons
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: IosIconButton(
-                    size: 16,
-                    padding: EdgeInsets.all(4),
-                    icon: Lucide.Copy,
-                    color: cs.onSurface.withOpacity(0.9),
-                    onTap: widget.onCopy ?? () {
-                      Clipboard.setData(ClipboardData(text: widget.message.content));
-                      showAppSnackBar(
-                        context,
-                        message: l10n.chatMessageWidgetCopiedToClipboard,
-                        type: NotificationType.success,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: IosIconButton(
-                    size: 16,
-                    padding: EdgeInsets.all(4),
-                    icon: Lucide.RefreshCw,
-                    color: cs.onSurface.withOpacity(0.9),
-                    onTap: widget.onRegenerate,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Consumer<TtsProvider>(
-                builder: (context, tts, _) => SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: Center(
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      onTap: widget.onSpeak,
-                      color: cs.onSurface.withOpacity(0.9),
-                      builder: (color) => AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
-                        child: Icon(
-                          tts.isSpeaking ? Lucide.CircleStop : Lucide.Volume2,
-                          key: ValueKey(tts.isSpeaking ? 'stop' : 'speak'),
-                          size: 16,
-                          color: color,
+          // Action buttons (hidden while generating)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, anim) => SizeTransition(
+              sizeFactor: anim,
+              axisAlignment: -1,
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: widget.message.isStreaming
+                ? const SizedBox.shrink()
+                : Padding(
+                    key: const ValueKey('assistant-actions'),
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.Copy,
+                              color: cs.onSurface.withOpacity(0.9),
+                              onTap: widget.onCopy ?? () {
+                                Clipboard.setData(ClipboardData(text: widget.message.content));
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.chatMessageWidgetCopiedToClipboard,
+                                  type: NotificationType.success,
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.RefreshCw,
+                              color: cs.onSurface.withOpacity(0.9),
+                              onTap: widget.onRegenerate,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Consumer<TtsProvider>(
+                          builder: (context, tts, _) => SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: Center(
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                onTap: widget.onSpeak,
+                                color: cs.onSurface.withOpacity(0.9),
+                                builder: (color) => AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+                                  child: Icon(
+                                    tts.isSpeaking ? Lucide.CircleStop : Lucide.Volume2,
+                                    key: ValueKey(tts.isSpeaking ? 'stop' : 'speak'),
+                                    size: 16,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: GestureDetector(
+                              key: _translateBtnKey2,
+                              onTapDown: (d) {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
+                                }
+                              },
+                              onTap: () {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  _setAnchorFromKey(_translateBtnKey2);
+                                }
+                                widget.onTranslate?.call();
+                              },
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                icon: Lucide.Languages,
+                                color: cs.onSurface.withOpacity(0.9),
+                                onTap: null,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: GestureDetector(
+                              key: _moreBtnKey2,
+                              onTapDown: (d) {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
+                                }
+                              },
+                              onTap: () {
+                                final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                    defaultTargetPlatform == TargetPlatform.windows ||
+                                    defaultTargetPlatform == TargetPlatform.linux;
+                                if (isDesktop) {
+                                  _setAnchorFromKey(_moreBtnKey2);
+                                }
+                                widget.onMore?.call();
+                              },
+                              child: IosIconButton(
+                                size: 16,
+                                padding: EdgeInsets.all(4),
+                                icon: Lucide.Ellipsis,
+                                color: cs.onSurface.withOpacity(0.9),
+                                onTap: null,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if ((widget.versionCount ?? 1) > 1) ...[
+                          const SizedBox(width: 6),
+                          _BranchSelector(
+                            index: widget.versionIndex ?? 0,
+                            total: widget.versionCount ?? 1,
+                            onPrev: widget.onPrevVersion,
+                            onNext: widget.onNextVersion,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: GestureDetector(
-                    key: _translateBtnKey2,
-                    onTapDown: (d) {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
-                      }
-                    },
-                    onTap: () {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        _setAnchorFromKey(_translateBtnKey2);
-                      }
-                      widget.onTranslate?.call();
-                    },
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      icon: Lucide.Languages,
-                      color: cs.onSurface.withOpacity(0.9),
-                      onTap: null,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: Center(
-                  child: GestureDetector(
-                    key: _moreBtnKey2,
-                    onTapDown: (d) {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        try { DesktopMenuAnchor.setPosition(d.globalPosition); } catch (_) {}
-                      }
-                    },
-                    onTap: () {
-                      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.linux;
-                      if (isDesktop) {
-                        _setAnchorFromKey(_moreBtnKey2);
-                      }
-                      widget.onMore?.call();
-                    },
-                    child: IosIconButton(
-                      size: 16,
-                      padding: EdgeInsets.all(4),
-                      icon: Lucide.Ellipsis,
-                      color: cs.onSurface.withOpacity(0.9),
-                      onTap: null,
-                    ),
-                  ),
-                ),
-              ),
-              if ((widget.versionCount ?? 1) > 1) ...[
-                const SizedBox(width: 6),
-                _BranchSelector(
-                  index: widget.versionIndex ?? 0,
-                  total: widget.versionCount ?? 1,
-                  onPrev: widget.onPrevVersion,
-                  onNext: widget.onNextVersion,
-                ),
-              ],
-            ],
           ),
         ],
       ),
@@ -1981,7 +1989,7 @@ class _BranchSelector extends StatelessWidget {
   }
 }
 
-// Loading indicator similar to OpenAI's breathing circle
+// Pulsing 3-dot loading indicator for chat thinking states
 class _LoadingIndicator extends StatefulWidget {
   @override
   State<_LoadingIndicator> createState() => _LoadingIndicatorState();
@@ -1989,22 +1997,15 @@ class _LoadingIndicator extends StatefulWidget {
 
 class _LoadingIndicatorState extends State<_LoadingIndicator>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _curve;
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    // Smoother, symmetric breathing with reverse to avoid jump cuts
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1100),
       vsync: this,
-    )..repeat(reverse: true);
-
-    _curve = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutSine,
-    );
+    )..repeat();
   }
 
   @override
@@ -2013,36 +2014,45 @@ class _LoadingIndicatorState extends State<_LoadingIndicator>
     super.dispose();
   }
 
+  double _dotValue(int index) {
+    final phase = (_controller.value + index * 0.22) * 2 * math.pi;
+    return (math.sin(phase) + 1) / 2; // 0 -> 1 wave
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final base = cs.primary;
 
-    return AnimatedBuilder(
-      animation: _curve,
-      builder: (context, child) {
-        // Scale and opacity gently breathe in sync
-        final scale = 0.9 + 0.2 * _curve.value; // 0.9 -> 1.1
-        final opacity = 0.6 + 0.4 * _curve.value; // 0.6 -> 1.0
-        final base = cs.primary;
-        return Transform.scale(
-          scale: scale,
-          child: Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: base.withOpacity(opacity),
-              boxShadow: [
-                BoxShadow(
-                  color: base.withOpacity(0.35 * opacity),
-                  blurRadius: 14,
-                  spreadRadius: 1,
+    return SizedBox(
+      height: 16,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final wave = _dotValue(i);
+              final double scale = 0.85 + 0.15 * wave; // subtle breathing
+              final double opacity = 0.45 + 0.45 * wave;
+              return Padding(
+                padding: EdgeInsets.only(right: i == 2 ? 0 : 6),
+                child: Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: base.withOpacity(opacity),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              );
+            }),
+          );
+        },
+      ),
     );
   }
 }
