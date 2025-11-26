@@ -2015,7 +2015,7 @@ class _LoadingIndicatorState extends State<_LoadingIndicator>
   }
 
   double _dotValue(int index) {
-    final phase = (_controller.value + index * 0.22) * 2 * math.pi;
+    final phase = (_controller.value - index * 0.22) * 2 * math.pi;
     return (math.sin(phase) + 1) / 2; // 0 -> 1 wave
   }
 
