@@ -106,6 +106,14 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Ensure fenced code blocks take precedence over headings and other blocks
     // so lines like "# comment" inside code fences are not parsed as headings.
     components.insert(0, FencedCodeBlockMd());
+    // Inline components: keep defaults but make link parsing line-scoped
+    final inlineComponents = List<MarkdownComponent>.from(
+      MarkdownComponent.inlineComponents,
+    );
+    final linkIdxInline = inlineComponents.indexWhere((c) => c is ATagMd);
+    if (linkIdxInline != -1) {
+      inlineComponents[linkIdxInline] = LineSafeLinkMd();
+    }
     // codeBuilder handles rendering. A custom BlockMd for fences can
     // interfere with block segmentation in some cases.
     // Resolve user preferred code font family (default to monospace)
@@ -154,6 +162,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       useDollarSignsForLatex: false,
       onLinkTap: (url, title) => _handleLinkTap(context, url),
       components: components,
+      inlineComponents: inlineComponents,
       imageBuilder: (ctx, url) {
         final imgs = (imageUrls ?? const <String>[]).isNotEmpty
             ? imageUrls!
@@ -2387,6 +2396,12 @@ class ModernRadioMd extends BlockMd {
       ),
     );
   }
+}
+
+// Prevent link regex from spanning across lines (dotAll=true in engine).
+class LineSafeLinkMd extends ATagMd {
+  @override
+  RegExp get exp => RegExp(r"(?<!\!)\[[^\]\n]+\]\([^\s]*\)");
 }
 
 /// Treat backslash-escaped punctuation as a literal character, so that
