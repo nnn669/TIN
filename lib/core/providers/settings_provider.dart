@@ -79,6 +79,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _appLocaleKey = 'app_locale_v1';
   static const String _translateModelKey = 'translate_model_v1';
   static const String _translatePromptKey = 'translate_prompt_v1';
+  static const String _translateTargetLangKey = 'translate_target_lang_v1';
   static const String _ocrEnabledKey = 'ocr_enabled_v1';
   static const String _learningModeEnabledKey = 'learning_mode_enabled_v1';
   static const String _learningModePromptKey = 'learning_mode_prompt_v1';
@@ -259,6 +260,11 @@ class SettingsProvider extends ChangeNotifier {
     // load translate prompt
     final transp = prefs.getString(_translatePromptKey);
     _translatePrompt = (transp == null || transp.trim().isEmpty) ? defaultTranslatePrompt : transp;
+    // load translate target language
+    final targetLang = prefs.getString(_translateTargetLangKey);
+    if (targetLang != null && targetLang.trim().isNotEmpty) {
+      _translateTargetLang = targetLang.trim();
+    }
     // load OCR model
     final ocrSel = prefs.getString(_ocrModelKey);
     if (ocrSel != null && ocrSel.contains('::')) {
@@ -1211,6 +1217,8 @@ Please translate the <source_text> section:
 
   String _translatePrompt = defaultTranslatePrompt;
   String get translatePrompt => _translatePrompt;
+  String? _translateTargetLang;
+  String? get translateTargetLang => _translateTargetLang;
 
   Future<void> setTranslateModel(String providerKey, String modelId) async {
     _translateModelProvider = providerKey;
@@ -1236,6 +1244,21 @@ Please translate the <source_text> section:
   }
 
   Future<void> resetTranslatePrompt() async => setTranslatePrompt(defaultTranslatePrompt);
+  Future<void> setTranslateTargetLang(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return;
+    _translateTargetLang = trimmed;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_translateTargetLangKey, trimmed);
+  }
+
+  Future<void> resetTranslateTargetLang() async {
+    _translateTargetLang = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_translateTargetLangKey);
+  }
 
   // OCR model, prompt and toggle
   String? _ocrModelProvider;
@@ -1777,6 +1800,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._translateModelProvider = _translateModelProvider;
     copy._translateModelId = _translateModelId;
     copy._translatePrompt = _translatePrompt;
+    copy._translateTargetLang = _translateTargetLang;
     copy._ocrModelProvider = _ocrModelProvider;
     copy._ocrModelId = _ocrModelId;
     copy._ocrPrompt = _ocrPrompt;

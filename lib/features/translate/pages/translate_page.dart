@@ -49,14 +49,11 @@ class _TranslatePageState extends State<TranslatePage> {
   void _initDefaults() {
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
-    // default language
     final lc = Localizations.localeOf(context).languageCode.toLowerCase();
+    final savedLang = _languageForCode(settings.translateTargetLang);
+    final localeLang = lc.startsWith('zh') ? _languageForCode('zh-CN') : _languageForCode('en');
     setState(() {
-      if (lc.startsWith('zh')) {
-        _lang = supportedLanguages.firstWhere((e) => e.code == 'zh-CN', orElse: () => supportedLanguages.first);
-      } else {
-        _lang = supportedLanguages.firstWhere((e) => e.code == 'en', orElse: () => supportedLanguages.first);
-      }
+      _lang = savedLang ?? localeLang ?? supportedLanguages.first;
       _providerKey = settings.translateModelProvider ?? assistant?.chatModelProvider ?? settings.currentModelProvider;
       _modelId = settings.translateModelId ?? assistant?.chatModelId ?? settings.currentModelId;
     });
@@ -85,6 +82,7 @@ class _TranslatePageState extends State<TranslatePage> {
       return;
     }
     setState(() => _lang = lang);
+    await context.read<SettingsProvider>().setTranslateTargetLang(lang.code);
   }
 
   Future<void> _translate() async {
@@ -147,6 +145,15 @@ class _TranslatePageState extends State<TranslatePage> {
   Future<void> _stop() async {
     try { await _sub?.cancel(); } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  LanguageOption? _languageForCode(String? code) {
+    if (code == null || code.isEmpty) return null;
+    try {
+      return supportedLanguages.firstWhere((e) => e.code == code);
+    } catch (_) {
+      return null;
+    }
   }
 
   String _displayNameFor(AppLocalizations l10n, String code) {

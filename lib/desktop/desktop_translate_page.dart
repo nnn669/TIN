@@ -51,14 +51,11 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
 
-    // Default language: if app locale is Chinese, default to English; else Simplified Chinese
+    final savedLang = _languageForCode(settings.translateTargetLang);
     final locale = Localizations.localeOf(context).languageCode.toLowerCase();
+    final localeLang = locale.startsWith('zh') ? _languageForCode('zh-CN') : _languageForCode('en');
     setState(() {
-      if (locale.startsWith('zh')) {
-        _targetLang = supportedLanguages.firstWhere((e) => e.code == 'zh-CN', orElse: () => supportedLanguages.first);
-      } else {
-        _targetLang = supportedLanguages.firstWhere((e) => e.code == 'en', orElse: () => supportedLanguages.first);
-      }
+      _targetLang = savedLang ?? localeLang ?? supportedLanguages.first;
     });
 
     // Default model: translate model -> assistant's chat model -> global default
@@ -68,6 +65,21 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
       _modelProviderKey = providerKey;
       _modelId = modelId;
     });
+  }
+
+  LanguageOption? _languageForCode(String? code) {
+    if (code == null || code.isEmpty) return null;
+    try {
+      return supportedLanguages.firstWhere((e) => e.code == code);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _onLanguageChanged(LanguageOption? lang) async {
+    if (lang == null) return;
+    setState(() => _targetLang = lang);
+    await context.read<SettingsProvider>().setTranslateTargetLang(lang.code);
   }
 
   String _displayNameFor(AppLocalizations l10n, String code) {
@@ -225,7 +237,7 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                             // Language dropdown
                             _LanguageDropdown(
                               value: _targetLang,
-                              onChanged: _translating ? null : (v) => setState(() => _targetLang = v),
+                              onChanged: _translating ? null : (v) => _onLanguageChanged(v),
                             ),
                             const SizedBox(width: 8),
                             // Translate / Stop button with animation
