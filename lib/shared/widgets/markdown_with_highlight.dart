@@ -2220,8 +2220,7 @@ class ModernBlockQuote extends InlineMd {
 
   @override
   RegExp get exp => RegExp(
-    r"(?:(?:^)\ *>[^\n]+)(?:(?:\n)\ *>[^\n]+)*",
-    dotAll: true,
+    r"^[ \t]*>[^\n]*(?:\n[ \t]*>[^\n]*)*",
     multiLine: true,
   );
 
