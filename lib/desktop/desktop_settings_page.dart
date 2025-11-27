@@ -1607,21 +1607,40 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                     filled: false,
                     dense: true,
                     onTap: () async {
-                      final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
-                      if (res != null && res.files.isNotEmpty) {
-                        final file = res.files.first;
-                        final content = String.fromCharCodes(file.bytes ?? []);
-                        String projectId = cfg.projectId ?? '';
+                      final res = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['json'],
+                        withData: true,
+                      );
+                      if (res == null || res.files.isEmpty) return;
+
+                      final file = res.files.first;
+                      // Desktop FilePicker may not include bytes unless withData is true; fall back to disk read.
+                      String? content;
+                      if (file.bytes != null && file.bytes!.isNotEmpty) {
+                        content = utf8.decode(file.bytes!);
+                      } else if (file.path != null && file.path!.isNotEmpty) {
                         try {
-                          final obj = jsonDecode(content);
-                          projectId = (obj['project_id'] as String?)?.trim() ?? projectId;
+                          content = await File(file.path!).readAsString();
                         } catch (_) {}
-                        final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
-                        await sp.setProviderConfig(widget.providerKey, old.copyWith(
-                          serviceAccountJson: content,
-                          projectId: projectId,
-                        ));
                       }
+                      if (content == null || content.trim().isEmpty) {
+                        showAppSnackBar(context, message: 'Failed to read file', type: NotificationType.error);
+                        return;
+                      }
+
+                      String projectId = cfg.projectId ?? '';
+                      try {
+                        final obj = jsonDecode(content);
+                        projectId = (obj['project_id'] as String?)?.trim() ?? projectId;
+                      } catch (_) {}
+                      final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+                      final updated = old.copyWith(
+                        serviceAccountJson: content,
+                        projectId: projectId,
+                      );
+                      _syncControllersFromConfig(updated);
+                      await sp.setProviderConfig(widget.providerKey, updated);
                     },
                   ),
                 ),
