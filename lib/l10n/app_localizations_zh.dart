@@ -1090,13 +1090,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatHistoryPageSearchTooltip => '搜索';
 
   @override
-  String get chatHistoryPageDeleteAllTooltip => '删除全部';
+  String get chatHistoryPageDeleteAllTooltip => '删除未置顶';
 
   @override
-  String get chatHistoryPageDeleteAllDialogTitle => '删除全部对话';
+  String get chatHistoryPageDeleteAllDialogTitle => '删除未置顶对话';
 
   @override
-  String get chatHistoryPageDeleteAllDialogContent => '确定要删除全部对话吗？此操作不可撤销。';
+  String get chatHistoryPageDeleteAllDialogContent =>
+      '确定要删除所有未置顶的对话吗？已置顶的将会保留。';
 
   @override
   String get chatHistoryPageCancel => '取消';
@@ -1105,7 +1106,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatHistoryPageDelete => '删除';
 
   @override
-  String get chatHistoryPageDeletedAllSnackbar => '已删除全部对话';
+  String get chatHistoryPageDeletedAllSnackbar => '已删除未置顶的对话';
 
   @override
   String get chatHistoryPageSearchHint => '搜索对话';
@@ -4329,13 +4330,14 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get chatHistoryPageSearchTooltip => '搜索';
 
   @override
-  String get chatHistoryPageDeleteAllTooltip => '删除全部';
+  String get chatHistoryPageDeleteAllTooltip => '删除未置顶';
 
   @override
-  String get chatHistoryPageDeleteAllDialogTitle => '删除全部对话';
+  String get chatHistoryPageDeleteAllDialogTitle => '删除未置顶对话';
 
   @override
-  String get chatHistoryPageDeleteAllDialogContent => '确定要删除全部对话吗？此操作不可撤销。';
+  String get chatHistoryPageDeleteAllDialogContent =>
+      '确定要删除所有未置顶的对话吗？已置顶的将会保留。';
 
   @override
   String get chatHistoryPageCancel => '取消';
@@ -4344,7 +4346,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get chatHistoryPageDelete => '删除';
 
   @override
-  String get chatHistoryPageDeletedAllSnackbar => '已删除全部对话';
+  String get chatHistoryPageDeletedAllSnackbar => '已删除未置顶的对话';
 
   @override
   String get chatHistoryPageSearchHint => '搜索对话';
@@ -7568,13 +7570,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get chatHistoryPageSearchTooltip => '搜尋';
 
   @override
-  String get chatHistoryPageDeleteAllTooltip => '刪除全部';
+  String get chatHistoryPageDeleteAllTooltip => '刪除未置頂';
 
   @override
-  String get chatHistoryPageDeleteAllDialogTitle => '刪除全部對話';
+  String get chatHistoryPageDeleteAllDialogTitle => '刪除未置頂對話';
 
   @override
-  String get chatHistoryPageDeleteAllDialogContent => '確定要刪除全部對話嗎？此操作不可撤銷。';
+  String get chatHistoryPageDeleteAllDialogContent => '確認要刪除所有未置頂的對話嗎？已置頂的會保留。';
 
   @override
   String get chatHistoryPageCancel => '取消';
@@ -7583,7 +7585,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get chatHistoryPageDelete => '刪除';
 
   @override
-  String get chatHistoryPageDeletedAllSnackbar => '已刪除全部對話';
+  String get chatHistoryPageDeletedAllSnackbar => '已刪除未置頂的對話';
 
   @override
   String get chatHistoryPageSearchHint => '搜尋對話';

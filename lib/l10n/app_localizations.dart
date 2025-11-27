@@ -2228,19 +2228,19 @@ abstract class AppLocalizations {
   /// No description provided for @chatHistoryPageDeleteAllTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Delete All'**
+  /// **'Delete Unpinned'**
   String get chatHistoryPageDeleteAllTooltip;
 
   /// No description provided for @chatHistoryPageDeleteAllDialogTitle.
   ///
   /// In en, this message translates to:
-  /// **'Delete All Conversations'**
+  /// **'Delete Unpinned Conversations'**
   String get chatHistoryPageDeleteAllDialogTitle;
 
   /// No description provided for @chatHistoryPageDeleteAllDialogContent.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete all conversations? This cannot be undone.'**
+  /// **'Delete every non-pinned conversation for this assistant? Pinned chats stay in place.'**
   String get chatHistoryPageDeleteAllDialogContent;
 
   /// No description provided for @chatHistoryPageCancel.
@@ -2258,7 +2258,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatHistoryPageDeletedAllSnackbar.
   ///
   /// In en, this message translates to:
-  /// **'All conversations deleted'**
+  /// **'Unpinned conversations deleted'**
   String get chatHistoryPageDeletedAllSnackbar;
 
   /// No description provided for @chatHistoryPageSearchHint.

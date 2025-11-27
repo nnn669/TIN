@@ -1122,14 +1122,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatHistoryPageSearchTooltip => 'Search';
 
   @override
-  String get chatHistoryPageDeleteAllTooltip => 'Delete All';
+  String get chatHistoryPageDeleteAllTooltip => 'Delete Unpinned';
 
   @override
-  String get chatHistoryPageDeleteAllDialogTitle => 'Delete All Conversations';
+  String get chatHistoryPageDeleteAllDialogTitle =>
+      'Delete Unpinned Conversations';
 
   @override
   String get chatHistoryPageDeleteAllDialogContent =>
-      'Are you sure you want to delete all conversations? This cannot be undone.';
+      'Delete every non-pinned conversation for this assistant? Pinned chats stay in place.';
 
   @override
   String get chatHistoryPageCancel => 'Cancel';
@@ -1138,7 +1139,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatHistoryPageDelete => 'Delete';
 
   @override
-  String get chatHistoryPageDeletedAllSnackbar => 'All conversations deleted';
+  String get chatHistoryPageDeletedAllSnackbar =>
+      'Unpinned conversations deleted';
 
   @override
   String get chatHistoryPageSearchHint => 'Search conversations';

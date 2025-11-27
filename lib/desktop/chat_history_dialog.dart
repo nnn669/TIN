@@ -111,7 +111,7 @@ class _ChatHistoryDesktopDialogState extends State<_ChatHistoryDesktopDialog> {
                             final svc = context.read<ChatService>();
                             final idsToDelete = svc
                                 .getAllConversations()
-                                .where((c) => c.assistantId == widget.assistantId)
+                                .where((c) => c.assistantId == widget.assistantId && !c.isPinned)
                                 .map((c) => c.id)
                                 .toList();
                             for (final id in idsToDelete) {
