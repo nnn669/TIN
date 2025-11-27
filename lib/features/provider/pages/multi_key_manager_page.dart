@@ -26,6 +26,7 @@ class MultiKeyManagerPage extends StatefulWidget {
 class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
   String? _detectModelId;
   bool _detecting = false;
+  String? _testingKeyId;
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +235,15 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     return _iosSectionCard(
       children: [
         for (int i = 0; i < keys.length; i++)
-          _keyRow(context, keys[i], statusColor, statusText, mask),
+          _keyRow(
+            context,
+            keys[i],
+            statusColor,
+            statusText,
+            mask,
+            isTesting: _testingKeyId == keys[i].id,
+            onTest: () => _onTestSingleKey(keys[i]),
+          ),
       ],
     );
   }
@@ -245,6 +254,7 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     Color Function(ApiKeyStatus) statusColor,
     String Function(ApiKeyStatus) statusText,
     String Function(String) mask,
+    {bool isTesting = false, VoidCallback? onTest}
   ) {
     final cs = Theme.of(context).colorScheme;
     final name = k.name?.isNotEmpty == true ? k.name! : mask(k.key);
@@ -288,6 +298,16 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
             height: 28,
           ),
           const SizedBox(width: 6),
+          if (isTesting)
+            SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary))
+          else if (onTest != null)
+            _TactileIconButton(
+              icon: Lucide.HeartPulse,
+              color: cs.primary,
+              semanticLabel: AppLocalizations.of(context)!.multiKeyPageDetect,
+              onTap: onTest,
+            ),
+          const SizedBox(width: 4),
           _TactileIconButton(
             icon: Lucide.Pencil,
             color: cs.primary,
@@ -458,6 +478,29 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
     // Auto-detect imported keys
     await _detectOnly(keys: unique);
+  }
+
+  Future<void> _onTestSingleKey(ApiKeyConfig key) async {
+    if (_detecting || _testingKeyId != null) return;
+    final settings = context.read<SettingsProvider>();
+    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final models = cfg.models;
+    if (_detectModelId == null) {
+      if (models.isEmpty) {
+        if (!mounted) return;
+        showAppSnackBar(context, message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+        return;
+      }
+      _detectModelId = models.first;
+    }
+    setState(() => _testingKeyId = key.id);
+    try {
+      final list = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
+      final toTest = list.where((e) => e.id == key.id).toList();
+      await _testKeysAndSave(list, toTest, _detectModelId!);
+    } finally {
+      if (mounted) setState(() => _testingKeyId = null);
+    }
   }
 
   List<String> _splitKeys(String raw) {

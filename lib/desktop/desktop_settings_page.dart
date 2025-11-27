@@ -2373,6 +2373,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
         // Persisted state across inner StatefulBuilder rebuilds
         String? detectModelId;
         bool detecting = false;
+        String? testingKeyId;
         StateSetter? _setDRef;
 
         Future<void> _pickDetectModel(BuildContext dctx) async {
@@ -2450,6 +2451,30 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
           final list = List<ApiKeyConfig>.from(cfgX.apiKeys ?? const <ApiKeyConfig>[]);
           final toTest = list.where((e) => keys.contains(e.key)).toList();
           await _testKeysAndSave(dctx, list, toTest, detectModelId!);
+        }
+
+        Future<void> _detectOne(BuildContext dctx, ApiKeyConfig key) async {
+          if (detecting || testingKeyId != null) return;
+          final settings = dctx.read<SettingsProvider>();
+          final cfgX = settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+          final models = cfgX.models;
+          if (detectModelId == null) {
+            if (models.isEmpty) {
+              showAppSnackBar(dctx, message: AppLocalizations.of(dctx)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+              return;
+            }
+            detectModelId = models.first;
+          }
+          testingKeyId = key.id;
+          _setDRef?.call(() {});
+          try {
+            final list = List<ApiKeyConfig>.from(cfgX.apiKeys ?? const <ApiKeyConfig>[]);
+            final toTest = list.where((e) => e.id == key.id).toList();
+            await _testKeysAndSave(dctx, list, toTest, detectModelId!);
+          } finally {
+            testingKeyId = null;
+            _setDRef?.call(() {});
+          }
         }
 
         Future<void> _deleteAllErrorKeys(BuildContext dctx) async {
@@ -2684,6 +2709,8 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                                       await sp.setProviderConfig(widget.providerKey, latest.copyWith(apiKeys: list));
                                       setD(() {});
                                     },
+                                    onTest: () => _detectOne(dctx, keyList[i]),
+                                    testing: testingKeyId == keyList[i].id,
                                     onDelete: () async {
                                       final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
                                       final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
@@ -3467,12 +3494,16 @@ class _DesktopKeyRow extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    required this.onTest,
+    this.testing = false,
     this.showDivider = false,
   });
   final ApiKeyConfig keyConfig;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final VoidCallback onTest;
+  final bool testing;
   final bool showDivider;
   @override
   Widget build(BuildContext context) {
@@ -3532,6 +3563,14 @@ class _DesktopKeyRow extends StatelessWidget {
               const SizedBox(width: 8),
               IosSwitch(value: keyConfig.isEnabled, onChanged: onToggle, width: 46, height: 28),
               const SizedBox(width: 6),
+              if (testing)
+                SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary))
+              else
+                Tooltip(
+                  message: l10n.multiKeyPageDetect,
+                  child: _IconBtn(icon: lucide.Lucide.HeartPulse, onTap: onTest, color: cs.primary),
+                ),
+              const SizedBox(width: 4),
               _IconBtn(icon: lucide.Lucide.Pencil, onTap: onEdit, color: cs.primary),
               const SizedBox(width: 4),
               _IconBtn(icon: lucide.Lucide.Trash2, onTap: onDelete, color: cs.error),
