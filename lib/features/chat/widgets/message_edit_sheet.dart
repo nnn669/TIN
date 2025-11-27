@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/chat_message.dart';
+import '../models/message_edit_result.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/services/haptics.dart';
 
-Future<String?> showMessageEditSheet(BuildContext context, {required ChatMessage message}) async {
+Future<MessageEditResult?> showMessageEditSheet(BuildContext context, {required ChatMessage message}) async {
   final cs = Theme.of(context).colorScheme;
-  return showModalBottomSheet<String?>(
+  return showModalBottomSheet<MessageEditResult?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
@@ -59,42 +60,49 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
               const SizedBox(height: 10),
               SizedBox(
                 height: 32,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    // Invisible left button to balance layout so title truly centers
-                    Opacity(
-                      opacity: 0,
-                      child: IgnorePointer(
-                        child: IosCardPress(
-                          onTap: () {},
-                          borderRadius: BorderRadius.circular(20),
-                          baseColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          child: Text(l10n.messageEditPageSave, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IosCardPress(
+                        onTap: () {
+                          Haptics.light();
+                          final text = _controller.text.trim();
+                          Navigator.of(context).pop<MessageEditResult>(
+                            MessageEditResult(content: text, shouldSend: true),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        baseColor: Colors.transparent,
+                        pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Text(l10n.messageEditPageSaveAndSend, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
                       ),
                     ),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          l10n.messageEditPageTitle,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                          textAlign: TextAlign.center,
-                        ),
+                    Center(
+                      child: Text(
+                        l10n.messageEditPageTitle,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    IosCardPress(
-                      onTap: () {
-                        Haptics.light();
-                        final text = _controller.text.trim();
-                        Navigator.of(context).pop<String>(text);
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      baseColor: Colors.transparent,
-                      pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      child: Text(l10n.messageEditPageSave, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IosCardPress(
+                        onTap: () {
+                          Haptics.light();
+                          final text = _controller.text.trim();
+                          Navigator.of(context).pop<MessageEditResult>(
+                            MessageEditResult(content: text, shouldSend: false),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        baseColor: Colors.transparent,
+                        pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Text(l10n.messageEditPageSave, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+                      ),
                     ),
                   ],
                 ),

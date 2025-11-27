@@ -1129,6 +1129,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get messageEditPageSave => '保存';
 
   @override
+  String get messageEditPageSaveAndSend => '保存并发送';
+
+  @override
   String get messageEditPageHint => '输入消息内容…';
 
   @override
@@ -4365,6 +4368,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get messageEditPageSave => '保存';
 
   @override
+  String get messageEditPageSaveAndSend => '保存并发送';
+
+  @override
   String get messageEditPageHint => '输入消息内容…';
 
   @override
@@ -7599,6 +7605,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get messageEditPageSave => '儲存';
+
+  @override
+  String get messageEditPageSaveAndSend => '儲存並發送';
 
   @override
   String get messageEditPageHint => '輸入訊息內容…';

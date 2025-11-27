@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../core/models/chat_message.dart';
+import '../features/chat/models/message_edit_result.dart';
 import '../l10n/app_localizations.dart';
 import '../icons/lucide_adapter.dart';
 
-Future<String?> showMessageEditDesktopDialog(BuildContext context, {required ChatMessage message}) async {
-  return showDialog<String>(
+Future<MessageEditResult?> showMessageEditDesktopDialog(BuildContext context, {required ChatMessage message}) async {
+  return showDialog<MessageEditResult?>(
     context: context,
     barrierDismissible: true,
     builder: (ctx) => _MessageEditDesktopDialog(message: message),
@@ -62,7 +63,20 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
                       TextButton.icon(
                         onPressed: () {
                           final text = _controller.text.trim();
-                          Navigator.of(context).pop<String>(text);
+                          Navigator.of(context).pop<MessageEditResult>(
+                            MessageEditResult(content: text, shouldSend: true),
+                          );
+                        },
+                        icon: Icon(Lucide.MessageCirclePlus, size: 18, color: cs.primary),
+                        label: Text(l10n.messageEditPageSaveAndSend, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () {
+                          final text = _controller.text.trim();
+                          Navigator.of(context).pop<MessageEditResult>(
+                            MessageEditResult(content: text, shouldSend: false),
+                          );
                         },
                         icon: Icon(Lucide.Check, size: 18, color: cs.primary),
                         label: Text(l10n.messageEditPageSave, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
@@ -116,4 +130,3 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
     );
   }
 }
-

@@ -431,6 +431,7 @@
   "chatHistoryPagePinned": "Pinned",
   "messageEditPageTitle": "Edit Message",
   "messageEditPageSave": "Save",
+  "messageEditPageSaveAndSend": "Save & Send",
   "messageEditPageHint": "Enter message…",
   "selectCopyPageTitle": "Select & Copy",
   "selectCopyPageCopyAll": "Copy All",

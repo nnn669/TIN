@@ -425,6 +425,7 @@
   "chatHistoryPagePinned": "已置顶",
   "messageEditPageTitle": "编辑消息",
   "messageEditPageSave": "保存",
+  "messageEditPageSaveAndSend": "保存并发送",
   "messageEditPageHint": "输入消息内容…",
   "selectCopyPageTitle": "选择复制",
   "selectCopyPageCopyAll": "复制全部",

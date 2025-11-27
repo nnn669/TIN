@@ -1162,6 +1162,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messageEditPageSave => 'Save';
 
   @override
+  String get messageEditPageSaveAndSend => 'Save & Send';
+
+  @override
   String get messageEditPageHint => 'Enter message…';
 
   @override

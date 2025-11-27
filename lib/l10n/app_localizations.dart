@@ -2303,6 +2303,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get messageEditPageSave;
 
+  /// No description provided for @messageEditPageSaveAndSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & Send'**
+  String get messageEditPageSaveAndSend;
+
   /// No description provided for @messageEditPageHint.
   ///
   /// In en, this message translates to:

@@ -383,6 +383,7 @@
   "chatHistoryPagePinned": "已置頂",
   "messageEditPageTitle": "編輯訊息",
   "messageEditPageSave": "儲存",
+  "messageEditPageSaveAndSend": "儲存並發送",
   "messageEditPageHint": "輸入訊息內容…",
   "selectCopyPageTitle": "選擇複製",
   "selectCopyPageCopyAll": "複製全部",

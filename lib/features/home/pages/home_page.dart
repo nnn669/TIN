@@ -33,6 +33,7 @@ import '../../../core/models/conversation.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
+import '../../chat/models/message_edit_result.dart';
 // import '../../chat/pages/message_edit_page.dart';
 import '../../chat/widgets/message_edit_sheet.dart';
 import '../../../desktop/message_edit_dialog.dart';
@@ -2887,7 +2888,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _regenerateAtMessage(ChatMessage message) async {
+  Future<void> _regenerateAtMessage(ChatMessage message, {bool assistantAsNewReply = false}) async {
     if (_currentConversation == null) return;
     // Cancel any ongoing stream
     await _cancelStreaming();
@@ -2900,17 +2901,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     int nextVersion = 0;
     int lastKeep;
     if (message.role == 'assistant') {
-      // Keep the existing assistant message as old version
+      // Keep the existing assistant message; optionally open a new group for the new reply
       lastKeep = idx; // remove after this
-      targetGroupId = message.groupId ?? message.id;
-      int maxVer = -1;
-      for (final m in _messages) {
-        final gid = (m.groupId ?? m.id);
-        if (gid == targetGroupId) {
-          if (m.version > maxVer) maxVer = m.version;
+      if (assistantAsNewReply) {
+        targetGroupId = null; // start a new group for the upcoming assistant reply
+        nextVersion = 0;
+      } else {
+        targetGroupId = message.groupId ?? message.id;
+        int maxVer = -1;
+        for (final m in _messages) {
+          final gid = (m.groupId ?? m.id);
+          if (gid == targetGroupId) {
+            if (m.version > maxVer) maxVer = m.version;
+          }
         }
+        nextVersion = maxVer + 1;
       }
-      nextVersion = maxVer + 1;
     } else {
       // User message: find the first assistant reply after the FIRST occurrence of this user group,
       // not after the current version's position (which may be appended at tail after edits).
@@ -4161,6 +4167,37 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     } catch (_) {}
   }
 
+  // Edit message and optionally resend immediately
+  Future<void> _onEditMessage(ChatMessage message) async {
+    final isDesktop = _isDesktopPlatform;
+    final MessageEditResult? result = isDesktop
+        ? await showMessageEditDesktopDialog(context, message: message)
+        : await showMessageEditSheet(context, message: message);
+    if (result == null) return;
+
+    final newMsg = await _chatService.appendMessageVersion(messageId: message.id, content: result.content);
+    if (!mounted || newMsg == null) return;
+
+    setState(() {
+      _messages.add(newMsg);
+      final gid = (newMsg.groupId ?? newMsg.id);
+      _versionSelections[gid] = newMsg.version;
+    });
+    if (_currentConversation != null) {
+      try {
+        final gid = (newMsg.groupId ?? newMsg.id);
+        await _chatService.setSelectedVersion(_currentConversation!.id, gid, newMsg.version);
+      } catch (_) {}
+    }
+
+    if (!mounted || !result.shouldSend) return;
+    if (message.role == 'assistant') {
+      await _regenerateAtMessage(newMsg, assistantAsNewReply: true);
+    } else {
+      await _regenerateAtMessage(newMsg);
+    }
+  }
+
   // Translate message functionality
   Future<void> _translateMessage(ChatMessage message) async {
     final l10n = AppLocalizations.of(context)!;
@@ -4740,31 +4777,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                           }
                                         }
                                       : null,
-                                  onEdit: message.role == 'user' ? () async {
-                                    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                        defaultTargetPlatform == TargetPlatform.windows ||
-                                        defaultTargetPlatform == TargetPlatform.linux;
-                                    final edited = isDesktop
-                                        ? await showMessageEditDesktopDialog(context, message: message)
-                                        : await showMessageEditSheet(context, message: message);
-                                    if (edited != null) {
-                                      final newMsg = await _chatService.appendMessageVersion(messageId: message.id, content: edited);
-                                      if (!mounted) return;
-                                      setState(() {
-                                        if (newMsg != null) {
-                                          _messages.add(newMsg);
-                                          final gid2 = (newMsg.groupId ?? newMsg.id);
-                                          _versionSelections[gid2] = newMsg.version;
-                                        }
-                                      });
-                                      try {
-                                        if (newMsg != null && _currentConversation != null) {
-                                          final gid2 = (newMsg.groupId ?? newMsg.id);
-                                          await _chatService.setSelectedVersion(_currentConversation!.id, gid2, newMsg.version);
-                                        }
-                                      } catch (_) {}
-                                    }
-                                  } : null,
+                                  onEdit: (message.role == 'user' || message.role == 'assistant')
+                                      ? () { _onEditMessage(message); }
+                                      : null,
                                   onDelete: message.role == 'user' ? () async {
                                     final l10n = AppLocalizations.of(context)!;
                                     final confirm = await showDialog<bool>(
@@ -4883,30 +4898,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     });
                                   }
                                 } else if (action == MessageMoreAction.edit) {
-                                  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                      defaultTargetPlatform == TargetPlatform.windows ||
-                                      defaultTargetPlatform == TargetPlatform.linux;
-                                  final screenWidth = MediaQuery.sizeOf(context).width;
-                                  final edited = isDesktop
-                                      ? await showMessageEditDesktopDialog(context, message: message)
-                                      : await showMessageEditSheet(context, message: message);
-                                  if (edited != null) {
-                                    final newMsg = await _chatService.appendMessageVersion(messageId: message.id, content: edited);
-                                    if (!mounted) return;
-                                    setState(() {
-                                      if (newMsg != null) {
-                                        _messages.add(newMsg);
-                                        final gid = (newMsg.groupId ?? newMsg.id);
-                                        _versionSelections[gid] = newMsg.version;
-                                      }
-                                    });
-                                    try {
-                                      if (newMsg != null && _currentConversation != null) {
-                                        final gid = (newMsg.groupId ?? newMsg.id);
-                                        await _chatService.setSelectedVersion(_currentConversation!.id, gid, newMsg.version);
-                                      }
-                                    } catch (_) {}
-                                  }
+                                  await _onEditMessage(message);
                                 } else if (action == MessageMoreAction.fork) {
                                   // Determine included groups up to the message's group (inclusive)
                                   final Map<String, int> groupFirstIndex = <String, int>{};
@@ -5845,32 +5837,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                             }
                                                           }
                                                         : null,
-                                                    onEdit: message.role == 'user'
-                                                        ? () async {
-                                                            final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                                                defaultTargetPlatform == TargetPlatform.windows ||
-                                                                defaultTargetPlatform == TargetPlatform.linux;
-                                                            final edited = isDesktop
-                                                                ? await showMessageEditDesktopDialog(context, message: message)
-                                                                : await showMessageEditSheet(context, message: message);
-                                                            if (edited != null) {
-                                                              final newMsg = await _chatService.appendMessageVersion(messageId: message.id, content: edited);
-                                                              if (!mounted) return;
-                                                              setState(() {
-                                                                if (newMsg != null) {
-                                                                  _messages.add(newMsg);
-                                                                  final gid2 = (newMsg.groupId ?? newMsg.id);
-                                                                  _versionSelections[gid2] = newMsg.version;
-                                                                }
-                                                              });
-                                                              try {
-                                                                if (newMsg != null && _currentConversation != null) {
-                                                                  final gid2 = (newMsg.groupId ?? newMsg.id);
-                                                                  await _chatService.setSelectedVersion(_currentConversation!.id, gid2, newMsg.version);
-                                                                }
-                                                              } catch (_) {}
-                                                            }
-                                                          }
+                                                    onEdit: (message.role == 'user' || message.role == 'assistant')
+                                                        ? () { _onEditMessage(message); }
                                                         : null,
                                                     onDelete: message.role == 'user'
                                                         ? () async {
@@ -5940,67 +5908,45 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                             ],
                                                           ),
                                                         );
-                                                    if (confirm == true) {
-                                                      final id = message.id;
-                                                      final gid = (message.groupId ?? message.id);
-                                                      final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
-                                                      final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
-                                                      final delIndex = versBefore.indexWhere((m) => m.id == id);
-                                                      setState(() {
-                                                        _reasoning.remove(id);
-                                                        _translations.remove(id);
-                                                        _toolParts.remove(id);
-                                                        _reasoningSegments.remove(id);
-                                                        final newTotal = versBefore.length - 1;
-                                                        if (newTotal <= 0) {
-                                                          _versionSelections.remove(gid);
-                                                        } else {
-                                                          int newSel = oldSel;
-                                                          if (delIndex >= 0) {
-                                                            if (delIndex < oldSel) newSel = oldSel - 1;
-                                                            else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                                      if (confirm == true) {
+                                                        final id = message.id;
+                                                        final gid = (message.groupId ?? message.id);
+                                                        final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+                                                        final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+                                                        final delIndex = versBefore.indexWhere((m) => m.id == id);
+                                                        setState(() {
+                                                          _reasoning.remove(id);
+                                                          _translations.remove(id);
+                                                          _toolParts.remove(id);
+                                                          _reasoningSegments.remove(id);
+                                                          final newTotal = versBefore.length - 1;
+                                                          if (newTotal <= 0) {
+                                                            _versionSelections.remove(gid);
+                                                          } else {
+                                                            int newSel = oldSel;
+                                                            if (delIndex >= 0) {
+                                                              if (delIndex < oldSel) newSel = oldSel - 1;
+                                                              else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+                                                            }
+                                                            if (newSel < 0) newSel = 0;
+                                                            if (newSel > newTotal - 1) newSel = newTotal - 1;
+                                                            _versionSelections[gid] = newSel;
                                                           }
-                                                          if (newSel < 0) newSel = 0;
-                                                          if (newSel > newTotal - 1) newSel = newTotal - 1;
-                                                          _versionSelections[gid] = newSel;
+                                                        });
+                                                        final sel = _versionSelections[gid];
+                                                        if (sel != null && _currentConversation != null) {
+                                                          try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
                                                         }
-                                                      });
-                                                      final sel = _versionSelections[gid];
-                                                      if (sel != null && _currentConversation != null) {
-                                                        try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+                                                        await _chatService.deleteMessage(id);
+                                                        if (!mounted || _currentConversation == null) return;
+                                                        final msgs = _chatService.getMessages(_currentConversation!.id);
+                                                        setState(() {
+                                                          _messages = List.of(msgs);
+                                                        });
                                                       }
-                                                      await _chatService.deleteMessage(id);
-                                                      if (!mounted || _currentConversation == null) return;
-                                                      final msgs = _chatService.getMessages(_currentConversation!.id);
-                                                      setState(() {
-                                                        _messages = List.of(msgs);
-                                                      });
-                                                    }
-                                                  } else if (action == MessageMoreAction.edit) {
-                                                        final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                                            defaultTargetPlatform == TargetPlatform.windows ||
-                                                            defaultTargetPlatform == TargetPlatform.linux;
-                                                        final edited = isDesktop
-                                                            ? await showMessageEditDesktopDialog(context, message: message)
-                                                            : await showMessageEditSheet(context, message: message);
-                                                        if (edited != null) {
-                                                          final newMsg = await _chatService.appendMessageVersion(messageId: message.id, content: edited);
-                                                          if (!mounted) return;
-                                                          setState(() {
-                                                            if (newMsg != null) {
-                                                              _messages.add(newMsg);
-                                                              final gid = (newMsg.groupId ?? newMsg.id);
-                                                              _versionSelections[gid] = newMsg.version;
-                                                            }
-                                                          });
-                                                          try {
-                                                            if (newMsg != null && _currentConversation != null) {
-                                                              final gid = (newMsg.groupId ?? newMsg.id);
-                                                              await _chatService.setSelectedVersion(_currentConversation!.id, gid, newMsg.version);
-                                                            }
-                                                          } catch (_) {}
-                                                        }
-                                                      } else if (action == MessageMoreAction.fork) {
+                                                    } else if (action == MessageMoreAction.edit) {
+                                                      await _onEditMessage(message);
+                                                    } else if (action == MessageMoreAction.fork) {
                                                         // Determine included groups up to the message's group (inclusive)
                                                         final Map<String, int> groupFirstIndex = <String, int>{};
                                                         final List<String> groupOrder = <String>[];
