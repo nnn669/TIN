@@ -215,19 +215,18 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> with TickerProviderSt
 
     return Dismissible(
       key: ValueKey('history-${c.id}'),
-      direction: DismissDirection.startToEnd,
+      direction: DismissDirection.endToStart,
       background: Container(
         decoration: BoxDecoration(
           color: cs.errorContainer,
           borderRadius: BorderRadius.circular(14),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.centerRight,
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Icon(Lucide.Trash2, color: cs.onErrorContainer, size: 18),
-            const SizedBox(width: 8),
             Text(
               l10n.chatHistoryPageDelete,
               style: TextStyle(
@@ -235,6 +234,8 @@ class _ChatHistoryPageState extends State<ChatHistoryPage> with TickerProviderSt
                 fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(width: 8),
+            Icon(Lucide.Trash2, color: cs.onErrorContainer, size: 18),
           ],
         ),
       ),
