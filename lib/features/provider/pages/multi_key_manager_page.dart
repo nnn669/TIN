@@ -871,7 +871,7 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   Future<bool> _testSingleKey(ProviderConfig baseCfg, String modelId, ApiKeyConfig key) async {
     try {
-      final cfg2 = baseCfg.copyWith(apiKey: key.key);
+      final cfg2 = baseCfg.copyWith(apiKey: key.key, multiKeyEnabled: false, apiKeys: const []);
       await ProviderManager.testConnection(cfg2, modelId);
       return true;
     } catch (_) {
