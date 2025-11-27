@@ -919,6 +919,11 @@ class ChatApiService {
 
     final effort = _effortForBudget(thinkingBudget);
     final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
+    final bool isAzureOpenAI = host.contains('openai.azure.com');
+    final String completionTokensKey = isAzureOpenAI ? 'max_completion_tokens' : 'max_tokens';
+    void _setMaxTokens(Map<String, dynamic> map) {
+      if (maxTokens != null) map[completionTokensKey] = maxTokens;
+    }
     Map<String, dynamic> body;
     // Keep initial Responses request context so we can perform follow-up requests when tools are called
     List<Map<String, dynamic>> responsesInitialInput = const <Map<String, dynamic>>[];
@@ -1151,11 +1156,11 @@ class ChatApiService {
         'stream': stream,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'top_p': topP,
-        if (maxTokens != null) 'max_tokens': maxTokens,
         if (isReasoning && effort != 'off' && effort != 'auto') 'reasoning_effort': effort,
         if (tools != null && tools.isNotEmpty) 'tools': _cleanToolsForCompatibility(tools),
         if (tools != null && tools.isNotEmpty) 'tool_choice': 'auto',
       };
+      _setMaxTokens(body);
     }
 
     // Vendor-specific reasoning knobs for chat-completions compatible hosts
@@ -1561,11 +1566,11 @@ class ChatApiService {
                 'stream': true,
                 if (temperature != null) 'temperature': temperature,
                 if (topP != null) 'top_p': topP,
-                if (maxTokens != null) 'max_tokens': maxTokens,
                 if (isReasoning && effort != 'off' && effort != 'auto') 'reasoning_effort': effort,
                 if (tools != null && tools.isNotEmpty) 'tools': _cleanToolsForCompatibility(tools),
                 if (tools != null && tools.isNotEmpty) 'tool_choice': 'auto',
               };
+              _setMaxTokens(body2);
 
               // Apply the same vendor-specific reasoning settings as the original request
               final off = _isOff(thinkingBudget);
@@ -2498,11 +2503,11 @@ class ChatApiService {
                 'stream': true,
                 if (temperature != null) 'temperature': temperature,
                 if (topP != null) 'top_p': topP,
-                if (maxTokens != null) 'max_tokens': maxTokens,
                 if (isReasoning && effort != 'off' && effort != 'auto') 'reasoning_effort': effort,
                 if (tools != null && tools.isNotEmpty) 'tools': _cleanToolsForCompatibility(tools),
                 if (tools != null && tools.isNotEmpty) 'tool_choice': 'auto',
               };
+              _setMaxTokens(body2);
               final off = _isOff(thinkingBudget);
               if (host.contains('openrouter.ai')) {
                 if (isReasoning) {
@@ -2869,11 +2874,11 @@ class ChatApiService {
                     'stream': true,
                     if (temperature != null) 'temperature': temperature,
                     if (topP != null) 'top_p': topP,
-                    if (maxTokens != null) 'max_tokens': maxTokens,
                     if (isReasoning && effort != 'off' && effort != 'auto') 'reasoning_effort': effort,
                     if (tools != null && tools.isNotEmpty) 'tools': _cleanToolsForCompatibility(tools),
                     if (tools != null && tools.isNotEmpty) 'tool_choice': 'auto',
                   };
+                  _setMaxTokens(body2);
                   final off = _isOff(thinkingBudget);
                   if (host.contains('openrouter.ai')) {
                     if (isReasoning) {
