@@ -2085,8 +2085,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     bool _hasBuiltInGeminiSearch() {
       try {
         final cfg = settings.getProviderConfig(providerKey);
-        // Only official Gemini API supports built-in search
-        if (cfg.providerType != ProviderKind.google || (cfg.vertexAI == true)) return false;
+        // Gemini (official or Vertex) supports built-in search when configured
+        if (cfg.providerType != ProviderKind.google) return false;
         final ov = cfg.modelOverrides[modelId] as Map?;
         final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
         return list.map((e) => e.toString().toLowerCase()).contains('search');
@@ -5062,7 +5062,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           }
                         }
                       }
-                      // Compute whether built-in built-in search (Gemini official or Claude) is active to highlight the search button
+                      // Compute whether built-in search (Gemini incl. Vertex or Claude) is active to highlight the search button
                       final currentProvider = a?.chatModelProvider ?? settings.currentModelProvider;
                       final currentModelId = a?.chatModelId ?? settings.currentModelId;
                       final cfg = (currentProvider != null)
@@ -5071,14 +5071,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       bool builtinSearchActive = false;
                       if (cfg != null && currentModelId != null) {
                         final mid2 = currentModelId;
-                        final isGeminiOfficial = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
+                        final isGemini = cfg.providerType == ProviderKind.google;
                         final isClaude = cfg.providerType == ProviderKind.claude;
-                        final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-                        if (isGeminiOfficial || isClaude || isOpenAIResponses) {
+                        final isOpenAIResponses =
+                            cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
+                        if (isGemini || isClaude || isOpenAIResponses) {
                           final ov = cfg.modelOverrides[mid2] as Map?;
                           final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-                                      builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-                                    }
+                          builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
+                        }
                       }
                       return ChatInputBar(
                         key: _inputBarKey,
@@ -6156,10 +6157,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   bool builtinSearchActive = false;
                                   if (cfg != null && currentModelId != null) {
                                     final mid2 = currentModelId;
-                                    final isGeminiOfficial = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
+                                    final isGemini = cfg.providerType == ProviderKind.google;
                                     final isClaude = cfg.providerType == ProviderKind.claude;
                                     final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-                                    if (isGeminiOfficial || isClaude || isOpenAIResponses) {
+                                    if (isGemini || isClaude || isOpenAIResponses) {
                                       final ov = cfg.modelOverrides[mid2] as Map?;
                                       final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
                                       builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');

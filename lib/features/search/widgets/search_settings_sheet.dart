@@ -104,10 +104,8 @@ class _SearchSettingsSheet extends StatelessWidget {
     final cfg = (providerKey != null)
         ? settings.getProviderConfig(providerKey)
         : null;
-    final isOfficialGemini =
-        cfg != null &&
-        cfg.providerType == ProviderKind.google &&
-        (cfg.vertexAI != true);
+    final isGeminiProvider =
+        cfg != null && cfg.providerType == ProviderKind.google;
     final isClaude = cfg != null && cfg.providerType == ProviderKind.claude;
     final isOpenAIResponses =
         cfg != null &&
@@ -120,7 +118,7 @@ class _SearchSettingsSheet extends StatelessWidget {
 
     // Read current built-in search toggle from modelOverrides
     bool hasBuiltInSearch = false;
-    if ((isOfficialGemini || isClaude || isOpenAIResponses || isGrok) &&
+    if ((isGeminiProvider || isClaude || isOpenAIResponses || isGrok) &&
         providerKey != null &&
         (modelId ?? '').isNotEmpty) {
       final mid = modelId!;
@@ -195,8 +193,8 @@ class _SearchSettingsSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Built-in search toggle (Gemini official, Claude supported, or OpenAI Responses supported)
-                if ((isOfficialGemini ||
+                // Built-in search toggle (Gemini, Claude supported, or OpenAI Responses supported)
+                if ((isGeminiProvider ||
                         isClaudeSupportedModel ||
                         isOpenAIResponsesSupportedModel ||
                         isGrok) &&

@@ -188,11 +188,11 @@ class _SearchContent extends StatelessWidget {
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || (modelId ?? '').isEmpty) return false;
     final cfg = settings.getProviderConfig(providerKey);
-    final isOfficialGemini = cfg.providerType == ProviderKind.google && (cfg.vertexAI != true);
+    final isGemini = cfg.providerType == ProviderKind.google;
     final isClaude = cfg.providerType == ProviderKind.claude;
     final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
     final isGrok = cfg.providerType == ProviderKind.openai && (modelId ?? '').toLowerCase().contains('grok');
-    if (!(isOfficialGemini || isClaude || isOpenAIResponses || isGrok)) return false;
+    if (!(isGemini || isClaude || isOpenAIResponses || isGrok)) return false;
     final mid = modelId!.toLowerCase();
     if (isGrok) return true; // All Grok models assumed to support search
     if (isClaude) {

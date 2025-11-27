@@ -747,10 +747,9 @@ class ChatApiService {
           'generationConfig': {'temperature': 0.3},
         };
 
-        // Inject Gemini built-in tools (only for official Gemini API; Vertex may not support these)
+        // Inject Gemini built-in tools (now supported for both official API and Vertex)
         final builtIns = _builtInTools(config, modelId);
-        final isOfficialGemini = config.vertexAI != true; // heuristic per requirement
-        if (isOfficialGemini && builtIns.isNotEmpty) {
+        if (builtIns.isNotEmpty) {
           final toolsArr = <Map<String, dynamic>>[];
           if (builtIns.contains('search')) {
             toolsArr.add({'google_search': {}});
@@ -3868,9 +3867,8 @@ class ChatApiService {
       final effective = _effectiveModelInfo(config, modelId);
       final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
       final builtIns = _builtInTools(config, modelId);
-      final isOfficialGemini = config.vertexAI != true;
       final builtInToolEntries = <Map<String, dynamic>>[];
-      if (isOfficialGemini && builtIns.isNotEmpty) {
+      if (builtIns.isNotEmpty) {
         if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
         if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
       }
@@ -4074,11 +4072,10 @@ class ChatApiService {
     bool _expectImage = wantsImageOutput;
     bool _receivedImage = false;
     final off = _isOff(thinkingBudget);
-    // Built-in Gemini tools (only for official Gemini API)
+    // Built-in Gemini tools (supported for both official Gemini API and Vertex)
     final builtIns = _builtInTools(config, modelId);
-    final isOfficialGemini = config.vertexAI != true; // requirement: only Gemini official API
     final builtInToolEntries = <Map<String, dynamic>>[];
-    if (isOfficialGemini && builtIns.isNotEmpty) {
+    if (builtIns.isNotEmpty) {
       if (builtIns.contains('search')) {
         builtInToolEntries.add({'google_search': {}});
       }
