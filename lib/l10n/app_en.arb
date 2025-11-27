@@ -1220,12 +1220,21 @@
   "instructionInjectionTitle": "Instruction Injection",
   "instructionInjectionBackTooltip": "Back",
   "instructionInjectionAddTooltip": "Add Instruction",
+  "instructionInjectionImportTooltip": "Import from files",
   "instructionInjectionEmptyMessage": "No instruction injection cards yet",
   "instructionInjectionDefaultTitle": "Learning Mode",
   "instructionInjectionAddTitle": "Add Instruction Injection",
   "instructionInjectionEditTitle": "Edit Instruction Injection",
   "instructionInjectionNameLabel": "Name",
   "instructionInjectionPromptLabel": "Prompt",
+  "instructionInjectionImportSuccess": "Imported {count} instruction(s)",
+  "@instructionInjectionImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "instructionInjectionSheetSubtitle": "Choose a prompt to apply before chatting",
   "mcpJsonEditButtonTooltip": "Edit JSON",
   "mcpJsonEditTitle": "Edit JSON",

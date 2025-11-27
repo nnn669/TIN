@@ -983,12 +983,21 @@
   "instructionInjectionTitle": "指令注入",
   "instructionInjectionBackTooltip": "返回",
   "instructionInjectionAddTooltip": "新增指令注入",
+  "instructionInjectionImportTooltip": "從檔案匯入",
   "instructionInjectionEmptyMessage": "暫無指令注入卡片",
   "instructionInjectionDefaultTitle": "學習模式",
   "instructionInjectionAddTitle": "新增指令注入",
   "instructionInjectionEditTitle": "編輯指令注入",
   "instructionInjectionNameLabel": "名稱",
   "instructionInjectionPromptLabel": "提示詞",
+  "instructionInjectionImportSuccess": "已匯入 {count} 個指令注入",
+  "@instructionInjectionImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "assistantEditPageMemoryTab": "記憶",
   "assistantEditMemorySwitchTitle": "記憶",
   "assistantEditMemorySwitchDescription": "允許助理主動儲存並在對話間引用使用者相關資訊",

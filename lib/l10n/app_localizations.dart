@@ -5813,6 +5813,12 @@ abstract class AppLocalizations {
   /// **'Add Instruction'**
   String get instructionInjectionAddTooltip;
 
+  /// No description provided for @instructionInjectionImportTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from files'**
+  String get instructionInjectionImportTooltip;
+
   /// No description provided for @instructionInjectionEmptyMessage.
   ///
   /// In en, this message translates to:
@@ -5848,6 +5854,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Prompt'**
   String get instructionInjectionPromptLabel;
+
+  /// No description provided for @instructionInjectionImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} instruction(s)'**
+  String instructionInjectionImportSuccess(int count);
 
   /// No description provided for @instructionInjectionSheetSubtitle.
   ///

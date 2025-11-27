@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -6,6 +10,7 @@ import '../../icons/lucide_adapter.dart' as lucide;
 import '../../l10n/app_localizations.dart';
 import '../../core/models/instruction_injection.dart';
 import '../../core/providers/instruction_injection_provider.dart';
+import '../../shared/widgets/snackbar.dart';
 
 class DesktopInstructionInjectionPane extends StatefulWidget {
   const DesktopInstructionInjectionPane({super.key});
@@ -15,6 +20,27 @@ class DesktopInstructionInjectionPane extends StatefulWidget {
 }
 
 class _DesktopInstructionInjectionPaneState extends State<DesktopInstructionInjectionPane> {
+  static const List<String> _textExtensions = <String>[
+    'txt',
+    'json',
+    'yaml',
+    'yml',
+    'lua',
+    'md',
+    'log',
+    'ini',
+    'conf',
+    'cfg',
+    'csv',
+    'py',
+    'js',
+    'ts',
+    'toml',
+    'xml',
+    'sql',
+    'sh',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -53,14 +79,21 @@ class _DesktopInstructionInjectionPaneState extends State<DesktopInstructionInje
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w400,
-                              color: cs.onSurface.withOpacity(0.9),
+                          color: cs.onSurface.withOpacity(0.9),
                             ),
                           ),
                         ),
                       ),
                       _SmallIconBtn(
+                        icon: lucide.Lucide.Import,
+                        onTap: _importFromFiles,
+                        tooltip: l10n.instructionInjectionImportTooltip,
+                      ),
+                      const SizedBox(width: 6),
+                      _SmallIconBtn(
                         icon: lucide.Lucide.Plus,
                         onTap: () => _showAddEditDialog(context),
+                        tooltip: l10n.instructionInjectionAddTooltip,
                       ),
                     ],
                   ),
@@ -152,6 +185,68 @@ class _DesktopInstructionInjectionPaneState extends State<DesktopInstructionInje
     } else {
       await provider.update(item.copyWith(title: title, prompt: prompt));
     }
+  }
+
+  Future<String?> _readPickedFileAsString(PlatformFile file) async {
+    try {
+      if (file.bytes != null && file.bytes!.isNotEmpty) {
+        return utf8.decode(file.bytes!, allowMalformed: true);
+      }
+    } catch (_) {}
+    final path = file.path;
+    if (path == null || path.isEmpty) return null;
+    try {
+      return await File(path).readAsString();
+    } catch (_) {
+      try {
+        final bytes = await File(path).readAsBytes();
+        return utf8.decode(bytes, allowMalformed: true);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  Future<void> _importFromFiles() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: _textExtensions,
+        withData: true,
+      );
+    } catch (_) {
+      return;
+    }
+    if (result == null || result.files.isEmpty) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    final provider = context.read<InstructionInjectionProvider>();
+    final List<InstructionInjection> imports = [];
+
+    for (final file in result.files) {
+      final name = file.name.trim();
+      final content = await _readPickedFileAsString(file);
+      final prompt = content ?? '';
+      if (name.isEmpty || prompt.trim().isEmpty) continue;
+      imports.add(
+        InstructionInjection(
+          id: const Uuid().v4(),
+          title: name,
+          prompt: prompt,
+        ),
+      );
+    }
+
+    await provider.addMany(imports);
+    if (!mounted) return;
+
+    showAppSnackBar(
+      context,
+      message: l10n.instructionInjectionImportSuccess(imports.length),
+      type: imports.isEmpty ? NotificationType.warning : NotificationType.success,
+    );
   }
 }
 
@@ -335,9 +430,10 @@ class _InstructionInjectionEditDialogState extends State<_InstructionInjectionEd
 }
 
 class _SmallIconBtn extends StatefulWidget {
-  const _SmallIconBtn({required this.icon, required this.onTap});
+  const _SmallIconBtn({required this.icon, required this.onTap, this.tooltip});
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   State<_SmallIconBtn> createState() => _SmallIconBtnState();
@@ -351,7 +447,7 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
-    return MouseRegion(
+    final btn = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       cursor: SystemMouseCursors.click,
@@ -366,6 +462,8 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
         ),
       ),
     );
+    if ((widget.tooltip ?? '').isEmpty) return btn;
+    return Tooltip(message: widget.tooltip!, child: btn);
   }
 }
 

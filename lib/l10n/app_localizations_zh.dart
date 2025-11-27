@@ -2960,6 +2960,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get instructionInjectionAddTooltip => '添加指令注入';
 
   @override
+  String get instructionInjectionImportTooltip => '从文件导入';
+
+  @override
   String get instructionInjectionEmptyMessage => '暂无指令注入卡片';
 
   @override
@@ -2976,6 +2979,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get instructionInjectionPromptLabel => '提示词';
+
+  @override
+  String instructionInjectionImportSuccess(int count) {
+    return '已导入 $count 个指令注入';
+  }
 
   @override
   String get instructionInjectionSheetSubtitle => '为当前对话选择并应用一条指令提示词';
@@ -6200,6 +6208,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get instructionInjectionAddTooltip => '添加指令注入';
 
   @override
+  String get instructionInjectionImportTooltip => '从文件导入';
+
+  @override
   String get instructionInjectionEmptyMessage => '暂无指令注入卡片';
 
   @override
@@ -6216,6 +6227,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get instructionInjectionPromptLabel => '提示词';
+
+  @override
+  String instructionInjectionImportSuccess(int count) {
+    return '已导入 $count 个指令注入';
+  }
 
   @override
   String get instructionInjectionSheetSubtitle => '为当前对话选择并应用一条指令提示词';
@@ -9439,6 +9455,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get instructionInjectionAddTooltip => '新增指令注入';
 
   @override
+  String get instructionInjectionImportTooltip => '從檔案匯入';
+
+  @override
   String get instructionInjectionEmptyMessage => '暫無指令注入卡片';
 
   @override
@@ -9455,6 +9474,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get instructionInjectionPromptLabel => '提示詞';
+
+  @override
+  String instructionInjectionImportSuccess(int count) {
+    return '已匯入 $count 個指令注入';
+  }
 
   @override
   String get instructionInjectionSheetSubtitle => '為目前對話選擇並套用一條指令提示詞';

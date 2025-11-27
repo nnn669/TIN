@@ -1014,12 +1014,21 @@
   "instructionInjectionTitle": "指令注入",
   "instructionInjectionBackTooltip": "返回",
   "instructionInjectionAddTooltip": "添加指令注入",
+  "instructionInjectionImportTooltip": "从文件导入",
   "instructionInjectionEmptyMessage": "暂无指令注入卡片",
   "instructionInjectionDefaultTitle": "学习模式",
   "instructionInjectionAddTitle": "添加指令注入",
   "instructionInjectionEditTitle": "编辑指令注入",
   "instructionInjectionNameLabel": "名称",
   "instructionInjectionPromptLabel": "提示词",
+  "instructionInjectionImportSuccess": "已导入 {count} 个指令注入",
+  "@instructionInjectionImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "mcpJsonEditButtonTooltip": "编辑 JSON",
   "mcpJsonEditTitle": "编辑json",
   "mcpJsonEditParseFailed": "JSON 解析失败",

@@ -106,6 +106,13 @@ class InstructionInjectionStore {
     await save(all);
   }
 
+  static Future<void> addMany(List<InstructionInjection> items) async {
+    if (items.isEmpty) return;
+    final all = await getAll();
+    all.addAll(items);
+    await save(all);
+  }
+
   static Future<void> update(InstructionInjection item) async {
     final all = await getAll();
     final index = all.indexWhere((e) => e.id == item.id);

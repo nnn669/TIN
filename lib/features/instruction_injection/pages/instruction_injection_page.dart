@@ -1,14 +1,18 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../theme/design_tokens.dart';
 import '../../../core/models/instruction_injection.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/services/haptics.dart';
+import '../../../shared/widgets/snackbar.dart';
 
 class InstructionInjectionPage extends StatefulWidget {
   const InstructionInjectionPage({super.key});
@@ -18,6 +22,27 @@ class InstructionInjectionPage extends StatefulWidget {
 }
 
 class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
+  static const List<String> _textExtensions = <String>[
+    'txt',
+    'json',
+    'yaml',
+    'yml',
+    'lua',
+    'md',
+    'log',
+    'ini',
+    'conf',
+    'cfg',
+    'csv',
+    'py',
+    'js',
+    'ts',
+    'toml',
+    'xml',
+    'sql',
+    'sh',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +92,68 @@ class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
     await context.read<InstructionInjectionProvider>().delete(item.id);
   }
 
+  Future<String?> _readPickedFileAsString(PlatformFile file) async {
+    try {
+      if (file.bytes != null && file.bytes!.isNotEmpty) {
+        return utf8.decode(file.bytes!, allowMalformed: true);
+      }
+    } catch (_) {}
+    final path = file.path;
+    if (path == null || path.isEmpty) return null;
+    try {
+      return await File(path).readAsString();
+    } catch (_) {
+      try {
+        final bytes = await File(path).readAsBytes();
+        return utf8.decode(bytes, allowMalformed: true);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  Future<void> _importFromFiles() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: _textExtensions,
+        withData: true,
+      );
+    } catch (_) {
+      return;
+    }
+    if (result == null || result.files.isEmpty) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    final provider = context.read<InstructionInjectionProvider>();
+    final List<InstructionInjection> imports = [];
+
+    for (final file in result.files) {
+      final name = file.name.trim();
+      final content = await _readPickedFileAsString(file);
+      final prompt = content ?? '';
+      if (name.isEmpty || prompt.trim().isEmpty) continue;
+      imports.add(
+        InstructionInjection(
+          id: const Uuid().v4(),
+          title: name,
+          prompt: prompt,
+        ),
+      );
+    }
+
+    await provider.addMany(imports);
+    if (!mounted) return;
+
+    showAppSnackBar(
+      context,
+      message: l10n.instructionInjectionImportSuccess(imports.length),
+      type: imports.isEmpty ? NotificationType.warning : NotificationType.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -89,6 +176,15 @@ class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
         ),
         title: Text(l10n.instructionInjectionTitle),
         actions: [
+          Tooltip(
+            message: l10n.instructionInjectionImportTooltip,
+            child: _TactileIconButton(
+              icon: Lucide.Import,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 22,
+              onTap: _importFromFiles,
+            ),
+          ),
           Tooltip(
             message: l10n.instructionInjectionAddTooltip,
             child: _TactileIconButton(

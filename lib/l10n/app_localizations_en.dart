@@ -3070,6 +3070,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instructionInjectionAddTooltip => 'Add Instruction';
 
   @override
+  String get instructionInjectionImportTooltip => 'Import from files';
+
+  @override
   String get instructionInjectionEmptyMessage =>
       'No instruction injection cards yet';
 
@@ -3087,6 +3090,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instructionInjectionPromptLabel => 'Prompt';
+
+  @override
+  String instructionInjectionImportSuccess(int count) {
+    return 'Imported $count instruction(s)';
+  }
 
   @override
   String get instructionInjectionSheetSubtitle =>
