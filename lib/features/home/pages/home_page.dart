@@ -5160,7 +5160,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
                           final mid3 = a?.chatModelId ?? settings.currentModelId;
                           if (pk2 == null || mid3 == null) return false;
-                          return _isToolModel(pk2, mid3) && context.watch<McpProvider>().servers.isNotEmpty;
+                          final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
+                          return _isToolModel(pk2, mid3) && hasEnabledMcp;
                         })(),
                         mcpActive: (() {
                           final a = context.watch<AssistantProvider>().currentAssistant;
@@ -6250,7 +6251,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
                                       final mid3 = a?.chatModelId ?? settings.currentModelId;
                                       if (pk2 == null || mid3 == null) return false;
-                                      return _isToolModel(pk2, mid3) && context.watch<McpProvider>().servers.isNotEmpty;
+                                      final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
+                                      return _isToolModel(pk2, mid3) && hasEnabledMcp;
                                     })(),
                                     mcpActive: (() {
                                       final a = context.watch<AssistantProvider>().currentAssistant;
