@@ -1145,6 +1145,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
   bool _isSelectionMode = false;
   final Set<String> _selectedModels = {};
   bool _isDetecting = false;
+  bool _detectUseStream = false;
   final Map<String, bool> _detectionResults = {};
   final Map<String, String> _detectionErrorMessages = {};
   String? _currentDetectingModel;
@@ -1253,6 +1254,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
     final kind = ProviderConfig.classify(widget.providerKey, explicitType: cfg.providerType);
 
     final models = List<String>.from(cfg.models);
+    final allSelected = _selectedModels.length == models.length && models.isNotEmpty;
     final filtered = _applyFilter(models, _filterCtrl.text.trim());
     final groups = _groupModels(filtered);
 
@@ -1396,7 +1398,20 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
 
               // API Key (hidden when Google Vertex)
               if (!(kind == ProviderKind.google && (cfg.vertexAI == true))) ...[
-              _sectionLabel(context, AppLocalizations.of(context)!.multiKeyPageKey, bold: true),
+              Row(
+                children: [
+                  Expanded(child: _sectionLabel(context, AppLocalizations.of(context)!.multiKeyPageKey, bold: true)),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: l10n.providerDetailPageTestButton,
+                    child: _IconTextBtn(
+                      icon: lucide.Lucide.HeartPulse,
+                      label: l10n.providerDetailPageTestButton,
+                      onTap: () => _showTestConnectionDialog(context),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               if (cfg.multiKeyEnabled == true)
                 Row(
@@ -1746,24 +1761,68 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                     ),
                     const SizedBox(width: 6),
                     Tooltip(
-                      message: l10n.mcpAssistantSheetSelectAll,
-                      child: _IconBtn(icon: lucide.Lucide.CheckSquare, onTap: () {
-                        setState(() {
-                          _selectedModels.clear();
-                          _selectedModels.addAll(models);
-                        });
-                      }),
-                    ),
-                    const SizedBox(width: 6),
-                    if (_selectedModels.isNotEmpty)
-                      Tooltip(
-                        message: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectStart,
-                        child: _IconTextBtn(
-                          icon: _isDetecting ? lucide.Lucide.Loader : lucide.Lucide.HeartPulse,
-                          label: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectButton,
-                          onTap: () => _startDetection(),
+                      message: allSelected ? l10n.mcpAssistantSheetClearAll : l10n.mcpAssistantSheetSelectAll,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 160),
+                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                        child: _IconBtn(
+                          key: ValueKey(allSelected),
+                          icon: allSelected ? lucide.Lucide.Square : lucide.Lucide.CheckSquare,
+                          color: cs.onSurface.withOpacity(0.85),
+                          onTap: () {
+                            setState(() {
+                              if (allSelected) {
+                                _selectedModels.clear();
+                              } else {
+                                _selectedModels.clear();
+                                _selectedModels.addAll(models);
+                              }
+                            });
+                          },
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: l10n.providerDetailPageUseStreamingLabel,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _detectUseStream = !_detectUseStream),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: _detectUseStream
+                                ? cs.onSurface.withOpacity(0.08)
+                                : Colors.transparent,
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 160),
+                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                            child: Icon(
+                              _detectUseStream ? lucide.Lucide.AudioWaveform : lucide.Lucide.SquareEqual,
+                              key: ValueKey(_detectUseStream),
+                              size: 18,
+                              color: cs.onSurface.withOpacity(0.85),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectStart,
+                      child: _IconTextBtn(
+                        icon: _isDetecting ? lucide.Lucide.Loader : lucide.Lucide.HeartPulse,
+                        label: _isDetecting ? l10n.providerDetailPageBatchDetecting : l10n.providerDetailPageBatchDetectButton,
+                        color: _selectedModels.isEmpty ? cs.onSurface.withOpacity(0.4) : null,
+                        onTap: () {
+                          if (_selectedModels.isEmpty) return;
+                          _startDetection();
+                        },
+                      ),
+                    ),
                   ] else ...[
                     if (!_isDetecting)
                       Tooltip(
@@ -2942,7 +3001,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
       }
       
       try {
-        await ProviderManager.testConnection(cfg, modelId);
+        await ProviderManager.testConnection(cfg, modelId, useStream: _detectUseStream);
         if (mounted) {
           setState(() {
             _detectionResults[modelId] = true;

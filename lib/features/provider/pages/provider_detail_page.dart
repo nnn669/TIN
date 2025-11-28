@@ -66,6 +66,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
   bool _isSelectionMode = false;
   final Set<String> _selectedModels = {};
   bool _isDetecting = false;
+  bool _detectUseStream = false;
   final Map<String, bool> _detectionResults = {};
   final Map<String, String> _detectionErrorMessages = {};
   String? _currentDetectingModel;
@@ -160,7 +161,21 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
           ],
         ),
         actions: [
-          if (_isSelectionMode)
+          if (_index == 0)
+            Tooltip(
+              message: l10n.providerDetailPageTestButton,
+              child: _TactileIconButton(
+                icon: Lucide.HeartPulse,
+                color: cs.onSurface,
+                semanticLabel: l10n.providerDetailPageTestButton,
+                size: 22,
+                onTap: () {
+                  if (_isDetecting) return;
+                  _openTestDialog();
+                },
+              ),
+            )
+          else if (_isSelectionMode)
             Tooltip(
               message: l10n.providerDetailPageCancelButton,
               child: _TactileIconButton(
@@ -734,6 +749,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
       );
     }
     final models = cfg.models;
+    final allSelected = _selectedModels.length == models.length && models.isNotEmpty;
     return Stack(
       children: [
         if (models.isEmpty)
@@ -919,21 +935,66 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                     _TactileRow(
                       pressedScale: 0.97,
                       haptics: false,
-                      onTap: _selectAll,
+                      onTap: () {
+                        if (allSelected) {
+                          setState(() {
+                            _selectedModels.clear();
+                          });
+                        } else {
+                          _selectAll();
+                        }
+                      },
                       builder: (pressed) {
+                        final icon = allSelected ? Lucide.Square : Lucide.CheckSquare;
+                        final label = allSelected ? l10n.mcpAssistantSheetClearAll : l10n.mcpAssistantSheetSelectAll;
                         return Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(color: cs.primary.withOpacity(0.35)),
+                            color: pressed ? cs.primary.withOpacity(0.05) : null,
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Lucide.CheckSquare, size: 20, color: cs.primary),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 160),
+                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                child: Icon(icon, key: ValueKey(allSelected), size: 20, color: cs.primary),
+                              ),
                               const SizedBox(width: 8),
-                              Text('全选', style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text(label, style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
                             ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _TactileRow(
+                      pressedScale: 0.97,
+                      haptics: false,
+                      onTap: () => setState(() => _detectUseStream = !_detectUseStream),
+                      builder: (pressed) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: (_detectUseStream ? cs.primary : cs.onSurface.withOpacity(0.2)).withOpacity(0.35)),
+                            color: _detectUseStream
+                                ? cs.primary.withOpacity(pressed ? 0.18 : 0.12)
+                                : (pressed ? cs.onSurface.withOpacity(0.06) : null),
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 160),
+                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                            child: Icon(
+                              _detectUseStream ? Lucide.AudioWaveform : Lucide.SquareEqual,
+                              key: ValueKey(_detectUseStream),
+                              size: 18,
+                              color: _detectUseStream ? cs.primary : cs.onSurface.withOpacity(0.85),
+                            ),
                           ),
                         );
                       },
@@ -1486,7 +1547,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
       }
       
       try {
-        await ProviderManager.testConnection(cfg, modelId);
+        await ProviderManager.testConnection(cfg, modelId, useStream: _detectUseStream);
         if (mounted) {
           setState(() {
             _detectionResults[modelId] = true;
