@@ -1459,6 +1459,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Export selected messages as a Markdown file';
 
   @override
+  String get messageExportSheetPlainText => 'Plain Text';
+
+  @override
+  String get messageExportSheetSingleTxtSubtitle =>
+      'Export this message as a TXT file';
+
+  @override
+  String get messageExportSheetBatchTxtSubtitle =>
+      'Export selected messages as a TXT file';
+
+  @override
   String get messageExportSheetExportImage => 'Export as Image';
 
   @override

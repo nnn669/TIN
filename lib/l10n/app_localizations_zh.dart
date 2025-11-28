@@ -1411,6 +1411,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get messageExportSheetBatchMarkdownSubtitle => '将选中的消息导出为 Markdown 文件';
 
   @override
+  String get messageExportSheetPlainText => '纯文本';
+
+  @override
+  String get messageExportSheetSingleTxtSubtitle => '将该消息导出为 TXT 文件';
+
+  @override
+  String get messageExportSheetBatchTxtSubtitle => '将选中的消息导出为 TXT 文件';
+
+  @override
   String get messageExportSheetExportImage => '导出为图片';
 
   @override
@@ -4662,6 +4671,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get messageExportSheetBatchMarkdownSubtitle => '将选中的消息导出为 Markdown 文件';
 
   @override
+  String get messageExportSheetPlainText => '纯文本';
+
+  @override
+  String get messageExportSheetSingleTxtSubtitle => '将该消息导出为 TXT 文件';
+
+  @override
+  String get messageExportSheetBatchTxtSubtitle => '将选中的消息导出为 TXT 文件';
+
+  @override
   String get messageExportSheetExportImage => '导出为图片';
 
   @override
@@ -7910,6 +7928,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get messageExportSheetBatchMarkdownSubtitle => '將選中的訊息匯出為 Markdown 檔案';
+
+  @override
+  String get messageExportSheetPlainText => '純文字';
+
+  @override
+  String get messageExportSheetSingleTxtSubtitle => '將該訊息匯出為 TXT 檔案';
+
+  @override
+  String get messageExportSheetBatchTxtSubtitle => '將選中的訊息匯出為 TXT 檔案';
 
   @override
   String get messageExportSheetExportImage => '匯出為圖片';

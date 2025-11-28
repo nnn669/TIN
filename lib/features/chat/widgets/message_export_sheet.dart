@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 
@@ -645,6 +646,63 @@ class _ExportDialogState extends State<_ExportDialog> {
     }
   }
 
+  Future<void> _onExportTxt() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      final pctx = widget.parentContext;
+      final msg = widget.message;
+      final service = pctx.read<ChatService>();
+      final convo = service.getConversation(msg.conversationId);
+      final l10n = AppLocalizations.of(pctx)!;
+      final title = ((convo?.title ?? '').trim().isNotEmpty) ? (convo?.title ?? '') : l10n.messageExportSheetDefaultTitle;
+      final time = _formatTime(pctx, msg.timestamp);
+
+      final parsed = _parseContent(msg.content);
+
+      final buf = StringBuffer();
+      buf.writeln(title);
+      buf.writeln('');
+      buf.writeln('$time · ${_getRoleName(pctx, msg)}');
+      buf.writeln('');
+      if (parsed.text.isNotEmpty) {
+        buf.writeln(parsed.text);
+        buf.writeln('');
+      }
+      for (final d in parsed.docs) {
+        buf.writeln('- ${d.fileName} (${d.mime})');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.txt';
+      // Desktop save
+      final String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: AppLocalizations.of(pctx)!.backupPageExportToFile,
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: const ['txt'],
+      );
+      if (savePath != null) {
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsString(buf.toString());
+        final l10n = AppLocalizations.of(pctx)!;
+        showAppSnackBar(
+          pctx,
+          message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+          type: NotificationType.success,
+        );
+      }
+    } catch (e) {
+      final pctx = widget.parentContext;
+      final l10n = AppLocalizations.of(pctx)!;
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   Future<void> _onExportImage() async {
     if (_exporting) return;
     // Close dialog first to avoid overlapping UI
@@ -712,6 +770,12 @@ class _ExportDialogState extends State<_ExportDialog> {
                           title: l10n.messageExportSheetMarkdown,
                           subtitle: l10n.messageExportSheetSingleMarkdownSubtitle,
                           onTap: _exporting ? null : _onExportMarkdown,
+                        ),
+                        _ExportOptionTile(
+                          icon: Lucide.FileText,
+                          title: l10n.messageExportSheetPlainText,
+                          subtitle: l10n.messageExportSheetSingleTxtSubtitle,
+                          onTap: _exporting ? null : _onExportTxt,
                         ),
                         _ExportOptionTile(
                           icon: Lucide.Image,
@@ -892,6 +956,70 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
     }
   }
 
+  Future<void> _onExportTxt() async {
+    if (_exporting) return;
+    // Close dialog first to avoid overlapping UI
+    if (mounted) await Navigator.of(context).maybePop();
+    try {
+      final pctx = widget.parentContext;
+      final conv = widget.conversation;
+      final l10n = AppLocalizations.of(pctx)!;
+      final title = (conv.title.trim().isNotEmpty) ? conv.title : l10n.messageExportSheetDefaultTitle;
+      final buf = StringBuffer();
+      buf.writeln(title);
+      buf.writeln('');
+      for (final msg in widget.messages) {
+        final time = _formatTime(pctx, msg.timestamp);
+        buf.writeln('$time · ${_getRoleName(pctx, msg)}');
+        buf.writeln('');
+        final parsed = _parseContent(msg.content);
+        if (parsed.text.isNotEmpty) {
+          buf.writeln(parsed.text);
+          buf.writeln('');
+        }
+        for (final d in parsed.docs) {
+          buf.writeln('- ${d.fileName} (${d.mime})');
+        }
+        buf.writeln('\n---\n');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.txt';
+      final String? savePath = await FilePicker.platform.saveFile(
+        dialogTitle: AppLocalizations.of(pctx)!.backupPageExportToFile,
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: const ['txt'],
+      );
+      if (savePath == null) {
+        return; // user cancelled
+      }
+      try {
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsString(buf.toString());
+      } catch (e) {
+        showAppSnackBar(
+          pctx,
+          message: l10n.messageExportSheetExportFailed('$e'),
+          type: NotificationType.error,
+        );
+        return;
+      }
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+        type: NotificationType.success,
+      );
+    } catch (e) {
+      final pctx = widget.parentContext;
+      final l10n = AppLocalizations.of(pctx)!;
+      showAppSnackBar(
+        pctx,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   Future<void> _onExportImage() async {
     if (_exporting) return;
     // Close dialog first to avoid overlapping UI
@@ -960,6 +1088,12 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                           title: l10n.messageExportSheetMarkdown,
                           subtitle: l10n.messageExportSheetBatchMarkdownSubtitle,
                           onTap: _exporting ? null : _onExportMarkdown,
+                        ),
+                        _ExportOptionTile(
+                          icon: Lucide.FileText,
+                          title: l10n.messageExportSheetPlainText,
+                          subtitle: l10n.messageExportSheetBatchTxtSubtitle,
+                          onTap: _exporting ? null : _onExportTxt,
                         ),
                         _ExportOptionTile(
                           icon: Lucide.Image,
@@ -1163,20 +1297,128 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
           );
         }
       } else {
-        // Mobile: share
-        final tmp = await getTemporaryDirectory();
-        final file = File('${tmp.path}/$filename');
-        await file.writeAsString(buf.toString());
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'text/markdown', name: filename)],
-          text: title,
-          sharePositionOrigin: _shareAnchorRect(context),
+        // Mobile: use FilePicker with bytes parameter (required on Android & iOS)
+        final l10n = AppLocalizations.of(context)!;
+        final contentBytes = utf8.encode(buf.toString());
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: l10n.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['md'],
+          bytes: Uint8List.fromList(contentBytes),
         );
+        if (savePath == null) {
+          return; // user cancelled
+        }
         if (mounted) {
-          final l10n = AppLocalizations.of(context)!;
           showAppSnackBar(
             context,
-            message: l10n.messageExportSheetExportedAs(filename),
+            message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+            type: NotificationType.success,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnackBar(
+          context,
+          message: l10n.messageExportSheetExportFailed('$e'),
+          type: NotificationType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _onExportTxt() async {
+    if (_exporting) return;
+
+    // Dismiss dialog immediately
+    if (mounted) Navigator.of(context).maybePop();
+
+    setState(() => _exporting = true);
+    try {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnackBar(
+          context,
+          message: l10n.messageExportSheetExporting,
+          type: NotificationType.info,
+        );
+      }
+      final ctx = context;
+      final conv = widget.conversation;
+      final l10n = AppLocalizations.of(ctx)!;
+      final title = (conv.title.trim().isNotEmpty) ? conv.title : l10n.messageExportSheetDefaultTitle;
+      final buf = StringBuffer();
+      buf.writeln(title);
+      buf.writeln('');
+      for (final msg in widget.messages) {
+        final time = _formatTime(ctx, msg.timestamp);
+        buf.writeln('$time · ${_getRoleName(ctx, msg)}');
+        buf.writeln('');
+        final parsed = _parseContent(msg.content);
+        if (parsed.text.isNotEmpty) {
+          buf.writeln(parsed.text);
+          buf.writeln('');
+        }
+        for (final d in parsed.docs) {
+          buf.writeln('- ${d.fileName} (${d.mime})');
+        }
+        buf.writeln('\n---\n');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.txt';
+
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        // Desktop: choose save location
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: l10n.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['txt'],
+        );
+        if (savePath == null) {
+          return; // user cancelled
+        }
+        try {
+          await File(savePath).parent.create(recursive: true);
+          await File(savePath).writeAsString(buf.toString());
+        } catch (e) {
+          if (!mounted) return;
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportFailed('$e'),
+            type: NotificationType.error,
+          );
+          return;
+        }
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+            type: NotificationType.success,
+          );
+        }
+      } else {
+        // Mobile: use FilePicker with bytes parameter (required on Android & iOS)
+        final contentBytes = utf8.encode(buf.toString());
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: l10n.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['txt'],
+          bytes: Uint8List.fromList(contentBytes),
+        );
+        if (savePath == null) {
+          return; // user cancelled
+        }
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
             type: NotificationType.success,
           );
         }
@@ -1257,6 +1499,14 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
                     subtitle: l10n.messageExportSheetBatchMarkdownSubtitle,
                     onTap: _exporting ? null : () {
                       _onExportMarkdown();
+                    },
+                  ),
+                  _ExportOptionTile(
+                    icon: Lucide.FileText,
+                    title: l10n.messageExportSheetPlainText,
+                    subtitle: l10n.messageExportSheetBatchTxtSubtitle,
+                    onTap: _exporting ? null : () {
+                      _onExportTxt();
                     },
                   ),
                   _ExportOptionTile(
@@ -1426,22 +1676,108 @@ class _ExportSheetState extends State<_ExportSheet> {
           }
         }
       } else {
-        // Mobile: share
-        final tmp = await getTemporaryDirectory();
-        final file = File('${tmp.path}/$filename');
-        await file.writeAsString(buf.toString());
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'text/markdown', name: filename)],
-          text: title,
-          sharePositionOrigin: _shareAnchorRect(context),
+        // Mobile: use FilePicker with bytes parameter (required on Android & iOS)
+        final contentBytes = utf8.encode(buf.toString());
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: AppLocalizations.of(context)!.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['md'],
+          bytes: Uint8List.fromList(contentBytes),
         );
-        if (mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          showAppSnackBar(
-            context,
-            message: l10n.messageExportSheetExportedAs(filename),
-            type: NotificationType.success,
-          );
+        if (savePath != null) {
+          if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            showAppSnackBar(
+              context,
+              message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+              type: NotificationType.success,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnackBar(
+          context,
+          message: l10n.messageExportSheetExportFailed('$e'),
+          type: NotificationType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _onExportTxt() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final ctx = context;
+      final msg = widget.message;
+      final service = ctx.read<ChatService>();
+      final convo = service.getConversation(msg.conversationId);
+      final l10n = AppLocalizations.of(ctx)!;
+      final title = ((convo?.title ?? '').trim().isNotEmpty) ? (convo?.title ?? '') : l10n.messageExportSheetDefaultTitle;
+      final time = _formatTime(ctx, msg.timestamp);
+
+      final parsed = _parseContent(msg.content);
+
+      final buf = StringBuffer();
+      buf.writeln(title);
+      buf.writeln('');
+      buf.writeln('$time · ${_getRoleName(ctx, msg)}');
+      buf.writeln('');
+      if (parsed.text.isNotEmpty) {
+        buf.writeln(parsed.text);
+        buf.writeln('');
+      }
+      for (final d in parsed.docs) {
+        buf.writeln('- ${d.fileName} (${d.mime})');
+      }
+
+      final filename = 'chat-export-${DateTime.now().millisecondsSinceEpoch}.txt';
+
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        // Desktop: choose save location
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: AppLocalizations.of(context)!.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['txt'],
+        );
+        if (savePath != null) {
+          await File(savePath).parent.create(recursive: true);
+          await File(savePath).writeAsString(buf.toString());
+          if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            showAppSnackBar(
+              context,
+              message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+              type: NotificationType.success,
+            );
+          }
+        }
+      } else {
+        // Mobile: use FilePicker with bytes parameter (required on Android & iOS)
+        final contentBytes = utf8.encode(buf.toString());
+        final String? savePath = await FilePicker.platform.saveFile(
+          dialogTitle: AppLocalizations.of(context)!.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: const ['txt'],
+          bytes: Uint8List.fromList(contentBytes),
+        );
+        if (savePath != null) {
+          if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            showAppSnackBar(
+              context,
+              message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+              type: NotificationType.success,
+            );
+          }
         }
       }
     } catch (e) {
@@ -1518,6 +1854,14 @@ class _ExportSheetState extends State<_ExportSheet> {
                     subtitle: l10n.messageExportSheetSingleMarkdownSubtitle,
                     onTap: _exporting ? null : () {
                       _onExportMarkdown();
+                    },
+                  ),
+                  _ExportOptionTile(
+                    icon: Lucide.FileText,
+                    title: l10n.messageExportSheetPlainText,
+                    subtitle: l10n.messageExportSheetSingleTxtSubtitle,
+                    onTap: _exporting ? null : () {
+                      _onExportTxt();
                     },
                   ),
                   _ExportOptionTile(

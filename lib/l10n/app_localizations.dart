@@ -2813,6 +2813,24 @@ abstract class AppLocalizations {
   /// **'Export selected messages as a Markdown file'**
   String get messageExportSheetBatchMarkdownSubtitle;
 
+  /// No description provided for @messageExportSheetPlainText.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain Text'**
+  String get messageExportSheetPlainText;
+
+  /// No description provided for @messageExportSheetSingleTxtSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export this message as a TXT file'**
+  String get messageExportSheetSingleTxtSubtitle;
+
+  /// No description provided for @messageExportSheetBatchTxtSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export selected messages as a TXT file'**
+  String get messageExportSheetBatchTxtSubtitle;
+
   /// No description provided for @messageExportSheetExportImage.
   ///
   /// In en, this message translates to:
