@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../icons/lucide_adapter.dart' as lucide;
@@ -6,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../core/providers/settings_provider.dart';
 import '../core/providers/assistant_provider.dart';
 import '../core/providers/model_provider.dart';
+import '../shared/widgets/snackbar.dart';
 
 Future<bool?> showDesktopModelEditDialog(BuildContext context, {required String providerKey, required String modelId}) async {
   return _openDialog(context, providerKey: providerKey, modelId: modelId, isNew: false);
@@ -242,9 +244,36 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
       const SizedBox(height: 6),
       TextField(
         controller: _idCtrl,
-        enabled: widget.isNew,
+        readOnly: !widget.isNew,
+        enableInteractiveSelection: widget.isNew,
+        style: TextStyle(color: widget.isNew ? null : cs.onSurface.withOpacity(0.6)),
         onChanged: widget.isNew ? (v) { if (!_nameEdited) { _nameCtrl.text = v; setState(() {}); } } : null,
-        decoration: _deskInputDecoration(context).copyWith(hintText: l10n.modelDetailSheetModelIdHint),
+        decoration: _deskInputDecoration(context).copyWith(
+          hintText: l10n.modelDetailSheetModelIdHint,
+          suffixIconConstraints: const BoxConstraints(minWidth: 42, minHeight: 40),
+          suffixIcon: widget.isNew
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _CopySuffixButton(
+                    onTap: () {
+                      final text = _idCtrl.text.trim();
+                      if (text.isEmpty) return;
+                      Clipboard.setData(ClipboardData(text: text));
+                      showAppSnackBar(
+                        context,
+                        message: l10n.shareProviderSheetCopiedMessage,
+                        type: NotificationType.success,
+                      );
+                    },
+                    tooltip: l10n.shareProviderSheetCopyButton,
+                    icon: lucide.Lucide.Copy,
+                    color: cs.onSurface.withOpacity(0.9),
+                    hoverColor: cs.onSurface.withOpacity(0.08),
+                    pressedColor: cs.onSurface.withOpacity(0.12),
+                  ),
+                ),
+        ),
       ),
       const SizedBox(height: 12),
       _label(context, l10n.modelDetailSheetModelNameLabel),
@@ -738,5 +767,60 @@ class _SegTabBar extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+class _CopySuffixButton extends StatefulWidget {
+  const _CopySuffixButton({
+    required this.onTap,
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.hoverColor,
+    required this.pressedColor,
+  });
+  final VoidCallback onTap;
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final Color hoverColor;
+  final Color pressedColor;
+
+  @override
+  State<_CopySuffixButton> createState() => _CopySuffixButtonState();
+}
+
+class _CopySuffixButtonState extends State<_CopySuffixButton> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = _pressed ? widget.pressedColor : (_hover ? widget.hoverColor : Colors.transparent);
+    final icon = Icon(widget.icon, size: 18, color: widget.color);
+
+    Widget child = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: icon,
+    );
+
+    child = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: child,
+      ),
+    );
+
+    return Tooltip(message: widget.tooltip, child: child);
   }
 }

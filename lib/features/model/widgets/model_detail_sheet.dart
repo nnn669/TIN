@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
@@ -270,7 +271,9 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
             const SizedBox(height: 6),
             TextField(
               controller: _idCtrl,
-              enabled: widget.isNew, // existing model ID is read-only
+              readOnly: !widget.isNew, // existing model ID is read-only
+              enableInteractiveSelection: widget.isNew,
+              style: TextStyle(color: widget.isNew ? null : cs.onSurface.withOpacity(0.6)),
               onChanged: widget.isNew
                   ? (v) {
                       if (!_nameEdited) {
@@ -286,6 +289,29 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.4))),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.4))),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5))),
+                suffixIconConstraints: const BoxConstraints(minWidth: 46, minHeight: 40),
+                suffixIcon: widget.isNew
+                    ? null
+                    : Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: _CopySuffixButton(
+                          onTap: () {
+                            final text = _idCtrl.text.trim();
+                            if (text.isEmpty) return;
+                            Clipboard.setData(ClipboardData(text: text));
+                            showAppSnackBar(
+                              context,
+                              message: l10n.shareProviderSheetCopiedMessage,
+                              type: NotificationType.success,
+                            );
+                          },
+                          tooltip: l10n.shareProviderSheetCopyButton,
+                          icon: Lucide.Copy,
+                          color: cs.onSurface.withOpacity(0.9),
+                          hoverColor: cs.onSurface.withOpacity(0.08),
+                          pressedColor: cs.onSurface.withOpacity(0.12),
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 12),
@@ -927,6 +953,60 @@ class _OutlinedAddButton extends StatelessWidget {
   }
 }
 
+class _CopySuffixButton extends StatefulWidget {
+  const _CopySuffixButton({
+    required this.onTap,
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.hoverColor,
+    required this.pressedColor,
+  });
+  final VoidCallback onTap;
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final Color hoverColor;
+  final Color pressedColor;
+
+  @override
+  State<_CopySuffixButton> createState() => _CopySuffixButtonState();
+}
+
+class _CopySuffixButtonState extends State<_CopySuffixButton> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = _pressed ? widget.pressedColor : (_hover ? widget.hoverColor : Colors.transparent);
+    final icon = Icon(widget.icon, size: 18, color: widget.color);
+
+    Widget child = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: icon,
+    );
+
+    child = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: child,
+      ),
+    );
+
+    return Tooltip(message: widget.tooltip, child: child);
+  }
+}
 // Segmented tab bar matching provider add sheet style
 class _SegTabBar extends StatelessWidget {
   const _SegTabBar({required this.controller, required this.tabs});
