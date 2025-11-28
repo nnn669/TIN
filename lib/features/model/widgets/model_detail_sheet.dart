@@ -270,7 +270,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
             const SizedBox(height: 6),
             TextField(
               controller: _idCtrl,
-              enabled: true, // allow editing existing model ID
+              enabled: widget.isNew, // existing model ID is read-only
               onChanged: widget.isNew
                   ? (v) {
                       if (!_nameEdited) {
