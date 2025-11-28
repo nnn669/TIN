@@ -624,9 +624,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
-    if (ov != null) {
-      final abilities = (ov['abilities'] as List?)?.map((e) => e.toString()).toList() ?? const [];
-      if (abilities.map((e) => e.toLowerCase()).contains('reasoning')) return true;
+    if (ov != null && ov.containsKey('abilities')) {
+      final abilities = (ov['abilities'] as List?)
+              ?.map((e) => e.toString().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [];
+      return abilities.contains('reasoning');
     }
     final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
     return inferred.abilities.contains(ModelAbility.reasoning);
@@ -1064,9 +1068,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
-    if (ov != null) {
-      final abilities = (ov['abilities'] as List?)?.map((e) => e.toString()).toList() ?? const [];
-      if (abilities.map((e) => e.toLowerCase()).contains('tool')) return true;
+    if (ov != null && ov.containsKey('abilities')) {
+      final abilities = (ov['abilities'] as List?)
+              ?.map((e) => e.toString().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [];
+      return abilities.contains('tool');
     }
     final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
     return inferred.abilities.contains(ModelAbility.tool);
