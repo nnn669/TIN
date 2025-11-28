@@ -2337,6 +2337,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareProviderSheetShareButton => 'Share';
 
   @override
+  String get desktopProviderContextMenuShare => 'Share';
+
+  @override
+  String get desktopProviderShareCopyText => 'Copy code';
+
+  @override
+  String get desktopProviderShareCopyQr => 'Copy QR';
+
+  @override
   String get providerDetailPageApiBaseUrlLabel => 'API Base URL';
 
   @override

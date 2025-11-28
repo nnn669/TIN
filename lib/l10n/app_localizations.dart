@@ -4463,6 +4463,24 @@ abstract class AppLocalizations {
   /// **'Share'**
   String get shareProviderSheetShareButton;
 
+  /// No description provided for @desktopProviderContextMenuShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get desktopProviderContextMenuShare;
+
+  /// No description provided for @desktopProviderShareCopyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get desktopProviderShareCopyText;
+
+  /// No description provided for @desktopProviderShareCopyQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy QR'**
+  String get desktopProviderShareCopyQr;
+
   /// No description provided for @providerDetailPageApiBaseUrlLabel.
   ///
   /// In en, this message translates to:

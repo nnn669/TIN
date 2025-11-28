@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import '../icons/lucide_adapter.dart' as lucide;
 import '../l10n/app_localizations.dart';
@@ -19,7 +22,7 @@ import '../core/providers/assistant_provider.dart';
 import '../core/models/assistant.dart';
 import '../utils/avatar_cache.dart';
 import '../utils/sandbox_path_resolver.dart';
-import 'dart:io' show File;
+import 'dart:io' show Directory, File;
 import 'package:characters/characters.dart';
 import '../features/provider/pages/multi_key_manager_page.dart';
 import '../features/model/widgets/model_detail_sheet.dart';
@@ -32,6 +35,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import '../core/models/api_keys.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'desktop_context_menu.dart';
 import '../shared/widgets/snackbar.dart';
 import 'setting/default_model_pane.dart';
@@ -47,7 +51,11 @@ import 'setting/about_pane.dart';
 import 'package:system_fonts/system_fonts.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 import '../features/provider/widgets/provider_avatar.dart';
+import '../features/provider/widgets/share_provider_sheet.dart' show encodeProviderConfig;
+import '../utils/clipboard_images.dart';
 
 /// Desktop settings layout: left menu + vertical divider + right content.
 /// For now, only the left menu and the Display Settings content are implemented.
@@ -961,6 +969,18 @@ class _DesktopProvidersBody extends StatefulWidget {
 class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
   String? _selectedKey;
   final GlobalKey<_DesktopProviderDetailPaneState> _detailKey = GlobalKey<_DesktopProviderDetailPaneState>();
+
+  Future<void> _showShareDialog(String providerKey, String displayName) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _DesktopProviderShareDialog(
+        providerKey: providerKey,
+        displayName: displayName,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1065,6 +1085,12 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                               setState(() => _selectedKey = item.key);
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 _detailKey.currentState?._showProviderSettingsDialog(context);
+                              });
+                            },
+                            onShare: () {
+                              setState(() => _selectedKey = item.key);
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _showShareDialog(item.key, cfg.name.isNotEmpty ? cfg.name : item.name);
                               });
                             },
                             onDelete: baseKeys.contains(item.key)
@@ -3443,6 +3469,286 @@ class _IconTextBtnState extends State<_IconTextBtn> {
   }
 }
 
+class _DesktopProviderShareDialog extends StatefulWidget {
+  const _DesktopProviderShareDialog({required this.providerKey, required this.displayName});
+  final String providerKey;
+  final String displayName;
+
+  @override
+  State<_DesktopProviderShareDialog> createState() => _DesktopProviderShareDialogState();
+}
+
+class _DesktopProviderShareDialogState extends State<_DesktopProviderShareDialog> {
+  late final String _code;
+  final GlobalKey _qrKey = GlobalKey();
+  bool _copyingQr = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>();
+    final cfg = settings.providerConfigs[widget.providerKey] ??
+        settings.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+    _code = encodeProviderConfig(cfg);
+  }
+
+  Future<void> _copyText() async {
+    await Clipboard.setData(ClipboardData(text: _code));
+    if (!mounted) return;
+    showAppSnackBar(
+      context,
+      message: AppLocalizations.of(context)!.shareProviderSheetCopiedMessage,
+      type: NotificationType.success,
+    );
+  }
+
+  Future<Uint8List?> _captureQrBytes() async {
+    try {
+      final boundary = _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> _writeQrToClipboard(Uint8List bytes) async {
+    try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard != null) {
+        final item = DataWriterItem(suggestedName: 'provider-qr.png');
+        item.add(Formats.png(bytes));
+        await clipboard.write([item]);
+        return true;
+      }
+    } catch (_) {}
+
+    try {
+      final file = File(p.join(Directory.systemTemp.path, 'kelivo-provider-qr.png'));
+      await file.writeAsBytes(bytes, flush: true);
+      return await ClipboardImages.setImagePath(file.path);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _copyQr() async {
+    if (_copyingQr) return;
+    setState(() => _copyingQr = true);
+    bool ok = false;
+    try {
+      final bytes = await _captureQrBytes();
+      if (bytes != null && bytes.isNotEmpty) {
+        ok = await _writeQrToClipboard(bytes);
+      }
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    setState(() => _copyingQr = false);
+    final l10n = AppLocalizations.of(context)!;
+    showAppSnackBar(
+      context,
+      message: ok ? l10n.shareProviderSheetCopiedMessage : l10n.messageExportSheetExportFailed('copy-failed'),
+      type: ok ? NotificationType.success : NotificationType.error,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    return Dialog(
+      backgroundColor: cs.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.shareProviderSheetTitle,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  _IconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(context).maybePop()),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l10n.shareProviderSheetDescription,
+                style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.85)),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: RepaintBoundary(
+                  key: _qrKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+                    ),
+                    child: PrettyQr(
+                      data: _code,
+                      size: 180,
+                      roundEdges: true,
+                      errorCorrectLevel: QrErrorCorrectLevel.M,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.25)),
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 160),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      _code,
+                      style: const TextStyle(fontSize: 13.5, height: 1.35, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _DialogActionButton(
+                    icon: const Icon(Icons.copy_outlined, size: 18),
+                    label: l10n.desktopProviderShareCopyText,
+                    filled: false,
+                    onTap: _copyText,
+                  ),
+                  const SizedBox(width: 10),
+                  _DialogActionButton(
+                    icon: _copyingQr
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CupertinoActivityIndicator(radius: 8),
+                          )
+                        : const Icon(Icons.qr_code_2, size: 18),
+                    label: l10n.desktopProviderShareCopyQr,
+                    filled: true,
+                    onTap: _copyingQr ? null : _copyQr,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogActionButton extends StatefulWidget {
+  const _DialogActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+  final Widget icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool filled;
+
+  @override
+  State<_DialogActionButton> createState() => _DialogActionButtonState();
+}
+
+class _DialogActionButtonState extends State<_DialogActionButton> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final enabled = widget.onTap != null;
+    final baseBg = widget.filled ? cs.primary : Colors.transparent;
+    final hoverOverlay = widget.filled
+        ? Colors.white.withOpacity(isDark ? 0.08 : 0.10)
+        : cs.primary.withOpacity(isDark ? 0.12 : 0.10);
+    final bg = Color.alphaBlend(
+      (_hover ? hoverOverlay : Colors.transparent),
+      baseBg,
+    );
+    final borderColor = widget.filled
+        ? cs.primary.withOpacity(isDark ? 0.30 : 0.25)
+        : cs.primary.withOpacity(0.35);
+    final fg = widget.filled ? cs.onPrimary : cs.primary;
+
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() {
+        _hover = false;
+        _pressed = false;
+      }),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+        onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
+        onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1.0,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 130),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: enabled ? bg : baseBg.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconTheme.merge(
+                  data: IconThemeData(color: fg, size: 18),
+                  child: widget.icon,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: enabled ? fg : fg.withOpacity(0.5),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BrandCircle extends StatelessWidget {
   const _BrandCircle({required this.name, this.size = 22});
   final String name;
@@ -3479,6 +3785,7 @@ class _ProviderListRow extends StatefulWidget {
     required this.background,
     required this.onTap,
     required this.onEdit,
+    required this.onShare,
     this.onDelete,
   });
   final String name;
@@ -3488,6 +3795,7 @@ class _ProviderListRow extends StatefulWidget {
   final Color background;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onShare;
   final Future<void> Function()? onDelete;
   @override
   State<_ProviderListRow> createState() => _ProviderListRowState();
@@ -3507,6 +3815,7 @@ class _ProviderListRowState extends State<_ProviderListRow> {
         onTap: widget.onTap,
         onSecondaryTapDown: (details) async {
           final items = <DesktopContextMenuItem>[
+            DesktopContextMenuItem(icon: lucide.Lucide.Share2, label: AppLocalizations.of(context)!.desktopProviderContextMenuShare, onTap: widget.onShare),
             DesktopContextMenuItem(icon: lucide.Lucide.Pencil, label: AppLocalizations.of(context)!.providerDetailPageEditTooltip, onTap: widget.onEdit),
             if (widget.onDelete != null)
               DesktopContextMenuItem(icon: lucide.Lucide.Trash2, label: AppLocalizations.of(context)!.providerDetailPageDeleteProviderTooltip, danger: true, onTap: () => widget.onDelete?.call()),

@@ -2265,6 +2265,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shareProviderSheetShareButton => '分享';
 
   @override
+  String get desktopProviderContextMenuShare => '分享';
+
+  @override
+  String get desktopProviderShareCopyText => '复制文字';
+
+  @override
+  String get desktopProviderShareCopyQr => '复制二维码';
+
+  @override
   String get providerDetailPageApiBaseUrlLabel => 'API Base URL';
 
   @override
@@ -5525,6 +5534,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get shareProviderSheetShareButton => '分享';
 
   @override
+  String get desktopProviderContextMenuShare => '分享';
+
+  @override
+  String get desktopProviderShareCopyText => '复制文字';
+
+  @override
+  String get desktopProviderShareCopyQr => '复制二维码';
+
+  @override
   String get providerDetailPageApiBaseUrlLabel => 'API Base URL';
 
   @override
@@ -8781,6 +8799,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get shareProviderSheetShareButton => '分享';
+
+  @override
+  String get desktopProviderContextMenuShare => '分享';
+
+  @override
+  String get desktopProviderShareCopyText => '複製文字';
+
+  @override
+  String get desktopProviderShareCopyQr => '複製 QR 碼';
 
   @override
   String get providerDetailPageApiBaseUrlLabel => 'API Base URL';
