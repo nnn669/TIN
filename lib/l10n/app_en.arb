@@ -1338,5 +1338,6 @@
   "providerDetailPageBatchDetecting": "Detecting...",
   "providerDetailPageBatchDetectStart": "Start Detection",
   "providerDetailPageDetectSuccess": "Detection successful",
-  "providerDetailPageDetectFailed": "Detection failed"
+  "providerDetailPageDetectFailed": "Detection failed",
+  "providerDetailPageDeleteAllModelsWarning": "This action cannot be undone."
 }

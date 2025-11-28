@@ -1839,6 +1839,17 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                       message: l10n.providerDetailPageAddNewModelButton,
                       child: _IconBtn(icon: lucide.Lucide.Plus, onTap: () => _createModel(context)),
                     ),
+                    if (models.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: '删除全部模型',
+                        child: _IconBtn(
+                          icon: lucide.Lucide.Trash2,
+                          color: cs.onSurface.withOpacity(0.85),
+                          onTap: _confirmDeleteAllModels,
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 6),
                     Tooltip(
                       message: l10n.providerDetailPageFetchModelsButton,
@@ -2970,6 +2981,71 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
       _selectedModels.clear();
       _detectionResults.clear();
       _detectionErrorMessages.clear();
+    });
+  }
+
+  Future<void> _confirmDeleteAllModels() async {
+    final sp = context.read<SettingsProvider>();
+    final cfg = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
+    if (cfg.models.isEmpty) return;
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(l10n.providerDetailPageConfirmDeleteTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+                    _IconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(ctx).maybePop(false)),
+                  ],
+                ),
+              ),
+              Divider(height: 1, thickness: 0.5, color: cs.outlineVariant.withOpacity(0.12)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(l10n.providerDetailPageDeleteAllModelsWarning, style: TextStyle(color: cs.onSurface.withOpacity(0.85))),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _DeskIosButton(label: l10n.providerDetailPageCancelButton, filled: false, dense: true, onTap: () => Navigator.of(ctx).maybePop(false)),
+                    const SizedBox(width: 8),
+                    _DeskIosButton(label: l10n.providerDetailPageDeleteButton, filled: true, dense: true, onTap: () => Navigator.of(ctx).maybePop(true)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    final cleared = cfg.copyWith(models: const [], modelOverrides: const {});
+    await sp.setProviderConfig(widget.providerKey, cleared);
+    if (!mounted) return;
+    setState(() {
+      _selectedModels.clear();
+      _detectionResults.clear();
+      _detectionErrorMessages.clear();
+      _pendingModels.clear();
+      _currentDetectingModel = null;
+      _isSelectionMode = false;
     });
   }
 

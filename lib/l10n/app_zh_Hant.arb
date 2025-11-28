@@ -1111,5 +1111,6 @@
   "providerDetailPageBatchDetecting": "檢測中...",
   "providerDetailPageBatchDetectStart": "開始檢測",
   "providerDetailPageDetectSuccess": "檢測成功",
-  "providerDetailPageDetectFailed": "檢測失敗"
+  "providerDetailPageDetectFailed": "檢測失敗",
+  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回"
 }

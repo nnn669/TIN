@@ -1117,5 +1117,6 @@
   "providerDetailPageBatchDetecting": "检测中...",
   "providerDetailPageBatchDetectStart": "开始检测",
   "providerDetailPageDetectSuccess": "检测成功",
-  "providerDetailPageDetectFailed": "检测失败"
+  "providerDetailPageDetectFailed": "检测失败",
+  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回"
 }

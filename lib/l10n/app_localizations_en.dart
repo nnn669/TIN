@@ -3369,4 +3369,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get providerDetailPageDetectFailed => 'Detection failed';
+
+  @override
+  String get providerDetailPageDeleteAllModelsWarning =>
+      'This action cannot be undone.';
 }

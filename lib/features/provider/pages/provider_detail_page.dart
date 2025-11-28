@@ -950,8 +950,8 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                         return Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: cs.primary.withOpacity(0.35)),
-                            color: pressed ? cs.primary.withOpacity(0.05) : null,
+                            border: Border.all(color: cs.onSurface.withOpacity(0.2)),
+                            color: pressed ? cs.onSurface.withOpacity(0.06) : null,
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           child: Row(
@@ -960,10 +960,10 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                               AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 160),
                                 transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                                child: Icon(icon, key: ValueKey(allSelected), size: 20, color: cs.primary),
+                                child: Icon(icon, key: ValueKey(allSelected), size: 20, color: cs.onSurface),
                               ),
                               const SizedBox(width: 8),
-                              Text(label, style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text(label, style: TextStyle(color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         );
@@ -981,10 +981,8 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: (_detectUseStream ? cs.primary : cs.onSurface.withOpacity(0.2)).withOpacity(0.35)),
-                            color: _detectUseStream
-                                ? cs.primary.withOpacity(pressed ? 0.18 : 0.12)
-                                : (pressed ? cs.onSurface.withOpacity(0.06) : null),
+                            border: Border.all(color: cs.onSurface.withOpacity(0.2)),
+                            color: pressed ? cs.onSurface.withOpacity(0.06) : (_detectUseStream ? cs.onSurface.withOpacity(0.08) : Colors.transparent),
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 160),
@@ -993,7 +991,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                               _detectUseStream ? Lucide.AudioWaveform : Lucide.SquareEqual,
                               key: ValueKey(_detectUseStream),
                               size: 18,
-                              color: _detectUseStream ? cs.primary : cs.onSurface.withOpacity(0.85),
+                              color: cs.onSurface,
                             ),
                           ),
                         );
@@ -1070,35 +1068,58 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                       },
                     ),
                     const SizedBox(width: 10),
-                    _TactileRow(
-                      pressedScale: 0.97,
-                      haptics: false,
-                      onTap: () async {
-                        await showCreateModelSheet(context, providerKey: widget.keyName);
-                      },
-                      builder: (pressed) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: cs.primary.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Lucide.Plus, size: 20, color: cs.primary),
-                              const SizedBox(width: 8),
-                              Text(l10n.providerDetailPageAddNewModelButton, style: TextStyle(color: cs.primary, fontSize: 14)),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  _TactileRow(
+                    pressedScale: 0.97,
+                    haptics: false,
+                    onTap: () async {
+                      await showCreateModelSheet(context, providerKey: widget.keyName);
+                    },
+                    builder: (pressed) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Lucide.Plus, size: 20, color: cs.primary),
+                            const SizedBox(width: 8),
+                            Text(l10n.providerDetailPageAddNewModelButton, style: TextStyle(color: cs.primary, fontSize: 14)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                    if (models.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      _TactileRow(
+                        pressedScale: 0.97,
+                        haptics: false,
+                        onTap: _deleteAllModels,
+                        builder: (pressed) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: cs.error.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Lucide.Trash2, size: 18, color: cs.error),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                ],
               ),
             ),
           ),
+        ),
       ],
     );
   }
@@ -1571,6 +1592,38 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
         _pendingModels.clear();
       });
     }
+  }
+
+  Future<void> _deleteAllModels() async {
+    final settings = context.read<SettingsProvider>();
+    final cfg = settings.getProviderConfig(widget.keyName, defaultName: widget.displayName);
+    if (cfg.models.isEmpty) return;
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        title: Text(l10n.providerDetailPageConfirmDeleteTitle),
+        content: Text(l10n.providerDetailPageDeleteAllModelsWarning),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerDetailPageCancelButton)),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.providerDetailPageDeleteButton, style: TextStyle(color: cs.error))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final cleared = cfg.copyWith(models: const [], modelOverrides: const {});
+    await settings.setProviderConfig(widget.keyName, cleared);
+    if (!mounted) return;
+    setState(() {
+      _selectedModels.clear();
+      _detectionResults.clear();
+      _detectionErrorMessages.clear();
+      _pendingModels.clear();
+      _currentDetectingModel = null;
+      _isSelectionMode = false;
+    });
   }
 
   Future<void> _openTestDialog() async {

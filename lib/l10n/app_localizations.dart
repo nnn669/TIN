@@ -6376,6 +6376,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Detection failed'**
   String get providerDetailPageDetectFailed;
+
+  /// No description provided for @providerDetailPageDeleteAllModelsWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone.'**
+  String get providerDetailPageDeleteAllModelsWarning;
 }
 
 class _AppLocalizationsDelegate
