@@ -182,11 +182,58 @@ class _AssistantCard extends StatelessWidget {
       key: ValueKey('slidable-assistant-${item.id}'),
       endActionPane: ActionPane(
         motion: const StretchMotion(),
-        extentRatio: 0.35,
+        extentRatio: 0.6,
         children: [
           CustomSlidableAction(
             autoClose: true,
             backgroundColor: Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            onPressed: (_) async {
+              final newId = await context.read<AssistantProvider>().duplicateAssistant(item.id, l10n: l10n);
+              if (!context.mounted) return;
+              if (newId != null) {
+                showAppSnackBar(
+                  context,
+                  message: l10n.assistantSettingsCopySuccess,
+                  type: NotificationType.success,
+                );
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? cs.primary.withOpacity(0.16)
+                    : cs.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: cs.primary.withOpacity(0.35)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: SizedBox.expand(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Lucide.Copy, color: cs.primary, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          l10n.assistantSettingsCopyButton,
+                          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          CustomSlidableAction(
+            autoClose: true,
+            backgroundColor: Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             onPressed: (_) async {
               final count = context.read<AssistantProvider>().assistants.length;
               if (count <= 1) {
@@ -220,19 +267,22 @@ class _AssistantCard extends StatelessWidget {
                 border: Border.all(color: cs.error.withOpacity(0.35)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              alignment: Alignment.center,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Lucide.Trash2, color: cs.error, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.assistantSettingsDeleteButton,
-                      style: TextStyle(color: cs.error, fontWeight: FontWeight.w700),
+              child: SizedBox.expand(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Lucide.Trash2, color: cs.error, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          l10n.assistantSettingsDeleteButton,
+                          style: TextStyle(color: cs.error, fontWeight: FontWeight.w700),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

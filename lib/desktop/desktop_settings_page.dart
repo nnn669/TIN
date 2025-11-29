@@ -618,6 +618,39 @@ class _DeleteAssistantIconState extends State<_DeleteAssistantIcon> {
   }
 }
 
+class _CopyAssistantIcon extends StatefulWidget {
+  const _CopyAssistantIcon({required this.onCopy});
+  final Future<void> Function() onCopy;
+  @override
+  State<_CopyAssistantIcon> createState() => _CopyAssistantIconState();
+}
+
+class _CopyAssistantIconState extends State<_CopyAssistantIcon> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover ? (isDark ? cs.primary.withOpacity(0.16) : cs.primary.withOpacity(0.12)) : Colors.transparent;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => widget.onCopy(),
+        child: Container(
+          margin: const EdgeInsets.only(left: 8),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Icon(lucide.Lucide.Copy, size: 15, color: cs.primary),
+        ),
+      ),
+    );
+  }
+}
+
 Future<bool?> _confirmDeleteDesktop(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
   final cs = Theme.of(context).colorScheme;
@@ -847,6 +880,20 @@ class _DesktopAssistantCardState extends State<_DesktopAssistantCard> {
                                 style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w700),
                               ),
                             ),
+                          _CopyAssistantIcon(
+                            onCopy: () async {
+                              final l10n = AppLocalizations.of(context)!;
+                              final newId = await context.read<AssistantProvider>().duplicateAssistant(widget.item.id, l10n: l10n);
+                              if (!mounted) return;
+                              if (newId != null) {
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.assistantSettingsCopySuccess,
+                                  type: NotificationType.success,
+                                );
+                              }
+                            },
+                          ),
                           _DeleteAssistantIcon(
                             onConfirm: () async {
                               final l10n = AppLocalizations.of(context)!;

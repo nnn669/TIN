@@ -888,6 +888,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistantSettingsDefaultTag => 'Default';
 
   @override
+  String get assistantSettingsCopyButton => 'Copy';
+
+  @override
+  String get assistantSettingsCopySuccess => 'Assistant copied';
+
+  @override
+  String get assistantSettingsCopySuffix => 'Copy';
+
+  @override
   String get assistantSettingsDeleteButton => 'Delete';
 
   @override

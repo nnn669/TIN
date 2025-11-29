@@ -1769,6 +1769,24 @@ abstract class AppLocalizations {
   /// **'Default'**
   String get assistantSettingsDefaultTag;
 
+  /// No description provided for @assistantSettingsCopyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get assistantSettingsCopyButton;
+
+  /// No description provided for @assistantSettingsCopySuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant copied'**
+  String get assistantSettingsCopySuccess;
+
+  /// No description provided for @assistantSettingsCopySuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get assistantSettingsCopySuffix;
+
   /// No description provided for @assistantSettingsDeleteButton.
   ///
   /// In en, this message translates to:

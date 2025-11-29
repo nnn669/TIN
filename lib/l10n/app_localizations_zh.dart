@@ -862,6 +862,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantSettingsDefaultTag => '默认';
 
   @override
+  String get assistantSettingsCopyButton => '复制';
+
+  @override
+  String get assistantSettingsCopySuccess => '已复制助手';
+
+  @override
+  String get assistantSettingsCopySuffix => '副本';
+
+  @override
   String get assistantSettingsDeleteButton => '删除';
 
   @override
@@ -4131,6 +4140,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantSettingsDefaultTag => '默认';
 
   @override
+  String get assistantSettingsCopyButton => '复制';
+
+  @override
+  String get assistantSettingsCopySuccess => '已复制助手';
+
+  @override
+  String get assistantSettingsCopySuffix => '副本';
+
+  @override
   String get assistantSettingsDeleteButton => '删除';
 
   @override
@@ -7398,6 +7416,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get assistantSettingsDefaultTag => '預設';
+
+  @override
+  String get assistantSettingsCopyButton => '複製';
+
+  @override
+  String get assistantSettingsCopySuccess => '已複製助理';
+
+  @override
+  String get assistantSettingsCopySuffix => '副本';
 
   @override
   String get assistantSettingsDeleteButton => '刪除';
