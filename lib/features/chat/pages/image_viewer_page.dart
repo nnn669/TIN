@@ -13,7 +13,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 import '../../../utils/sandbox_path_resolver.dart';
+import '../../../utils/clipboard_images.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -41,11 +43,15 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   double _animFrom = 0.0; // for restore animation
   Offset? _lastDoubleTapPos; // focal point for double-tap zoom
   bool _saving = false; // saving to gallery state
+  bool _copying = false; // copying to clipboard state
   final GlobalKey _viewerKey = GlobalKey();
   final GlobalKey _saveBtnKey = GlobalKey();
   final GlobalKey _shareBtnKey = GlobalKey();
+  final GlobalKey _copyBtnKey = GlobalKey();
 
   final Map<String, _SampledImage> _samples = <String, _SampledImage>{};
+
+  bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   @override
   void initState() {
@@ -170,7 +176,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   }
 
   Future<void> _saveCurrent() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (_isDesktop) {
       await _saveCurrentDesktop();
       return;
     }
@@ -354,6 +360,211 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
     }
   }
 
+  String _inferFormatFromHint(String hint) {
+    final lower = hint.toLowerCase();
+    if (lower.contains('png')) return 'png';
+    if (lower.contains('jpeg') || lower.contains('jpg')) return 'jpeg';
+    if (lower.contains('gif')) return 'gif';
+    if (lower.contains('webp')) return 'webp';
+    return '';
+  }
+
+  bool _isSupportedClipboardFormat(String format) {
+    return format == 'png' || format == 'jpeg' || format == 'gif' || format == 'webp';
+  }
+
+  String _normalizeSuggestedName(String? name, String format) {
+    final ext = format == 'jpeg' ? '.jpg' : '.$format';
+    final fallback = 'image$ext';
+    if (name == null || name.trim().isEmpty) return fallback;
+    final trimmed = name.trim();
+    if (p.extension(trimmed).toLowerCase() != ext) {
+      return p.setExtension(trimmed, ext);
+    }
+    return trimmed;
+  }
+
+  Future<_CopyPayload?> _loadCopyPayload(void Function(String reason) setError) async {
+    final src = widget.images[_index];
+    Uint8List? bytes;
+    String format = '';
+    String suggestedName = '';
+    String? sourcePath;
+
+    try {
+      if (src.startsWith('data:')) {
+        final marker = 'base64,';
+        final idx = src.indexOf(marker);
+        if (idx != -1) {
+          bytes = base64Decode(src.substring(idx + marker.length));
+        }
+        final mimeEnd = src.indexOf(';');
+        if (mimeEnd != -1) {
+          final mime = src.substring(5, mimeEnd);
+          final fmt = _inferFormatFromHint(mime);
+          if (fmt.isNotEmpty) format = fmt;
+        }
+        if (format.isNotEmpty) {
+          suggestedName = 'image.${format == 'jpeg' ? 'jpg' : format}';
+        }
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        final uri = Uri.parse(src);
+        final resp = await http.get(uri);
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          bytes = resp.bodyBytes;
+          final urlExt = p.extension(uri.path);
+          final fmt = _inferFormatFromHint(urlExt);
+          if (fmt.isNotEmpty) format = fmt;
+          suggestedName = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        } else {
+          setError('http-${resp.statusCode}');
+          return null;
+        }
+      } else {
+        final local = SandboxPathResolver.fix(src);
+        final file = File(local);
+        if (await file.exists()) {
+          sourcePath = file.path;
+          bytes = await file.readAsBytes();
+          final ext = p.extension(file.path);
+          final fmt = _inferFormatFromHint(ext);
+          if (fmt.isNotEmpty) format = fmt;
+          suggestedName = p.basename(file.path);
+        } else {
+          setError('file-missing');
+          return null;
+        }
+      }
+    } catch (_) {
+      setError('read-error');
+      return null;
+    }
+
+    if (bytes == null || bytes.isEmpty) {
+      setError('empty-bytes');
+      return null;
+    }
+
+    Uint8List safeBytes = bytes;
+
+    if (!_isSupportedClipboardFormat(format)) {
+      try {
+        final codec = await ui.instantiateImageCodec(safeBytes);
+        final frame = await codec.getNextFrame();
+        final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        if (data != null) {
+          safeBytes = data.buffer.asUint8List();
+          format = 'png';
+        }
+      } catch (_) {}
+      if (!_isSupportedClipboardFormat(format)) {
+        setError('unsupported-format');
+        return null;
+      }
+    }
+
+    suggestedName = _normalizeSuggestedName(suggestedName, format);
+
+    return _CopyPayload(
+      bytes: safeBytes,
+      format: format,
+      suggestedName: suggestedName,
+      sourcePath: sourcePath,
+    );
+  }
+
+  Future<bool> _writeClipboardPayload(_CopyPayload payload) async {
+    bool ok = false;
+    try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard != null) {
+        final item = DataWriterItem(suggestedName: payload.suggestedName);
+        switch (payload.format) {
+          case 'png':
+            item.add(Formats.png(payload.bytes));
+            break;
+          case 'jpeg':
+            item.add(Formats.jpeg(payload.bytes));
+            break;
+          case 'gif':
+            item.add(Formats.gif(payload.bytes));
+            break;
+          case 'webp':
+            item.add(Formats.webp(payload.bytes));
+            break;
+        }
+        await clipboard.write([item]);
+        ok = true;
+      }
+    } catch (_) {
+      ok = false;
+    }
+
+    if (!ok) {
+      try {
+        String? path = payload.sourcePath;
+        if (path == null) {
+          final dir = await getTemporaryDirectory();
+          final ext = payload.format == 'jpeg' ? '.jpg' : '.${payload.format}';
+          path = p.join(dir.path, 'kelivo_clip_${DateTime.now().millisecondsSinceEpoch}$ext');
+          await File(path).writeAsBytes(payload.bytes);
+        }
+        ok = await ClipboardImages.setImagePath(path);
+      } catch (_) {
+        ok = false;
+      }
+    }
+    return ok;
+  }
+
+  Future<void> _copyCurrent() async {
+    if (_copying) return;
+    setState(() => _copying = true);
+    final l10n = AppLocalizations.of(context)!;
+    String failureReason = 'copy-failed';
+    bool ok = false;
+
+    try {
+      final payload = await _loadCopyPayload((reason) => failureReason = reason);
+      if (payload == null) {
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            message: l10n.messageExportSheetExportFailed(failureReason),
+            type: NotificationType.error,
+          );
+        }
+        return;
+      }
+
+      if (_isDesktop) {
+        ok = await _writeClipboardPayload(payload);
+        if (!ok) {
+          failureReason = 'clipboard-unavailable';
+        }
+      } else {
+        failureReason = 'unsupported-platform';
+      }
+    } finally {
+      if (mounted) setState(() => _copying = false);
+    }
+
+    if (!mounted) return;
+    if (ok) {
+      showAppSnackBar(
+        context,
+        message: l10n.chatMessageWidgetCopiedToClipboard,
+        type: NotificationType.success,
+      );
+    } else {
+      showAppSnackBar(
+        context,
+        message: l10n.messageExportSheetExportFailed(failureReason),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -483,7 +694,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
               ),
             ),
           ),
-          // Bottom action buttons (save + share)
+          // Bottom action buttons (save + copy + share)
           Positioned(
             left: 0,
             right: 0,
@@ -498,35 +709,64 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                     builder: (context, _) {
                       final leftColor = _smartIconColorForKey(context, _saveBtnKey);
                       final rightColor = _smartIconColorForKey(context, _shareBtnKey);
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                      final showCopy = _isDesktop;
+                      final Color? copyColor = showCopy ? _smartIconColorForKey(context, _copyBtnKey) : null;
+                      final children = <Widget>[
+                        _GlassCircleButton(
+                          key: _saveBtnKey,
+                          onTap: _saving ? null : _saveCurrent,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                            child: _saving
+                                ? SizedBox(
+                                    key: const ValueKey('saving'),
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      valueColor: AlwaysStoppedAnimation(leftColor),
+                                    ),
+                                  )
+                                : Icon(Icons.download, color: leftColor, size: 20, key: const ValueKey('ready')),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ];
+                      if (showCopy) {
+                        children.addAll([
                           _GlassCircleButton(
-                            key: _saveBtnKey,
-                            onTap: _saving ? null : _saveCurrent,
+                            key: _copyBtnKey,
+                            onTap: _copying ? null : _copyCurrent,
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
                               transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-                              child: _saving
+                              child: _copying
                                   ? SizedBox(
-                                      key: const ValueKey('saving'),
+                                      key: const ValueKey('copying'),
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.2,
-                                        valueColor: AlwaysStoppedAnimation(leftColor),
+                                        valueColor: AlwaysStoppedAnimation(copyColor ?? _fallbackIconColor(context)),
                                       ),
                                     )
-                                  : Icon(Icons.download, color: leftColor, size: 20, key: const ValueKey('ready')),
+                                  : Icon(Icons.copy, color: copyColor ?? _fallbackIconColor(context), size: 20, key: const ValueKey('copy-ready')),
                             ),
                           ),
                           const SizedBox(width: 16),
-                          _GlassCircleButton(
-                            key: _shareBtnKey,
-                            onTap: _shareCurrent,
-                            child: Icon(Icons.share, color: rightColor, size: 20),
-                          ),
-                        ],
+                        ]);
+                      }
+                      children.add(
+                        _GlassCircleButton(
+                          key: _shareBtnKey,
+                          onTap: _shareCurrent,
+                          child: Icon(Icons.share, color: rightColor, size: 20),
+                        ),
+                      );
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: children,
                       );
                     },
                   ),
@@ -773,6 +1013,20 @@ Route _buildFancyRoute(Widget page) {
       );
     },
   );
+}
+
+class _CopyPayload {
+  _CopyPayload({
+    required this.bytes,
+    required this.format,
+    required this.suggestedName,
+    this.sourcePath,
+  });
+
+  final Uint8List bytes;
+  final String format; // png/jpeg/gif/webp
+  final String suggestedName;
+  final String? sourcePath;
 }
 
 class _GlassCircleButton extends StatefulWidget {
