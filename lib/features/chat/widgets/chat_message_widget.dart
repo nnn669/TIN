@@ -132,8 +132,12 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   final GlobalKey _translateBtnKey1 = GlobalKey();
   final GlobalKey _moreBtnKey2 = GlobalKey();
   final GlobalKey _translateBtnKey2 = GlobalKey();
+  // ValueNotifier for reasoning animation tick - avoids full widget rebuild
+  final ValueNotifier<int> _reasoningTick = ValueNotifier<int>(0);
   late final Ticker _ticker = Ticker((_) {
-    if (mounted && _tickActive) setState(() {});
+    if (mounted && _tickActive) {
+      _reasoningTick.value++; // Only notify reasoning section, not full rebuild
+    }
   });
 
   @override
@@ -299,6 +303,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     try { _userMenuOverlay?.remove(); } catch (_) {}
     _userMenuOverlay = null;
     _ticker.dispose();
+    _reasoningTick.dispose();
     _reasoningScroll.dispose();
     super.dispose();
   }
@@ -1282,14 +1287,16 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                       defaultTargetPlatform == TargetPlatform.windows ||
                       defaultTargetPlatform == TargetPlatform.linux;
                   final double baseAssistant = isDesktop ? 14.0 : 15.7;
-                  return SelectionArea(
-                    key: ValueKey('assistant_${widget.message.id}_${widget.message.content.length}'),
-                    child: DefaultTextStyle.merge(
-                      style: TextStyle(fontSize: baseAssistant, height: 1.5),
-                      child: MarkdownWithCodeHighlight(
-                        text: visualContent,
-                        onCitationTap: (id) => _handleCitationTap(id),
-                        baseStyle: TextStyle(fontSize: baseAssistant, height: 1.5),
+                  return RepaintBoundary(
+                    child: SelectionArea(
+                      key: ValueKey('assistant_${widget.message.id}'),
+                      child: DefaultTextStyle.merge(
+                        style: TextStyle(fontSize: baseAssistant, height: 1.5),
+                        child: MarkdownWithCodeHighlight(
+                          text: visualContent,
+                          onCitationTap: (id) => _handleCitationTap(id),
+                          baseStyle: TextStyle(fontSize: baseAssistant, height: 1.5),
+                        ),
                       ),
                     ),
                   );
@@ -1380,22 +1387,24 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             else
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                                child: SelectionArea(
-                                  key: ValueKey('translation_${widget.message.id}_${translationText?.length ?? 0}'),
-                                  child: Builder(builder: (context) {
-                                    final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                        defaultTargetPlatform == TargetPlatform.windows ||
-                                        defaultTargetPlatform == TargetPlatform.linux;
-                                    final double baseTranslation = isDesktop ? 14.0 : 15.5;
-                                    return DefaultTextStyle.merge(
-                                      style: TextStyle(fontSize: baseTranslation, height: 1.4),
-                                      child: MarkdownWithCodeHighlight(
-                                        text: translationText!,
-                                        onCitationTap: (id) => _handleCitationTap(id),
-                                        baseStyle: TextStyle(fontSize: baseTranslation, height: 1.4),
-                                      ),
-                                    );
-                                  }),
+                                child: RepaintBoundary(
+                                  child: SelectionArea(
+                                    key: ValueKey('translation_${widget.message.id}'),
+                                    child: Builder(builder: (context) {
+                                      final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+                                          defaultTargetPlatform == TargetPlatform.windows ||
+                                          defaultTargetPlatform == TargetPlatform.linux;
+                                      final double baseTranslation = isDesktop ? 14.0 : 15.5;
+                                      return DefaultTextStyle.merge(
+                                        style: TextStyle(fontSize: baseTranslation, height: 1.4),
+                                        child: MarkdownWithCodeHighlight(
+                                          text: translationText!,
+                                          onCitationTap: (id) => _handleCitationTap(id),
+                                          baseStyle: TextStyle(fontSize: baseTranslation, height: 1.4),
+                                        ),
+                                      );
+                                    }),
+                                  ),
                                 ),
                               ),
                           ],
@@ -2506,7 +2515,11 @@ class _ReasoningSection extends StatefulWidget {
 }
 
 class _ReasoningSectionState extends State<_ReasoningSection> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = Ticker((_) => setState(() {}));
+  // Use ValueNotifier to only update elapsed time display, not rebuild entire widget
+  final ValueNotifier<int> _elapsedTick = ValueNotifier<int>(0);
+  late final Ticker _ticker = Ticker((_) {
+    if (mounted) _elapsedTick.value++;
+  });
   final ScrollController _scroll = ScrollController();
   bool _hasOverflow = false;
 
@@ -2555,6 +2568,7 @@ class _ReasoningSectionState extends State<_ReasoningSection> with SingleTickerP
   @override
   void dispose() {
     _ticker.dispose();
+    _elapsedTick.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -2623,9 +2637,12 @@ class _ReasoningSectionState extends State<_ReasoningSection> with SingleTickerP
             ),
             const SizedBox(width: 8),
             if (widget.startAt != null)
-              _Shimmer(
-                enabled: loading,
-                child: Text(_elapsed(), style: TextStyle(fontSize: 13, color: cs.secondary.withOpacity(0.9))),
+              ValueListenableBuilder<int>(
+                valueListenable: _elapsedTick,
+                builder: (context, _, __) => _Shimmer(
+                  enabled: loading,
+                  child: Text(_elapsed(), style: TextStyle(fontSize: 13, color: cs.secondary.withOpacity(0.9))),
+                ),
               ),
             // No header marquee; content area handles scrolling when loading
             const Spacer(),
@@ -2664,12 +2681,14 @@ class _ReasoningSectionState extends State<_ReasoningSection> with SingleTickerP
     final bool isLoading = loading;
     final display = _sanitize(widget.text);
 
-// 未加载：不要再指定 color: fg，让它继承和“加载中”相同的颜色
+// 未加载：不要再指定 color: fg，让它继承和"加载中"相同的颜色
     Widget _reasoningContent(String text) {
       if (settings.enableReasoningMarkdown) {
-        return MarkdownWithCodeHighlight(
-          text: text.isNotEmpty ? text : '…',
-          baseStyle: baseStyle,
+        return RepaintBoundary(
+          child: MarkdownWithCodeHighlight(
+            text: text.isNotEmpty ? text : '…',
+            baseStyle: baseStyle,
+          ),
         );
       }
       return Text(

@@ -142,6 +142,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _isUserScrolling = false;
   Timer? _userScrollTimer;
 
+  // Streaming content throttle mechanism to reduce UI rebuild frequency
+  static const Duration _streamThrottleInterval = Duration(milliseconds: 60);
+  final Map<String, Timer?> _streamThrottleTimers = <String, Timer?>{};
+  final Map<String, String> _pendingStreamContent = <String, String>{};
+
   // Sanitize/translate JSON Schema to each provider's accepted subset
   static Map<String, dynamic> _sanitizeToolParametersForProvider(Map<String, dynamic> schema, ProviderKind kind) {
     Map<String, dynamic> clone = _deepCloneMap(schema);
@@ -2363,6 +2368,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
 
       Future<void> finish({bool generateTitle = true}) async {
+        // Clean up stream throttle timer and flush final content
+        _streamThrottleTimers[assistantMessage.id]?.cancel();
+        _streamThrottleTimers.remove(assistantMessage.id);
+        _pendingStreamContent.remove(assistantMessage.id);
+
         final shouldGenerateTitle = generateTitle && !_titleQueued;
         if (_finishHandled) {
           if (shouldGenerateTitle) {
@@ -2720,28 +2730,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             }
 
             if (streamOutput) {
-              // Update UI with streaming content
-              if (mounted && _currentConversation?.id == _cidForStream) {
-                setState(() {
-                  final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                  if (index != -1) {
-                    _messages[index] = _messages[index].copyWith(
-                      content: streamingProcessed,
-                      totalTokens: totalTokens,
-                    );
+              // Throttle UI updates to reduce rebuild frequency during streaming
+              _pendingStreamContent[assistantMessage.id] = streamingProcessed;
+              _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
+                final pending = _pendingStreamContent[assistantMessage.id];
+                if (pending != null && mounted && _currentConversation?.id == _cidForStream) {
+                  setState(() {
+                    final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+                    if (index != -1) {
+                      _messages[index] = _messages[index].copyWith(
+                        content: pending,
+                        totalTokens: totalTokens,
+                      );
+                    }
+                  });
+                  // 滚动到底部显示新内容（仅在未处于用户滚动延迟阶段时）
+                  if (!_isUserScrolling) {
+                    _scrollToBottom();
                   }
-                });
-              }
-              // 滚动到底部显示新内容（仅在未处于用户滚动延迟阶段时）
-              Future.delayed(const Duration(milliseconds: 50), () {
-                if (!_isUserScrolling) {
-                  _scrollToBottom();
                 }
               });
             }
           }
         },
         onError: (e) async {
+          // Clean up stream throttle timer on error
+          _streamThrottleTimers[assistantMessage.id]?.cancel();
+          _streamThrottleTimers.remove(assistantMessage.id);
+          _pendingStreamContent.remove(assistantMessage.id);
           // Preserve partial content; if empty, write error message into bubble
           final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
           final processed = _transformAssistantContent();
@@ -2810,6 +2826,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           );
         },
         onDone: () async {
+          // Clean up stream throttle timer on stream done
+          _streamThrottleTimers[assistantMessage.id]?.cancel();
+          _streamThrottleTimers.remove(assistantMessage.id);
+          _pendingStreamContent.remove(assistantMessage.id);
+
           // If stream closed without explicit isDone chunk, finalize
           if (_loadingConversationIds.contains(_cidForStream)) {
             await finish(generateTitle: true);
@@ -2830,6 +2851,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
       _conversationStreams[_cidForStream] = _sub;
     } catch (e) {
+      // Clean up stream throttle timer on outer error
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+
       // Preserve partial content on outer error as well; if empty, show error text in bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
       final processed = _transformAssistantContent();
@@ -3481,6 +3507,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     DateTime? _reasoningStartAt2;
 
     Future<void> finish({bool generateTitle = false}) async {
+      // Clean up stream throttle timer and flush final content
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+
       final processedContent = _transformAssistantContent2();
       final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
       await _chatService.updateMessage(assistantMessage.id, content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
@@ -3665,9 +3696,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         } catch (_) {}
 
         if (streamOutput) {
-          setState(() {
-            final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
-            if (i != -1) _messages[i] = _messages[i].copyWith(content: streamingProcessed);
+          // Throttle UI updates to reduce rebuild frequency during streaming
+          _pendingStreamContent[assistantMessage.id] = streamingProcessed;
+          _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
+            final pending = _pendingStreamContent[assistantMessage.id];
+            if (pending != null && mounted) {
+              setState(() {
+                final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
+                if (i != -1) _messages[i] = _messages[i].copyWith(content: pending);
+              });
+            }
           });
         }
       }
@@ -3712,6 +3750,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     },
     onError: (e) async {
+      // Clean up stream throttle timer on error
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+
       // When regenerate fails, persist error text into this assistant bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
       final processed = _transformAssistantContent2();
@@ -3778,6 +3821,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     },
     onDone: () async {
+      // Clean up stream throttle timer on stream done
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+
       // Stream ended; ensure subscription cleanup and background notification if needed
       try {
         final sp = context.read<SettingsProvider>();
@@ -6558,6 +6606,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     } catch (_) {}
     _conversationStreams.clear();
     _userScrollTimer?.cancel();
+    // Cancel all stream throttle timers
+    for (final timer in _streamThrottleTimers.values) {
+      timer?.cancel();
+    }
+    _streamThrottleTimers.clear();
+    _pendingStreamContent.clear();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
