@@ -74,6 +74,8 @@ class ChatMessageWidget extends StatefulWidget {
   final VoidCallback? onToggleTranslation;
   // MCP tool calls/results mixed-in cards
   final List<ToolUIPart>? toolParts;
+  // Hide streaming dots when pinned globally
+  final bool hideStreamingIndicator;
 
   const ChatMessageWidget({
     super.key,
@@ -107,6 +109,7 @@ class ChatMessageWidget extends StatefulWidget {
     this.translationExpanded = true,
     this.onToggleTranslation,
     this.toolParts,
+    this.hideStreamingIndicator = false,
   });
 
   @override
@@ -1276,7 +1279,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                       alignment: Alignment.centerLeft,
                       child: Semantics(
                         label: l10n.chatMessageWidgetThinking,
-                        child: _LoadingIndicator(),
+                        child: widget.hideStreamingIndicator ? const SizedBox(height: 16) : const LoadingIndicator(),
                       ),
                     )
                   : Column(
@@ -1305,7 +1308,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 if (widget.message.isStreaming)
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
-                    child: _LoadingIndicator(),
+                    child: widget.hideStreamingIndicator ? const SizedBox(height: 16) : const LoadingIndicator(),
                   ),
                 // Translation section (collapsible)
                 if (hasTranslation) ...[
@@ -1366,7 +1369,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
                                 child: Row(
                                   children: [
-                                    _LoadingIndicator(),
+                                    const LoadingIndicator(),
                                     const SizedBox(width: 8),
                                     Builder(builder: (context) {
                                       final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
@@ -1998,13 +2001,14 @@ class _BranchSelector extends StatelessWidget {
   }
 }
 
-// Pulsing 3-dot loading indicator for chat thinking states
-class _LoadingIndicator extends StatefulWidget {
+// Pulsing 3-dot loading indicator for chat thinking states (shared)
+class LoadingIndicator extends StatefulWidget {
+  const LoadingIndicator({super.key});
   @override
-  State<_LoadingIndicator> createState() => _LoadingIndicatorState();
+  State<LoadingIndicator> createState() => _LoadingIndicatorState();
 }
 
-class _LoadingIndicatorState extends State<_LoadingIndicator>
+class _LoadingIndicatorState extends State<LoadingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 

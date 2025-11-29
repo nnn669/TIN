@@ -141,6 +141,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _showJumpToBottom = false;
   bool _isUserScrolling = false;
   Timer? _userScrollTimer;
+  bool _autoStickToBottom = true;
+  bool _autoScrollScheduled = false;
+  bool _autoScrollForceNext = false;
+  bool _autoScrollAnimateNext = true;
+  static const double _autoScrollSnapTolerance = 56.0;
 
   // Streaming content throttle mechanism to reduce UI rebuild frequency
   static const Duration _streamThrottleInterval = Duration(milliseconds: 60);
@@ -1321,6 +1326,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       // Detect user scrolling
       if (_scrollController.position.userScrollDirection != ScrollDirection.idle) {
         _isUserScrolling = true;
+        _autoStickToBottom = false;
         // Reset chained jump anchor when user manually scrolls
         _lastJumpUserMessageId = null;
         
@@ -1332,13 +1338,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             setState(() {
               _isUserScrolling = false;
             });
+            _refreshAutoStickToBottom();
           }
         });
       }
       
       // Only show when not near bottom
-      final pos = _scrollController.position;
-      final atBottom = pos.pixels >= (pos.maxScrollExtent - 24);
+      final atBottom = _isNearBottom(24);
+      if (!atBottom) {
+        _autoStickToBottom = false;
+      } else if (!_isUserScrolling) {
+        _autoStickToBottom = true;
+      }
       final shouldShow = !atBottom;
       if (_showJumpToBottom != shouldShow) {
         setState(() => _showJumpToBottom = shouldShow);
@@ -2734,7 +2745,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               _pendingStreamContent[assistantMessage.id] = streamingProcessed;
               _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
                 final pending = _pendingStreamContent[assistantMessage.id];
-                if (pending != null && mounted && _currentConversation?.id == _cidForStream) {
+                  if (pending != null && mounted && _currentConversation?.id == _cidForStream) {
                   setState(() {
                     final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
                     if (index != -1) {
@@ -2745,9 +2756,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     }
                   });
                   // 滚动到底部显示新内容（仅在未处于用户滚动延迟阶段时）
-                  if (!_isUserScrolling) {
-                    _scrollToBottom();
-                  }
+                  _autoScrollToBottomIfNeeded();
                 }
               });
             }
@@ -3705,6 +3714,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
                 if (i != -1) _messages[i] = _messages[i].copyWith(content: pending);
               });
+              if (_currentConversation?.id == _cid) {
+                _autoScrollToBottomIfNeeded();
+              }
             }
           });
         }
@@ -3938,24 +3950,119 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  bool _isNearBottom([double tolerance = _autoScrollSnapTolerance]) {
+    if (!_scrollController.hasClients) return true;
+    final pos = _scrollController.position;
+    return (pos.maxScrollExtent - pos.pixels) <= tolerance;
+  }
+
+  void _refreshAutoStickToBottom() {
+    try {
+      final nearBottom = _isNearBottom();
+      if (!nearBottom) {
+        _autoStickToBottom = false;
+      } else if (!_isUserScrolling) {
+        _autoStickToBottom = true;
+      }
+    } catch (_) {}
+  }
+
+  void _autoScrollToBottomIfNeeded() {
+    _scheduleAutoScrollToBottom(force: false);
+  }
+
+  String? _currentStreamingMessageId() {
+    for (int i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.role == 'assistant' && m.isStreaming) return m.id;
+    }
+    return null;
+  }
+
+  bool _shouldPinStreamingIndicator(String? messageId) {
+    if (messageId == null) return false;
+    if (_isUserScrolling) return false;
+    if (!_scrollController.hasClients) return false;
+    // Only pin when list is long enough to scroll; otherwise keep inline indicator
+    if (_scrollController.position.maxScrollExtent < _autoScrollSnapTolerance) return false;
+    // Only pin when near bottom to avoid covering content mid-scroll
+    if (!_isNearBottom(48)) return false;
+    return true;
+  }
+
+  Widget _buildPinnedStreamingIndicator() {
+    final mid = _currentStreamingMessageId();
+    final show = _shouldPinStreamingIndicator(mid);
+    if (!show) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: const LoadingIndicator(),
+        ),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
+    _autoStickToBottom = true;
+    _scheduleAutoScrollToBottom(force: true);
+  }
+
+  void _scheduleAutoScrollToBottom({required bool force, bool animate = true}) {
+    _autoScrollForceNext = _autoScrollForceNext || force;
+    _autoScrollAnimateNext = _autoScrollAnimateNext && animate;
+    if (_autoScrollScheduled) return;
+    _autoScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _autoScrollScheduled = false;
+      final forceNow = _autoScrollForceNext;
+      final animateNow = _autoScrollAnimateNext;
+      _autoScrollForceNext = false;
+      _autoScrollAnimateNext = true;
+      await _animateToBottom(force: forceNow, animate: animateNow);
+    });
+  }
+
+  Future<void> _animateToBottom({required bool force, bool animate = true}) async {
     try {
       if (!_scrollController.hasClients) return;
-      
+      if (!force) {
+        if (_isUserScrolling) return;
+        if (!_autoStickToBottom && !_isNearBottom()) return;
+      }
+
       // Prevent using controller while it is still attached to old/new list simultaneously
       if (_scrollController.positions.length != 1) {
         // Try again after microtask when the previous list detaches
-        Future.microtask(_scrollToBottom);
+        Future.microtask(() => _animateToBottom(force: force, animate: animate));
         return;
       }
-      final max = _scrollController.position.maxScrollExtent;
-      _scrollController.jumpTo(max);
+      final pos = _scrollController.position;
+      final max = pos.maxScrollExtent;
+      final distance = (max - pos.pixels).abs();
+      if (distance < 0.5) {
+        if (_showJumpToBottom) {
+          setState(() => _showJumpToBottom = false);
+        }
+        return;
+      }
+      if (!animate) {
+        pos.jumpTo(max);
+      } else {
+        final durationMs = distance < 36 ? 120 : distance < 140 ? 180 : 240;
+        await pos.animateTo(
+          max,
+          duration: Duration(milliseconds: durationMs),
+          curve: Curves.easeOutCubic,
+        );
+      }
       if (_showJumpToBottom) {
         setState(() => _showJumpToBottom = false);
       }
-    } catch (_) {
-      // Ignore transient attachment errors
-    }
+      _autoStickToBottom = true;
+    } catch (_) {}
   }
 
   void _forceScrollToBottom() {
@@ -4689,9 +4796,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         }
                         truncCollapsed = count - 1;
                       }
+                      final pinnedId = _currentStreamingMessageId();
+                      final pinActive = _shouldPinStreamingIndicator(pinnedId);
                       final list = ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.only(bottom: 16, top: 8),
+                        padding: EdgeInsets.only(bottom: pinActive ? 28 : 16, top: 8),
                         itemCount: messages.length,
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         itemBuilder: (context, index) {
@@ -4781,6 +4890,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
                                   showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
                                   showTokenStats: context.watch<SettingsProvider>().showTokenStats,
+                                  hideStreamingIndicator: pinActive && (message.id == pinnedId),
                                   reasoningText: (message.role == 'assistant') ? (r?.text ?? '') : null,
                                   reasoningExpanded: (message.role == 'assistant') ? (r?.expanded ?? false) : false,
                                   reasoningLoading: (message.role == 'assistant') ? (r?.finishedAt == null && (r?.text.isNotEmpty == true)) : false,
@@ -5055,7 +5165,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           );
                         },
                       );
-                      return list;
+                      return Stack(
+                        children: [
+                          list,
+                          if (pinActive) _buildPinnedStreamingIndicator(),
+                        ],
+                      );
                         })(),
                       );
                       final isAndroid = Theme.of(context).platform == TargetPlatform.android;
@@ -5752,9 +5867,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     }
                                     truncCollapsed = count - 1;
                                   }
-                                  return ListView.builder(
+                                  final pinnedId = _currentStreamingMessageId();
+                                  final pinActive = _shouldPinStreamingIndicator(pinnedId);
+                                  final list = ListView.builder(
                                     controller: _scrollController,
-                                    padding: const EdgeInsets.only(bottom: 16, top: 8),
+                                    padding: EdgeInsets.only(bottom: pinActive ? 28 : 16, top: 8),
                                     itemCount: messages.length,
                                     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                                     itemBuilder: (context, index) {
@@ -5846,6 +5963,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                     assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
                                                     showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
                                                     showTokenStats: context.watch<SettingsProvider>().showTokenStats,
+                                                    hideStreamingIndicator: pinActive && (message.id == pinnedId),
                                                     reasoningText: (message.role == 'assistant') ? (r?.text ?? '') : null,
                                                     reasoningExpanded: (message.role == 'assistant') ? (r?.expanded ?? false) : false,
                                                     reasoningLoading: (message.role == 'assistant') ? (r?.finishedAt == null && (r?.text.isNotEmpty == true)) : false,
@@ -6108,6 +6226,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         ],
                                       );
                                     },
+                                  );
+                                  return Stack(
+                                    children: [
+                                      list,
+                                      if (pinActive) _buildPinnedStreamingIndicator(),
+                                    ],
                                   );
                                 })(),
                               ).animate(key: ValueKey('tab_body_'+(_currentConversation?.id ?? 'none')))
