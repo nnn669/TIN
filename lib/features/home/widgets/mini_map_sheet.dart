@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../icons/lucide_adapter.dart';
@@ -15,15 +17,63 @@ Future<String?> showMiniMapSheet(BuildContext context, List<ChatMessage> message
   );
 }
 
-class _MiniMapSheet extends StatelessWidget {
+class _MiniMapSheet extends StatefulWidget {
   final List<ChatMessage> messages;
   const _MiniMapSheet({required this.messages});
 
   @override
+  State<_MiniMapSheet> createState() => _MiniMapSheetState();
+}
+
+class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMixin {
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+  String _query = '';
+  bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _clearOrCloseSearch({bool close = false}) {
+    setState(() {
+      _query = '';
+      _searchController.clear();
+      _isSearching = close ? false : _isSearching;
+    });
+    if (close) {
+      _searchFocusNode.unfocus();
+    } else {
+      _searchFocusNode.requestFocus();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pairs = _buildPairs(messages);
+    final pairs = _filteredPairs(_buildPairs(widget.messages));
+    final searchWidth = min(MediaQuery.of(context).size.width * 0.6, 260.0);
 
     return SafeArea(
       top: false,
@@ -55,10 +105,15 @@ class _MiniMapSheet extends StatelessWidget {
                   children: [
                     Icon(Lucide.Map, size: 18, color: cs.primary),
                     const SizedBox(width: 8),
-                    Text(
-                      AppLocalizations.of(context)!.miniMapTitle,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context)!.miniMapTitle,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    _buildSearchToggle(context, searchWidth),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -85,6 +140,92 @@ class _MiniMapSheet extends StatelessWidget {
     return Container(width: 10, height: 10, decoration: BoxDecoration(color: c.withOpacity(0.8), shape: BoxShape.circle));
   }
 
+  Widget _buildSearchToggle(BuildContext context, double maxWidth) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.5 : 0.8);
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        transitionBuilder: (child, animation) {
+          return SizeTransition(
+            sizeFactor: animation,
+            axis: Axis.horizontal,
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+        child: _isSearching
+            ? ConstrainedBox(
+                key: const ValueKey('miniMapSearchField'),
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          onChanged: (value) => setState(() => _query = value),
+                          textInputAction: TextInputAction.search,
+                          textAlignVertical: TextAlignVertical.center,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: MaterialLocalizations.of(context).searchFieldLabel,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            filled: true,
+                            fillColor: cs.surfaceVariant.withOpacity(isDark ? 0.35 : 0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: cs.primary),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 36,
+                      width: 36,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.7)),
+                        onPressed: () => _clearOrCloseSearch(close: true),
+                        tooltip: MaterialLocalizations.of(context).closeButtonLabel,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : SizedBox(
+                key: const ValueKey('miniMapSearchButton'),
+                height: 36,
+                width: 36,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: Icon(Lucide.Search, size: 20, color: cs.onSurface),
+                  onPressed: _startSearch,
+                  tooltip: MaterialLocalizations.of(context).searchFieldLabel,
+                ),
+              ),
+      ),
+    );
+  }
+
   List<_QaPair> _buildPairs(List<ChatMessage> items) {
     final pairs = <_QaPair>[];
     ChatMessage? pendingUser;
@@ -109,6 +250,16 @@ class _MiniMapSheet extends StatelessWidget {
       pairs.add(_QaPair(user: pendingUser, assistant: null));
     }
     return pairs;
+  }
+
+  List<_QaPair> _filteredPairs(List<_QaPair> base) {
+    final needle = _query.trim().toLowerCase();
+    if (needle.isEmpty) return base;
+    return base.where((pair) {
+      final user = pair.user?.content.toLowerCase() ?? '';
+      final asst = pair.assistant?.content.toLowerCase() ?? '';
+      return user.contains(needle) || asst.contains(needle);
+    }).toList();
   }
 }
 
