@@ -186,6 +186,9 @@ Future<File?> _renderAndSaveMessageImage(
     await preRenderMermaidCodesForExport(context, codes);
   } catch (_) {}
 
+  // Desktop uses larger width and lower pixel ratio for better proportions
+  final bool isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
   final content = ExportCaptureScope(
     enabled: true,
     child: _ExportedMessageCard(
@@ -195,9 +198,15 @@ Future<File?> _renderAndSaveMessageImage(
     chatFontScale: settings.chatFontScale,
     showThinkingAndToolCards: showThinkingAndToolCards,
     expandThinkingContent: expandThinkingContent,
+    isDesktop: isDesktop,
     ),
   );
-  return _renderWidgetDirectly(context, content);
+  return _renderWidgetDirectly(
+    context,
+    content,
+    width: isDesktop ? 720 : 480,
+    pixelRatio: isDesktop ? 2.0 : 3.0,
+  );
 }
 
 Rect _shareAnchorRect(BuildContext context) {
@@ -232,6 +241,9 @@ Future<File?> _renderAndSaveChatImage(
     await preRenderMermaidCodesForExport(context, codes);
   } catch (_) {}
 
+  // Desktop uses larger width and lower pixel ratio for better proportions
+  final bool isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
   final content = ExportCaptureScope(
     enabled: true,
     child: _ExportedChatImage(
@@ -242,9 +254,15 @@ Future<File?> _renderAndSaveChatImage(
     timestamp: conversation.updatedAt,
     showThinkingAndToolCards: showThinkingAndToolCards,
     expandThinkingContent: expandThinkingContent,
+    isDesktop: isDesktop,
     ),
   );
-  return _renderWidgetDirectly(context, content);
+  return _renderWidgetDirectly(
+    context,
+    content,
+    width: isDesktop ? 720 : 480,
+    pixelRatio: isDesktop ? 2.0 : 3.0,
+  );
 }
 
 // New direct rendering approach without pagination
@@ -1954,6 +1972,7 @@ class _ExportedMessageCard extends StatelessWidget {
     required this.chatFontScale,
     this.showThinkingAndToolCards = false,
     this.expandThinkingContent = false,
+    this.isDesktop = false,
   });
   final ChatMessage message;
   final String title;
@@ -1961,6 +1980,7 @@ class _ExportedMessageCard extends StatelessWidget {
   final double chatFontScale;
   final bool showThinkingAndToolCards;
   final bool expandThinkingContent;
+  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
@@ -1970,6 +1990,11 @@ class _ExportedMessageCard extends StatelessWidget {
     final bubbleBg = cs.primary.withOpacity(0.08);
     final bubbleFg = cs.onSurface;
     final time = DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp);
+
+    // Desktop uses smaller font sizes for better proportions
+    final double titleFontSize = isDesktop ? 15.0 : 18.0;
+    final double timeFontSize = isDesktop ? 10.0 : 12.0;
+    final double contentFontSize = isDesktop ? 13.0 : 15.7;
 
     // Extract thinking content and tool parts if enabled
     List<Map<String, dynamic>> reasoningSegments = [];
@@ -2043,10 +2068,14 @@ class _ExportedMessageCard extends StatelessWidget {
 
     final Widget contentWidget = (mdText.toString().trim().isNotEmpty)
         ? DefaultTextStyle.merge(
-            style: const TextStyle(fontSize: 15.7, height: 1.5),
+            style: TextStyle(fontSize: contentFontSize, height: 1.5),
             child: MarkdownWithCodeHighlight(text: mdText.toString()),
           )
         : Text('—', style: TextStyle(color: bubbleFg.withOpacity(0.5)));
+
+    // Desktop uses smaller margins and paddings
+    final double containerMargin = isDesktop ? 12.0 : 16.0;
+    final double containerPadding = isDesktop ? 12.0 : 16.0;
 
     return MediaQuery(
       // Respect chat font scale for export rendering
@@ -2054,8 +2083,8 @@ class _ExportedMessageCard extends StatelessWidget {
         textScaleFactor: MediaQuery.of(context).textScaleFactor * chatFontScale,
       ),
       child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(containerMargin),
+        padding: EdgeInsets.all(containerPadding),
         decoration: BoxDecoration(
           color: cs.background,
           borderRadius: BorderRadius.circular(16),
@@ -2068,17 +2097,17 @@ class _ExportedMessageCard extends StatelessWidget {
             // Title (no icon, no bordered container)
             Text(
               title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: headerFg.withOpacity(0.95)),
+              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: headerFg.withOpacity(0.95)),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
             const SizedBox(height: 2),
             // Timestamp under title, aligned with title
-            Text(time, style: TextStyle(fontSize: 12, color: headerFg.withOpacity(0.6))),
-            const SizedBox(height: 12),
+            Text(time, style: TextStyle(fontSize: timeFontSize, color: headerFg.withOpacity(0.6))),
+            SizedBox(height: isDesktop ? 10.0 : 12.0),
             // Message body styled like chat
             if (isAssistant) ...[
-              _AssistantHeader(message: message),
+              _AssistantHeader(message: message, isDesktop: isDesktop),
               const SizedBox(height: 8),
               // Build mixed content: reasoning segments and tool cards按 toolStartIndex 混合显示
               ...() {
@@ -2094,8 +2123,9 @@ class _ExportedMessageCard extends StatelessWidget {
                         thinkingText: text,
                         cs: cs,
                         expanded: expandThinkingContent,
+                        isDesktop: isDesktop,
                       ));
-                      mixedContent.add(const SizedBox(height: 8));
+                      mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                     }
 
                     // Determine tool range mapped to this segment: [start, end)
@@ -2112,16 +2142,16 @@ class _ExportedMessageCard extends StatelessWidget {
                     for (int k = start; k < clampedEnd; k++) {
                       // Hide builtin_search tool cards
                       if (toolParts[k].toolName == 'builtin_search') continue;
-                      mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs));
-                      mixedContent.add(const SizedBox(height: 8));
+                      mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop));
+                      mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                     }
                   }
                 } else if (toolParts.isNotEmpty) {
                   // No reasoning segments but have tool cards - show all tool cards
                   for (final toolPart in toolParts) {
                     if (toolPart.toolName == 'builtin_search') continue;
-                    mixedContent.add(_ExportToolCard(part: toolPart, cs: cs));
-                    mixedContent.add(const SizedBox(height: 8));
+                    mixedContent.add(_ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop));
+                    mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                   }
                 }
                 return mixedContent;
@@ -2131,20 +2161,20 @@ class _ExportedMessageCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 680),
+                  constraints: BoxConstraints(maxWidth: isDesktop ? 600.0 : 680.0),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(isDesktop ? 10.0 : 12.0),
                     decoration: BoxDecoration(
                       color: bubbleBg,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(isDesktop ? 12.0 : 16.0),
                     ),
                     child: contentWidget,
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            _ExportDisclaimer(),
+            SizedBox(height: isDesktop ? 12.0 : 16.0),
+            _ExportDisclaimer(isDesktop: isDesktop),
           ],
         ),
       ),
@@ -2172,6 +2202,7 @@ class _ExportedChatImage extends StatelessWidget {
     required this.timestamp,
     this.showThinkingAndToolCards = false,
     this.expandThinkingContent = false,
+    this.isDesktop = false,
   });
   final String conversationTitle;
   final ColorScheme cs;
@@ -2180,20 +2211,27 @@ class _ExportedChatImage extends StatelessWidget {
   final DateTime timestamp;
   final bool showThinkingAndToolCards;
   final bool expandThinkingContent;
+  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
+    // Desktop uses smaller font sizes for better proportions
+    final double titleFontSize = isDesktop ? 15.0 : 18.0;
+    final double timeFontSize = isDesktop ? 10.0 : 12.0;
+    final double containerMargin = isDesktop ? 5.0 : 6.0;
+    final double containerPadding = isDesktop ? 5.0 : 6.0;
+
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(
         textScaleFactor: MediaQuery.of(context).textScaleFactor * chatFontScale,
       ),
       child: ClipRect(
         child: Container(
-          margin: const EdgeInsets.all(6),
-          padding: const EdgeInsets.all(6),
+          margin: EdgeInsets.all(containerMargin),
+          padding: EdgeInsets.all(containerPadding),
           decoration: BoxDecoration(
             color: cs.background,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isDesktop ? 12.0 : 16.0),
             // removed outer border per UX
           ),
           child: Column(
@@ -2203,7 +2241,7 @@ class _ExportedChatImage extends StatelessWidget {
             // Title (no icon, no bordered container)
             Text(
               conversationTitle,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface.withOpacity(0.95)),
+              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: cs.onSurface.withOpacity(0.95)),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -2211,20 +2249,21 @@ class _ExportedChatImage extends StatelessWidget {
             // Timestamp under title, aligned with title
             Text(
               DateFormat('yyyy-MM-dd HH:mm').format(timestamp),
-              style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6)),
+              style: TextStyle(fontSize: timeFontSize, color: cs.onSurface.withOpacity(0.6)),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isDesktop ? 10.0 : 12.0),
             for (final m in messages) ...[
               _ExportedBubble(
                 message: m,
                 cs: cs,
                 showThinkingAndToolCards: showThinkingAndToolCards,
                 expandThinkingContent: expandThinkingContent,
+                isDesktop: isDesktop,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isDesktop ? 6.0 : 8.0),
             ],
-            const SizedBox(height: 12),
-            _ExportDisclaimer(),
+            SizedBox(height: isDesktop ? 10.0 : 12.0),
+            _ExportDisclaimer(isDesktop: isDesktop),
             ],
           ),
         ),
@@ -2239,17 +2278,22 @@ class _ExportedBubble extends StatelessWidget {
     required this.cs,
     this.showThinkingAndToolCards = false,
     this.expandThinkingContent = false,
+    this.isDesktop = false,
   });
   final ChatMessage message;
   final ColorScheme cs;
   final bool showThinkingAndToolCards;
   final bool expandThinkingContent;
+  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
     final isAssistant = message.role == 'assistant';
     final bubbleBg = cs.primary.withOpacity(0.08);
     final bubbleFg = cs.onSurface;
+
+    // Desktop uses smaller font sizes for better proportions
+    final double contentFontSize = isDesktop ? 13.0 : 15.7;
 
     // Extract thinking content and tool parts if enabled
     List<Map<String, dynamic>> reasoningSegments = [];
@@ -2322,7 +2366,7 @@ class _ExportedBubble extends StatelessWidget {
     }
     final Widget contentWidget = (mdText.toString().trim().isNotEmpty)
         ? DefaultTextStyle.merge(
-            style: const TextStyle(fontSize: 15.7, height: 1.5),
+            style: TextStyle(fontSize: contentFontSize, height: 1.5),
             child: MarkdownWithCodeHighlight(text: mdText.toString()),
           )
         : Text('—', style: TextStyle(color: bubbleFg.withOpacity(0.5)));
@@ -2342,8 +2386,9 @@ class _ExportedBubble extends StatelessWidget {
               thinkingText: text,
               cs: cs,
               expanded: expandThinkingContent,
+              isDesktop: isDesktop,
             ));
-            mixedContent.add(const SizedBox(height: 8));
+            mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
           }
 
           // Determine tool range mapped to this segment: [start, end)
@@ -2360,28 +2405,28 @@ class _ExportedBubble extends StatelessWidget {
           for (int k = start; k < clampedEnd; k++) {
             // Hide builtin_search tool cards
             if (toolParts[k].toolName == 'builtin_search') continue;
-            mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs));
-            mixedContent.add(const SizedBox(height: 8));
+            mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop));
+            mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
           }
         }
       } else if (toolParts.isNotEmpty) {
         // No reasoning segments but have tool cards - show all tool cards
         for (final toolPart in toolParts) {
           if (toolPart.toolName == 'builtin_search') continue;
-          mixedContent.add(_ExportToolCard(part: toolPart, cs: cs));
-          mixedContent.add(const SizedBox(height: 8));
+          mixedContent.add(_ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop));
+          mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
         }
       }
 
       return Align(
         alignment: Alignment.centerLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 780),
+          constraints: BoxConstraints(maxWidth: isDesktop ? 680.0 : 780.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _AssistantHeader(message: message),
-              const SizedBox(height: 8),
+              _AssistantHeader(message: message, isDesktop: isDesktop),
+              SizedBox(height: isDesktop ? 6.0 : 8.0),
               ...mixedContent,
               contentWidget,
             ],
@@ -2392,12 +2437,12 @@ class _ExportedBubble extends StatelessWidget {
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 680),
+        constraints: BoxConstraints(maxWidth: isDesktop ? 600.0 : 680.0),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(isDesktop ? 10.0 : 12.0),
           decoration: BoxDecoration(
             color: bubbleBg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isDesktop ? 12.0 : 16.0),
           ),
           child: contentWidget,
         ),
@@ -2419,8 +2464,9 @@ class _ExportedBubble extends StatelessWidget {
 
 // Assistant header (icon + name), mirroring chat style
 class _AssistantHeader extends StatelessWidget {
-  const _AssistantHeader({required this.message});
+  const _AssistantHeader({required this.message, this.isDesktop = false});
   final ChatMessage message;
+  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
@@ -2434,18 +2480,22 @@ class _AssistantHeader extends StatelessWidget {
       return _modelDisplayName(context, message) ?? AppLocalizations.of(context)!.messageExportSheetAssistant;
     }();
 
+    // Desktop uses smaller icon sizes
+    final double iconSize = isDesktop ? 22.0 : 28.0;
+    final double nameFontSize = isDesktop ? 11.0 : 13.0;
+
     final Widget leading = useAssist
-        ? _AssistantAvatarSmall(assistant: assistant)
-        : _ModelIconSmall(providerKey: message.providerId, modelId: message.modelId);
+        ? _AssistantAvatarSmall(assistant: assistant, size: iconSize)
+        : _ModelIconSmall(providerKey: message.providerId, modelId: message.modelId, size: iconSize);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         leading,
-        const SizedBox(width: 8),
+        SizedBox(width: isDesktop ? 6.0 : 8.0),
         Text(
           name,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: cs.onSurface.withOpacity(0.7)),
+          style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.w500, color: cs.onSurface.withOpacity(0.7)),
         ),
       ],
     );
@@ -2453,20 +2503,20 @@ class _AssistantHeader extends StatelessWidget {
 }
 
 class _ModelIconSmall extends StatelessWidget {
-  const _ModelIconSmall({required this.providerKey, required this.modelId});
+  const _ModelIconSmall({required this.providerKey, required this.modelId, this.size = 28.0});
   final String? providerKey;
   final String? modelId;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    const double size = 28;
     if (providerKey == null || modelId == null) {
       return Container(
         width: size,
         height: size,
         decoration: BoxDecoration(color: cs.secondary.withOpacity(0.1), shape: BoxShape.circle),
-        child: Icon(Lucide.Bot, size: 18, color: cs.secondary),
+        child: Icon(Lucide.Bot, size: size * 0.64, color: cs.secondary),
       );
     }
     String? asset = BrandAssets.assetForName(modelId!);
@@ -2499,14 +2549,14 @@ class _ModelIconSmall extends StatelessWidget {
 }
 
 class _AssistantAvatarSmall extends StatelessWidget {
-  const _AssistantAvatarSmall({required this.assistant});
+  const _AssistantAvatarSmall({required this.assistant, this.size = 28.0});
   final Assistant? assistant;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final av = (assistant?.avatar ?? '').trim();
-    const double size = 28;
     if (av.isNotEmpty) {
       if (av.startsWith('http')) {
         return FutureBuilder<String?>(
@@ -2534,7 +2584,7 @@ class _AssistantAvatarSmall extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(color: cs.primary.withOpacity(0.1), shape: BoxShape.circle),
         alignment: Alignment.center,
-        child: Text(av.characters.take(1).toString(), style: const TextStyle(fontSize: 16)),
+        child: Text(av.characters.take(1).toString(), style: TextStyle(fontSize: size * 0.57)),
       );
     }
     return _assistantInitial(cs, assistant?.name ?? '');
@@ -2543,26 +2593,30 @@ class _AssistantAvatarSmall extends StatelessWidget {
   Widget _assistantInitial(ColorScheme cs, String name) {
     final ch = name.trim().isNotEmpty ? name.characters.first.toUpperCase() : 'A';
     return Container(
-      width: 28,
-      height: 28,
+      width: size,
+      height: size,
       decoration: BoxDecoration(color: cs.primary.withOpacity(0.1), shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: Text(ch, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: 14)),
+      child: Text(ch, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.5)),
     );
   }
 }
 
 class _ExportDisclaimer extends StatelessWidget {
+  const _ExportDisclaimer({this.isDesktop = false});
+  final bool isDesktop;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final text = AppLocalizations.of(context)!.exportDisclaimerAiGenerated;
+    final double fontSize = isDesktop ? 10.0 : 12.0;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 6),
+        padding: EdgeInsets.only(top: isDesktop ? 3.0 : 4.0, bottom: isDesktop ? 4.0 : 6.0),
         child: Text(
           text,
-          style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.5)),
+          style: TextStyle(fontSize: fontSize, color: cs.onSurface.withOpacity(0.5)),
           textAlign: TextAlign.center,
         ),
       ),
@@ -2680,10 +2734,12 @@ class _ExportThinkingCard extends StatelessWidget {
     required this.thinkingText,
     required this.cs,
     required this.expanded,
+    this.isDesktop = false,
   });
   final String thinkingText;
   final ColorScheme cs;
   final bool expanded;
+  final bool isDesktop;
 
   String _sanitizeThinkingText(String s) {
     // 统一换行
@@ -2712,59 +2768,59 @@ class _ExportThinkingCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cleanedText = _sanitizeThinkingText(thinkingText);
 
+    // Desktop uses smaller sizes
+    final double iconSize = isDesktop ? 14.0 : 18.0;
+    final double headerFontSize = isDesktop ? 11.0 : 13.0;
+    final double contentFontSize = isDesktop ? 10.5 : 12.5;
+    final double borderRadius = isDesktop ? 12.0 : 16.0;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: isDesktop ? 8.0 : 10.0, vertical: isDesktop ? 6.0 : 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: isDesktop ? 6.0 : 8.0, vertical: isDesktop ? 4.0 : 6.0),
             child: Row(
               children: [
                 SvgPicture.asset(
                   'assets/icons/deepthink.svg',
-                  width: 18,
-                  height: 18,
+                  width: iconSize,
+                  height: iconSize,
                   colorFilter: ColorFilter.mode(cs.secondary, BlendMode.srcIn),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: isDesktop ? 6.0 : 8.0),
                 Text(
                   l10n.chatMessageWidgetDeepThinking,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: headerFontSize,
                     fontWeight: FontWeight.w700,
                     color: cs.secondary,
                   ),
                 ),
-                // const Spacer(),
-                // Icon(
-                //   Lucide.ChevronRight,
-                //   size: 18,
-                //   color: cs.secondary,
-                // ),
               ],
             ),
           ),
           // Content (if expanded)
           if (expanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+              padding: EdgeInsets.fromLTRB(isDesktop ? 6.0 : 8.0, 2, isDesktop ? 6.0 : 8.0, isDesktop ? 4.0 : 6.0),
               child: Text(
                 cleanedText,
-                style: const TextStyle(
-                  fontSize: 12.5,
+                style: TextStyle(
+                  fontSize: contentFontSize,
                   height: 1.32,
                   leadingDistribution: TextLeadingDistribution.proportional,
                 ),
-                strutStyle: const StrutStyle(
+                strutStyle: StrutStyle(
                   forceStrutHeight: true,
-                  fontSize: 12.5,
+                  fontSize: contentFontSize,
                   height: 1.32,
                   leading: 0,
                 ),
@@ -2784,9 +2840,10 @@ class _ExportThinkingCard extends StatelessWidget {
 
 // Tool card widget for export
 class _ExportToolCard extends StatelessWidget {
-  const _ExportToolCard({required this.part, required this.cs});
+  const _ExportToolCard({required this.part, required this.cs, this.isDesktop = false});
   final ToolUIPart part;
   final ColorScheme cs;
+  final bool isDesktop;
 
   IconData _iconFor(String name) {
     switch (name) {
@@ -2829,28 +2886,33 @@ class _ExportToolCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withOpacity(isDark ? 0.25 : 0.30);
 
+    // Desktop uses smaller sizes
+    final double iconSize = isDesktop ? 14.0 : 18.0;
+    final double fontSize = isDesktop ? 11.0 : 13.0;
+    final double borderRadius = isDesktop ? 12.0 : 16.0;
+
     return Container(
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      padding: EdgeInsets.fromLTRB(isDesktop ? 12.0 : 16.0, isDesktop ? 10.0 : 12.0, isDesktop ? 10.0 : 12.0, isDesktop ? 10.0 : 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 18,
-            height: 18,
+            width: iconSize,
+            height: iconSize,
             child: Center(
-              child: Icon(_iconFor(part.toolName), size: 18, color: cs.secondary),
+              child: Icon(_iconFor(part.toolName), size: iconSize, color: cs.secondary),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: isDesktop ? 8.0 : 10.0),
           Expanded(
             child: Text(
               _titleFor(context, part.toolName, part.arguments),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w700,
                 color: cs.secondary,
               ),
