@@ -1460,7 +1460,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           _loadVersionSelections();
           _restoreMessageUiState();
         });
-        _scrollToBottomSoon();
+        _scrollToBottomSoon(animate: false);
       }
     }
   }
@@ -1491,7 +1491,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         });
         // Ensure list lays out, then jump to bottom while hidden
         try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
-        _scrollToBottom();
+        _scrollToBottom(animate: false);
       }
     }
     if (mounted && !_isDesktopPlatform) {
@@ -1852,7 +1852,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
       }
     } catch (_) {}
-    _scrollToBottomSoon();
+    _scrollToBottomSoon(animate: false);
   }
 
   // Persist latest in-flight assistant message content and reasoning of the current conversation
@@ -4151,9 +4151,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animate = true}) {
     _autoStickToBottom = true;
-    _scheduleAutoScrollToBottom(force: true);
+    _scheduleAutoScrollToBottom(force: true, animate: animate);
   }
 
   void _scheduleAutoScrollToBottom({required bool force, bool animate = true}) {
@@ -4179,6 +4179,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (!_autoStickToBottom && !_isNearBottom()) return;
       }
 
+      // Forced scrolls should jump immediately (no animation) to avoid visible slide when switching topics
+      final bool doAnimate = (!force) && animate;
       // Prevent using controller while it is still attached to old/new list simultaneously
       if (_scrollController.positions.length != 1) {
         // Try again after microtask when the previous list detaches
@@ -4194,7 +4196,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
         return;
       }
-      if (!animate) {
+      if (!doAnimate) {
         pos.jumpTo(max);
       } else {
         final durationMs = distance < 36 ? 120 : distance < 140 ? 180 : 240;
@@ -4220,11 +4222,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // Force scroll after rebuilds when switching topics/conversations
-  void _forceScrollToBottomSoon() {
+  void _forceScrollToBottomSoon({bool animate = true}) {
     _isUserScrolling = false;
     _userScrollTimer?.cancel();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    Future.delayed(_postSwitchScrollDelay, _scrollToBottom);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: animate));
+    Future.delayed(_postSwitchScrollDelay, () => _scrollToBottom(animate: animate));
   }
 
   void _measureInputBar() {
@@ -4241,9 +4243,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // Ensure scroll reaches bottom even after widget tree transitions
-  void _scrollToBottomSoon() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    Future.delayed(const Duration(milliseconds: 120), _scrollToBottom);
+  void _scrollToBottomSoon({bool animate = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: animate));
+    Future.delayed(const Duration(milliseconds: 120), () => _scrollToBottom(animate: animate));
   }
 
   Future<void> _showQuickPhraseMenu() async {
@@ -4844,7 +4846,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               await _createNewConversationAnimated();
               if (mounted) {
                 // Close drawer if open and scroll to bottom (fresh convo)
-                _forceScrollToBottomSoon();
+                _forceScrollToBottomSoon(animate: false);
               }
             },
             icon: Lucide.MessageCirclePlus,
@@ -5257,7 +5259,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       _restoreMessageUiState();
                                     });
                                     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
-                                    _scrollToBottom();
+                                    _scrollToBottom(animate: false);
                                     if (!_isDesktopPlatform) {
                                       await _convoFadeController.forward();
                                     }
@@ -5970,7 +5972,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   icon: Lucide.MessageCirclePlus,
                   onTap: () async {
                     await _createNewConversationAnimated();
-                    if (mounted) _forceScrollToBottomSoon();
+                    if (mounted) _forceScrollToBottomSoon(animate: false);
                   },
                 ),
                 const SizedBox(width: 6),
@@ -6313,7 +6315,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       _restoreMessageUiState();
                                     });
                                     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
-                                    _scrollToBottom();
+                                    _scrollToBottom(animate: false);
                                     if (!_isDesktopPlatform) {
                                       await _convoFadeController.forward();
                                     }
