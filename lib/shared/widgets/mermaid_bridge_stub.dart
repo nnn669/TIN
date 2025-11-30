@@ -4,15 +4,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart' show rootBundle, PlatformException, MissingPluginException;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as winweb;
 import 'mermaid_cache.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
 class MermaidViewHandle {
   final Widget widget;
@@ -580,36 +578,19 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
         await File(savePath).writeAsBytes(bytes);
         return true;
       }
-      // Mobile: keep sharing behavior
-      final dir = await getTemporaryDirectory();
-      final filename = 'mermaid_${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File('${dir.path}/$filename');
-      await file.writeAsBytes(bytes);
-      Rect rect;
-      final overlay = Overlay.of(context);
-      final ro = overlay?.context.findRenderObject();
-      if (ro is RenderBox && ro.hasSize) {
-        final size = ro.size;
-        final centerGlobal = ro.localToGlobal(Offset(size.width / 2, size.height / 2));
-        rect = Rect.fromCenter(center: centerGlobal, width: 1, height: 1);
-      } else {
-        final size = MediaQuery.of(context).size;
-        rect = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
+      // Mobile: save directly to gallery
+      final name = 'kelivo-mermaid-${DateTime.now().millisecondsSinceEpoch}';
+      final result = await ImageGallerySaverPlus.saveImage(
+        bytes,
+        quality: 100,
+        name: name,
+      );
+      if (result is Map) {
+        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+        final filePath = result['filePath'] ?? result['file_path'];
+        return isSuccess || (filePath is String && filePath.isNotEmpty);
       }
-      try {
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'image/png', name: filename)],
-          text: 'Mermaid diagram',
-          sharePositionOrigin: rect,
-        );
-        return true;
-      } on MissingPluginException catch (_) {
-        final res = await OpenFilex.open(file.path);
-        return res.type == ResultType.done;
-      } on PlatformException catch (_) {
-        final res = await OpenFilex.open(file.path);
-        return res.type == ResultType.done;
-      }
+      return false;
     } catch (_) {
       return false;
     } finally {

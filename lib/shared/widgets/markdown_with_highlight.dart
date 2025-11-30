@@ -1556,6 +1556,14 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                 message: l10n.mermaidExportFailed,
                                 type: NotificationType.error,
                               );
+                            } else if (Platform.isAndroid || Platform.isIOS) {
+                              showAppSnackBar(
+                                context,
+                                message: AppLocalizations.of(
+                                  context,
+                                )!.imageViewerPageSaveSuccess,
+                                type: NotificationType.success,
+                              );
                             }
                           },
                           splashColor: Platform.isIOS
