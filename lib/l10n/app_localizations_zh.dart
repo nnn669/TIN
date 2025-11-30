@@ -2596,6 +2596,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageHapticsOnGenerateSubtitle => '生成消息时启用触觉反馈';
 
   @override
+  String get displaySettingsPageNewChatAfterDeleteTitle => '删除话题后新建话题';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
@@ -5877,6 +5880,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageHapticsOnGenerateSubtitle => '生成消息时启用触觉反馈';
 
   @override
+  String get displaySettingsPageNewChatAfterDeleteTitle => '删除话题后新建话题';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
@@ -9154,6 +9160,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageHapticsOnGenerateSubtitle => '生成訊息時啟用觸覺回饋';
+
+  @override
+  String get displaySettingsPageNewChatAfterDeleteTitle => '刪除話題後新建話題';
 
   @override
   String get displaySettingsPageNewChatOnLaunchTitle => '啟動時新建對話';

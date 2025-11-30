@@ -4519,6 +4519,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowShowChatListDate(),
                   _RowDivider(),
+                  _ToggleRowNewChatAfterDelete(),
+                  _RowDivider(),
                   _ToggleRowNewChatOnLaunch(),
                 ],
               ),
@@ -6627,6 +6629,20 @@ class _ToggleRowShowChatListDate extends StatelessWidget {
       label: l10n.displaySettingsPageShowChatListDateTitle,
       value: sp.showChatListDate,
       onChanged: (v) => context.read<SettingsProvider>().setShowChatListDate(v),
+    );
+  }
+}
+
+class _ToggleRowNewChatAfterDelete extends StatelessWidget {
+  const _ToggleRowNewChatAfterDelete();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageNewChatAfterDeleteTitle,
+      value: sp.newChatAfterDelete,
+      onChanged: (v) => context.read<SettingsProvider>().setNewChatAfterDelete(v),
     );
   }
 }

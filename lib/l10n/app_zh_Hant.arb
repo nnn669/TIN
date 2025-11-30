@@ -839,6 +839,7 @@
   "displaySettingsPageHapticsOnCardTapTitle": "卡片點擊觸覺回饋",
   "displaySettingsPageHapticsOnGenerateTitle": "訊息生成觸覺回饋",
   "displaySettingsPageHapticsOnGenerateSubtitle": "生成訊息時啟用觸覺回饋",
+  "displaySettingsPageNewChatAfterDeleteTitle": "刪除話題後新建話題",
   "displaySettingsPageNewChatOnLaunchTitle": "啟動時新建對話",
   "displaySettingsPageAutoSwitchTopicsTitle": "自動切換話題",
   "desktopDisplaySettingsTopicPositionTitle": "主題位置",

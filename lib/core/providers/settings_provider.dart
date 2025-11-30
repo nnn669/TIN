@@ -48,6 +48,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayHapticsOnCardTapKey = 'display_haptics_on_card_tap_v1';
   static const String _displayShowAppUpdatesKey = 'display_show_app_updates_v1';
   static const String _displayNewChatOnLaunchKey = 'display_new_chat_on_launch_v1';
+  static const String _displayNewChatAfterDeleteKey = 'display_new_chat_after_delete_v1';
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
   static const String _displayAutoScrollIdleSecondsKey = 'display_auto_scroll_idle_seconds_v1';
   static const String _displayChatBackgroundMaskStrengthKey = 'display_chat_background_mask_strength_v1';
@@ -312,6 +313,7 @@ class SettingsProvider extends ChangeNotifier {
     Haptics.setEnabled(_hapticsGlobalEnabled);
     _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
     _newChatOnLaunch = prefs.getBool(_displayNewChatOnLaunchKey) ?? true;
+    _newChatAfterDelete = prefs.getBool(_displayNewChatAfterDeleteKey) ?? false;
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
     _autoScrollIdleSeconds = prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
     _chatBackgroundMaskStrength = prefs.getDouble(_displayChatBackgroundMaskStrengthKey) ?? 1.0;
@@ -1514,6 +1516,17 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayNewChatOnLaunchKey, v);
   }
 
+  // Display: create a new chat after deleting one
+  bool _newChatAfterDelete = false;
+  bool get newChatAfterDelete => _newChatAfterDelete;
+  Future<void> setNewChatAfterDelete(bool v) async {
+    if (_newChatAfterDelete == v) return;
+    _newChatAfterDelete = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayNewChatAfterDeleteKey, v);
+  }
+
   // Display: chat font scale (0.8 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
@@ -1841,6 +1854,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._hapticsOnCardTap = _hapticsOnCardTap;
     copy._showAppUpdates = _showAppUpdates;
     copy._newChatOnLaunch = _newChatOnLaunch;
+    copy._newChatAfterDelete = _newChatAfterDelete;
     copy._chatFontScale = _chatFontScale;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
     copy._enableDollarLatex = _enableDollarLatex;

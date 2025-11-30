@@ -305,20 +305,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
             danger: true,
             onTap: () async {
               final deletingCurrent = chatService.currentConversationId == chat.id;
-              // Pre-compute next recent conversation for current assistant
-              String? nextId;
-              try {
-                final ap = context.read<AssistantProvider>();
-                final currentAid = ap.currentAssistantId;
-                if (currentAid != null) {
-                  final all = chatService.getAllConversations();
-                  final candidates = all
-                      .where((c) => c.assistantId == currentAid && c.id != chat.id)
-                      .toList()
-                    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-                  if (candidates.isNotEmpty) nextId = candidates.first.id;
-                }
-              } catch (_) {}
+              final nextId = _nextRecentConversation(chatService, chat.id);
               await chatService.deleteConversation(chat.id);
               showAppSnackBar(
                 context,
@@ -326,13 +313,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                 type: NotificationType.success,
                 duration: const Duration(seconds: 3),
               );
-              if (deletingCurrent || chatService.currentConversationId == null) {
-                if (nextId != null) {
-                  widget.onSelectConversation?.call(nextId!);
-                } else {
-                  widget.onNewConversation?.call();
-                }
-              }
+              _handlePostDeleteNavigation(chatService: chatService, deletingCurrent: deletingCurrent, nextConversationId: nextId);
               Navigator.of(context).maybePop();
             },
           ),
@@ -461,19 +442,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                       color: Colors.redAccent,
                       action: () async {
                         final deletingCurrent = chatService.currentConversationId == chat.id;
-                        String? nextId;
-                        try {
-                          final ap = context.read<AssistantProvider>();
-                          final currentAid = ap.currentAssistantId;
-                          if (currentAid != null) {
-                            final all = chatService.getAllConversations();
-                            final candidates = all
-                                .where((c) => c.assistantId == currentAid && c.id != chat.id)
-                                .toList()
-                              ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-                            if (candidates.isNotEmpty) nextId = candidates.first.id;
-                          }
-                        } catch (_) {}
+                        final nextId = _nextRecentConversation(chatService, chat.id);
                         await chatService.deleteConversation(chat.id);
                         showAppSnackBar(
                           context,
@@ -481,13 +450,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                           type: NotificationType.success,
                           duration: const Duration(seconds: 3),
                         );
-                        if (deletingCurrent || chatService.currentConversationId == null) {
-                          if (nextId != null) {
-                            widget.onSelectConversation?.call(nextId!);
-                          } else {
-                            widget.onNewConversation?.call();
-                          }
-                        }
+                        _handlePostDeleteNavigation(chatService: chatService, deletingCurrent: deletingCurrent, nextConversationId: nextId);
                         Navigator.of(context).maybePop();
                       },
                     ),
@@ -500,6 +463,47 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
         );
       },
     );
+  }
+
+  String? _nextRecentConversation(ChatService chatService, String excludeId) {
+    try {
+      final ap = context.read<AssistantProvider>();
+      final currentAid = ap.currentAssistantId;
+      if (currentAid == null) return null;
+      final candidates = chatService
+          .getAllConversations()
+          .where((c) => c.assistantId == currentAid && c.id != excludeId)
+          .toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      if (candidates.isEmpty) return null;
+      return candidates.first.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _handlePostDeleteNavigation({
+    required ChatService chatService,
+    required bool deletingCurrent,
+    required String? nextConversationId,
+  }) {
+    if (!(deletingCurrent || chatService.currentConversationId == null)) return;
+    final preferNewChat = context.read<SettingsProvider>().newChatAfterDelete;
+    if (preferNewChat && widget.onNewConversation != null) {
+      widget.onNewConversation!.call();
+      return;
+    }
+    if (!preferNewChat && nextConversationId != null) {
+      widget.onSelectConversation?.call(nextConversationId);
+      return;
+    }
+    if (widget.onNewConversation != null) {
+      widget.onNewConversation!.call();
+      return;
+    }
+    if (nextConversationId != null) {
+      widget.onSelectConversation?.call(nextConversationId);
+    }
   }
 
   Future<void> _renameChat(BuildContext context, ChatItem chat) async {

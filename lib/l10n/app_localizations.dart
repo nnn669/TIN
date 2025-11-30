@@ -5117,6 +5117,12 @@ abstract class AppLocalizations {
   /// **'Enable haptic feedback during generation'**
   String get displaySettingsPageHapticsOnGenerateSubtitle;
 
+  /// No description provided for @displaySettingsPageNewChatAfterDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat after deleting topic'**
+  String get displaySettingsPageNewChatAfterDeleteTitle;
+
   /// No description provided for @displaySettingsPageNewChatOnLaunchTitle.
   ///
   /// In en, this message translates to:

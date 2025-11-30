@@ -853,6 +853,7 @@
   "displaySettingsPageHapticsOnCardTapTitle": "卡片触觉反馈",
   "displaySettingsPageHapticsOnGenerateTitle": "消息生成触觉反馈",
   "displaySettingsPageHapticsOnGenerateSubtitle": "生成消息时启用触觉反馈",
+  "displaySettingsPageNewChatAfterDeleteTitle": "删除话题后新建话题",
   "displaySettingsPageNewChatOnLaunchTitle": "启动时新建对话",
   "displaySettingsPageAutoSwitchTopicsTitle": "自动切换话题",
   "desktopDisplaySettingsTopicPositionTitle": "话题位置",

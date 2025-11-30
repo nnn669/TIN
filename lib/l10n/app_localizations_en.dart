@@ -2693,6 +2693,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable haptic feedback during generation';
 
   @override
+  String get displaySettingsPageNewChatAfterDeleteTitle =>
+      'New chat after deleting topic';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchTitle => 'New Chat on Launch';
 
   @override
