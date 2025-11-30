@@ -132,6 +132,8 @@ class _InstructionInjectionPageState extends State<InstructionInjectionPage> {
 
     for (final file in result.files) {
       final name = file.name.trim();
+      final ext = (file.extension ?? '').toLowerCase();
+      if (!_textExtensions.contains(ext)) continue;
       final content = await _readPickedFileAsString(file);
       final prompt = content ?? '';
       if (name.isEmpty || prompt.trim().isEmpty) continue;
