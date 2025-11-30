@@ -4595,6 +4595,12 @@ abstract class AppLocalizations {
   /// **'General Options'**
   String get searchServicesPageGeneralOptions;
 
+  /// No description provided for @searchServicesPageAutoTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-test connections on launch'**
+  String get searchServicesPageAutoTestTitle;
+
   /// No description provided for @searchServicesPageMaxResults.
   ///
   /// In en, this message translates to:

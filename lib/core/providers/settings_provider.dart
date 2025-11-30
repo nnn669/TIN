@@ -87,6 +87,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _searchCommonKey = 'search_common_v1';
   static const String _searchSelectedKey = 'search_selected_v1';
   static const String _searchEnabledKey = 'search_enabled_v1';
+  static const String _searchAutoTestOnLaunchKey = 'search_auto_test_on_launch_v1';
   static const String _webDavConfigKey = 'webdav_config_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
@@ -176,6 +177,8 @@ class SettingsProvider extends ChangeNotifier {
   int get searchServiceSelected => _searchServiceSelected;
   bool _searchEnabled = false;
   bool get searchEnabled => _searchEnabled;
+  bool _searchAutoTestOnLaunch = false;
+  bool get searchAutoTestOnLaunch => _searchAutoTestOnLaunch;
   // Ephemeral connection test results: serviceId -> connected (true), failed (false), or null (not tested)
   final Map<String, bool?> _searchConnection = <String, bool?>{};
   Map<String, bool?> get searchConnection => Map.unmodifiable(_searchConnection);
@@ -422,6 +425,7 @@ class SettingsProvider extends ChangeNotifier {
     }
     _searchServiceSelected = prefs.getInt(_searchSelectedKey) ?? 0;
     _searchEnabled = prefs.getBool(_searchEnabledKey) ?? false;
+    _searchAutoTestOnLaunch = prefs.getBool(_searchAutoTestOnLaunchKey) ?? false;
 
     // load global proxy
     _globalProxyEnabled = prefs.getBool(_globalProxyEnabledKey) ?? false;
@@ -465,7 +469,9 @@ class SettingsProvider extends ChangeNotifier {
     }
     
     // kick off a one-time connectivity test for services (exclude local Bing)
-    _initSearchConnectivityTests();
+    if (_searchAutoTestOnLaunch) {
+      _initSearchConnectivityTests();
+    }
 
     // Attempt to reload any user-installed local fonts (mobile platforms)
     await _reloadLocalFontsIfAny();
@@ -1760,6 +1766,13 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_searchEnabledKey, enabled);
   }
 
+  Future<void> setSearchAutoTestOnLaunch(bool enabled) async {
+    _searchAutoTestOnLaunch = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_searchAutoTestOnLaunchKey, enabled);
+  }
+
   // Combined update for settings
   Future<void> updateSettings(SettingsProvider newSettings) async {
     if (!listEquals(_searchServices, newSettings._searchServices)) {
@@ -1774,6 +1787,9 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     if (_searchEnabled != newSettings._searchEnabled) {
       await setSearchEnabled(newSettings._searchEnabled);
     }
+    if (_searchAutoTestOnLaunch != newSettings._searchAutoTestOnLaunch) {
+      await setSearchAutoTestOnLaunch(newSettings._searchAutoTestOnLaunch);
+    }
   }
 
   SettingsProvider copyWith({
@@ -1781,12 +1797,14 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     SearchCommonOptions? searchCommonOptions,
     int? searchServiceSelected,
     bool? searchEnabled,
+    bool? searchAutoTestOnLaunch,
   }) {
     final copy = SettingsProvider();
     copy._searchServices = searchServices ?? _searchServices;
     copy._searchCommonOptions = searchCommonOptions ?? _searchCommonOptions;
     copy._searchServiceSelected = searchServiceSelected ?? _searchServiceSelected;
     copy._searchEnabled = searchEnabled ?? _searchEnabled;
+    copy._searchAutoTestOnLaunch = searchAutoTestOnLaunch ?? _searchAutoTestOnLaunch;
     // Copy other fields
     copy._providersOrder = _providersOrder;
     copy._themeMode = _themeMode;

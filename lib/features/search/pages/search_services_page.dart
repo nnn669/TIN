@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../core/services/haptics.dart';
+import '../../../shared/widgets/ios_switch.dart';
 
 class SearchServicesPage extends StatefulWidget {
   const SearchServicesPage({super.key});
@@ -217,6 +218,7 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
     final cs = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsProvider>();
     final common = settings.searchCommonOptions;
+    final autoTestOnLaunch = settings.searchAutoTestOnLaunch;
     final l10n = AppLocalizations.of(context)!;
 
     Widget stepper({
@@ -245,6 +247,54 @@ class _SearchServicesPageState extends State<SearchServicesPage> {
 
     return _iosSectionCard(
       children: [
+        _TactileRow(
+          onTap: () => context
+              .read<SettingsProvider>()
+              .setSearchAutoTestOnLaunch(!autoTestOnLaunch),
+          pressedScale: 0.995,
+          builder: (pressed) {
+            final baseColor = cs.onSurface.withOpacity(0.9);
+            return _AnimatedPressColor(
+              pressed: pressed,
+              base: baseColor,
+              builder: (c) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 36,
+                        child: Icon(Lucide.HeartPulse, size: 18, color: c),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.searchServicesPageAutoTestTitle,
+                              style: TextStyle(fontSize: 15, color: c),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IosSwitch(
+                        value: autoTestOnLaunch,
+                        onChanged: (v) => context
+                            .read<SettingsProvider>()
+                            .setSearchAutoTestOnLaunch(v),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        _iosDivider(context),
         _TactileRow(
           onTap: null, // no navigation, so no chevron
           pressedScale: 1.00,

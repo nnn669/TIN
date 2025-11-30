@@ -989,6 +989,7 @@
   "searchServicesPageAddProvider": "Add Provider",
   "searchServicesPageSearchProviders": "Search Providers",
   "searchServicesPageGeneralOptions": "General Options",
+  "searchServicesPageAutoTestTitle": "Auto-test connections on launch",
   "searchServicesPageMaxResults": "Max Results",
   "searchServicesPageTimeoutSeconds": "Timeout (seconds)",
   "searchServicesPageAtLeastOneServiceRequired": "At least one search service is required",

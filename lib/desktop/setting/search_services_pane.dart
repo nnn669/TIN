@@ -7,6 +7,7 @@ import '../../core/services/search/search_service.dart';
 import '../../utils/brand_assets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:uuid/uuid.dart';
+import '../../shared/widgets/ios_switch.dart';
 
 class DesktopSearchServicesPane extends StatefulWidget {
   const DesktopSearchServicesPane({super.key});
@@ -159,6 +160,15 @@ class _DesktopSearchServicesPaneState extends State<DesktopSearchServicesPane> {
               SliverToBoxAdapter(
                 child: _sectionCard(
                   children: [
+                    _ToggleRow(
+                      icon: lucide.Lucide.HeartPulse,
+                      label: l10n.searchServicesPageAutoTestTitle,
+                      value: settings.searchAutoTestOnLaunch,
+                      onChanged: (v) => context
+                          .read<SettingsProvider>()
+                          .setSearchAutoTestOnLaunch(v),
+                    ),
+                    _divider(context),
                     _StepperRow(
                       icon: lucide.Lucide.ListOrdered,
                       label: l10n.searchServicesPageMaxResults,
@@ -379,6 +389,51 @@ class _ServiceCardState extends State<_ServiceCard> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final labelColor = cs.onSurface.withOpacity(0.9);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 36,
+              child: Icon(icon, size: 18, color: labelColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 15, color: labelColor),
+              ),
+            ),
+            IosSwitch(
+              value: value,
+              onChanged: onChanged,
+            ),
+          ],
         ),
       ),
     );

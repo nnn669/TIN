@@ -754,6 +754,7 @@
   "searchServicesPageAddProvider": "新增提供商",
   "searchServicesPageSearchProviders": "搜尋提供商",
   "searchServicesPageGeneralOptions": "通用選項",
+  "searchServicesPageAutoTestTitle": "啟動時自動測試連線",
   "searchServicesPageMaxResults": "最大結果數",
   "searchServicesPageTimeoutSeconds": "超時時間（秒）",
   "searchServicesPageAtLeastOneServiceRequired": "至少需要一個搜尋服務",

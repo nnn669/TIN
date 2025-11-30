@@ -2403,6 +2403,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchServicesPageGeneralOptions => 'General Options';
 
   @override
+  String get searchServicesPageAutoTestTitle =>
+      'Auto-test connections on launch';
+
+  @override
   String get searchServicesPageMaxResults => 'Max Results';
 
   @override
