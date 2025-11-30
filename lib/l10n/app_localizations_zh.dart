@@ -2620,10 +2620,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageChatFontSizeTitle => '聊天字体大小';
 
   @override
+  String get displaySettingsPageAutoScrollEnableTitle => '自动回到底部';
+
+  @override
   String get displaySettingsPageAutoScrollIdleTitle => '自动回到底部延迟';
 
   @override
   String get displaySettingsPageAutoScrollIdleSubtitle => '用户停止滚动后等待多久再自动回到底部';
+
+  @override
+  String get displaySettingsPageAutoScrollDisabledLabel => '已关闭';
 
   @override
   String get displaySettingsPageChatFontSampleText => '这是一个示例的聊天文本';
@@ -5904,10 +5910,16 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageChatFontSizeTitle => '聊天字体大小';
 
   @override
+  String get displaySettingsPageAutoScrollEnableTitle => '自动回到底部';
+
+  @override
   String get displaySettingsPageAutoScrollIdleTitle => '自动回到底部延迟';
 
   @override
   String get displaySettingsPageAutoScrollIdleSubtitle => '用户停止滚动后等待多久再自动回到底部';
+
+  @override
+  String get displaySettingsPageAutoScrollDisabledLabel => '已关闭';
 
   @override
   String get displaySettingsPageChatFontSampleText => '这是一个示例的聊天文本';
@@ -9186,10 +9198,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageChatFontSizeTitle => '聊天字體大小';
 
   @override
+  String get displaySettingsPageAutoScrollEnableTitle => '自動回到底部';
+
+  @override
   String get displaySettingsPageAutoScrollIdleTitle => '自動回到底部延遲';
 
   @override
   String get displaySettingsPageAutoScrollIdleSubtitle => '使用者停止捲動後等待多久再自動回到底部';
+
+  @override
+  String get displaySettingsPageAutoScrollDisabledLabel => '已關閉';
 
   @override
   String get displaySettingsPageChatFontSampleText => '這是一個範例的聊天文本';

@@ -248,7 +248,14 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               icon: Lucide.ArrowDown,
               label: l10n.displaySettingsPageAutoScrollIdleTitle,
               detailBuilder: (ctx) {
-                final seconds = ctx.watch<SettingsProvider>().autoScrollIdleSeconds;
+                final sp = ctx.watch<SettingsProvider>();
+                if (!sp.autoScrollEnabled) {
+                  return Text(
+                    l10n.displaySettingsPageAutoScrollDisabledLabel,
+                    style: TextStyle(color: cs.onSurface.withOpacity(0.5), fontSize: 13),
+                  );
+                }
+                final seconds = sp.autoScrollIdleSeconds;
                 return Text('${seconds.round()}s', style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13));
               },
               onTap: () => _showAutoScrollIdleSheet(context),
@@ -572,11 +579,27 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               final theme = Theme.of(context);
               final cs = theme.colorScheme;
               final isDark = theme.brightness == Brightness.dark;
-              final seconds = context.watch<SettingsProvider>().autoScrollIdleSeconds;
+              final sp = context.watch<SettingsProvider>();
+              final seconds = sp.autoScrollIdleSeconds;
+              final enabled = sp.autoScrollEnabled;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Text(
+                        l10n.displaySettingsPageAutoScrollEnableTitle,
+                        style: TextStyle(fontSize: 15, color: cs.onSurface),
+                      ),
+                      const Spacer(),
+                      IosSwitch(
+                        value: enabled,
+                        onChanged: (v) => context.read<SettingsProvider>().setAutoScrollEnabled(v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   Row(children: [
                     Text('2s', style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 12)),
                     const SizedBox(width: 8),
@@ -619,12 +642,17 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                               ],
                             ),
                           ),
-                          onChanged: (v) => context.read<SettingsProvider>().setAutoScrollIdleSeconds((v as double).round()),
+                          onChanged: enabled
+                              ? (v) => context.read<SettingsProvider>().setAutoScrollIdleSeconds((v as double).round())
+                              : null,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('${seconds.round()}s', style: TextStyle(color: cs.onSurface, fontSize: 12)),
+                    Text(
+                      enabled ? '${seconds.round()}s' : l10n.displaySettingsPageAutoScrollDisabledLabel,
+                      style: TextStyle(color: cs.onSurface.withOpacity(enabled ? 1.0 : 0.5), fontSize: 12),
+                    ),
                   ]),
                   const SizedBox(height: 6),
                   Text(

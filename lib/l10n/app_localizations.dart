@@ -5165,6 +5165,12 @@ abstract class AppLocalizations {
   /// **'Chat Font Size'**
   String get displaySettingsPageChatFontSizeTitle;
 
+  /// No description provided for @displaySettingsPageAutoScrollEnableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-scroll to bottom'**
+  String get displaySettingsPageAutoScrollEnableTitle;
+
   /// No description provided for @displaySettingsPageAutoScrollIdleTitle.
   ///
   /// In en, this message translates to:
@@ -5176,6 +5182,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wait time after user scroll before jumping to bottom'**
   String get displaySettingsPageAutoScrollIdleSubtitle;
+
+  /// No description provided for @displaySettingsPageAutoScrollDisabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get displaySettingsPageAutoScrollDisabledLabel;
 
   /// No description provided for @displaySettingsPageChatFontSampleText.
   ///

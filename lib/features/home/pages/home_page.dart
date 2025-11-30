@@ -1401,7 +1401,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void _onScrollControllerChanged() {
     try {
       if (!_scrollController.hasClients) return;
-      
+      final settings = context.read<SettingsProvider>();
+      final autoScrollEnabled = settings.autoScrollEnabled;
+
       // Detect user scrolling
       if (_scrollController.position.userScrollDirection != ScrollDirection.idle) {
         _isUserScrolling = true;
@@ -1411,7 +1413,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         
         // Cancel previous timer and set a new one
         _userScrollTimer?.cancel();
-        final secs = context.read<SettingsProvider>().autoScrollIdleSeconds;
+        final secs = settings.autoScrollIdleSeconds;
         _userScrollTimer = Timer(Duration(seconds: secs), () {
           if (mounted) {
             setState(() {
@@ -1426,7 +1428,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       final atBottom = _isNearBottom(24);
       if (!atBottom) {
         _autoStickToBottom = false;
-      } else if (!_isUserScrolling) {
+      } else if (!_isUserScrolling && (autoScrollEnabled || _autoStickToBottom)) {
         _autoStickToBottom = true;
       }
       final shouldShow = !atBottom;
@@ -4108,12 +4110,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       if (!nearBottom) {
         _autoStickToBottom = false;
       } else if (!_isUserScrolling) {
-        _autoStickToBottom = true;
+        final enabled = context.read<SettingsProvider>().autoScrollEnabled;
+        if (enabled || _autoStickToBottom) {
+          _autoStickToBottom = true;
+        }
       }
     } catch (_) {}
   }
 
   void _autoScrollToBottomIfNeeded() {
+    if (!mounted) return;
+    final enabled = context.read<SettingsProvider>().autoScrollEnabled;
+    if (!enabled && !_autoStickToBottom) return;
     _scheduleAutoScrollToBottom(force: false);
   }
 
@@ -4157,6 +4165,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _scheduleAutoScrollToBottom({required bool force, bool animate = true}) {
+    if (!force) {
+      final enabled = context.read<SettingsProvider>().autoScrollEnabled;
+      if (!enabled && !_autoStickToBottom) return;
+    }
     _autoScrollForceNext = _autoScrollForceNext || force;
     _autoScrollAnimateNext = _autoScrollAnimateNext && animate;
     if (_autoScrollScheduled) return;

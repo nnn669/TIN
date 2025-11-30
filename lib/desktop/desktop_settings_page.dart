@@ -4528,6 +4528,8 @@ class _DisplaySettingsBody extends StatelessWidget {
               _SettingsCard(
                 title: l10n.displaySettingsPageOtherSettingsTitle,
                 children: const [
+                  _ToggleRowAutoScrollEnabled(),
+                  _RowDivider(),
                   _AutoScrollDelayRow(),
                   _RowDivider(),
                   _BackgroundMaskRow(),
@@ -6577,6 +6579,20 @@ class _ToggleRowAutoCollapseThinking extends StatelessWidget {
   }
 }
 
+class _ToggleRowAutoScrollEnabled extends StatelessWidget {
+  const _ToggleRowAutoScrollEnabled();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageAutoScrollEnableTitle,
+      value: sp.autoScrollEnabled,
+      onChanged: (v) => context.read<SettingsProvider>().setAutoScrollEnabled(v),
+    );
+  }
+}
+
 class _ToggleRowShowUpdates extends StatelessWidget {
   const _ToggleRowShowUpdates();
   @override
@@ -6801,6 +6817,8 @@ class _AutoScrollDelayRowState extends State<_AutoScrollDelayRow> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    final enabled = sp.autoScrollEnabled;
     return _LabeledRow(
       label: l10n.displaySettingsPageAutoScrollIdleTitle,
       trailing: Row(
@@ -6809,11 +6827,24 @@ class _AutoScrollDelayRowState extends State<_AutoScrollDelayRow> {
           IntrinsicWidth(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 36, maxWidth: 72),
-              child: _BorderInput(controller: _controller, onSubmitted: _commit, onFocusLost: _commit),
+              child: IgnorePointer(
+                ignoring: !enabled,
+                child: Opacity(
+                  opacity: enabled ? 1.0 : 0.5,
+                  child: _BorderInput(controller: _controller, onSubmitted: _commit, onFocusLost: _commit),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
-          Text('s', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14, decoration: TextDecoration.none)),
+          Text(
+            's',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(enabled ? 0.7 : 0.35),
+              fontSize: 14,
+              decoration: TextDecoration.none,
+            ),
+          ),
         ],
       ),
     );
