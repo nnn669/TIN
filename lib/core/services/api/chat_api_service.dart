@@ -7,9 +7,11 @@ import '../../providers/settings_provider.dart';
 import '../../providers/model_provider.dart';
 import '../../models/token_usage.dart';
 import '../../../utils/sandbox_path_resolver.dart';
+import '../../../utils/app_directories.dart';
 import 'google_service_account_auth.dart';
 import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
+import '../../../utils/markdown_media_sanitizer.dart';
 
 class ChatApiService {
   /// Resolve the upstream/vendor model id for a given logical model key.
@@ -4242,6 +4244,56 @@ class ChatApiService {
         return false;
       }
 
+      String _extFromMime(String mime) {
+        switch (mime.toLowerCase()) {
+          case 'image/jpeg':
+          case 'image/jpg':
+            return 'jpg';
+          case 'image/webp':
+            return 'webp';
+          case 'image/gif':
+            return 'gif';
+          case 'image/png':
+          default:
+            return 'png';
+        }
+      }
+
+      Future<String?> _saveInlineImageToFile(String mime, String data) async {
+        try {
+          final dir = await AppDirectories.getImagesDirectory();
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+          }
+          final cleaned = data.replaceAll(RegExp(r'\s'), '');
+          List<int> bytes;
+          try {
+            bytes = base64Decode(cleaned);
+          } catch (_) {
+            bytes = base64Url.decode(cleaned);
+          }
+          final ext = _extFromMime(mime);
+          final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
+          final f = File(path);
+          await f.writeAsBytes(bytes, flush: true);
+          return path;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      Future<String> _sanitizeTextIfNeeded(String input) async {
+        if (input.isEmpty) return input;
+        if (input.contains('data:image') && input.contains('base64,')) {
+          try {
+            return await MarkdownMediaSanitizer.replaceInlineBase64Images(input);
+          } catch (_) {
+            return input;
+          }
+        }
+        return input;
+      }
+
       void _bufferInlineImageChunk(String mime, String data) {
         _imageMime = mime.isNotEmpty ? mime : 'image/png';
         final hasExisting = _pendingImageData.isNotEmpty;
@@ -4258,18 +4310,18 @@ class ChatApiService {
         _receivedImage = true;
       }
 
-      String _takeBufferedImageMarkdown() {
+      Future<String> _takeBufferedImageMarkdown() async {
         if (!_bufferingInlineImage || _pendingImageData.isEmpty) return '';
-        final sb = StringBuffer()
-          ..write('\n\n![image](data:${_imageMime};base64,')
-          ..write(_pendingImageData)
-          ..write(')');
-        if (_pendingImageTrailingText.isNotEmpty) {
-          sb.write(_pendingImageTrailingText);
-        }
+        final trailing = _pendingImageTrailingText;
+        final path = await _saveInlineImageToFile(_imageMime, _pendingImageData);
         _bufferingInlineImage = false;
         _pendingImageData = '';
         _pendingImageTrailingText = '';
+        if (path == null || path.isEmpty) return '';
+        final sb = StringBuffer()..write('\n\n![image](')..write(path)..write(')');
+        if (trailing.isNotEmpty) {
+          sb.write(trailing);
+        }
         return sb.toString();
       }
 
@@ -4451,7 +4503,7 @@ class ChatApiService {
 
               // When finishing, emit any buffered inline image (and trailing text) in one batch to avoid partial base64 during streaming.
               if (finishReason != null) {
-                final pendingImage = _takeBufferedImageMarkdown();
+                final pendingImage = await _takeBufferedImageMarkdown();
                 if (pendingImage.isNotEmpty) {
                   textDelta += pendingImage;
                 }
@@ -4461,6 +4513,7 @@ class ChatApiService {
                 yield ChatStreamChunk(content: '', reasoning: reasoningDelta, isDone: false, totalTokens: totalTokens, usage: usage);
               }
               if (textDelta.isNotEmpty) {
+                textDelta = await _sanitizeTextIfNeeded(textDelta);
                 yield ChatStreamChunk(content: textDelta, isDone: false, totalTokens: totalTokens, usage: usage);
               }
 
@@ -4492,9 +4545,10 @@ class ChatApiService {
       }
 
       // Flush any buffered inline image (e.g., when stream ends without explicit finishReason)
-      final pendingImage = _takeBufferedImageMarkdown();
+      final pendingImage = await _takeBufferedImageMarkdown();
       if (pendingImage.isNotEmpty) {
-        yield ChatStreamChunk(content: pendingImage, isDone: false, totalTokens: totalTokens, usage: usage);
+        final sanitized = await _sanitizeTextIfNeeded(pendingImage);
+        yield ChatStreamChunk(content: sanitized, isDone: false, totalTokens: totalTokens, usage: usage);
       }
 
       if (calls.isEmpty) {

@@ -151,6 +151,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   static const Duration _streamThrottleInterval = Duration(milliseconds: 60);
   final Map<String, Timer?> _streamThrottleTimers = <String, Timer?>{};
   final Map<String, String> _pendingStreamContent = <String, String>{};
+  // Debounce inline base64 -> local file sanitization to avoid keeping huge blobs in-memory
+  static const Duration _inlineImageSanitizeDelay = Duration(milliseconds: 120);
+  final Map<String, Timer?> _inlineImageSanitizeTimers = <String, Timer?>{};
+  final Set<String> _inlineImageSanitizing = <String>{};
 
   // Sanitize/translate JSON Schema to each provider's accepted subset
   static Map<String, dynamic> _sanitizeToolParametersForProvider(Map<String, dynamic> schema, ProviderKind kind) {
@@ -847,6 +851,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           reasoningSegmentsJson: _serializeReasoningSegments(segs),
         );
       }
+
+      // If streaming output included inline base64 images, sanitize them even on manual cancel
+      _scheduleInlineImageSanitize(streaming.id, latestContent: streaming.content, immediate: true);
     } else {
       _setConversationLoading(cid, false);
     }
@@ -856,6 +863,75 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     if (budget == null) return true; // treat null as default/auto -> enabled
     if (budget == -1) return true; // auto
     return budget >= 1024;
+  }
+
+  void _scheduleInlineImageSanitize(String messageId, {String? latestContent, bool immediate = false}) {
+    // Quick pre-check using provided content (if any) to avoid needless timers.
+    final snapshot = latestContent ??
+        (() {
+          final idx = _messages.indexWhere((m) => m.id == messageId);
+          return idx == -1 ? '' : _messages[idx].content;
+        })();
+    if (snapshot.isEmpty || !snapshot.contains('data:image') || !snapshot.contains('base64,')) {
+      return;
+    }
+
+    // Debounce per message
+    _inlineImageSanitizeTimers[messageId]?.cancel();
+    _inlineImageSanitizeTimers[messageId] = Timer(immediate ? Duration.zero : _inlineImageSanitizeDelay, () async {
+      if (_inlineImageSanitizing.contains(messageId)) return;
+      _inlineImageSanitizing.add(messageId);
+      try {
+        // Refresh to the most recent content before sanitizing
+        String current = snapshot;
+        final idx = _messages.indexWhere((m) => m.id == messageId);
+        if (idx != -1) current = _messages[idx].content;
+        if (current.isEmpty || !current.contains('data:image') || !current.contains('base64,')) return;
+
+        final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(current);
+        if (sanitized == current) return;
+
+        // Keep throttled UI updates in sync to avoid reverting to base64
+        _pendingStreamContent[messageId] = sanitized;
+        await _chatService.updateMessage(messageId, content: sanitized);
+        if (!mounted) return;
+        setState(() {
+          final i = _messages.indexWhere((m) => m.id == messageId);
+          if (i != -1) {
+            _messages[i] = _messages[i].copyWith(content: sanitized);
+          }
+        });
+      } catch (_) {
+        // Swallow errors to avoid crashing streaming UI; fallback keeps original content.
+      } finally {
+        _inlineImageSanitizing.remove(messageId);
+        _inlineImageSanitizeTimers.remove(messageId);
+      }
+    });
+  }
+
+  Future<void> _forceInlineImageSanitize(String messageId) async {
+    try {
+      String current = '';
+      final idx = _messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) current = _messages[idx].content;
+      if (current.isEmpty || !current.contains('data:image') || !current.contains('base64,')) {
+        return;
+      }
+      final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(current);
+      if (sanitized == current) return;
+      await _chatService.updateMessage(messageId, content: sanitized);
+      if (mounted) {
+        setState(() {
+          final i = _messages.indexWhere((m) => m.id == messageId);
+          if (i != -1) {
+            _messages[i] = _messages[i].copyWith(content: sanitized);
+          }
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   String _captureGeminiThoughtSignature(String content, String messageId) {
@@ -954,6 +1030,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (segments.isNotEmpty) {
           _reasoningSegments[m.id] = segments;
         }
+
+        // Clean up any inline base64 images persisted from earlier runs
+        _scheduleInlineImageSanitize(m.id, latestContent: _messages[i].content, immediate: true);
       }
 
       // Restore translation UI state: default collapsed
@@ -1816,6 +1895,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           reasoningSegmentsJson: _serializeReasoningSegments(segs),
         );
       }
+      // Ensure any inline data URLs get converted even if the user navigates away mid-stream
+      _scheduleInlineImageSanitize(streaming.id, latestContent: latestContent, immediate: true);
     } catch (_) {}
   }
 
@@ -2383,6 +2464,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _streamThrottleTimers[assistantMessage.id]?.cancel();
         _streamThrottleTimers.remove(assistantMessage.id);
         _pendingStreamContent.remove(assistantMessage.id);
+        _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+        _inlineImageSanitizeTimers.remove(assistantMessage.id);
+        _inlineImageSanitizing.remove(assistantMessage.id);
 
         final shouldGenerateTitle = generateTitle && !_titleQueued;
         if (_finishHandled) {
@@ -2695,12 +2779,35 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             }
 
             // Always persist partial content so switching away doesn’t lose it
-            final streamingProcessed = _transformAssistantContent();
+            String streamingProcessed = _transformAssistantContent();
+            if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
+              try {
+                final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
+                if (sanitized != streamingProcessed) {
+                  streamingProcessed = sanitized;
+                  fullContentRaw = sanitized; // keep in-memory snapshot small
+                }
+              } catch (e) {
+                // ignore; fallback keeps original content
+              }
+            }
+            _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
             await _chatService.updateMessage(
               assistantMessage.id,
               content: streamingProcessed,
               totalTokens: totalTokens,
             );
+            if (streamOutput && mounted && _currentConversation?.id == _cidForStream) {
+              setState(() {
+                final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+                if (index != -1) {
+                  _messages[index] = _messages[index].copyWith(
+                    content: streamingProcessed,
+                    totalTokens: totalTokens,
+                  );
+                }
+              });
+            }
 
             if (streamOutput) {
               // If content has started, consider reasoning finished and collapse (respect setting)
@@ -2767,6 +2874,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           _streamThrottleTimers[assistantMessage.id]?.cancel();
           _streamThrottleTimers.remove(assistantMessage.id);
           _pendingStreamContent.remove(assistantMessage.id);
+          _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+          _inlineImageSanitizeTimers.remove(assistantMessage.id);
+          _inlineImageSanitizing.remove(assistantMessage.id);
           // Preserve partial content; if empty, write error message into bubble
           final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
           final processed = _transformAssistantContent();
@@ -2839,6 +2949,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           _streamThrottleTimers[assistantMessage.id]?.cancel();
           _streamThrottleTimers.remove(assistantMessage.id);
           _pendingStreamContent.remove(assistantMessage.id);
+          _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+          _inlineImageSanitizeTimers.remove(assistantMessage.id);
+          _inlineImageSanitizing.remove(assistantMessage.id);
 
           // If stream closed without explicit isDone chunk, finalize
           if (_loadingConversationIds.contains(_cidForStream)) {
@@ -2864,6 +2977,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _streamThrottleTimers[assistantMessage.id]?.cancel();
       _streamThrottleTimers.remove(assistantMessage.id);
       _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
 
       // Preserve partial content on outer error as well; if empty, show error text in bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
@@ -3520,17 +3636,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _streamThrottleTimers[assistantMessage.id]?.cancel();
       _streamThrottleTimers.remove(assistantMessage.id);
       _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
 
       final processedContent = _transformAssistantContent2();
-      final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
-      await _chatService.updateMessage(assistantMessage.id, content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
-      if (!mounted) return;
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-        if (index != -1) {
-          _messages[index] = _messages[index].copyWith(content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
-        }
-      });
+        final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
+        await _chatService.updateMessage(assistantMessage.id, content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
+        if (!mounted) return;
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = _messages[index].copyWith(content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
+          }
+        });
+        unawaited(_forceInlineImageSanitize(assistantMessage.id));
+      // Run a forced sanitize once more in case any throttle writes raced after finish
+      unawaited(_forceInlineImageSanitize(assistantMessage.id));
       _setConversationLoading(assistantMessage.conversationId, false);
       final r = _reasoning[assistantMessage.id];
       if (r != null && r.finishedAt == null) {
@@ -3694,8 +3816,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           if (mounted) setState(() {});
         }
 
-        // Always persist partial content, even if streaming UI is off
-        final streamingProcessed = _transformAssistantContent2();
+      // Always persist partial content, even if streaming UI is off
+      String streamingProcessed = _transformAssistantContent2();
+      if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
+        try {
+          final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
+          if (sanitized != streamingProcessed) {
+            streamingProcessed = sanitized;
+            fullContentRaw = sanitized;
+          }
+        } catch (e) {
+          // ignore; fallback keeps original content
+        }
+      }
+        _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
         try {
           await _chatService.updateMessage(
             assistantMessage.id,
@@ -3703,6 +3837,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             totalTokens: totalTokens,
           );
         } catch (_) {}
+        if (streamOutput && mounted && _currentConversation?.id == _cid) {
+          setState(() {
+            final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
+            if (i != -1) _messages[i] = _messages[i].copyWith(content: streamingProcessed, totalTokens: totalTokens);
+          });
+        }
 
         if (streamOutput) {
           // Throttle UI updates to reduce rebuild frequency during streaming
@@ -3766,6 +3906,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _streamThrottleTimers[assistantMessage.id]?.cancel();
       _streamThrottleTimers.remove(assistantMessage.id);
       _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
 
       // When regenerate fails, persist error text into this assistant bubble
       final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
@@ -3837,6 +3980,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _streamThrottleTimers[assistantMessage.id]?.cancel();
       _streamThrottleTimers.remove(assistantMessage.id);
       _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
 
       // Stream ended; ensure subscription cleanup and background notification if needed
       try {
@@ -6736,6 +6882,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     _streamThrottleTimers.clear();
     _pendingStreamContent.clear();
+    // Cancel pending inline image sanitizers
+    for (final timer in _inlineImageSanitizeTimers.values) {
+      timer?.cancel();
+    }
+    _inlineImageSanitizeTimers.clear();
+    _inlineImageSanitizing.clear();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
