@@ -30,7 +30,7 @@ body:
         请提供你的环境信息。 
         
         Please provide information about your environment.
-      value: |
+        
         - Device: [e.g. iPhone 14]
         - OS: [e.g. iOS 17, Windows 11]
         - App Version: [e.g. v1.0.8(5)]
