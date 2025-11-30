@@ -816,8 +816,14 @@ class ChatApiService {
     final result = Map<String, dynamic>.from(schema);
 
     // Recursively fix 'properties' if present
+    Map<String, dynamic> props = const <String, dynamic>{};
     if (result['properties'] is Map) {
-      final props = Map<String, dynamic>.from(result['properties'] as Map);
+      props = Map<String, dynamic>.from(result['properties'] as Map);
+    } else if ((result['type'] ?? '').toString() == 'object') {
+      // Ensure objects always have a properties map for Gemini validation
+      props = <String, dynamic>{};
+    }
+    if (props.isNotEmpty || result['type'] == 'object') {
       props.forEach((key, value) {
         if (value is Map) {
           final propMap = Map<String, dynamic>.from(value as Map);
@@ -834,6 +840,17 @@ class ChatApiService {
           props[key] = propMap;
         }
       });
+
+      // Gemini requires every entry in `required` to exist in `properties`
+      final req = result['required'];
+      if (req is List) {
+        for (final r in req) {
+          final name = r.toString();
+          if (!props.containsKey(name)) {
+            props[name] = {'type': 'string'}; // Fallback to a simple string field
+          }
+        }
+      }
       result['properties'] = props;
     }
 
