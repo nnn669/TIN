@@ -114,13 +114,17 @@ class _Http {
     if (enabled && host.isNotEmpty && portStr.isNotEmpty) {
       final port = int.tryParse(portStr) ?? 8080;
       final io = HttpClient();
+      io.idleTimeout = const Duration(minutes: 5);
       io.findProxy = (uri) => 'PROXY $host:$port';
       if (user.isNotEmpty) {
         io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
       }
       return IOClient(io);
     }
-    return http.Client();
+    // 非代理情况也需要设置 idleTimeout
+    final io = HttpClient();
+    io.idleTimeout = const Duration(minutes: 5);
+    return IOClient(io);
   }
 }
 
