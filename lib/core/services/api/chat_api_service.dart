@@ -943,6 +943,7 @@ class ChatApiService {
     final effort = _effortForBudget(thinkingBudget);
     final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
     final bool isAzureOpenAI = host.contains('openai.azure.com');
+    final bool needsReasoningEcho = (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) && isReasoning;
     final String completionTokensKey = isAzureOpenAI ? 'max_completion_tokens' : 'max_tokens';
     void _setMaxTokens(Map<String, dynamic> map) {
       if (maxTokens != null) map[completionTokensKey] = maxTokens;
@@ -1401,6 +1402,7 @@ class ChatApiService {
           } catch (_) {}
 
           final msg = (c0['message'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+          final reasoningForTools = (msg['reasoning_content'] ?? msg['reasoning'])?.toString() ?? '';
           final tcs = (msg['tool_calls'] as List?) ?? const <dynamic>[];
           if (tcs.isNotEmpty && onToolCall != null) {
             final calls = <Map<String, dynamic>>[];
@@ -1442,7 +1444,11 @@ class ChatApiService {
             for (final m in messages) {
               next.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            next.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            if (needsReasoningEcho) {
+              assistantToolCallMsg['reasoning_content'] = reasoningForTools;
+            }
+            next.add(assistantToolCallMsg);
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
@@ -1504,6 +1510,7 @@ class ChatApiService {
     final int approxPromptChars = messages.fold<int>(0, (acc, m) => acc + ((m['content'] ?? '').toString().length));
     final int approxPromptTokens = _approxTokensFromChars(approxPromptChars);
     int approxCompletionChars = 0;
+    String reasoningBuffer = '';
 
     // Track potential tool calls (OpenAI Chat Completions)
     final Map<int, Map<String, String>> toolAcc = <int, Map<String, String>>{}; // index -> {id,name,args}
@@ -1573,7 +1580,11 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            mm2.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            if (needsReasoningEcho) {
+              assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+            }
+            mm2.add(assistantToolCallMsg);
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
@@ -1712,6 +1723,7 @@ class ChatApiService {
               final Map<int, Map<String, String>> toolAcc2 = <int, Map<String, String>>{};
               String? finishReason2;
               String contentAccum = ''; // Accumulate content for this round
+              String reasoningAccum = '';
               await for (final ch in s2) {
                 buf2 += ch;
                 final lines2 = buf2.split('\n');
@@ -1761,6 +1773,7 @@ class ChatApiService {
                         }
                       }
                       if (rc is String && rc.isNotEmpty) {
+                        if (needsReasoningEcho) reasoningAccum += rc;
                         yield ChatStreamChunk(content: '', reasoning: rc, isDone: false, totalTokens: 0, usage: usage);
                       }
                       if (txt is String && txt.isNotEmpty) {
@@ -1773,6 +1786,12 @@ class ChatApiService {
                         if (mc is String && mc.isNotEmpty) {
                           contentAccum += mc;
                           yield ChatStreamChunk(content: mc, isDone: false, totalTokens: 0, usage: usage);
+                        }
+                      }
+                      if (message != null) {
+                        final rcMsg = message['reasoning_content'] ?? message['reasoning'];
+                        if (rcMsg is String && rcMsg.isNotEmpty && needsReasoningEcho) {
+                          reasoningAccum += rcMsg;
                         }
                       }
                       // Handle image outputs from OpenRouter-style deltas
@@ -1870,10 +1889,14 @@ class ChatApiService {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                 }
                 // Append for next loop - including any content accumulated in this round
+                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                if (needsReasoningEcho) {
+                  nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                }
                 currentMessages = [
                   ...currentMessages,
                   if (contentAccum.isNotEmpty) {'role': 'assistant', 'content': contentAccum},
-                  {'role': 'assistant', 'content': '', 'tool_calls': calls2},
+                  nextAssistantToolCall,
                   for (final r in results2)
                     {
                       'role': 'tool',
@@ -2310,7 +2333,10 @@ class ChatApiService {
 
                 // reasoning_content handling (unchanged)
                 final rc = (delta['reasoning_content'] ?? delta['reasoning']) as String?;
-                if (rc != null && rc.isNotEmpty) reasoning = rc;
+                if (rc != null && rc.isNotEmpty) {
+                  reasoning = rc;
+                  if (needsReasoningEcho) reasoningBuffer += rc;
+                }
 
                 // images handling from delta (unchanged)
                 if (wantsImageOutput) {
@@ -2382,6 +2408,15 @@ class ChatApiService {
                 if (messageContent.isNotEmpty) {
                   content += messageContent;
                   approxCompletionChars += messageContent.length;
+                }
+
+                // Capture reasoning_content if only present on the message object
+                if (message != null) {
+                  final rcMsg = message['reasoning_content'] ?? message['reasoning'];
+                  if (rcMsg is String && rcMsg.isNotEmpty) {
+                    if (needsReasoningEcho) reasoningBuffer += rcMsg;
+                    reasoning ??= rcMsg;
+                  }
                 }
 
                 // images handling from message content (unchanged)
@@ -2511,7 +2546,11 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            mm2.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            if (needsReasoningEcho) {
+              assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+            }
+            mm2.add(assistantToolCallMsg);
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
@@ -2640,6 +2679,7 @@ class ChatApiService {
               final Map<int, Map<String, String>> toolAcc2 = <int, Map<String, String>>{};
               String? finishReason2;
               String contentAccum = '';
+              String reasoningAccum = '';
               await for (final ch in s2) {
                 buf2 += ch;
                 final lines2 = buf2.split('\n');
@@ -2687,6 +2727,7 @@ class ChatApiService {
                         }
                       }
                       if (rc is String && rc.isNotEmpty) {
+                        if (needsReasoningEcho) reasoningAccum += rc;
                         yield ChatStreamChunk(content: '', reasoning: rc, isDone: false, totalTokens: 0, usage: usage);
                       }
                       if (txt is String && txt.isNotEmpty) {
@@ -2757,6 +2798,12 @@ class ChatApiService {
                           yield ChatStreamChunk(content: mc, isDone: false, totalTokens: 0, usage: usage);
                         }
                       }
+                      if (message != null) {
+                        final rcMsg = message['reasoning_content'] ?? message['reasoning'];
+                        if (rcMsg is String && rcMsg.isNotEmpty && needsReasoningEcho) {
+                          reasoningAccum += rcMsg;
+                        }
+                      }
                     }
                     // XinLiu compatibility for follow-up requests too
                     final rootToolCalls2 = o['tool_calls'] as List?;
@@ -2813,10 +2860,14 @@ class ChatApiService {
                 if (resultsInfo2.isNotEmpty) {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                 }
+                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                if (needsReasoningEcho) {
+                  nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                }
                 currentMessages = [
                   ...currentMessages,
                   if (contentAccum.isNotEmpty) {'role': 'assistant', 'content': contentAccum},
-                  {'role': 'assistant', 'content': '', 'tool_calls': calls2},
+                  nextAssistantToolCall,
                   for (final r in results2)
                     {
                       'role': 'tool',
@@ -2882,7 +2933,11 @@ class ChatApiService {
                 for (final m in messages) {
                   mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
                 }
-                mm2.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+                final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+                if (needsReasoningEcho) {
+                  assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+                }
+                mm2.add(assistantToolCallMsg);
                 for (final r in results) {
                   final id = r['tool_call_id'];
                   final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
@@ -3004,6 +3059,7 @@ class ChatApiService {
                   final Map<int, Map<String, String>> toolAcc2 = <int, Map<String, String>>{};
                   String? finishReason2;
                   String contentAccum = '';
+                  String reasoningAccum = '';
                   await for (final ch in s2) {
                     buf2 += ch;
                     final lines2 = buf2.split('\n');
@@ -3032,6 +3088,7 @@ class ChatApiService {
                             totalTokens = usage!.totalTokens;
                           }
                           if (rc is String && rc.isNotEmpty) {
+                            if (needsReasoningEcho) reasoningAccum += rc;
                             yield ChatStreamChunk(content: '', reasoning: rc, isDone: false, totalTokens: 0, usage: usage);
                           }
                           if (txt is String && txt.isNotEmpty) {
@@ -3102,6 +3159,12 @@ class ChatApiService {
                               yield ChatStreamChunk(content: mc, isDone: false, totalTokens: 0, usage: usage);
                             }
                           }
+                          if (message != null) {
+                            final rcMsg = message['reasoning_content'] ?? message['reasoning'];
+                            if (rcMsg is String && rcMsg.isNotEmpty && needsReasoningEcho) {
+                              reasoningAccum += rcMsg;
+                            }
+                          }
                         }
                         // XinLiu compatibility for follow-up requests too
                         final rootToolCalls2 = o['tool_calls'] as List?;
@@ -3158,10 +3221,14 @@ class ChatApiService {
                     if (resultsInfo2.isNotEmpty) {
                       yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                     }
+                    final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                    if (needsReasoningEcho) {
+                      nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                    }
                     currentMessages = [
                       ...currentMessages,
                       if (contentAccum.isNotEmpty) {'role': 'assistant', 'content': contentAccum},
-                      {'role': 'assistant', 'content': '', 'tool_calls': calls2},
+                      nextAssistantToolCall,
                       for (final r in results2)
                         {
                           'role': 'tool',
@@ -3244,7 +3311,11 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            mm2.add({'role': 'assistant', 'content': '', 'tool_calls': calls});
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            if (needsReasoningEcho) {
+              assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+            }
+            mm2.add(assistantToolCallMsg);
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
