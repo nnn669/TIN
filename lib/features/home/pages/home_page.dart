@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import 'dart:async';
 import 'dart:convert';
-// Replaced flutter_zoom_drawer with a custom InteractiveDrawer
 import '../../../shared/widgets/interactive_drawer.dart';
 import '../../../shared/responsive/breakpoints.dart';
-
 import '../widgets/chat_input_bar.dart';
 import '../../../core/models/chat_input_data.dart';
 import '../../chat/widgets/bottom_tools_sheet.dart';
@@ -85,6 +83,8 @@ import '../../../desktop/instruction_injection_popover.dart';
 import '../../../utils/app_directories.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/models/instruction_injection.dart';
+import 'home_mobile_layout.dart';
+import 'home_desktop_layout.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -1349,51 +1349,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _rightSidebarOpen = !_rightSidebarOpen;
     });
     try { context.read<SettingsProvider>().setDesktopRightSidebarOpen(_rightSidebarOpen); } catch (_) {}
-  }
-
-  Widget _buildTabletSidebar(BuildContext context) {
-    final bool _isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
-    final sp = context.watch<SettingsProvider>();
-    final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
-    final sidebar = SideDrawer(
-      embedded: true,
-      embeddedWidth: _embeddedSidebarWidth,
-      userName: context.watch<UserProvider>().name,
-      assistantName: (() {
-        final l10n = AppLocalizations.of(context)!;
-        final a = context.watch<AssistantProvider>().currentAssistant;
-        final n = a?.name.trim();
-        return (n == null || n.isEmpty) ? l10n.homePageDefaultAssistant : n;
-      })(),
-      closePickerTicker: _assistantPickerCloseTick,
-      loadingConversationIds: _loadingConversationIds,
-      useDesktopTabs: _isDesktop && !topicsOnRight,
-      desktopAssistantsOnly: _isDesktop && topicsOnRight,
-        onSelectConversation: (id) {
-          _switchConversationAnimated(id);
-        },
-        onNewConversation: () async {
-          await _createNewConversationAnimated();
-        },
-    );
-
-    final cs = Theme.of(context).colorScheme;
-    return AnimatedContainer(
-      duration: _sidebarAnimDuration,
-      curve: _sidebarAnimCurve,
-      width: _tabletSidebarOpen ? _embeddedSidebarWidth : 0,
-      color: Colors.transparent,
-      child: ClipRect(
-        child: OverflowBox(
-          alignment: Alignment.centerLeft,
-          minWidth: 0,
-          maxWidth: _embeddedSidebarWidth,
-          child: SizedBox(width: _embeddedSidebarWidth, child: sidebar),
-        ),
-      ),
-    );
   }
 
   // ZoomDrawer state listener removed; handled by _onDrawerValueChanged
@@ -4698,175 +4653,47 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     }
 
-    // Chats are seeded via ChatProvider in main.dart
-
-    return InteractiveDrawer(
-      controller: _drawerController,
-      side: DrawerSide.left,
-      drawerWidth: MediaQuery.sizeOf(context).width * 0.75,
-      scrimColor: cs.onSurface,
-      maxScrimOpacity: 0.12,
-      barrierDismissible: true,
-      // onScrimTap: () {
-      //   // Vibrate when tapping right-side scrim to close
-      //   try {
-      //     if (context.read<SettingsProvider>().hapticsOnDrawer) {
-      //       Haptics.drawerPulse();
-      //     }
-      //   } catch (_) {}
-      // },
-      drawer: SideDrawer(
-        userName: context.watch<UserProvider>().name,
-        assistantName: (() {
-          final l10n = AppLocalizations.of(context)!;
-          final a = context.watch<AssistantProvider>().currentAssistant;
-          final n = a?.name.trim();
-          return (n == null || n.isEmpty) ? l10n.homePageDefaultAssistant : n;
-        })(),
-        closePickerTicker: _assistantPickerCloseTick,
-        loadingConversationIds: _loadingConversationIds,
-        onSelectConversation: (id) {
-          // Update current selection for highlight in drawer and animate switch
-          _switchConversationAnimated(id);
-          // // Haptic feedback when closing the sidebar
-          // try {
-          //   if (context.read<SettingsProvider>().hapticsOnDrawer) {
-          //     Haptics.drawerPulse();
-          //   }
-          // } catch (_) {}
-          _drawerController.close();
-        },
-        onNewConversation: () async {
-          await _createNewConversationAnimated();
-          // // Haptic feedback when closing the sidebar
-          // try {
-          //   if (context.read<SettingsProvider>().hapticsOnDrawer) {
-          //     Haptics.drawerPulse();
-          //   }
-          // } catch (_) {}
-          _drawerController.close();
-        },
-      ),
-      child: Scaffold(
-        // child: Scaffold(
-        key: _scaffoldKey,
-        resizeToAvoidBottomInset: true,
-        extendBodyBehindAppBar: true,
-        // backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        // centerTitle: true,
-        systemOverlayStyle: (Theme.of(context).brightness == Brightness.dark)
-            ? const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light, // Android icons
-          statusBarBrightness: Brightness.dark, // iOS text
-        )
-            : const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-          statusBarBrightness: Brightness.light,
-        ),
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: Builder(builder: (context) {
-          return IosIconButton(
-            size: 20,
-            padding: const EdgeInsets.all(8),
-            minSize: 40,
-            builder: (color) => SvgPicture.asset(
-              'assets/icons/list.svg',
-              width: 14,
-              height: 14,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            ),
-            onTap: () {
-              // Always dismiss keyboard when toggling the sidebar
-              _dismissKeyboard();
-              _drawerController.toggle();
-            },
-          );
-        }),
-        titleSpacing: 2,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          // crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AnimatedTextSwap(
-              text: title,
-              // Desktop稍微收紧标题字号
-              style: TextStyle(
-                fontSize: (defaultTargetPlatform == TargetPlatform.macOS ||
-                        defaultTargetPlatform == TargetPlatform.windows ||
-                        defaultTargetPlatform == TargetPlatform.linux)
-                    ? 14
-                    : 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (providerName != null && modelDisplay != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: () => showModelSelectSheet(context),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 0),
-                    child: AnimatedTextSwap(
-                      text: '$modelDisplay ($providerName)',
-                      style: TextStyle(fontSize: 11, color: cs.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          // Mini map button (to the left of new conversation)
-          IosIconButton(
-            size: 20,
-            minSize: 44,
-            onTap: () async {
-              final collapsed = _collapseVersions(_messages);
-              String? selectedId;
-              try {
-                if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-                  selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
-                } else {
-                  selectedId = await showMiniMapSheet(context, collapsed);
-                }
-              } catch (_) {
-                selectedId = await showMiniMapSheet(context, collapsed);
-              }
-              if (!mounted) return;
-              if (selectedId != null && selectedId.isNotEmpty) {
-                await _scrollToMessageId(selectedId);
-              }
-            },
-            semanticLabel: AppLocalizations.of(context)!.miniMapTooltip,
-            icon: Lucide.Map,
-          ),
-          // const SizedBox(width: 4),
-          IosIconButton(
-            size: 22,
-            minSize: 44,
-            onTap: () async {
-              await _createNewConversationAnimated();
-              if (mounted) {
-                // Close drawer if open and scroll to bottom (fresh convo)
-                _forceScrollToBottomSoon(animate: false);
-              }
-            },
-            icon: Lucide.MessageCirclePlus,
-          ),
-          const SizedBox(width: 4),
-          // Move the right spacer between mini map and new-topic per request
-        ],
-      ),
+    // Use mobile layout scaffold
+    return HomeMobileScaffold(
+      scaffoldKey: _scaffoldKey,
+      drawerController: _drawerController,
+      assistantPickerCloseTick: _assistantPickerCloseTick,
+      loadingConversationIds: _loadingConversationIds,
+      title: title,
+      providerName: providerName,
+      modelDisplay: modelDisplay,
+      onToggleDrawer: () => _drawerController.toggle(),
+      onDismissKeyboard: _dismissKeyboard,
+      onSelectConversation: (id) {
+        _switchConversationAnimated(id);
+      },
+      onNewConversation: () async {
+        await _createNewConversationAnimated();
+      },
+      onOpenMiniMap: () async {
+        final collapsed = _collapseVersions(_messages);
+        String? selectedId;
+        try {
+          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+            selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
+          } else {
+            selectedId = await showMiniMapSheet(context, collapsed);
+          }
+        } catch (_) {
+          selectedId = await showMiniMapSheet(context, collapsed);
+        }
+        if (!mounted) return;
+        if (selectedId != null && selectedId.isNotEmpty) {
+          await _scrollToMessageId(selectedId);
+        }
+      },
+      onCreateNewConversation: () async {
+        await _createNewConversationAnimated();
+        if (mounted) {
+          _forceScrollToBottomSoon(animate: false);
+        }
+      },
+      onSelectModel: () => showModelSelectSheet(context),
       body: _wrapWithDropTarget(Stack(
           children: [
             // Assistant-specific chat background + gradient overlay to improve readability
@@ -5529,32 +5356,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
           ),
 
-          // // iOS-style blur/fade effect above input area
-          // Positioned(
-          //   left: 0,
-          //   right: 0,
-          //   bottom: _inputBarHeight,
-          //   child: IgnorePointer(
-          //     child: Container(
-          //       height: 20,
-          //       decoration: BoxDecoration(
-          //         gradient: LinearGradient(
-          //           begin: Alignment.topCenter,
-          //           end: Alignment.bottomCenter,
-          //           colors: [
-          //             Theme.of(context).colorScheme.background.withOpacity(0.0),
-          //             Theme.of(context).colorScheme.background.withOpacity(0.8),
-          //             Theme.of(context).colorScheme.background.withOpacity(1.0),
-          //           ],
-          //           stops: const [0.0, 0.6, 1.0],
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-
-          // Inline tools sheet removed; replaced by modal bottom sheet
-
           // Selection toolbar overlay (above input bar) with iOS glass capsule + animations
           Align(
             alignment: Alignment.bottomCenter,
@@ -5735,9 +5536,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             );
           }),
         ],
-        ),
       )),
-      );
+    );
   }
 
   Widget _buildTabletLayout(
@@ -5747,10 +5547,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     required String? modelDisplay,
     required ColorScheme cs,
   }) {
-    final bool _isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+    final bool isDesktopPlatform = defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
-    if (_isDesktop && !_desktopUiInited) {
+    if (isDesktopPlatform && !_desktopUiInited) {
       _desktopUiInited = true;
       try {
         final sp = context.read<SettingsProvider>();
@@ -5760,237 +5560,52 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _rightSidebarWidth = sp.desktopRightSidebarWidth.clamp(_sidebarMinWidth, _sidebarMaxWidth);
       } catch (_) {}
     }
-    return Stack(
-      children: [
-        Positioned.fill(child: _buildAssistantBackground(context)),
-        SizedBox.expand(
-      child: Row(
-      children: [
-        _buildTabletSidebar(context),
-        if (_isDesktop)
-          _SidebarResizeHandle(
-            visible: _tabletSidebarOpen,
-            onDrag: (dx) {
-              setState(() {
-                _embeddedSidebarWidth = (_embeddedSidebarWidth + dx).clamp(_sidebarMinWidth, _sidebarMaxWidth);
-              });
-            },
-            onDragEnd: () {
-              try { context.read<SettingsProvider>().setDesktopSidebarWidth(_embeddedSidebarWidth); } catch (_) {}
-            },
-          )
-        else
-          AnimatedContainer(
-            duration: _sidebarAnimDuration,
-            curve: _sidebarAnimCurve,
-            width: _tabletSidebarOpen ? 0.6 : 0,
-            child: _tabletSidebarOpen
-                ? VerticalDivider(
-                    width: 0.6,
-                    thickness: 0.5,
-                    color: cs.outlineVariant.withOpacity(0.20),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        Expanded(
-          child: Scaffold(
-            key: _scaffoldKey,
-            resizeToAvoidBottomInset: true,
-            extendBodyBehindAppBar: true,
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              centerTitle: false,
-              systemOverlayStyle: (Theme.of(context).brightness == Brightness.dark)
-                  ? const SystemUiOverlayStyle(
-                      statusBarColor: Colors.transparent,
-                      statusBarIconBrightness: Brightness.light,
-                      statusBarBrightness: Brightness.dark,
-                    )
-                  : const SystemUiOverlayStyle(
-                      statusBarColor: Colors.transparent,
-                      statusBarIconBrightness: Brightness.dark,
-                      statusBarBrightness: Brightness.light,
-                    ),
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              leading: IosIconButton(
-                size: 20,
-                padding: const EdgeInsets.all(8),
-                minSize: 40,
-                builder: (color) => SvgPicture.asset(
-                  'assets/icons/list.svg',
-                  width: 14,
-                  height: 14,
-                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                ),
-                onTap: _toggleTabletSidebar,
-              ),
-              titleSpacing: 2,
-              title: Builder(builder: (context) {
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                    defaultTargetPlatform == TargetPlatform.windows ||
-                    defaultTargetPlatform == TargetPlatform.linux;
-                // Desktop: title and model chip in a single row; Tablet can keep same for consistency
-                final String? brandAsset = (modelDisplay != null
-                        ? (BrandAssets.assetForName(modelDisplay))
-                        : null) ?? (providerName != null ? BrandAssets.assetForName(providerName!) : null);
 
-                Widget? capsule;
-                String? capsuleLabel;
-                if (providerName != null && modelDisplay != null) {
-                  final showProv = context.watch<SettingsProvider>().showProviderInModelCapsule;
-                  capsuleLabel = showProv ? '$modelDisplay | $providerName' : '$modelDisplay';
-                  final Widget brandIcon = AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: ScaleTransition(scale: anim, child: child)),
-                    child: (brandAsset != null)
-                        ? (brandAsset.endsWith('.svg')
-                            ? SvgPicture.asset(brandAsset, width: 16, height: 16, key: ValueKey('brand:$brandAsset'))
-                            : Image.asset(brandAsset, width: 16, height: 16, key: ValueKey('brand:$brandAsset')))
-                        : Icon(Lucide.Boxes, size: 16, color: cs.onSurface.withOpacity(0.7), key: const ValueKey('brand:default')),
-                  );
-
-                  capsule = IosCardPress(
-                    borderRadius: BorderRadius.circular(20),
-                    // baseColor: isDark ? Colors.white12 : Colors.grey.shade200,
-                    baseColor: Colors.transparent,
-                    // AnimatedContainer inside IosCardPress will animate color on hover/press
-                    // We wrap the content in AnimatedSize to animate width changes
-                    pressedBlendStrength: isDark ? 0.18 : 0.12,
-                    padding: EdgeInsets.zero,
-                    onTap: () => showModelSelectSheet(context),
-                    child: AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            brandIcon,
-                            const SizedBox(width: 6),
-                            // Allow label to ellipsize within the chip
-                            Flexible(
-                              child: AnimatedTextSwap(
-                                text: capsuleLabel!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 1.1,
-                                  color: isDark ? Colors.white.withOpacity(0.92) : cs.onSurface.withOpacity(0.9),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                // Primary header row: title expands, capsule stays close to title's right side
-                final row = Row(
-                  mainAxisSize: MainAxisSize.max,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Title expands and ellipsizes as needed
-                    Flexible(
-                      fit: FlexFit.loose,
-                      child: AnimatedSize(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        child: AnimatedTextSwap(
-                          text: title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    if (capsule != null) ...[
-                      const SizedBox(width: 8),
-                      // Capsule scales down to avoid overflow but stays left-aligned
-                      Flexible(
-                        fit: FlexFit.loose,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            transitionBuilder: (child, anim) => FadeTransition(
-                              opacity: anim,
-                              child: SlideTransition(
-                                position: Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero).animate(anim),
-                                child: child,
-                              ),
-                            ),
-                            child: KeyedSubtree(
-                              key: ValueKey('cap:${capsuleLabel ?? ''}'),
-                              child: capsule!,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-
-                // Left-aligned, vertically centered without manual nudges
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(anim),
-                        child: child,
-                      ),
-                    ),
-                    child: KeyedSubtree(key: ValueKey('hdr:$title|${capsuleLabel ?? ''}'), child: row),
-                  ),
-                );
-              }),
-              actions: [
-                // Right topics sidebar toggle (desktop + topics on right)
-                Builder(builder: (context) {
-                  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                      defaultTargetPlatform == TargetPlatform.windows ||
-                      defaultTargetPlatform == TargetPlatform.linux;
-                  final sp = context.watch<SettingsProvider>();
-                  final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
-                  if (!isDesktop || !topicsOnRight) return const SizedBox.shrink();
-                  return IosIconButton(
-                    size: 20,
-                    padding: const EdgeInsets.all(8),
-                    minSize: 40,
-                    icon: Lucide.panelRight,
-                    onTap: _toggleRightSidebar,
-                  );
-                }),
-                const SizedBox(width: 2),
-                IosIconButton(
-                  size: 20,
-                  padding: const EdgeInsets.all(8),
-                  minSize: 40,
-                  icon: Lucide.MessageCirclePlus,
-                  onTap: () async {
-                    await _createNewConversationAnimated();
-                    if (mounted) _forceScrollToBottomSoon(animate: false);
-                  },
-                ),
-                const SizedBox(width: 6),
-              ],
-            ),
-            body: _wrapWithDropTarget(Stack(
+    // Use desktop layout scaffold
+    return HomeDesktopScaffold(
+      scaffoldKey: _scaffoldKey,
+      assistantPickerCloseTick: _assistantPickerCloseTick,
+      loadingConversationIds: _loadingConversationIds,
+      title: title,
+      providerName: providerName,
+      modelDisplay: modelDisplay,
+      tabletSidebarOpen: _tabletSidebarOpen,
+      rightSidebarOpen: _rightSidebarOpen,
+      embeddedSidebarWidth: _embeddedSidebarWidth,
+      rightSidebarWidth: _rightSidebarWidth,
+      sidebarMinWidth: _sidebarMinWidth,
+      sidebarMaxWidth: _sidebarMaxWidth,
+      onToggleSidebar: _toggleTabletSidebar,
+      onToggleRightSidebar: _toggleRightSidebar,
+      onSelectConversation: (id) {
+        _switchConversationAnimated(id);
+      },
+      onNewConversation: () async {
+        await _createNewConversationAnimated();
+      },
+      onCreateNewConversation: () async {
+        await _createNewConversationAnimated();
+        if (mounted) _forceScrollToBottomSoon(animate: false);
+      },
+      onSelectModel: () => showModelSelectSheet(context),
+      onSidebarWidthChanged: (dx) {
+        setState(() {
+          _embeddedSidebarWidth = (_embeddedSidebarWidth + dx).clamp(_sidebarMinWidth, _sidebarMaxWidth);
+        });
+      },
+      onSidebarWidthChangeEnd: () {
+        try { context.read<SettingsProvider>().setDesktopSidebarWidth(_embeddedSidebarWidth); } catch (_) {}
+      },
+      onRightSidebarWidthChanged: (dx) {
+        setState(() {
+          _rightSidebarWidth = (_rightSidebarWidth - dx).clamp(_sidebarMinWidth, _sidebarMaxWidth);
+        });
+      },
+      onRightSidebarWidthChangeEnd: () {
+        try { context.read<SettingsProvider>().setDesktopRightSidebarWidth(_rightSidebarWidth); } catch (_) {}
+      },
+      buildAssistantBackground: _buildAssistantBackground,
+      body: _wrapWithDropTarget(Stack(
               children: [
 
                 Padding(
@@ -6791,77 +6406,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 }),
               ],
             )),
-          ),
-        ),
-        // Fixed right topics sidebar when enabled
-        Builder(builder: (context) {
-          final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-              defaultTargetPlatform == TargetPlatform.windows ||
-              defaultTargetPlatform == TargetPlatform.linux;
-          final sp = context.watch<SettingsProvider>();
-          final topicsOnRight = sp.desktopTopicPosition == DesktopTopicPosition.right;
-          if (!isDesktop || !topicsOnRight) return const SizedBox.shrink();
-          final double w = _rightSidebarWidth;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              
-              if (isDesktop)
-                _SidebarResizeHandle(
-                  visible: _rightSidebarOpen,
-                  onDrag: (dx) {
-                    setState(() {
-                      _rightSidebarWidth = (_rightSidebarWidth - dx).clamp(_sidebarMinWidth, _sidebarMaxWidth);
-                    });
-                  },
-                  onDragEnd: () {
-                    try { context.read<SettingsProvider>().setDesktopRightSidebarWidth(_rightSidebarWidth); } catch (_) {}
-                  },
-                ),
-              AnimatedContainer(
-                duration: _sidebarAnimDuration,
-                curve: _sidebarAnimCurve,
-                width: _rightSidebarOpen ? _rightSidebarWidth : 0,
-                child: ClipRect(
-                  child: OverflowBox(
-                    alignment: Alignment.centerRight,
-                    minWidth: 0,
-                    maxWidth: _rightSidebarWidth,
-                    child: SizedBox(
-                      width: _rightSidebarWidth,
-                      child: SideDrawer(
-                        embedded: true,
-                        embeddedWidth: _rightSidebarWidth,
-                        userName: context.watch<UserProvider>().name,
-                        assistantName: (() {
-                          final l10n = AppLocalizations.of(context)!;
-                          final a = context.watch<AssistantProvider>().currentAssistant;
-                          final n = a?.name.trim();
-                          return (n == null || n.isEmpty) ? l10n.homePageDefaultAssistant : n;
-                        })(),
-                        closePickerTicker: _assistantPickerCloseTick,
-                        loadingConversationIds: _loadingConversationIds,
-                        useDesktopTabs: false,
-                        desktopTopicsOnly: true,
-                        onSelectConversation: (id) {
-                          _switchConversationAnimated(id);
-                        },
-                        onNewConversation: () async {
-                          await _createNewConversationAnimated();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        }),
-      ],
-    ),
-    ),
-  ],
-);
+    );
   }
 
   @override
@@ -6904,14 +6449,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _inlineImageSanitizing.clear();
     routeObserver.unsubscribe(this);
     super.dispose();
-  }
-
-  void _triggerConversationFade() {
-    try {
-      _convoFadeController.stop();
-      _convoFadeController.value = 0;
-      _convoFadeController.forward();
-    } catch (_) {}
   }
 
   @override
