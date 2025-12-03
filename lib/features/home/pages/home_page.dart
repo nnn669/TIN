@@ -1857,6 +1857,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     } catch (_) {}
   }
 
+  /// Send a new message and generate an assistant response.
+  /// This method handles:
+  /// 1. Input validation
+  /// 2. User message creation and persistence
+  /// 3. Assistant message placeholder creation
+  /// 4. API message preparation (documents, OCR, system prompts, tools)
+  /// 5. Streaming generation via _executeGeneration
   Future<void> _sendMessage(ChatInputData input) async {
     final content = input.text.trim();
     if (content.isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty) return;
@@ -1865,7 +1872,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
     final assistantId = assistant?.id;
-    
+
     // Use assistant's model if set, otherwise fall back to global default
     final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
     final modelId = assistant?.chatModelId ?? settings.currentModelId;
@@ -1880,8 +1887,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Add user message (apply regex rules before persisting)
-    // Persist user message; append image and document markers for display
+    // === Step 1: Create and persist user message ===
     final imageMarkers = input.imagePaths.map((p) => '\n[image:$p]').join();
     final docMarkers = input.documents.map((d) => '\n[file:${d.path}|${d.fileName}|${d.mime}]').join();
     final processedUserText = applyAssistantRegexes(
@@ -1900,13 +1906,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _messages.add(userMessage);
     });
     _setConversationLoading(_currentConversation!.id, true);
-
-    // 延迟滚动确保UI更新完成
     Future.delayed(const Duration(milliseconds: 100), () {
       _scrollToBottom();
     });
 
-    // Create assistant message placeholder
+    // === Step 2: Create assistant message placeholder ===
     final assistantMessage = await _chatService.addMessage(
       conversationId: _currentConversation!.id,
       role: 'assistant',
@@ -1942,1066 +1946,70 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    // 添加助手消息后也滚动到底部
     Future.delayed(const Duration(milliseconds: 100), () {
       _scrollToBottom();
     });
 
-    // Prepare messages for API
-    // Apply truncateIndex and collapse versions first, then transform the last user message to include document content
-    final tIndex = _currentConversation?.truncateIndex ?? -1;
-    final List<ChatMessage> sourceAll = (tIndex >= 0 && tIndex <= _messages.length)
-        ? _messages.sublist(tIndex)
-        : List.of(_messages);
-    final List<ChatMessage> source = _collapseVersions(sourceAll);
-    final apiMessages = source
-        .where((m) => m.content.isNotEmpty)
-        .map((m) {
-          var content = m.content;
-          if (m.role == 'assistant') {
-            content = _appendGeminiThoughtSignatureForApi(m, content);
-          }
-          return {
-            'role': m.role == 'assistant' ? 'assistant' : 'user',
-            'content': content,
-          };
-        })
-        .toList();
+    // === Step 3: Build API messages ===
+    final apiMessages = _buildApiMessages();
 
+    // === Step 4: Process user messages (documents, OCR, templates) ===
     final bool ocrActive = settings.ocrEnabled &&
         settings.ocrModelProvider != null &&
         settings.ocrModelId != null;
+    await _processUserMessagesForApi(apiMessages, settings, assistant);
 
-    // Build document prompts per user message (inline) to avoid re-sending attachments every turn
-    if (apiMessages.isNotEmpty) {
-      // Find last user message index in apiMessages
-      int lastUserIdx = -1;
-      for (int i = apiMessages.length - 1; i >= 0; i--) {
-        if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
-      }
+    // === Step 5: Inject prompts ===
+    _injectSystemPrompt(apiMessages, assistant, modelId);
+    await _injectMemoryAndRecentChats(apiMessages, assistant);
 
-      final Map<String, String?> docTextCache = <String, String?>{};
-      Future<String?> _readDocument(DocumentAttachment d) async {
-        if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
-        try {
-          final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
-          docTextCache[d.path] = text;
-          return text;
-        } catch (_) {
-          docTextCache[d.path] = null;
-          return null;
-        }
-      }
+    final hasBuiltInSearch = _hasBuiltInGeminiSearch(settings, providerKey, modelId);
+    _injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
+    await _injectInstructionPrompts(apiMessages, assistantId);
 
-      for (int i = 0; i < apiMessages.length; i++) {
-        if (apiMessages[i]['role'] != 'user') continue;
-        final rawUser = (apiMessages[i]['content'] ?? '').toString();
-        final parsedUser = _parseInputFromRaw(rawUser);
-        final videoPaths = <String>{
-          for (final d in parsedUser.documents)
-            if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
-        }..removeWhere((p) => p.isEmpty);
+    // === Step 6: Apply context limit and inline images ===
+    _applyContextLimit(apiMessages, assistant);
+    await _inlineLocalImages(apiMessages);
 
-        String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
-        if (ocrActive) {
-          cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
-        }
+    // === Step 7: Prepare tools and config ===
+    final toolDefs = _buildToolDefinitions(settings, assistant, providerKey, modelId, hasBuiltInSearch);
+    final onToolCall = toolDefs.isNotEmpty ? _buildToolCallHandler(settings, assistant) : null;
 
-        final filePrompts = StringBuffer();
-        for (final d in parsedUser.documents) {
-          if (d.mime.toLowerCase().startsWith('video/')) continue;
-          final text = await _readDocument(d);
-          if (text == null || text.trim().isEmpty) continue;
-          filePrompts.writeln('## user sent a file: ${d.fileName}');
-          filePrompts.writeln('<content>');
-          filePrompts.writeln('```');
-          filePrompts.writeln(text);
-          filePrompts.writeln('```');
-          filePrompts.writeln('</content>');
-          filePrompts.writeln();
-        }
-
-        String merged = (filePrompts.toString() + cleanedUser).trim();
-
-        if (ocrActive) {
-          final ocrTargets = parsedUser.imagePaths
-              .map((p) => p.trim())
-              .where((p) => p.isNotEmpty && !videoPaths.contains(p))
-              .toSet()
-              .toList();
-          if (ocrTargets.isNotEmpty) {
-            final ocrText = await _getOcrTextForImages(ocrTargets);
-            if (ocrText != null && ocrText.trim().isNotEmpty) {
-              merged = (_wrapOcrBlock(ocrText) + merged).trim();
-            }
-          }
-        }
-
-        apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
-      }
-
-      if (lastUserIdx != -1) {
-        final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
-        // Apply message template if set
-        final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
-            ? '{{ message }}'
-            : (assistant!.messageTemplate);
-        final templated = PromptTransformer.applyMessageTemplate(
-          templ,
-          role: 'user',
-          message: userText,
-          now: DateTime.now(),
-        );
-        apiMessages[lastUserIdx]['content'] = templated;
-      }
-    }
-
-    // Inject system prompt (assistant.systemPrompt with placeholders)
-    if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
-      final vars = PromptTransformer.buildPlaceholders(
-        context: context,
-        assistant: assistant!,
-        modelId: modelId,
-        modelName: modelId,
-        userNickname: context.read<UserProvider>().name,
-      );
-      final sys = PromptTransformer.replacePlaceholders(assistant.systemPrompt, vars);
-      apiMessages.insert(0, {'role': 'system', 'content': sys});
-    }
-
-    // Inject Memories prompt and Recent Chats if enabled
-    try {
-      if (assistant?.enableMemory == true) {
-        final mp = context.read<MemoryProvider>();
-        final mems = mp.getForAssistant(assistant!.id);
-        final buf = StringBuffer();
-        buf.writeln('## Memories');
-        buf.writeln('These are memories that you can reference in the future conversations.');
-        buf.writeln('<memories>');
-        for (final m in mems) {
-          buf.writeln('<record>');
-          buf.writeln('<id>${m.id}</id>');
-          buf.writeln('<content>${m.content}</content>');
-          buf.writeln('</record>');
-        }
-        buf.writeln('</memories>');
-        // Tool usage guidance
-        buf.writeln('''
-## Memory Tool
-你是一个无状态的大模型，你无法存储记忆，因此为了记住信息，你需要使用**记忆工具**。
-你可以使用 `create_memory`, `edit_memory`, `delete_memory` 工具创建、更新或删除记忆。
-- 如果记忆中没有相关信息，请使用 create_memory 创建一条新的记录。
-- 如果已有相关记录，请使用 edit_memory 更新内容。
-- 若记忆过时或无用，请使用 delete_memory 删除。
-这些记忆会自动包含在未来的对话上下文中，在<memories>标签内。
-请勿在记忆中存储敏感信息，敏感信息包括：用户的民族、宗教信仰、性取向、政治观点及党派归属、性生活、犯罪记录等。
-在与用户聊天过程中，你可以像一个私人秘书一样**主动的**记录用户相关的信息到记忆里，包括但不限于：
-- 用户昵称/姓名
-- 年龄/性别/兴趣爱好
-- 计划事项等
-- 聊天风格偏好
-- 工作相关
-- 首次聊天时间
-- ...
-请主动调用工具记录，而不是需要用户要求。     
-记忆如果包含日期信息，请包含在内，请使用绝对时间格式，并且当前时间是 ${DateTime.now().toIso8601String()}。
-无需告知用户你已更改记忆记录，也不要在对话中直接显示记忆内容，除非用户主动要求。
-相似或相关的记忆应合并为一条记录，而不要重复记录，过时记录应删除。         
-你可以在和用户闲聊的时候暗示用户你能记住东西。
-''');
-        if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-          apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + buf.toString();
-        } else {
-          apiMessages.insert(0, {'role': 'system', 'content': buf.toString()});
-        }
-      }
-      if (assistant?.enableRecentChatsReference == true) {
-        final chats = context.read<ChatService>().getAllConversations();
-        final titles = chats
-            .where((c) => c.assistantId == assistant!.id)
-            .take(10)
-            .map((c) => c.title)
-            .where((t) => t.trim().isNotEmpty)
-            .toList();
-        if (titles.isNotEmpty) {
-          final sb = StringBuffer();
-          sb.writeln('## 最近的对话');
-          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
-          sb.writeln('<recent_chats>');
-          for (final t in titles) {
-            sb.writeln('<conversation>');
-            sb.writeln('  <title>$t</title>');
-            sb.writeln('</conversation>');
-          }
-          sb.writeln('</recent_chats>');
-          if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-            apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + sb.toString();
-          } else {
-            apiMessages.insert(0, {'role': 'system', 'content': sb.toString()});
-          }
-        }
-      }
-    } catch (_) {}
-
-    // Determine tool support and built-in Gemini search status
-    final supportsTools = _isToolModel(providerKey, modelId);
-    bool _hasBuiltInGeminiSearch() {
-      try {
-        final cfg = settings.getProviderConfig(providerKey);
-        // Gemini (official or Vertex) supports built-in search when configured
-        if (cfg.providerType != ProviderKind.google) return false;
-        final ov = cfg.modelOverrides[modelId] as Map?;
-        final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-        return list.map((e) => e.toString().toLowerCase()).contains('search');
-      } catch (_) {
-        return false;
-      }
-    }
-    final hasBuiltInSearch = _hasBuiltInGeminiSearch();
-
-    // Optionally inject search tool usage guide (when search is enabled and not using Gemini built-in search)
-    if (settings.searchEnabled && !hasBuiltInSearch) {
-      final prompt = SearchToolService.getSystemPrompt();
-      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-        apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + prompt;
-      } else {
-        apiMessages.insert(0, {'role': 'system', 'content': prompt});
-      }
-    }
-    // Inject instruction-injection prompts when entries are active (per assistant, multi-select)
-    try {
-      List<InstructionInjection> actives = const <InstructionInjection>[];
-      try {
-        final ip = context.read<InstructionInjectionProvider>();
-        actives = ip.activesFor(assistantId);
-        if (actives.isEmpty) {
-          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-        }
-      } catch (_) {
-        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-      }
-      final prompts = actives
-          .map((e) => e.prompt.trim())
-          .where((p) => p.isNotEmpty)
-          .toList(growable: false);
-      if (prompts.isNotEmpty) {
-        final lp = prompts.join('\n\n');
-        if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-          apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
-        } else {
-          apiMessages.insert(0, {'role': 'system', 'content': lp});
-        }
-      }
-    } catch (_) {}
-
-    // Limit context length according to assistant settings
-    if ((assistant?.limitContextMessages ?? true) && (assistant?.contextMessageSize ?? 0) > 0) {
-      final keep = assistant!.contextMessageSize.clamp(1, 512).toInt();
-      // Always keep the first message if it's system
-      int startIdx = 0;
-      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-        startIdx = 1;
-      }
-      final tail = apiMessages.sublist(startIdx);
-      if (tail.length > keep) {
-        final trimmed = tail.sublist(tail.length - keep);
-        apiMessages
-          ..removeRange(startIdx, apiMessages.length)
-          ..addAll(trimmed);
-      }
-    }
-
-    // Convert any local Markdown image links to inline base64 for model context
-    for (int i = 0; i < apiMessages.length; i++) {
-      final s = (apiMessages[i]['content'] ?? '').toString();
-      if (s.isNotEmpty) {
-        apiMessages[i]['content'] = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(s);
-      }
-    }
-
-    // Get provider config
-    final config = settings.getProviderConfig(providerKey);
-
-    // Stream response
-    String fullContentRaw = '';
-    int totalTokens = 0;
-    TokenUsage? usage;
-    String _transformAssistantContent([String? raw]) {
-      return applyAssistantRegexes(
-        raw ?? fullContentRaw,
-        assistant: assistant,
-        scope: AssistantRegexScope.assistant,
-        visual: false,
-      );
-    }
-    // Respect assistant streaming toggle: if off, buffer updates until done
-    final bool streamOutput = assistant?.streamOutput ?? true;
-    String _bufferedReasoning = '';
-    DateTime? _reasoningStartAt;
-    bool _finishHandled = false;
-    bool _titleQueued = false;
-
-    try {
-      // Prepare tools (Search tool + MCP tools)
-      final List<Map<String, dynamic>> toolDefs = <Map<String, dynamic>>[];
-      Future<String> Function(String, Map<String, dynamic>)? onToolCall;
-
-      // Search tool (skip when Gemini built-in search is active)
-      if (settings.searchEnabled && !hasBuiltInSearch && supportsTools) {
-        toolDefs.add(SearchToolService.getToolDefinition());
-      }
-
-      // Memory tools
-      if (assistant?.enableMemory == true && supportsTools) {
-        toolDefs.addAll([
-          {
-            'type': 'function',
-            'function': {
-              'name': 'create_memory',
-              'description': 'create a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'content': {'type': 'string', 'description': 'The content of the memory record'}
-                },
-                'required': ['content']
-              }
-            }
-          },
-          {
-            'type': 'function',
-            'function': {
-              'name': 'edit_memory',
-              'description': 'update a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'id': {'type': 'integer', 'description': 'The id of the memory record'},
-                  'content': {'type': 'string', 'description': 'The content of the memory record'}
-                },
-                'required': ['id', 'content']
-              }
-            }
-          },
-          {
-            'type': 'function',
-            'function': {
-              'name': 'delete_memory',
-              'description': 'delete a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'id': {'type': 'integer', 'description': 'The id of the memory record'}
-                },
-                'required': ['id']
-              }
-            }
-          },
-        ]);
-      }
-
-      // MCP tools
-      final mcp = context.read<McpProvider>();
-      final toolSvc = context.read<McpToolService>();
-      final tools = toolSvc.listAvailableToolsForAssistant(mcp, context.read<AssistantProvider>(), assistant?.id);
-      if (supportsTools && tools.isNotEmpty) {
-        final providerCfg = settings.getProviderConfig(providerKey);
-        final providerKind = ProviderConfig.classify(providerCfg.id, explicitType: providerCfg.providerType);
-        toolDefs.addAll(tools.map((t) {
-          // Base schema from server or fallback
-          Map<String, dynamic> baseSchema;
-          if (t.schema != null && t.schema!.isNotEmpty) {
-            baseSchema = Map<String, dynamic>.from(t.schema!);
-          } else {
-            final props = <String, dynamic>{for (final p in t.params) p.name: {'type': (p.type ?? 'string')}};
-            final required = [for (final p in t.params.where((e) => e.required)) p.name];
-            baseSchema = {'type': 'object', 'properties': props, if (required.isNotEmpty) 'required': required};
-          }
-          final sanitized = _sanitizeToolParametersForProvider(baseSchema, providerKind);
-          return {
-            'type': 'function',
-            'function': {
-              'name': t.name,
-              if ((t.description ?? '').isNotEmpty) 'description': t.description,
-              'parameters': sanitized,
-            }
-          };
-        }));
-      }
-
-      if (toolDefs.isNotEmpty) {
-        onToolCall = (name, args) async {
-          if (name == SearchToolService.toolName && settings.searchEnabled) {
-            final q = (args['query'] ?? '').toString();
-            return await SearchToolService.executeSearch(q, settings);
-          }
-          // Memory tools
-          if (assistant?.enableMemory == true) {
-            try {
-              final mp = context.read<MemoryProvider>();
-              if (name == 'create_memory') {
-                final content = (args['content'] ?? '').toString();
-                if (content.isEmpty) return '';
-                final m = await mp.add(assistantId: assistant!.id, content: content);
-                return m.content;
-              } else if (name == 'edit_memory') {
-                final id = (args['id'] as num?)?.toInt() ?? -1;
-                final content = (args['content'] ?? '').toString();
-                if (id <= 0 || content.isEmpty) return '';
-                final m = await mp.update(id: id, content: content);
-                return m?.content ?? '';
-              } else if (name == 'delete_memory') {
-                final id = (args['id'] as num?)?.toInt() ?? -1;
-                if (id <= 0) return '';
-                final ok = await mp.delete(id: id);
-                return ok ? 'deleted' : '';
-              }
-            } catch (_) {}
-          }
-          // Fallback to MCP tools
-          final text = await toolSvc.callToolTextForAssistant(
-            mcp,
-            context.read<AssistantProvider>(),
-            assistantId: assistant?.id,
-            toolName: name,
-            arguments: args,
-          );
-          return text;
-        };
-      }
-
-      // Build assistant-level custom request overrides
-      Map<String, String>? aHeaders;
-      Map<String, dynamic>? aBody;
-      if ((assistant?.customHeaders.isNotEmpty ?? false)) {
-        aHeaders = {
-          for (final e in assistant!.customHeaders)
-            if ((e['name'] ?? '').trim().isNotEmpty) (e['name']!.trim()): (e['value'] ?? '')
-        };
-        if (aHeaders.isEmpty) aHeaders = null;
-      }
-      if ((assistant?.customBody.isNotEmpty ?? false)) {
-        aBody = {
-          for (final e in assistant!.customBody)
-            if ((e['key'] ?? '').trim().isNotEmpty)
-              (e['key']!.trim()): (e['value'] ?? '')
-        };
-        if (aBody.isEmpty) aBody = null;
-      }
-
-    // Collect video attachments from current input; only used for providers that support video (e.g. Qwen via DashScope).
+    // Collect video attachments from current input
     final currentVideoPaths = <String>[
       for (final d in input.documents)
         if (d.mime.toLowerCase().startsWith('video/')) d.path,
     ];
 
-    final stream = ChatApiService.sendMessageStream(
-      config: config,
+    // Build user image paths for API call
+    final userImagePaths = ocrActive
+        ? const <String>[]
+        : <String>[
+            ...input.imagePaths,
+            ...currentVideoPaths,
+          ];
+
+    // === Step 8: Execute generation ===
+    final ctx = _GenerationContext(
+      assistantMessage: assistantMessage,
+      apiMessages: apiMessages,
+      userImagePaths: userImagePaths,
+      providerKey: providerKey,
       modelId: modelId,
-      messages: apiMessages,
-      userImagePaths: ocrActive
-          ? const <String>[]
-          : <String>[
-              ...input.imagePaths,
-              ...currentVideoPaths,
-            ],
-      thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
-      temperature: assistant?.temperature,
-      topP: assistant?.topP,
-      maxTokens: assistant?.maxTokens,
-      tools: toolDefs.isEmpty ? null : toolDefs,
-        onToolCall: onToolCall,
-        extraHeaders: aHeaders,
-        extraBody: aBody,
-        stream: streamOutput,
-      );
+      assistant: assistant,
+      settings: settings,
+      config: settings.getProviderConfig(providerKey),
+      toolDefs: toolDefs,
+      onToolCall: onToolCall,
+      extraHeaders: _buildCustomHeaders(assistant),
+      extraBody: _buildCustomBody(assistant),
+      supportsReasoning: supportsReasoning,
+      enableReasoning: enableReasoning,
+      streamOutput: assistant?.streamOutput ?? true,
+      generateTitleOnFinish: true,
+    );
 
-      Future<void> finish({bool generateTitle = true}) async {
-        // Clean up stream throttle timer and flush final content
-        _streamThrottleTimers[assistantMessage.id]?.cancel();
-        _streamThrottleTimers.remove(assistantMessage.id);
-        _pendingStreamContent.remove(assistantMessage.id);
-        _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-        _inlineImageSanitizeTimers.remove(assistantMessage.id);
-        _inlineImageSanitizing.remove(assistantMessage.id);
-
-        final shouldGenerateTitle = generateTitle && !_titleQueued;
-        if (_finishHandled) {
-          if (shouldGenerateTitle) {
-            _titleQueued = true;
-            _maybeGenerateTitleFor(assistantMessage.conversationId);
-          }
-          return;
-        }
-        _finishHandled = true;
-        if (shouldGenerateTitle) {
-          _titleQueued = true;
-        }
-        // Replace extremely long inline base64 images with local files to avoid jank
-        final processedContent = _transformAssistantContent();
-        final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
-        await _chatService.updateMessage(
-          assistantMessage.id,
-          content: sanitizedContent,
-          totalTokens: totalTokens,
-          isStreaming: false,
-        );
-        if (!mounted) return;
-        setState(() {
-          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-          if (index != -1) {
-            _messages[index] = _messages[index].copyWith(
-              content: sanitizedContent,
-              totalTokens: totalTokens,
-              isStreaming: false,
-            );
-          }
-        });
-        _setConversationLoading(assistantMessage.conversationId, false);
-        final r = _reasoning[assistantMessage.id];
-        if (r != null) {
-          if (r.finishedAt == null) {
-            r.finishedAt = DateTime.now();
-          }
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          if (autoCollapse) {
-            r.expanded = false; // auto close after finish
-          }
-          _reasoning[assistantMessage.id] = r;
-          if (mounted) setState(() {});
-        }
-
-        // Also finish any unfinished reasoning segments
-        final segments = _reasoningSegments[assistantMessage.id];
-        if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-          segments.last.finishedAt = DateTime.now();
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          if (autoCollapse) {
-            segments.last.expanded = false;
-          }
-          _reasoningSegments[assistantMessage.id] = segments;
-          if (mounted) setState(() {});
-        }
-
-        // Save reasoning segments to database
-        if (segments != null && segments.isNotEmpty) {
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningSegmentsJson: _serializeReasoningSegments(segments),
-          );
-        }
-        if (shouldGenerateTitle) {
-          _maybeGenerateTitleFor(assistantMessage.conversationId);
-        }
-      }
-
-      // Track stream per conversation to allow concurrent sessions
-      final String _cidForStream = assistantMessage.conversationId;
-      await _conversationStreams[_cidForStream]?.cancel();
-      final _sub = stream.listen(
-            (chunk) async {
-          final chunkContent = chunk.content.isNotEmpty ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id) : '';
-          // Capture reasoning deltas only when reasoning is enabled
-          if ((chunk.reasoning ?? '').isNotEmpty && supportsReasoning) {
-            if (streamOutput) {
-              final r = _reasoning[assistantMessage.id] ?? _ReasoningData();
-              r.text += chunk.reasoning!;
-              r.startAt ??= DateTime.now();
-              // keep finishedAt as-is; don't reset to null once set
-              r.expanded = false; // default collapsed while generating
-              _reasoning[assistantMessage.id] = r;
-
-              // Add to reasoning segments for mixed display
-              final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-
-              if (segments.isEmpty) {
-                // First reasoning segment
-                final newSegment = _ReasoningSegmentData();
-                newSegment.text = chunk.reasoning!;
-                newSegment.startAt = DateTime.now();
-                newSegment.expanded = false; // default collapsed while generating
-                newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-                segments.add(newSegment);
-              } else {
-                // Check if we should start a new segment (after tool calls)
-                final hasToolsAfterLastSegment = (_toolParts[assistantMessage.id]?.isNotEmpty ?? false);
-                final lastSegment = segments.last;
-
-                if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
-                  // Start a new segment after tools
-                  final newSegment = _ReasoningSegmentData();
-                  newSegment.text = chunk.reasoning!;
-                  newSegment.startAt = DateTime.now();
-                  newSegment.expanded = false; // default collapsed while generating
-                  newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-                  segments.add(newSegment);
-                } else {
-                  // Continue current segment
-                  lastSegment.text += chunk.reasoning!;
-                  lastSegment.startAt ??= DateTime.now();
-                }
-              }
-              _reasoningSegments[assistantMessage.id] = segments;
-
-              // Save segments to database periodically
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningSegmentsJson: _serializeReasoningSegments(segments),
-              );
-
-              if (mounted && _currentConversation?.id == _cidForStream) setState(() {});
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: r.text,
-                reasoningStartAt: r.startAt,
-              );
-            } else {
-              // Buffer reasoning only in UI; still persist progress so it won't be lost on navigation
-              _reasoningStartAt ??= DateTime.now();
-              _bufferedReasoning += chunk.reasoning!;
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: _bufferedReasoning,
-                reasoningStartAt: _reasoningStartAt,
-              );
-            }
-          }
-
-          // MCP tool call placeholders
-          if ((chunk.toolCalls ?? const []).isNotEmpty) {
-            // Finish current reasoning segment if exists, and auto-collapse per settings
-            final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-            if (segments.isNotEmpty && segments.last.finishedAt == null) {
-              segments.last.finishedAt = DateTime.now();
-              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-              if (autoCollapse) {
-                segments.last.expanded = false;
-                final rd = _reasoning[assistantMessage.id];
-                if (rd != null) rd.expanded = false;
-              }
-              _reasoningSegments[assistantMessage.id] = segments;
-              // Persist closed segment state
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningSegmentsJson: _serializeReasoningSegments(segments),
-              );
-            }
-
-            // Simply append new tool calls instead of merging by ID/name
-            // This allows multiple calls to the same tool
-            final existing = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-            for (final c in chunk.toolCalls!) {
-              existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
-            }
-            if (mounted && _currentConversation?.id == _cidForStream) setState(() {
-              _toolParts[assistantMessage.id] = _dedupeToolPartsList(existing);
-            });
-
-            // Persist placeholders - append new events
-            try {
-              final prev = _chatService.getToolEvents(assistantMessage.id);
-              final newEvents = <Map<String, dynamic>>[
-                ...prev,
-                for (final c in chunk.toolCalls!)
-                  {
-                    'id': c.id,
-                    'name': c.name,
-                    'arguments': c.arguments,
-                    'content': null,
-                  },
-              ];
-              await _chatService.setToolEvents(assistantMessage.id, _dedupeToolEvents(newEvents));
-            } catch (_) {}
-          }
-
-          // MCP tool results -> hydrate placeholders in-place (avoid extra tool message cards)
-          if ((chunk.toolResults ?? const []).isNotEmpty) {
-            final parts = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-            for (final r in chunk.toolResults!) {
-              // Find the first loading tool with matching ID or name
-              // This ensures we update the correct placeholder even with multiple same-name tools
-              int idx = -1;
-              for (int i = 0; i < parts.length; i++) {
-                if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
-                  idx = i;
-                  break;
-                }
-              }
-
-              if (idx >= 0) {
-                parts[idx] = ToolUIPart(
-                  id: parts[idx].id,
-                  toolName: parts[idx].toolName,
-                  arguments: (r.arguments is Map && (r.arguments as Map).isNotEmpty)
-                      ? Map<String, dynamic>.from(r.arguments)
-                      : parts[idx].arguments,
-                  content: r.content,
-                  loading: false,
-                );
-              } else {
-                // If we didn't see the placeholder (edge case), append a finished part
-                parts.add(ToolUIPart(
-                  id: r.id,
-                  toolName: r.name,
-                  arguments: r.arguments,
-                  content: r.content,
-                  loading: false,
-                ));
-              }
-              // Persist each event update
-              try {
-                await _chatService.upsertToolEvent(
-                  assistantMessage.id,
-                  id: r.id,
-                  name: r.name,
-                  arguments: r.arguments,
-                  content: r.content,
-                );
-              } catch (_) {}
-            }
-            if (mounted && _currentConversation?.id == _cidForStream) setState(() {
-              _toolParts[assistantMessage.id] = _dedupeToolPartsList(parts);
-            });
-            if (!_isUserScrolling) {
-              _scrollToBottomSoon();
-            }
-          }
-
-          if (chunk.isDone) {
-            // Ensure final content from non-streaming path is captured before finish()
-            if (chunkContent.isNotEmpty) {
-              fullContentRaw += chunkContent;
-            }
-            // Guard: if we have any loading tool-call placeholders, a follow-up round is coming.
-            final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
-            if (hasLoadingTool) {
-              // Skip finishing now; wait for follow-up round.
-              return;
-            }
-            // Capture final usage/tokens if only provided at end
-            if (chunk.totalTokens > 0) {
-              totalTokens = chunk.totalTokens;
-            }
-            if (chunk.usage != null) {
-              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
-              totalTokens = usage!.totalTokens;
-            }
-            await finish();
-            // Android: optionally notify when generation completes, only in background
-            try {
-              final sp = context.read<SettingsProvider>();
-              if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-                await NotificationService.showChatCompleted(
-                  title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-                  body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-                );
-              }
-            } catch (_) {}
-            // If non-streaming, persist buffered reasoning once at the end
-            if (!streamOutput && _bufferedReasoning.isNotEmpty) {
-              final now = DateTime.now();
-              final startAt = _reasoningStartAt ?? now;
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: _bufferedReasoning,
-                reasoningStartAt: startAt,
-                reasoningFinishedAt: now,
-              );
-              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-              _reasoning[assistantMessage.id] = _ReasoningData()
-                ..text = _bufferedReasoning
-                ..startAt = startAt
-                ..finishedAt = now
-                ..expanded = !autoCollapse;
-              if (mounted && _currentConversation?.id == _cidForStream) setState(() {});
-            }
-            await _conversationStreams.remove(_cidForStream)?.cancel();
-            final r = _reasoning[assistantMessage.id];
-            if (r != null && r.finishedAt == null) {
-              r.finishedAt = DateTime.now();
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: r.text,
-                reasoningFinishedAt: r.finishedAt,
-              );
-            }
-          } else {
-            fullContentRaw += chunkContent;
-            if (chunk.totalTokens > 0) {
-              totalTokens = chunk.totalTokens;
-            }
-            if (chunk.usage != null) {
-              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
-              totalTokens = usage!.totalTokens;
-            }
-
-            // Always persist partial content so switching away doesn’t lose it
-            String streamingProcessed = _transformAssistantContent();
-            if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
-              try {
-                final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
-                if (sanitized != streamingProcessed) {
-                  streamingProcessed = sanitized;
-                  fullContentRaw = sanitized; // keep in-memory snapshot small
-                }
-              } catch (e) {
-                // ignore; fallback keeps original content
-              }
-            }
-            _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              content: streamingProcessed,
-              totalTokens: totalTokens,
-            );
-            if (streamOutput && mounted && _currentConversation?.id == _cidForStream) {
-              setState(() {
-                final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                if (index != -1) {
-                  _messages[index] = _messages[index].copyWith(
-                    content: streamingProcessed,
-                    totalTokens: totalTokens,
-                  );
-                }
-              });
-            }
-
-            if (streamOutput) {
-              // If content has started, consider reasoning finished and collapse (respect setting)
-              if ((chunkContent).isNotEmpty) {
-                final r = _reasoning[assistantMessage.id];
-                if (r != null && r.startAt != null && r.finishedAt == null) {
-                  r.finishedAt = DateTime.now();
-                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-                  if (autoCollapse) {
-                    r.expanded = false; // collapse once main content starts
-                  }
-                  _reasoning[assistantMessage.id] = r;
-                  await _chatService.updateMessage(
-                    assistantMessage.id,
-                    reasoningText: r.text,
-                    reasoningFinishedAt: r.finishedAt,
-                  );
-                  if (mounted) setState(() {});
-                }
-
-                // Also finish the current reasoning segment
-                final segments = _reasoningSegments[assistantMessage.id];
-                if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-                  segments.last.finishedAt = DateTime.now();
-                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-                  if (autoCollapse) {
-                    segments.last.expanded = false;
-                  }
-                  _reasoningSegments[assistantMessage.id] = segments;
-                  if (mounted) setState(() {});
-                  // Persist closed segment state
-                  await _chatService.updateMessage(
-                    assistantMessage.id,
-                    reasoningSegmentsJson: _serializeReasoningSegments(segments),
-                  );
-                }
-              }
-            }
-
-            if (streamOutput) {
-              // Throttle UI updates to reduce rebuild frequency during streaming
-              _pendingStreamContent[assistantMessage.id] = streamingProcessed;
-              _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
-                final pending = _pendingStreamContent[assistantMessage.id];
-                  if (pending != null && mounted && _currentConversation?.id == _cidForStream) {
-                  setState(() {
-                    final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                    if (index != -1) {
-                      _messages[index] = _messages[index].copyWith(
-                        content: pending,
-                        totalTokens: totalTokens,
-                      );
-                    }
-                  });
-                  // 滚动到底部显示新内容（仅在未处于用户滚动延迟阶段时）
-                  _autoScrollToBottomIfNeeded();
-                }
-              });
-            }
-          }
-        },
-        onError: (e) async {
-          // Clean up stream throttle timer on error
-          _streamThrottleTimers[assistantMessage.id]?.cancel();
-          _streamThrottleTimers.remove(assistantMessage.id);
-          _pendingStreamContent.remove(assistantMessage.id);
-          _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-          _inlineImageSanitizeTimers.remove(assistantMessage.id);
-          _inlineImageSanitizing.remove(assistantMessage.id);
-          // Preserve partial content; if empty, write error message into bubble
-          final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-          final processed = _transformAssistantContent();
-          final displayContent = processed.isNotEmpty ? processed : errText;
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            content: displayContent,
-            totalTokens: totalTokens,
-            isStreaming: false,
-          );
-
-          if (!mounted) return;
-          setState(() {
-            final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-            if (index != -1) {
-              _messages[index] = _messages[index].copyWith(
-                content: displayContent,
-                isStreaming: false,
-                totalTokens: totalTokens,
-              );
-            }
-          });
-          _setConversationLoading(assistantMessage.conversationId, false);
-
-          // End reasoning on error
-          final r = _reasoning[assistantMessage.id];
-          if (r != null) {
-            if (r.finishedAt == null) {
-              r.finishedAt = DateTime.now();
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: r.text,
-                reasoningFinishedAt: r.finishedAt,
-              );
-            }
-            final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-            if (autoCollapse) {
-              r.expanded = false;
-            }
-            _reasoning[assistantMessage.id] = r;
-          }
-
-          // Also finish any unfinished reasoning segments on error
-          final segments = _reasoningSegments[assistantMessage.id];
-          if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-            segments.last.finishedAt = DateTime.now();
-            final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-            if (autoCollapse) {
-              segments.last.expanded = false;
-            }
-            _reasoningSegments[assistantMessage.id] = segments;
-            // Persist closed segment state
-            try {
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningSegmentsJson: _serializeReasoningSegments(segments),
-              );
-            } catch (_) {}
-          }
-
-          await _conversationStreams.remove(_cidForStream)?.cancel();
-          showAppSnackBar(
-            context,
-            message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
-            type: NotificationType.error,
-          );
-        },
-        onDone: () async {
-          // Clean up stream throttle timer on stream done
-          _streamThrottleTimers[assistantMessage.id]?.cancel();
-          _streamThrottleTimers.remove(assistantMessage.id);
-          _pendingStreamContent.remove(assistantMessage.id);
-          _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-          _inlineImageSanitizeTimers.remove(assistantMessage.id);
-          _inlineImageSanitizing.remove(assistantMessage.id);
-
-          // If stream closed without explicit isDone chunk, finalize
-          if (_loadingConversationIds.contains(_cidForStream)) {
-            await finish(generateTitle: true);
-          }
-            // Notify on completion only when app is background (Android + onNotify)
-            try {
-              final sp = context.read<SettingsProvider>();
-            if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-              await NotificationService.showChatCompleted(
-                title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-                body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-              );
-            }
-          } catch (_) {}
-          await _conversationStreams.remove(_cidForStream)?.cancel();
-        },
-        cancelOnError: true,
-      );
-      _conversationStreams[_cidForStream] = _sub;
-    } catch (e) {
-      // Clean up stream throttle timer on outer error
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-
-      // Preserve partial content on outer error as well; if empty, show error text in bubble
-      final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-      final processed = _transformAssistantContent();
-      final displayContent = processed.isNotEmpty ? processed : errText;
-      await _chatService.updateMessage(
-        assistantMessage.id,
-        content: displayContent,
-        totalTokens: totalTokens,
-        isStreaming: false,
-      );
-
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-        if (index != -1) {
-          _messages[index] = _messages[index].copyWith(
-            content: displayContent,
-            isStreaming: false,
-            totalTokens: totalTokens,
-          );
-        }
-      });
-      _setConversationLoading(assistantMessage.conversationId, false);
-
-      // End reasoning on error
-      final r = _reasoning[assistantMessage.id];
-      if (r != null) {
-        r.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          r.expanded = false;
-        }
-        _reasoning[assistantMessage.id] = r;
-        await _chatService.updateMessage(
-          assistantMessage.id,
-          reasoningText: r.text,
-          reasoningFinishedAt: r.finishedAt,
-        );
-      }
-
-      // Also finish any unfinished reasoning segments on error
-      final segments = _reasoningSegments[assistantMessage.id];
-      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-        segments.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          segments.last.expanded = false;
-        }
-        _reasoningSegments[assistantMessage.id] = segments;
-        // Persist closed segment state
-        try {
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningSegmentsJson: _serializeReasoningSegments(segments),
-          );
-        } catch (_) {}
-      }
-
-      await _conversationStreams.remove(assistantMessage.conversationId)?.cancel();
-      showAppSnackBar(
-        context,
-        message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
-        type: NotificationType.error,
-      );
-    }
+    await _executeGeneration(ctx);
   }
 
   Future<void> _regenerateAtMessage(ChatMessage message, {bool assistantAsNewReply = false}) async {
@@ -3157,805 +2165,55 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       await _chatService.updateMessage(assistantMessage.id, reasoningStartAt: DateTime.now());
     }
 
-    // Build API messages from current context (apply truncate + collapse versions)
-    final tIndex = _currentConversation?.truncateIndex ?? -1;
-    final List<ChatMessage> sourceAll = (tIndex >= 0 && tIndex <= _messages.length)
-        ? _messages.sublist(tIndex)
-        : List.of(_messages);
-    final List<ChatMessage> source = _collapseVersions(sourceAll);
-    final apiMessages = source
-        .where((m) => m.content.isNotEmpty)
-        .map((m) {
-          var content = m.content;
-          if (m.role == 'assistant') {
-            content = _appendGeminiThoughtSignatureForApi(m, content);
-          }
-          return {
-            'role': m.role == 'assistant' ? 'assistant' : 'user',
-            'content': content,
-          };
-        })
-        .toList();
+    // === Build API messages using shared helpers ===
+    final apiMessages = _buildApiMessages();
 
-    // Capture image attachments from the last user message (for resend)
-    List<String>? lastUserImagePaths;
+    // Process user messages (documents, OCR, templates) and get image paths from last user message
+    final lastUserImagePaths = await _processUserMessagesForApi(apiMessages, settings, assistant);
 
+    // Inject system prompt and additional context
+    _injectSystemPrompt(apiMessages, assistant, modelId);
+    await _injectMemoryAndRecentChats(apiMessages, assistant);
+
+    final hasBuiltInSearch = _hasBuiltInGeminiSearch(settings, providerKey, modelId);
+    _injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
+    await _injectInstructionPrompts(apiMessages, assistantId);
+
+    // Apply context limit and inline images
+    _applyContextLimit(apiMessages, assistant);
+    await _inlineLocalImages(apiMessages);
+
+    // Prepare tools
+    final toolDefs = _buildToolDefinitions(settings, assistant, providerKey, modelId, hasBuiltInSearch);
+    final onToolCall = toolDefs.isNotEmpty ? _buildToolCallHandler(settings, assistant) : null;
+
+    // Build user image paths for API call (OCR mode strips images)
     final bool ocrActive = settings.ocrEnabled &&
         settings.ocrModelProvider != null &&
         settings.ocrModelId != null;
+    final userImagePaths = ocrActive ? const <String>[] : lastUserImagePaths;
 
-    // Inline document prompts per user message (avoid duplicating past uploads on every regenerate)
-    if (apiMessages.isNotEmpty) {
-      // Find last user message index in apiMessages
-      int lastUserIdx = -1;
-      for (int i = apiMessages.length - 1; i >= 0; i--) {
-        if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
-      }
-      final Map<String, String?> docTextCache = <String, String?>{};
-      Future<String?> _readDocument(DocumentAttachment d) async {
-        if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
-        try {
-          final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
-          docTextCache[d.path] = text;
-          return text;
-        } catch (_) {
-          docTextCache[d.path] = null;
-          return null;
-        }
-      }
-
-      for (int i = 0; i < apiMessages.length; i++) {
-        if (apiMessages[i]['role'] != 'user') continue;
-        final rawUser = (apiMessages[i]['content'] ?? '').toString();
-        final parsedUser = _parseInputFromRaw(rawUser);
-        if (i == lastUserIdx && lastUserImagePaths == null && parsedUser.imagePaths.isNotEmpty) {
-          lastUserImagePaths = List<String>.of(parsedUser.imagePaths);
-        }
-
-        final videoPaths = <String>{
-          for (final d in parsedUser.documents)
-            if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
-        }..removeWhere((p) => p.isEmpty);
-
-        String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
-        if (ocrActive) {
-          cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
-        }
-
-        final filePrompts = StringBuffer();
-        for (final d in parsedUser.documents) {
-          if (d.mime.toLowerCase().startsWith('video/')) continue;
-          final text = await _readDocument(d);
-          if (text == null || text.trim().isEmpty) continue;
-          filePrompts.writeln('## user sent a file: ${d.fileName}');
-          filePrompts.writeln('<content>');
-          filePrompts.writeln('```');
-          filePrompts.writeln(text);
-          filePrompts.writeln('```');
-          filePrompts.writeln('</content>');
-          filePrompts.writeln();
-        }
-
-        String merged = (filePrompts.toString() + cleanedUser).trim();
-
-        if (ocrActive) {
-          final ocrTargets = parsedUser.imagePaths
-              .map((p) => p.trim())
-              .where((p) => p.isNotEmpty && !videoPaths.contains(p))
-              .toSet()
-              .toList();
-          if (ocrTargets.isNotEmpty) {
-            final ocrText = await _getOcrTextForImages(ocrTargets);
-            if (ocrText != null && ocrText.trim().isNotEmpty) {
-              merged = (_wrapOcrBlock(ocrText) + merged).trim();
-            }
-          }
-        }
-
-        apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
-      }
-
-      if (lastUserIdx != -1) {
-        final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
-        // Apply message template if set (reusing assistant's template to keep parity with normal send)
-        final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
-            ? '{{ message }}'
-            : (assistant!.messageTemplate);
-        final templated = PromptTransformer.applyMessageTemplate(
-          templ,
-          role: 'user',
-          message: userText,
-          now: DateTime.now(),
-        );
-        apiMessages[lastUserIdx]['content'] = templated;
-      }
-    }
-
-    // Inject system prompt
-    if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
-      final vars = PromptTransformer.buildPlaceholders(
-        context: context,
-        assistant: assistant!,
-        modelId: modelId,
-        modelName: modelId,
-        userNickname: context.read<UserProvider>().name,
-      );
-      final sys = PromptTransformer.replacePlaceholders(assistant.systemPrompt, vars);
-      apiMessages.insert(0, {'role': 'system', 'content': sys});
-    }
-    // Inject Memories + Recent Chats
-    try {
-      if (assistant?.enableMemory == true) {
-        final mp = context.read<MemoryProvider>();
-        final mems = mp.getForAssistant(assistant!.id);
-        final buf = StringBuffer();
-        buf.writeln('## Memories');
-        buf.writeln('These are memories that you can reference in the future conversations.');
-        buf.writeln('<memories>');
-        for (final m in mems) {
-          buf.writeln('<record>');
-          buf.writeln('<id>${m.id}</id>');
-          buf.writeln('<content>${m.content}</content>');
-          buf.writeln('</record>');
-        }
-        buf.writeln('</memories>');
-        buf.writeln('''
-## Memory Tool
-你是一个无状态的大模型，你无法存储记忆，因此为了记住信息，你需要使用**记忆工具**。
-你可以使用 `create_memory`, `edit_memory`, `delete_memory` 工具创建、更新或删除记忆。
-- 如果记忆中没有相关信息，请使用 create_memory 创建一条新的记录。
-- 如果已有相关记录，请使用 edit_memory 更新内容。
-- 若记忆过时或无用，请使用 delete_memory 删除。
-这些记忆会自动包含在未来的对话上下文中，在<memories>标签内。
-请勿在记忆中存储敏感信息，敏感信息包括：用户的民族、宗教信仰、性取向、政治观点及党派归属、性生活、犯罪记录等。
-在与用户聊天过程中，你可以像一个私人秘书一样**主动的**记录用户相关的信息到记忆里，包括但不限于：
-- 用户昵称/姓名
-- 年龄/性别/兴趣爱好
-- 计划事项等
-- 聊天风格偏好
-- 工作相关
-- 首次聊天时间
-- ...
-请主动调用工具记录，而不是需要用户要求。     
-记忆如果包含日期信息，请包含在内，请使用绝对时间格式，并且当前时间是 ${DateTime.now().toIso8601String()}。
-无需告知用户你已更改记忆记录，也不要在对话中直接显示记忆内容，除非用户主动要求。
-相似或相关的记忆应合并为一条记录，而不要重复记录，过时记录应删除。         
-你可以在和用户闲聊的时候暗示用户你能记住东西。
-''');
-        if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-          apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + buf.toString();
-        } else {
-          apiMessages.insert(0, {'role': 'system', 'content': buf.toString()});
-        }
-      }
-      if (assistant?.enableRecentChatsReference == true) {
-        final chats = context.read<ChatService>().getAllConversations();
-        final titles = chats
-            .where((c) => c.assistantId == assistant!.id)
-            .take(10)
-            .map((c) => c.title)
-            .where((t) => t.trim().isNotEmpty)
-            .toList();
-        if (titles.isNotEmpty) {
-          final sb = StringBuffer();
-          sb.writeln('## 最近的对话');
-          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
-          sb.writeln('<recent_chats>');
-          for (final t in titles) {
-            sb.writeln('<conversation>');
-            sb.writeln('  <title>$t</title>');
-            sb.writeln('</conversation>');
-          }
-          sb.writeln('</recent_chats>');
-          if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-            apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + sb.toString();
-          } else {
-            apiMessages.insert(0, {'role': 'system', 'content': sb.toString()});
-          }
-        }
-      }
-    } catch (_) {}
-    // Inject search tool usage guide when enabled
-    if (settings.searchEnabled) {
-      final prompt = SearchToolService.getSystemPrompt();
-      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-        apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + prompt;
-      } else {
-        apiMessages.insert(0, {'role': 'system', 'content': prompt});
-      }
-    }
-    // Inject instruction-injection prompts when entries are active (per assistant, multi-select)
-    try {
-      List<InstructionInjection> actives = const <InstructionInjection>[];
-      try {
-        final ip = context.read<InstructionInjectionProvider>();
-        actives = ip.activesFor(assistantId);
-        if (actives.isEmpty) {
-          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-        }
-      } catch (_) {
-        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-      }
-      final prompts = actives
-          .map((e) => e.prompt.trim())
-          .where((p) => p.isNotEmpty)
-          .toList(growable: false);
-      if (prompts.isNotEmpty) {
-        final lp = prompts.join('\n\n');
-        if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-          apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + lp;
-        } else {
-          apiMessages.insert(0, {'role': 'system', 'content': lp});
-        }
-      }
-    } catch (_) {}
-
-    // Limit context length
-    if ((assistant?.limitContextMessages ?? true) && (assistant?.contextMessageSize ?? 0) > 0) {
-      final keep = assistant!.contextMessageSize.clamp(1, 512).toInt();
-      int startIdx = 0;
-      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-        startIdx = 1;
-      }
-      final tail = apiMessages.sublist(startIdx);
-      if (tail.length > keep) {
-        final trimmed = tail.sublist(tail.length - keep);
-        apiMessages..removeRange(startIdx, apiMessages.length)..addAll(trimmed);
-      }
-    }
-
-    // Convert any local Markdown image links to inline base64 for model context
-    for (int i = 0; i < apiMessages.length; i++) {
-      final s = (apiMessages[i]['content'] ?? '').toString();
-      if (s.isNotEmpty) {
-        apiMessages[i]['content'] = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(s);
-      }
-    }
-
-    // Prepare tools (Memory + Search + MCP)
-    final List<Map<String, dynamic>> toolDefs = <Map<String, dynamic>>[];
-    Future<String> Function(String, Map<String, dynamic>)? onToolCall;
-    try {
-      if (assistant?.enableMemory == true && _isToolModel(providerKey, modelId)) {
-        toolDefs.addAll([
-          {
-            'type': 'function',
-            'function': {
-              'name': 'create_memory',
-              'description': 'create a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'content': {'type': 'string', 'description': 'The content of the memory record'}
-                },
-                'required': ['content']
-              }
-            }
-          },
-          {
-            'type': 'function',
-            'function': {
-              'name': 'edit_memory',
-              'description': 'update a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'id': {'type': 'integer', 'description': 'The id of the memory record'},
-                  'content': {'type': 'string', 'description': 'The content of the memory record'}
-                },
-                'required': ['id', 'content']
-              }
-            }
-          },
-          {
-            'type': 'function',
-            'function': {
-              'name': 'delete_memory',
-              'description': 'delete a memory record',
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  'id': {'type': 'integer', 'description': 'The id of the memory record'}
-                },
-                'required': ['id']
-              }
-            }
-          },
-        ]);
-      }
-      if (settings.searchEnabled) {
-        toolDefs.add(SearchToolService.getToolDefinition());
-      }
-      final mcp = context.read<McpProvider>();
-      final toolSvc = context.read<McpToolService>();
-      final tools = toolSvc.listAvailableToolsForAssistant(mcp, context.read<AssistantProvider>(), assistant?.id);
-      final supportsTools = _isToolModel(providerKey, modelId);
-      if (supportsTools && tools.isNotEmpty) {
-        final providerCfg = settings.getProviderConfig(providerKey);
-        final providerKind = ProviderConfig.classify(providerCfg.id, explicitType: providerCfg.providerType);
-        toolDefs.addAll(tools.map((t) {
-          Map<String, dynamic> baseSchema;
-          if (t.schema != null && t.schema!.isNotEmpty) {
-            baseSchema = Map<String, dynamic>.from(t.schema!);
-          } else {
-            final props = <String, dynamic>{for (final p in t.params) p.name: {'type': (p.type ?? 'string')}};
-            final required = [for (final p in t.params.where((e) => e.required)) p.name];
-            baseSchema = {'type': 'object', 'properties': props, if (required.isNotEmpty) 'required': required};
-          }
-          final sanitized = _sanitizeToolParametersForProvider(baseSchema, providerKind);
-          return {
-            'type': 'function',
-            'function': {
-              'name': t.name,
-              if ((t.description ?? '').isNotEmpty) 'description': t.description,
-              'parameters': sanitized,
-            }
-          };
-        }));
-      }
-      if (toolDefs.isNotEmpty) {
-        onToolCall = (name, args) async {
-          if (name == SearchToolService.toolName && settings.searchEnabled) {
-            final q = (args['query'] ?? '').toString();
-            return await SearchToolService.executeSearch(q, settings);
-          }
-          // Memory tools
-          if (assistant?.enableMemory == true) {
-            try {
-              final mp = context.read<MemoryProvider>();
-              if (name == 'create_memory') {
-                final content = (args['content'] ?? '').toString();
-                if (content.isEmpty) return '';
-                final m = await mp.add(assistantId: assistant!.id, content: content);
-                return m.content;
-              } else if (name == 'edit_memory') {
-                final id = (args['id'] as num?)?.toInt() ?? -1;
-                final content = (args['content'] ?? '').toString();
-                if (id <= 0 || content.isEmpty) return '';
-                final m = await mp.update(id: id, content: content);
-                return m?.content ?? '';
-              } else if (name == 'delete_memory') {
-                final id = (args['id'] as num?)?.toInt() ?? -1;
-                if (id <= 0) return '';
-                final ok = await mp.delete(id: id);
-                return ok ? 'deleted' : '';
-              }
-            } catch (_) {}
-          }
-          final text = await toolSvc.callToolTextForAssistant(
-            mcp,
-            context.read<AssistantProvider>(),
-            assistantId: assistant?.id,
-            toolName: name,
-            arguments: args,
-          );
-          return text;
-        };
-      }
-    } catch (_) {}
-
-    // Build assistant-level custom request overrides
-    Map<String, String>? aHeaders;
-    Map<String, dynamic>? aBody;
-    if ((assistant?.customHeaders.isNotEmpty ?? false)) {
-      aHeaders = {
-        for (final e in assistant!.customHeaders)
-          if ((e['name'] ?? '').trim().isNotEmpty) (e['name']!.trim()): (e['value'] ?? '')
-      };
-      if (aHeaders.isEmpty) aHeaders = null;
-    }
-    if ((assistant?.customBody.isNotEmpty ?? false)) {
-      aBody = {
-        for (final e in assistant!.customBody)
-          if ((e['key'] ?? '').trim().isNotEmpty)
-            (e['key']!.trim()): (e['value'] ?? '')
-      };
-      if (aBody.isEmpty) aBody = null;
-    }
-
-    // Respect assistant streaming toggle: if off, buffer updates until done
-    final bool streamOutput = assistant?.streamOutput ?? true;
-
-    final stream = ChatApiService.sendMessageStream(
-      config: settings.getProviderConfig(providerKey),
+    // === Execute generation using shared method ===
+    final ctx = _GenerationContext(
+      assistantMessage: assistantMessage,
+      apiMessages: apiMessages,
+      userImagePaths: userImagePaths,
+      providerKey: providerKey,
       modelId: modelId,
-      messages: apiMessages,
-      userImagePaths: ocrActive ? const <String>[] : lastUserImagePaths,
-      thinkingBudget: assistant?.thinkingBudget ?? settings.thinkingBudget,
-      temperature: assistant?.temperature,
-      topP: assistant?.topP,
-      maxTokens: assistant?.maxTokens,
-      tools: toolDefs.isEmpty ? null : toolDefs,
+      assistant: assistant,
+      settings: settings,
+      config: settings.getProviderConfig(providerKey),
+      toolDefs: toolDefs,
       onToolCall: onToolCall,
-      extraHeaders: aHeaders,
-      extraBody: aBody,
-      stream: streamOutput,
+      extraHeaders: _buildCustomHeaders(assistant),
+      extraBody: _buildCustomBody(assistant),
+      supportsReasoning: supportsReasoning,
+      enableReasoning: enableReasoning,
+      streamOutput: assistant?.streamOutput ?? true,
+      generateTitleOnFinish: false, // Regenerate doesn't need title generation
     );
 
-    String fullContentRaw = '';
-    int totalTokens = 0;
-    TokenUsage? usage;
-    String _transformAssistantContent2([String? raw]) {
-      return applyAssistantRegexes(
-        raw ?? fullContentRaw,
-        assistant: assistant,
-        scope: AssistantRegexScope.assistant,
-        visual: false,
-      );
-    }
-
-    // Respect assistant streaming toggle: if off, buffer updates until done
-    String _bufferedReasoning2 = '';
-    DateTime? _reasoningStartAt2;
-
-    Future<void> finish({bool generateTitle = false}) async {
-      // Clean up stream throttle timer and flush final content
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-
-      final processedContent = _transformAssistantContent2();
-        final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
-        await _chatService.updateMessage(assistantMessage.id, content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
-        if (!mounted) return;
-        setState(() {
-          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-          if (index != -1) {
-            _messages[index] = _messages[index].copyWith(content: sanitizedContent, totalTokens: totalTokens, isStreaming: false);
-          }
-        });
-        unawaited(_forceInlineImageSanitize(assistantMessage.id));
-      // Run a forced sanitize once more in case any throttle writes raced after finish
-      unawaited(_forceInlineImageSanitize(assistantMessage.id));
-      _setConversationLoading(assistantMessage.conversationId, false);
-      final r = _reasoning[assistantMessage.id];
-      if (r != null && r.finishedAt == null) {
-        r.finishedAt = DateTime.now();
-        await _chatService.updateMessage(assistantMessage.id, reasoningText: r.text, reasoningFinishedAt: r.finishedAt);
-      }
-      final segments = _reasoningSegments[assistantMessage.id];
-      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-        segments.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) segments.last.expanded = false;
-        _reasoningSegments[assistantMessage.id] = segments;
-        if (mounted) setState(() {});
-        await _chatService.updateMessage(assistantMessage.id, reasoningSegmentsJson: _serializeReasoningSegments(segments));
-      }
-    }
-
-    final String _cid = assistantMessage.conversationId;
-    await _conversationStreams[_cid]?.cancel();
-    final _sub2 = stream.listen((chunk) async {
-      final chunkContent = chunk.content.isNotEmpty ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id) : '';
-      // Always capture reasoning if provided by model, even when toggle is off
-      if ((chunk.reasoning ?? '').isNotEmpty) {
-        if (streamOutput) {
-          final r = _reasoning[assistantMessage.id] ?? _ReasoningData();
-          r.text += chunk.reasoning!;
-          r.startAt ??= DateTime.now();
-          // keep finishedAt as-is; don't reset to null once set
-          r.expanded = false; // default collapsed while generating
-          _reasoning[assistantMessage.id] = r;
-          final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-          if (segments.isEmpty) {
-            final seg = _ReasoningSegmentData();
-            seg.text = chunk.reasoning!;
-            seg.startAt = DateTime.now();
-            seg.expanded = false; // default collapsed while generating
-            seg.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-            segments.add(seg);
-          } else {
-            final last = segments.last;
-            if ((_toolParts[assistantMessage.id]?.isNotEmpty ?? false) && last.finishedAt != null) {
-              final seg = _ReasoningSegmentData();
-              seg.text = chunk.reasoning!;
-              seg.startAt = DateTime.now();
-              seg.expanded = false; // default collapsed while generating
-              seg.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-              segments.add(seg);
-            } else {
-              last.text += chunk.reasoning!;
-              last.startAt ??= DateTime.now();
-            }
-          }
-          _reasoningSegments[assistantMessage.id] = segments;
-          if (mounted) setState(() {});
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningText: r.text,
-            reasoningStartAt: r.startAt,
-            reasoningSegmentsJson: _serializeReasoningSegments(segments),
-          );
-        } else {
-          // Buffer in UI; still persist progress so it survives navigation
-          _reasoningStartAt2 ??= DateTime.now();
-          _bufferedReasoning2 += chunk.reasoning!;
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningText: _bufferedReasoning2,
-            reasoningStartAt: _reasoningStartAt2,
-          );
-        }
-      }
-
-      if ((chunk.toolCalls ?? const []).isNotEmpty) {
-        // Finish current reasoning segment if one is open, so follow-up reasoning becomes a new card
-        final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-        if (segments.isNotEmpty && segments.last.finishedAt == null) {
-          segments.last.finishedAt = DateTime.now();
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          if (autoCollapse) {
-            segments.last.expanded = false;
-            final rd = _reasoning[assistantMessage.id];
-            if (rd != null) rd.expanded = false;
-          }
-          _reasoningSegments[assistantMessage.id] = segments;
-          try {
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              reasoningSegmentsJson: _serializeReasoningSegments(segments),
-            );
-          } catch (_) {}
-        }
-
-        final existing = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-        for (final c in chunk.toolCalls!) {
-          existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
-        }
-        setState(() => _toolParts[assistantMessage.id] = _dedupeToolPartsList(existing));
-        try {
-          final prev = _chatService.getToolEvents(assistantMessage.id);
-          final newEvents = <Map<String, dynamic>>[
-            ...prev,
-            for (final c in chunk.toolCalls!) {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
-          ];
-          await _chatService.setToolEvents(assistantMessage.id, _dedupeToolEvents(newEvents));
-        } catch (_) {}
-      }
-
-      if ((chunk.toolResults ?? const []).isNotEmpty) {
-        final parts = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-        for (final r in chunk.toolResults!) {
-          int idx = -1;
-          for (int i = 0; i < parts.length; i++) {
-            if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
-              idx = i; break;
-            }
-          }
-          if (idx >= 0) {
-            parts[idx] = ToolUIPart(id: parts[idx].id, toolName: parts[idx].toolName, arguments: parts[idx].arguments, content: r.content, loading: false);
-          } else {
-            parts.add(ToolUIPart(id: r.id, toolName: r.name, arguments: r.arguments, content: r.content, loading: false));
-          }
-          try { await _chatService.upsertToolEvent(assistantMessage.id, id: r.id, name: r.name, arguments: r.arguments, content: r.content); } catch (_) {}
-        }
-        setState(() => _toolParts[assistantMessage.id] = _dedupeToolPartsList(parts));
-        if (!_isUserScrolling) {
-          _scrollToBottomSoon();
-        }
-      }
-
-      if (chunkContent.isNotEmpty) {
-        fullContentRaw += chunkContent;
-
-        // Respect auto-collapse setting when main content starts: always stop timer, collapse only if enabled
-        final rd = _reasoning[assistantMessage.id];
-        if (rd != null && rd.startAt != null && rd.finishedAt == null) {
-          rd.finishedAt = DateTime.now();
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          if (autoCollapse) rd.expanded = false;
-          _reasoning[assistantMessage.id] = rd;
-          try {
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              reasoningText: rd.text,
-              reasoningFinishedAt: rd.finishedAt,
-            );
-          } catch (_) {}
-          if (mounted) setState(() {});
-        }
-        final segs = _reasoningSegments[assistantMessage.id];
-        if (segs != null && segs.isNotEmpty && segs.last.finishedAt == null) {
-          segs.last.finishedAt = DateTime.now();
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          if (autoCollapse) segs.last.expanded = false;
-          _reasoningSegments[assistantMessage.id] = segs;
-          try {
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              reasoningSegmentsJson: _serializeReasoningSegments(segs),
-            );
-          } catch (_) {}
-          if (mounted) setState(() {});
-        }
-
-      // Always persist partial content, even if streaming UI is off
-      String streamingProcessed = _transformAssistantContent2();
-      if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
-        try {
-          final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
-          if (sanitized != streamingProcessed) {
-            streamingProcessed = sanitized;
-            fullContentRaw = sanitized;
-          }
-        } catch (e) {
-          // ignore; fallback keeps original content
-        }
-      }
-        _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
-        try {
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            content: streamingProcessed,
-            totalTokens: totalTokens,
-          );
-        } catch (_) {}
-        if (streamOutput && mounted && _currentConversation?.id == _cid) {
-          setState(() {
-            final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
-            if (i != -1) _messages[i] = _messages[i].copyWith(content: streamingProcessed, totalTokens: totalTokens);
-          });
-        }
-
-        if (streamOutput) {
-          // Throttle UI updates to reduce rebuild frequency during streaming
-          _pendingStreamContent[assistantMessage.id] = streamingProcessed;
-          _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
-            final pending = _pendingStreamContent[assistantMessage.id];
-            if (pending != null && mounted) {
-              setState(() {
-                final i = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                if (i != -1) _messages[i] = _messages[i].copyWith(content: pending);
-              });
-              if (_currentConversation?.id == _cid) {
-                _autoScrollToBottomIfNeeded();
-              }
-            }
-          });
-        }
-      }
-
-      if (chunk.usage != null) {
-        usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
-        totalTokens = usage!.totalTokens;
-      }
-
-      if (chunk.isDone) {
-        if (chunk.totalTokens > 0) totalTokens = chunk.totalTokens;
-        await finish();
-        // Notify on regenerate completion only when app is background (Android + onNotify)
-        try {
-          final sp = context.read<SettingsProvider>();
-          if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-            await NotificationService.showChatCompleted(
-              title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-              body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-            );
-          }
-        } catch (_) {}
-        // If non-streaming, write buffered reasoning once
-        if (!streamOutput && _bufferedReasoning2.isNotEmpty) {
-          final now = DateTime.now();
-          final startAt = _reasoningStartAt2 ?? now;
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningText: _bufferedReasoning2,
-            reasoningStartAt: startAt,
-            reasoningFinishedAt: now,
-          );
-          final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-          _reasoning[assistantMessage.id] = _ReasoningData()
-            ..text = _bufferedReasoning2
-            ..startAt = startAt
-            ..finishedAt = now
-            ..expanded = !autoCollapse;
-          if (mounted) setState(() {});
-        }
-        await _conversationStreams.remove(_cid)?.cancel();
-      }
-    },
-    onError: (e) async {
-      // Clean up stream throttle timer on error
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-
-      // When regenerate fails, persist error text into this assistant bubble
-      final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-      final processed = _transformAssistantContent2();
-      final displayContent = processed.isNotEmpty ? processed : errText;
-      await _chatService.updateMessage(
-        assistantMessage.id,
-        content: displayContent,
-        totalTokens: totalTokens,
-        isStreaming: false,
-      );
-
-      if (mounted) {
-        setState(() {
-          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-          if (index != -1) {
-            _messages[index] = _messages[index].copyWith(
-              content: displayContent,
-              isStreaming: false,
-              totalTokens: totalTokens,
-            );
-          }
-        });
-      }
-      _setConversationLoading(assistantMessage.conversationId, false);
-
-      // End reasoning on error
-      final r = _reasoning[assistantMessage.id];
-      if (r != null) {
-        if (r.finishedAt == null) {
-          r.finishedAt = DateTime.now();
-          try {
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              reasoningText: r.text,
-              reasoningFinishedAt: r.finishedAt,
-            );
-          } catch (_) {}
-        }
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) r.expanded = false;
-        _reasoning[assistantMessage.id] = r;
-      }
-
-      // Also finish any unfinished reasoning segments on error
-      final segments = _reasoningSegments[assistantMessage.id];
-      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-        segments.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) segments.last.expanded = false;
-        _reasoningSegments[assistantMessage.id] = segments;
-        try {
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningSegmentsJson: _serializeReasoningSegments(segments),
-          );
-        } catch (_) {}
-      }
-
-      await _conversationStreams.remove(_cid)?.cancel();
-      showAppSnackBar(
-        context,
-        message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
-        type: NotificationType.error,
-      );
-    },
-    onDone: () async {
-      // Clean up stream throttle timer on stream done
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-
-      // Stream ended; ensure subscription cleanup and background notification if needed
-      try {
-        final sp = context.read<SettingsProvider>();
-        if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-          await NotificationService.showChatCompleted(
-            title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-            body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-          );
-        }
-      } catch (_) {}
-      await _conversationStreams.remove(_cid)?.cancel();
-    },
-    cancelOnError: true,
-    );
-    _conversationStreams[_cid] = _sub2;
+    await _executeGeneration(ctx);
   }
 
   ChatInputData _parseInputFromRaw(String raw) {
@@ -6473,6 +4731,1010 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  // ===========================================================================
+  // REGION: Message Generation Helpers (Refactored)
+  // ===========================================================================
+
+  /// Build API messages list from current conversation state.
+  /// Applies truncation, version collapsing, and strips [image:] / [file:] markers.
+  List<Map<String, dynamic>> _buildApiMessages() {
+    final tIndex = _currentConversation?.truncateIndex ?? -1;
+    final List<ChatMessage> sourceAll = (tIndex >= 0 && tIndex <= _messages.length)
+        ? _messages.sublist(tIndex)
+        : List.of(_messages);
+    final List<ChatMessage> source = _collapseVersions(sourceAll);
+    return source
+        .where((m) => m.content.isNotEmpty)
+        .map<Map<String, dynamic>>((m) {
+          var content = m.content;
+          if (m.role == 'assistant') {
+            content = _appendGeminiThoughtSignatureForApi(m, content);
+          }
+          return <String, dynamic>{
+            'role': m.role == 'assistant' ? 'assistant' : 'user',
+            'content': content,
+          };
+        })
+        .toList();
+  }
+
+  /// Process user messages in apiMessages: extract documents, apply OCR, inject file prompts.
+  /// Returns the image paths from the last user message (for API call).
+  Future<List<String>> _processUserMessagesForApi(
+    List<Map<String, dynamic>> apiMessages,
+    SettingsProvider settings,
+    dynamic assistant,
+  ) async {
+    final bool ocrActive = settings.ocrEnabled &&
+        settings.ocrModelProvider != null &&
+        settings.ocrModelId != null;
+
+    List<String>? lastUserImagePaths;
+
+    // Find last user message index
+    int lastUserIdx = -1;
+    for (int i = apiMessages.length - 1; i >= 0; i--) {
+      if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
+    }
+
+    final Map<String, String?> docTextCache = <String, String?>{};
+    Future<String?> readDocument(DocumentAttachment d) async {
+      if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
+      try {
+        final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
+        docTextCache[d.path] = text;
+        return text;
+      } catch (_) {
+        docTextCache[d.path] = null;
+        return null;
+      }
+    }
+
+    for (int i = 0; i < apiMessages.length; i++) {
+      if (apiMessages[i]['role'] != 'user') continue;
+      final rawUser = (apiMessages[i]['content'] ?? '').toString();
+      final parsedUser = _parseInputFromRaw(rawUser);
+
+      // Capture image paths from last user message
+      if (i == lastUserIdx && lastUserImagePaths == null && parsedUser.imagePaths.isNotEmpty) {
+        lastUserImagePaths = List<String>.of(parsedUser.imagePaths);
+      }
+
+      final videoPaths = <String>{
+        for (final d in parsedUser.documents)
+          if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
+      }..removeWhere((p) => p.isEmpty);
+
+      String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
+      if (ocrActive) {
+        cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
+      }
+
+      final filePrompts = StringBuffer();
+      for (final d in parsedUser.documents) {
+        if (d.mime.toLowerCase().startsWith('video/')) continue;
+        final text = await readDocument(d);
+        if (text == null || text.trim().isEmpty) continue;
+        filePrompts.writeln('## user sent a file: ${d.fileName}');
+        filePrompts.writeln('<content>');
+        filePrompts.writeln('```');
+        filePrompts.writeln(text);
+        filePrompts.writeln('```');
+        filePrompts.writeln('</content>');
+        filePrompts.writeln();
+      }
+
+      String merged = (filePrompts.toString() + cleanedUser).trim();
+
+      if (ocrActive) {
+        final ocrTargets = parsedUser.imagePaths
+            .map((p) => p.trim())
+            .where((p) => p.isNotEmpty && !videoPaths.contains(p))
+            .toSet()
+            .toList();
+        if (ocrTargets.isNotEmpty) {
+          final ocrText = await _getOcrTextForImages(ocrTargets);
+          if (ocrText != null && ocrText.trim().isNotEmpty) {
+            merged = (_wrapOcrBlock(ocrText) + merged).trim();
+          }
+        }
+      }
+
+      apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
+    }
+
+    // Apply message template to last user message
+    if (lastUserIdx != -1) {
+      final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
+      final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
+          ? '{{ message }}'
+          : (assistant!.messageTemplate);
+      final templated = PromptTransformer.applyMessageTemplate(
+        templ,
+        role: 'user',
+        message: userText,
+        now: DateTime.now(),
+      );
+      apiMessages[lastUserIdx]['content'] = templated;
+    }
+
+    return lastUserImagePaths ?? <String>[];
+  }
+
+  /// Inject system prompt into apiMessages.
+  void _injectSystemPrompt(
+    List<Map<String, dynamic>> apiMessages,
+    dynamic assistant,
+    String modelId,
+  ) {
+    if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
+      final vars = PromptTransformer.buildPlaceholders(
+        context: context,
+        assistant: assistant!,
+        modelId: modelId,
+        modelName: modelId,
+        userNickname: context.read<UserProvider>().name,
+      );
+      final sys = PromptTransformer.replacePlaceholders(assistant.systemPrompt, vars);
+      apiMessages.insert(0, {'role': 'system', 'content': sys});
+    }
+  }
+
+  /// Inject memory prompts and recent chats reference into apiMessages.
+  Future<void> _injectMemoryAndRecentChats(
+    List<Map<String, dynamic>> apiMessages,
+    dynamic assistant,
+  ) async {
+    try {
+      if (assistant?.enableMemory == true) {
+        final mp = context.read<MemoryProvider>();
+        final mems = mp.getForAssistant(assistant!.id);
+        final buf = StringBuffer();
+        buf.writeln('## Memories');
+        buf.writeln('These are memories that you can reference in the future conversations.');
+        buf.writeln('<memories>');
+        for (final m in mems) {
+          buf.writeln('<record>');
+          buf.writeln('<id>${m.id}</id>');
+          buf.writeln('<content>${m.content}</content>');
+          buf.writeln('</record>');
+        }
+        buf.writeln('</memories>');
+        buf.writeln('''
+## Memory Tool
+你是一个无状态的大模型，你无法存储记忆，因此为了记住信息，你需要使用**记忆工具**。
+你可以使用 `create_memory`, `edit_memory`, `delete_memory` 工具创建、更新或删除记忆。
+- 如果记忆中没有相关信息，请使用 create_memory 创建一条新的记录。
+- 如果已有相关记录，请使用 edit_memory 更新内容。
+- 若记忆过时或无用，请使用 delete_memory 删除。
+这些记忆会自动包含在未来的对话上下文中，在<memories>标签内。
+请勿在记忆中存储敏感信息，敏感信息包括：用户的民族、宗教信仰、性取向、政治观点及党派归属、性生活、犯罪记录等。
+在与用户聊天过程中，你可以像一个私人秘书一样**主动的**记录用户相关的信息到记忆里，包括但不限于：
+- 用户昵称/姓名
+- 年龄/性别/兴趣爱好
+- 计划事项等
+- 聊天风格偏好
+- 工作相关
+- 首次聊天时间
+- ...
+请主动调用工具记录，而不是需要用户要求。
+记忆如果包含日期信息，请包含在内，请使用绝对时间格式，并且当前时间是 ${DateTime.now().toIso8601String()}。
+无需告知用户你已更改记忆记录，也不要在对话中直接显示记忆内容，除非用户主动要求。
+相似或相关的记忆应合并为一条记录，而不要重复记录，过时记录应删除。
+你可以在和用户闲聊的时候暗示用户你能记住东西。
+''');
+        _appendToSystemMessage(apiMessages, buf.toString());
+      }
+      if (assistant?.enableRecentChatsReference == true) {
+        final chats = context.read<ChatService>().getAllConversations();
+        final titles = chats
+            .where((c) => c.assistantId == assistant!.id)
+            .take(10)
+            .map((c) => c.title)
+            .where((t) => t.trim().isNotEmpty)
+            .toList();
+        if (titles.isNotEmpty) {
+          final sb = StringBuffer();
+          sb.writeln('## 最近的对话');
+          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
+          sb.writeln('<recent_chats>');
+          for (final t in titles) {
+            sb.writeln('<conversation>');
+            sb.writeln('  <title>$t</title>');
+            sb.writeln('</conversation>');
+          }
+          sb.writeln('</recent_chats>');
+          _appendToSystemMessage(apiMessages, sb.toString());
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Inject search tool usage prompt into apiMessages.
+  void _injectSearchPrompt(
+    List<Map<String, dynamic>> apiMessages,
+    SettingsProvider settings,
+    bool hasBuiltInSearch,
+  ) {
+    if (settings.searchEnabled && !hasBuiltInSearch) {
+      final prompt = SearchToolService.getSystemPrompt();
+      _appendToSystemMessage(apiMessages, prompt);
+    }
+  }
+
+  /// Inject instruction injection prompts into apiMessages.
+  Future<void> _injectInstructionPrompts(
+    List<Map<String, dynamic>> apiMessages,
+    String? assistantId,
+  ) async {
+    try {
+      List<InstructionInjection> actives = const <InstructionInjection>[];
+      try {
+        final ip = context.read<InstructionInjectionProvider>();
+        actives = ip.activesFor(assistantId);
+        if (actives.isEmpty) {
+          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
+        }
+      } catch (_) {
+        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
+      }
+      final prompts = actives
+          .map((e) => e.prompt.trim())
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      if (prompts.isNotEmpty) {
+        final lp = prompts.join('\n\n');
+        _appendToSystemMessage(apiMessages, lp);
+      }
+    } catch (_) {}
+  }
+
+  /// Helper to append content to the system message (or create one if missing).
+  void _appendToSystemMessage(List<Map<String, dynamic>> apiMessages, String content) {
+    if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
+      apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + content;
+    } else {
+      apiMessages.insert(0, {'role': 'system', 'content': content});
+    }
+  }
+
+  /// Apply context message limit based on assistant settings.
+  void _applyContextLimit(List<Map<String, dynamic>> apiMessages, dynamic assistant) {
+    if ((assistant?.limitContextMessages ?? true) && (assistant?.contextMessageSize ?? 0) > 0) {
+      final int keep = (assistant!.contextMessageSize as num).clamp(1, 512).toInt();
+      int startIdx = 0;
+      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
+        startIdx = 1;
+      }
+      final tail = apiMessages.sublist(startIdx);
+      if (tail.length > keep) {
+        final trimmed = tail.sublist(tail.length - keep);
+        apiMessages
+          ..removeRange(startIdx, apiMessages.length)
+          ..addAll(trimmed);
+      }
+    }
+  }
+
+  /// Convert local Markdown image links to inline base64 for model context.
+  Future<void> _inlineLocalImages(List<Map<String, dynamic>> apiMessages) async {
+    for (int i = 0; i < apiMessages.length; i++) {
+      final s = (apiMessages[i]['content'] ?? '').toString();
+      if (s.isNotEmpty) {
+        apiMessages[i]['content'] = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(s);
+      }
+    }
+  }
+
+  /// Check if Gemini built-in search is enabled for the given provider/model.
+  bool _hasBuiltInGeminiSearch(SettingsProvider settings, String providerKey, String modelId) {
+    try {
+      final cfg = settings.getProviderConfig(providerKey);
+      if (cfg.providerType != ProviderKind.google) return false;
+      final ov = cfg.modelOverrides[modelId] as Map?;
+      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
+      return list.map((e) => e.toString().toLowerCase()).contains('search');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Prepare tool definitions for API call.
+  List<Map<String, dynamic>> _buildToolDefinitions(
+    SettingsProvider settings,
+    dynamic assistant,
+    String providerKey,
+    String modelId,
+    bool hasBuiltInSearch,
+  ) {
+    final List<Map<String, dynamic>> toolDefs = <Map<String, dynamic>>[];
+    final supportsTools = _isToolModel(providerKey, modelId);
+
+    // Search tool (skip when Gemini built-in search is active)
+    if (settings.searchEnabled && !hasBuiltInSearch && supportsTools) {
+      toolDefs.add(SearchToolService.getToolDefinition());
+    }
+
+    // Memory tools
+    if (assistant?.enableMemory == true && supportsTools) {
+      toolDefs.addAll([
+        {
+          'type': 'function',
+          'function': {
+            'name': 'create_memory',
+            'description': 'create a memory record',
+            'parameters': {
+              'type': 'object',
+              'properties': {
+                'content': {'type': 'string', 'description': 'The content of the memory record'}
+              },
+              'required': ['content']
+            }
+          }
+        },
+        {
+          'type': 'function',
+          'function': {
+            'name': 'edit_memory',
+            'description': 'update a memory record',
+            'parameters': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer', 'description': 'The id of the memory record'},
+                'content': {'type': 'string', 'description': 'The content of the memory record'}
+              },
+              'required': ['id', 'content']
+            }
+          }
+        },
+        {
+          'type': 'function',
+          'function': {
+            'name': 'delete_memory',
+            'description': 'delete a memory record',
+            'parameters': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'integer', 'description': 'The id of the memory record'}
+              },
+              'required': ['id']
+            }
+          }
+        },
+      ]);
+    }
+
+    // MCP tools
+    final mcp = context.read<McpProvider>();
+    final toolSvc = context.read<McpToolService>();
+    final tools = toolSvc.listAvailableToolsForAssistant(mcp, context.read<AssistantProvider>(), assistant?.id);
+    if (supportsTools && tools.isNotEmpty) {
+      final providerCfg = settings.getProviderConfig(providerKey);
+      final providerKind = ProviderConfig.classify(providerCfg.id, explicitType: providerCfg.providerType);
+      toolDefs.addAll(tools.map((t) {
+        Map<String, dynamic> baseSchema;
+        if (t.schema != null && t.schema!.isNotEmpty) {
+          baseSchema = Map<String, dynamic>.from(t.schema!);
+        } else {
+          final props = <String, dynamic>{for (final p in t.params) p.name: {'type': (p.type ?? 'string')}};
+          final required = [for (final p in t.params.where((e) => e.required)) p.name];
+          baseSchema = {'type': 'object', 'properties': props, if (required.isNotEmpty) 'required': required};
+        }
+        final sanitized = _sanitizeToolParametersForProvider(baseSchema, providerKind);
+        return {
+          'type': 'function',
+          'function': {
+            'name': t.name,
+            if ((t.description ?? '').isNotEmpty) 'description': t.description,
+            'parameters': sanitized,
+          }
+        };
+      }));
+    }
+
+    return toolDefs;
+  }
+
+  /// Build tool call handler function.
+  Future<String> Function(String, Map<String, dynamic>)? _buildToolCallHandler(
+    SettingsProvider settings,
+    dynamic assistant,
+  ) {
+    final mcp = context.read<McpProvider>();
+    final toolSvc = context.read<McpToolService>();
+
+    return (name, args) async {
+      // Search tool
+      if (name == SearchToolService.toolName && settings.searchEnabled) {
+        final q = (args['query'] ?? '').toString();
+        return await SearchToolService.executeSearch(q, settings);
+      }
+      // Memory tools
+      if (assistant?.enableMemory == true) {
+        try {
+          final mp = context.read<MemoryProvider>();
+          if (name == 'create_memory') {
+            final content = (args['content'] ?? '').toString();
+            if (content.isEmpty) return '';
+            final m = await mp.add(assistantId: assistant!.id, content: content);
+            return m.content;
+          } else if (name == 'edit_memory') {
+            final id = (args['id'] as num?)?.toInt() ?? -1;
+            final content = (args['content'] ?? '').toString();
+            if (id <= 0 || content.isEmpty) return '';
+            final m = await mp.update(id: id, content: content);
+            return m?.content ?? '';
+          } else if (name == 'delete_memory') {
+            final id = (args['id'] as num?)?.toInt() ?? -1;
+            if (id <= 0) return '';
+            final ok = await mp.delete(id: id);
+            return ok ? 'deleted' : '';
+          }
+        } catch (_) {}
+      }
+      // MCP tools
+      final text = await toolSvc.callToolTextForAssistant(
+        mcp,
+        context.read<AssistantProvider>(),
+        assistantId: assistant?.id,
+        toolName: name,
+        arguments: args,
+      );
+      return text;
+    };
+  }
+
+  /// Build custom headers from assistant settings.
+  Map<String, String>? _buildCustomHeaders(dynamic assistant) {
+    if ((assistant?.customHeaders.isNotEmpty ?? false)) {
+      final headers = <String, String>{
+        for (final e in assistant!.customHeaders)
+          if ((e['name'] ?? '').trim().isNotEmpty) (e['name']!.trim()): (e['value'] ?? '')
+      };
+      return headers.isEmpty ? null : headers;
+    }
+    return null;
+  }
+
+  /// Build custom body from assistant settings.
+  Map<String, dynamic>? _buildCustomBody(dynamic assistant) {
+    if ((assistant?.customBody.isNotEmpty ?? false)) {
+      final body = <String, dynamic>{
+        for (final e in assistant!.customBody)
+          if ((e['key'] ?? '').trim().isNotEmpty)
+            (e['key']!.trim()): (e['value'] ?? '')
+      };
+      return body.isEmpty ? null : body;
+    }
+    return null;
+  }
+
+  /// Execute generation with the given context. This is the shared streaming
+  /// logic used by both _sendMessage and _regenerateAtMessage.
+  Future<void> _executeGeneration(_GenerationContext ctx) async {
+    final assistantMessage = ctx.assistantMessage;
+    final assistant = ctx.assistant;
+    final bool streamOutput = ctx.streamOutput;
+    final String conversationId = assistantMessage.conversationId;
+
+    String fullContentRaw = '';
+    int totalTokens = 0;
+    TokenUsage? usage;
+    String bufferedReasoning = '';
+    DateTime? reasoningStartAt;
+    bool finishHandled = false;
+    bool titleQueued = false;
+
+    String transformAssistantContent([String? raw]) {
+      return applyAssistantRegexes(
+        raw ?? fullContentRaw,
+        assistant: assistant,
+        scope: AssistantRegexScope.assistant,
+        visual: false,
+      );
+    }
+
+    Future<void> finish({bool generateTitle = true}) async {
+      // Clean up stream throttle timer and flush final content
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
+
+      final shouldGenerateTitle = generateTitle && ctx.generateTitleOnFinish && !titleQueued;
+      if (finishHandled) {
+        if (shouldGenerateTitle) {
+          titleQueued = true;
+          _maybeGenerateTitleFor(assistantMessage.conversationId);
+        }
+        return;
+      }
+      finishHandled = true;
+      if (shouldGenerateTitle) {
+        titleQueued = true;
+      }
+      // Replace extremely long inline base64 images with local files to avoid jank
+      final processedContent = transformAssistantContent();
+      final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
+      await _chatService.updateMessage(
+        assistantMessage.id,
+        content: sanitizedContent,
+        totalTokens: totalTokens,
+        isStreaming: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+        if (index != -1) {
+          _messages[index] = _messages[index].copyWith(
+            content: sanitizedContent,
+            totalTokens: totalTokens,
+            isStreaming: false,
+          );
+        }
+      });
+      _setConversationLoading(assistantMessage.conversationId, false);
+      final r = _reasoning[assistantMessage.id];
+      if (r != null) {
+        if (r.finishedAt == null) {
+          r.finishedAt = DateTime.now();
+        }
+        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+        if (autoCollapse) {
+          r.expanded = false;
+        }
+        _reasoning[assistantMessage.id] = r;
+        if (mounted) setState(() {});
+      }
+
+      // Also finish any unfinished reasoning segments
+      final segments = _reasoningSegments[assistantMessage.id];
+      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+        segments.last.finishedAt = DateTime.now();
+        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+        if (autoCollapse) {
+          segments.last.expanded = false;
+        }
+        _reasoningSegments[assistantMessage.id] = segments;
+        if (mounted) setState(() {});
+      }
+
+      // Save reasoning segments to database
+      if (segments != null && segments.isNotEmpty) {
+        await _chatService.updateMessage(
+          assistantMessage.id,
+          reasoningSegmentsJson: _serializeReasoningSegments(segments),
+        );
+      }
+      if (shouldGenerateTitle) {
+        _maybeGenerateTitleFor(assistantMessage.conversationId);
+      }
+    }
+
+    void cleanupTimers() {
+      _streamThrottleTimers[assistantMessage.id]?.cancel();
+      _streamThrottleTimers.remove(assistantMessage.id);
+      _pendingStreamContent.remove(assistantMessage.id);
+      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
+      _inlineImageSanitizeTimers.remove(assistantMessage.id);
+      _inlineImageSanitizing.remove(assistantMessage.id);
+    }
+
+    Future<void> handleError(dynamic e) async {
+      cleanupTimers();
+      final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
+      final processed = transformAssistantContent();
+      final displayContent = processed.isNotEmpty ? processed : errText;
+      await _chatService.updateMessage(
+        assistantMessage.id,
+        content: displayContent,
+        totalTokens: totalTokens,
+        isStreaming: false,
+      );
+
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = _messages[index].copyWith(
+              content: displayContent,
+              isStreaming: false,
+              totalTokens: totalTokens,
+            );
+          }
+        });
+      }
+      _setConversationLoading(assistantMessage.conversationId, false);
+
+      // End reasoning on error
+      final r = _reasoning[assistantMessage.id];
+      if (r != null) {
+        if (r.finishedAt == null) {
+          r.finishedAt = DateTime.now();
+          await _chatService.updateMessage(
+            assistantMessage.id,
+            reasoningText: r.text,
+            reasoningFinishedAt: r.finishedAt,
+          );
+        }
+        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+        if (autoCollapse) {
+          r.expanded = false;
+        }
+        _reasoning[assistantMessage.id] = r;
+      }
+
+      // Also finish any unfinished reasoning segments on error
+      final segments = _reasoningSegments[assistantMessage.id];
+      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+        segments.last.finishedAt = DateTime.now();
+        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+        if (autoCollapse) {
+          segments.last.expanded = false;
+        }
+        _reasoningSegments[assistantMessage.id] = segments;
+        try {
+          await _chatService.updateMessage(
+            assistantMessage.id,
+            reasoningSegmentsJson: _serializeReasoningSegments(segments),
+          );
+        } catch (_) {}
+      }
+
+      await _conversationStreams.remove(conversationId)?.cancel();
+      showAppSnackBar(
+        context,
+        message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
+        type: NotificationType.error,
+      );
+    }
+
+    try {
+      final stream = ChatApiService.sendMessageStream(
+        config: ctx.config,
+        modelId: ctx.modelId,
+        messages: ctx.apiMessages,
+        userImagePaths: ctx.userImagePaths,
+        thinkingBudget: assistant?.thinkingBudget ?? ctx.settings.thinkingBudget,
+        temperature: assistant?.temperature,
+        topP: assistant?.topP,
+        maxTokens: assistant?.maxTokens,
+        tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
+        onToolCall: ctx.onToolCall,
+        extraHeaders: ctx.extraHeaders,
+        extraBody: ctx.extraBody,
+        stream: streamOutput,
+      );
+
+      await _conversationStreams[conversationId]?.cancel();
+      final sub = stream.listen(
+        (chunk) async {
+          final chunkContent = chunk.content.isNotEmpty
+              ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id)
+              : '';
+
+          // Capture reasoning deltas only when reasoning is enabled
+          if ((chunk.reasoning ?? '').isNotEmpty && ctx.supportsReasoning) {
+            if (streamOutput) {
+              final r = _reasoning[assistantMessage.id] ?? _ReasoningData();
+              r.text += chunk.reasoning!;
+              r.startAt ??= DateTime.now();
+              r.expanded = false;
+              _reasoning[assistantMessage.id] = r;
+
+              // Add to reasoning segments for mixed display
+              final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
+              if (segments.isEmpty) {
+                final newSegment = _ReasoningSegmentData();
+                newSegment.text = chunk.reasoning!;
+                newSegment.startAt = DateTime.now();
+                newSegment.expanded = false;
+                newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
+                segments.add(newSegment);
+              } else {
+                final hasToolsAfterLastSegment = (_toolParts[assistantMessage.id]?.isNotEmpty ?? false);
+                final lastSegment = segments.last;
+                if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
+                  final newSegment = _ReasoningSegmentData();
+                  newSegment.text = chunk.reasoning!;
+                  newSegment.startAt = DateTime.now();
+                  newSegment.expanded = false;
+                  newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
+                  segments.add(newSegment);
+                } else {
+                  lastSegment.text += chunk.reasoning!;
+                  lastSegment.startAt ??= DateTime.now();
+                }
+              }
+              _reasoningSegments[assistantMessage.id] = segments;
+
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningSegmentsJson: _serializeReasoningSegments(segments),
+              );
+
+              if (mounted && _currentConversation?.id == conversationId) setState(() {});
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningText: r.text,
+                reasoningStartAt: r.startAt,
+              );
+            } else {
+              reasoningStartAt ??= DateTime.now();
+              bufferedReasoning += chunk.reasoning!;
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningText: bufferedReasoning,
+                reasoningStartAt: reasoningStartAt,
+              );
+            }
+          }
+
+          // MCP tool call placeholders
+          if ((chunk.toolCalls ?? const []).isNotEmpty) {
+            final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
+            if (segments.isNotEmpty && segments.last.finishedAt == null) {
+              segments.last.finishedAt = DateTime.now();
+              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+              if (autoCollapse) {
+                segments.last.expanded = false;
+                final rd = _reasoning[assistantMessage.id];
+                if (rd != null) rd.expanded = false;
+              }
+              _reasoningSegments[assistantMessage.id] = segments;
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningSegmentsJson: _serializeReasoningSegments(segments),
+              );
+            }
+
+            final existing = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
+            for (final c in chunk.toolCalls!) {
+              existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
+            }
+            if (mounted && _currentConversation?.id == conversationId) setState(() {
+              _toolParts[assistantMessage.id] = _dedupeToolPartsList(existing);
+            });
+
+            try {
+              final prev = _chatService.getToolEvents(assistantMessage.id);
+              final newEvents = <Map<String, dynamic>>[
+                ...prev,
+                for (final c in chunk.toolCalls!)
+                  {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
+              ];
+              await _chatService.setToolEvents(assistantMessage.id, _dedupeToolEvents(newEvents));
+            } catch (_) {}
+          }
+
+          // MCP tool results
+          if ((chunk.toolResults ?? const []).isNotEmpty) {
+            final parts = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
+            for (final r in chunk.toolResults!) {
+              int idx = -1;
+              for (int i = 0; i < parts.length; i++) {
+                if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
+                  idx = i;
+                  break;
+                }
+              }
+              if (idx >= 0) {
+                parts[idx] = ToolUIPart(
+                  id: parts[idx].id,
+                  toolName: parts[idx].toolName,
+                  arguments: (r.arguments is Map && (r.arguments as Map).isNotEmpty)
+                      ? Map<String, dynamic>.from(r.arguments)
+                      : parts[idx].arguments,
+                  content: r.content,
+                  loading: false,
+                );
+              } else {
+                parts.add(ToolUIPart(
+                  id: r.id,
+                  toolName: r.name,
+                  arguments: r.arguments,
+                  content: r.content,
+                  loading: false,
+                ));
+              }
+              try {
+                await _chatService.upsertToolEvent(
+                  assistantMessage.id,
+                  id: r.id,
+                  name: r.name,
+                  arguments: r.arguments,
+                  content: r.content,
+                );
+              } catch (_) {}
+            }
+            if (mounted && _currentConversation?.id == conversationId) setState(() {
+              _toolParts[assistantMessage.id] = _dedupeToolPartsList(parts);
+            });
+            if (!_isUserScrolling) {
+              _scrollToBottomSoon();
+            }
+          }
+
+          if (chunk.isDone) {
+            if (chunkContent.isNotEmpty) {
+              fullContentRaw += chunkContent;
+            }
+            final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
+            if (hasLoadingTool) {
+              return;
+            }
+            if (chunk.totalTokens > 0) {
+              totalTokens = chunk.totalTokens;
+            }
+            if (chunk.usage != null) {
+              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
+              totalTokens = usage!.totalTokens;
+            }
+            await finish();
+            try {
+              final sp = context.read<SettingsProvider>();
+              if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+                await NotificationService.showChatCompleted(
+                  title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+                  body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+                );
+              }
+            } catch (_) {}
+            if (!streamOutput && bufferedReasoning.isNotEmpty) {
+              final now = DateTime.now();
+              final startAt = reasoningStartAt ?? now;
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningText: bufferedReasoning,
+                reasoningStartAt: startAt,
+                reasoningFinishedAt: now,
+              );
+              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+              _reasoning[assistantMessage.id] = _ReasoningData()
+                ..text = bufferedReasoning
+                ..startAt = startAt
+                ..finishedAt = now
+                ..expanded = !autoCollapse;
+              if (mounted && _currentConversation?.id == conversationId) setState(() {});
+            }
+            await _conversationStreams.remove(conversationId)?.cancel();
+            final r = _reasoning[assistantMessage.id];
+            if (r != null && r.finishedAt == null) {
+              r.finishedAt = DateTime.now();
+              await _chatService.updateMessage(
+                assistantMessage.id,
+                reasoningText: r.text,
+                reasoningFinishedAt: r.finishedAt,
+              );
+            }
+          } else {
+            fullContentRaw += chunkContent;
+            if (chunk.totalTokens > 0) {
+              totalTokens = chunk.totalTokens;
+            }
+            if (chunk.usage != null) {
+              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
+              totalTokens = usage!.totalTokens;
+            }
+
+            String streamingProcessed = transformAssistantContent();
+            if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
+              try {
+                final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
+                if (sanitized != streamingProcessed) {
+                  streamingProcessed = sanitized;
+                  fullContentRaw = sanitized;
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+            _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
+            await _chatService.updateMessage(
+              assistantMessage.id,
+              content: streamingProcessed,
+              totalTokens: totalTokens,
+            );
+            if (streamOutput && mounted && _currentConversation?.id == conversationId) {
+              setState(() {
+                final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+                if (index != -1) {
+                  _messages[index] = _messages[index].copyWith(
+                    content: streamingProcessed,
+                    totalTokens: totalTokens,
+                  );
+                }
+              });
+            }
+
+            if (streamOutput) {
+              if ((chunkContent).isNotEmpty) {
+                final r = _reasoning[assistantMessage.id];
+                if (r != null && r.startAt != null && r.finishedAt == null) {
+                  r.finishedAt = DateTime.now();
+                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+                  if (autoCollapse) {
+                    r.expanded = false;
+                  }
+                  _reasoning[assistantMessage.id] = r;
+                  await _chatService.updateMessage(
+                    assistantMessage.id,
+                    reasoningText: r.text,
+                    reasoningFinishedAt: r.finishedAt,
+                  );
+                  if (mounted) setState(() {});
+                }
+
+                final segments = _reasoningSegments[assistantMessage.id];
+                if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+                  segments.last.finishedAt = DateTime.now();
+                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+                  if (autoCollapse) {
+                    segments.last.expanded = false;
+                  }
+                  _reasoningSegments[assistantMessage.id] = segments;
+                  if (mounted) setState(() {});
+                  await _chatService.updateMessage(
+                    assistantMessage.id,
+                    reasoningSegmentsJson: _serializeReasoningSegments(segments),
+                  );
+                }
+              }
+            }
+
+            if (streamOutput) {
+              _pendingStreamContent[assistantMessage.id] = streamingProcessed;
+              _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
+                final pending = _pendingStreamContent[assistantMessage.id];
+                if (pending != null && mounted && _currentConversation?.id == conversationId) {
+                  setState(() {
+                    final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+                    if (index != -1) {
+                      _messages[index] = _messages[index].copyWith(
+                        content: pending,
+                        totalTokens: totalTokens,
+                      );
+                    }
+                  });
+                  _autoScrollToBottomIfNeeded();
+                }
+              });
+            }
+          }
+        },
+        onError: (e) async {
+          await handleError(e);
+        },
+        onDone: () async {
+          cleanupTimers();
+          if (_loadingConversationIds.contains(conversationId)) {
+            await finish(generateTitle: ctx.generateTitleOnFinish);
+          }
+          try {
+            final sp = context.read<SettingsProvider>();
+            if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+              await NotificationService.showChatCompleted(
+                title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+                body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+              );
+            }
+          } catch (_) {}
+          await _conversationStreams.remove(conversationId)?.cancel();
+        },
+        cancelOnError: true,
+      );
+      _conversationStreams[conversationId] = sub;
+    } catch (e) {
+      await handleError(e);
+    }
+  }
+
+  // ===========================================================================
+  // END REGION: Message Generation Helpers
+  // ===========================================================================
+
 }
 
 class _SidebarResizeHandle extends StatefulWidget {
@@ -6513,6 +5775,46 @@ class _SidebarResizeHandleState extends State<_SidebarResizeHandle> {
       ),
     );
   }
+}
+
+/// Context object for message generation, encapsulating all parameters needed
+/// by the shared _executeGeneration method.
+class _GenerationContext {
+  _GenerationContext({
+    required this.assistantMessage,
+    required this.apiMessages,
+    required this.userImagePaths,
+    required this.providerKey,
+    required this.modelId,
+    required this.assistant,
+    required this.settings,
+    required this.config,
+    required this.toolDefs,
+    this.onToolCall,
+    this.extraHeaders,
+    this.extraBody,
+    required this.supportsReasoning,
+    required this.enableReasoning,
+    required this.streamOutput,
+    this.generateTitleOnFinish = true,
+  });
+
+  final ChatMessage assistantMessage;
+  final List<Map<String, dynamic>> apiMessages;
+  final List<String> userImagePaths;
+  final String providerKey;
+  final String modelId;
+  final dynamic assistant; // Assistant?
+  final SettingsProvider settings;
+  final ProviderConfig config;
+  final List<Map<String, dynamic>> toolDefs;
+  final Future<String> Function(String, Map<String, dynamic>)? onToolCall;
+  final Map<String, String>? extraHeaders;
+  final Map<String, dynamic>? extraBody;
+  final bool supportsReasoning;
+  final bool enableReasoning;
+  final bool streamOutput;
+  final bool generateTitleOnFinish;
 }
 
 class _ReasoningData {
