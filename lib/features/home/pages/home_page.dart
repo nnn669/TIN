@@ -3554,6 +3554,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     });
   }
 
+  /// Handles TTS speak/stop for a message.
+  Future<void> _handleSpeak(BuildContext context, ChatMessage message) async {
+    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+    if (isDesktop) {
+      final sp = context.read<SettingsProvider>();
+      final hasNetworkTts = sp.ttsServiceSelected >= 0 && sp.ttsServices.isNotEmpty;
+      if (!hasNetworkTts) {
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(context)!.desktopTtsPleaseAddProvider,
+          type: NotificationType.warning,
+        );
+        return;
+      }
+    }
+    final tts = context.read<TtsProvider>();
+    if (!tts.isSpeaking) {
+      await tts.speak(message.content);
+    } else {
+      await tts.stop();
+    }
+  }
+
   /// Builds the message list view shared by both mobile and tablet layouts.
   ///
   /// This method extracts the common ListView.builder logic to reduce code duplication.
@@ -3692,29 +3717,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             }
                           : null,
                       onSpeak: message.role == 'assistant'
-                          ? () async {
-                              final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                  defaultTargetPlatform == TargetPlatform.windows ||
-                                  defaultTargetPlatform == TargetPlatform.linux;
-                              if (isDesktop) {
-                                final sp = context.read<SettingsProvider>();
-                                final hasNetworkTts = sp.ttsServiceSelected >= 0 && sp.ttsServices.isNotEmpty;
-                                if (!hasNetworkTts) {
-                                  showAppSnackBar(
-                                    context,
-                                    message: AppLocalizations.of(context)!.desktopTtsPleaseAddProvider,
-                                    type: NotificationType.warning,
-                                  );
-                                  return;
-                                }
-                              }
-                              final tts = context.read<TtsProvider>();
-                              if (!tts.isSpeaking) {
-                                await tts.speak(message.content);
-                              } else {
-                                await tts.stop();
-                              }
-                            }
+                          ? () => _handleSpeak(context, message)
                           : null,
                       onEdit: (message.role == 'user' || message.role == 'assistant')
                           ? () { _onEditMessage(message); }
