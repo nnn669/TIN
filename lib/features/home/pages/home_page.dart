@@ -35,6 +35,7 @@ import '../controllers/generation_controller.dart';
 import '../services/message_builder_service.dart';
 import '../services/ocr_service.dart';
 import '../services/translation_service.dart';
+import '../services/file_upload_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
@@ -61,9 +62,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'dart:ui' as ui;
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../utils/assistant_regex.dart';
@@ -88,8 +87,6 @@ import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
-import '../../../utils/app_directories.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../core/models/instruction_injection.dart';
 import 'home_mobile_layout.dart';
 import 'home_desktop_layout.dart';
@@ -129,6 +126,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late MessageBuilderService _messageBuilderService;
   late OcrService _ocrService;
   late TranslationService _translationService;
+  late FileUploadService _fileUploadService;
 
   // Delegate to ChatController for conversation state
   Conversation? get _currentConversation => _chatController.currentConversation;
@@ -913,6 +911,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       chatService: _chatService,
       contextProvider: context,
     );
+    // Initialize FileUploadService for file picking and upload
+    _fileUploadService = FileUploadService(
+      mediaController: _mediaController,
+      onScrollToBottom: _scrollToBottomSoon,
+    );
     // Initialize MessageBuilderService for API message construction
     _messageBuilderService = MessageBuilderService(
       chatService: _chatService,
@@ -1217,227 +1220,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Assistant-level MCP selection is managed in Assistant settings; no per-conversation merge.
   }
 
-  Future<List<String>> _copyPickedFiles(List<XFile> files) async {
-    final dir = await AppDirectories.getUploadDirectory();
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    final out = <String>[];
-    for (final f in files) {
-      try {
-        final name = f.name.isNotEmpty ? f.name : DateTime.now().millisecondsSinceEpoch.toString();
-        final dest = File("${dir.path}/$name");
-        await dest.writeAsBytes(await f.readAsBytes());
-        out.add(dest.path);
-      } catch (_) {}
-    }
-    return out;
-  }
-
-  Future<void> _onPickPhotos() async {
-    try {
-      // On desktop, fall back to FilePicker as image_picker is not supported.
-      if (PlatformUtils.isDesktopTarget) {
-        final res = await FilePicker.platform.pickFiles(
-          allowMultiple: true,
-          withData: false,
-          type: FileType.custom,
-          allowedExtensions: const ['png','jpg','jpeg','gif','webp','heic','heif'],
-        );
-        if (res == null || res.files.isEmpty) return;
-        final toCopy = <XFile>[];
-        for (final f in res.files) {
-          if (f.path != null && f.path!.isNotEmpty) {
-            toCopy.add(XFile(f.path!));
-          }
-        }
-        if (toCopy.isEmpty) return;
-        final paths = await _copyPickedFiles(toCopy);
-        if (paths.isNotEmpty) {
-          _mediaController.addImages(paths);
-          _scrollToBottomSoon();
-        }
-        return;
-      }
-
-      final picker = ImagePicker();
-      final files = await picker.pickMultiImage();
-      if (files == null || files.isEmpty) return;
-      final paths = await _copyPickedFiles(files);
-      if (paths.isNotEmpty) {
-        _mediaController.addImages(paths);
-        _scrollToBottomSoon();
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _onPickCamera() async {
-    try {
-      // Proactive permission check on mobile
-      if (PlatformUtils.isMobile) {
-        var status = await Permission.camera.status;
-        // Request if not determined; otherwise guide user
-        if (status.isDenied || status.isRestricted) {
-          status = await Permission.camera.request();
-        }
-        if (!status.isGranted) {
-          final l10n = AppLocalizations.of(context)!;
-          showAppSnackBar(
-            context,
-            message: l10n.cameraPermissionDeniedMessage,
-            type: NotificationType.error,
-            duration: const Duration(seconds: 4),
-            actionLabel: l10n.openSystemSettings,
-            onAction: () {
-              try { openAppSettings(); } catch (_) {}
-            },
-          );
-          return;
-        }
-      }
-      final picker = ImagePicker();
-      final file = await picker.pickImage(source: ImageSource.camera);
-      if (file == null) return;
-      final paths = await _copyPickedFiles([file]);
-      if (paths.isNotEmpty) {
-        _mediaController.addImages(paths);
-        _scrollToBottomSoon();
-      }
-    } catch (e) {
-      try {
-        final l10n = AppLocalizations.of(context)!;
-        showAppSnackBar(
-          context,
-          message: l10n.cameraPermissionDeniedMessage,
-          type: NotificationType.error,
-          duration: const Duration(seconds: 3),
-        );
-      } catch (_) {}
-    }
-  }
-
-  String _inferMimeByExtension(String name) {
-    final lower = name.toLowerCase();
-    // Video
-    if (lower.endsWith('.mp4')) return 'video/mp4';
-    if (lower.endsWith('.mpeg') || lower.endsWith('.mpg')) return 'video/mpeg';
-    if (lower.endsWith('.mov')) return 'video/quicktime';
-    if (lower.endsWith('.avi')) return 'video/x-msvideo';
-    if (lower.endsWith('.mkv')) return 'video/x-matroska';
-    if (lower.endsWith('.flv')) return 'video/x-flv';
-    if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
-    if (lower.endsWith('.webm')) return 'video/webm';
-    if (lower.endsWith('.3gp') || lower.endsWith('.3gpp')) return 'video/3gpp';
-    // Documents / text
-    if (lower.endsWith('.pdf')) return 'application/pdf';
-    if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    if (lower.endsWith('.json')) return 'application/json';
-    if (lower.endsWith('.js')) return 'application/javascript';
-    if (lower.endsWith('.txt') || lower.endsWith('.md')) return 'text/plain';
-    return 'text/plain';
-  }
-
-  bool _isImageExtension(String name) {
-    final lower = name.toLowerCase();
-    return lower.endsWith('.png') ||
-        lower.endsWith('.jpg') ||
-        lower.endsWith('.jpeg') ||
-        lower.endsWith('.gif') ||
-        lower.endsWith('.webp') ||
-        lower.endsWith('.heic') ||
-        lower.endsWith('.heif');
-  }
-
-  Future<void> _onPickFiles() async {
-    try {
-      final res = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        withData: false,
-        type: FileType.custom,
-        allowedExtensions: const [
-          // images
-          'png','jpg','jpeg','gif','webp','heic','heif',
-          // videos
-          'mp4','avi','mkv','mov','flv','wmv','mpeg','mpg','webm','3gp','3gpp',
-          // docs
-          'txt','md','json','js','pdf','docx','html','xml','py','java','kt','dart','ts','tsx','markdown','mdx','yml','yaml'
-        ],
-      );
-      if (res == null || res.files.isEmpty) return;
-      final images = <String>[];
-      final docs = <DocumentAttachment>[];
-
-      // Build a flat list preserving order, then map saved -> type
-      final toCopy = <XFile>[];
-      final kinds = <bool>[]; // true=image, false=document
-      final names = <String>[];
-      for (final f in res.files) {
-        final path = f.path;
-        if (path != null && path.isNotEmpty) {
-          toCopy.add(XFile(path));
-          kinds.add(_isImageExtension(f.name));
-          names.add(f.name);
-        }
-      }
-      if (toCopy.isEmpty) return;
-      final saved = await _copyPickedFiles(toCopy);
-      for (int i = 0; i < saved.length; i++) {
-        final savedPath = saved[i];
-        final isImage = kinds[i];
-        if (isImage) {
-          images.add(savedPath);
-        } else {
-          final name = names[i];
-          final mime = _inferMimeByExtension(name);
-          docs.add(DocumentAttachment(path: savedPath, fileName: name, mime: mime));
-        }
-      }
-      if (images.isNotEmpty) {
-        _mediaController.addImages(images);
-      }
-      if (docs.isNotEmpty) {
-        _mediaController.addFiles(docs);
-      }
-      if (images.isNotEmpty || docs.isNotEmpty) {
-        _scrollToBottomSoon();
-      }
-    } catch (_) {}
-  }
-
-  // Handle files dropped on desktop (macOS/Windows/Linux)
-  Future<void> _onFilesDroppedDesktop(List<XFile> files) async {
-    if (files.isEmpty) return;
-    try {
-      final images = <String>[];
-      final docs = <DocumentAttachment>[];
-      // Preserve order: copy all, then classify by original names
-      final toCopy = <XFile>[];
-      final kinds = <bool>[]; // true=image, false=document
-      final names = <String>[];
-      for (final f in files) {
-        final name = (f.name.isNotEmpty ? f.name : (f.path.split(Platform.pathSeparator).last));
-        toCopy.add(f);
-        kinds.add(_isImageExtension(name));
-        names.add(name);
-      }
-
-      final saved = await _copyPickedFiles(toCopy);
-      for (int i = 0; i < saved.length; i++) {
-        final savedPath = saved[i];
-        final isImage = kinds[i];
-        if (isImage) {
-          images.add(savedPath);
-        } else {
-          final name = names[i];
-          final mime = _inferMimeByExtension(name);
-          docs.add(DocumentAttachment(path: savedPath, fileName: name, mime: mime));
-        }
-      }
-      if (images.isNotEmpty) _mediaController.addImages(images);
-      if (docs.isNotEmpty) _mediaController.addFiles(docs);
-      if (images.isNotEmpty || docs.isNotEmpty) _scrollToBottomSoon();
-    } catch (_) {}
-  }
+  // File upload methods delegated to FileUploadService
+  Future<void> _onPickPhotos() => _fileUploadService.onPickPhotos();
+  Future<void> _onPickCamera() => _fileUploadService.onPickCamera(context);
+  Future<void> _onPickFiles() => _fileUploadService.onPickFiles();
+  Future<void> _onFilesDroppedDesktop(List<XFile> files) => _fileUploadService.onFilesDroppedDesktop(files);
 
   // Wraps a widget with desktop DropTarget to accept drag-and-drop files
   Widget _wrapWithDropTarget(Widget child) {
