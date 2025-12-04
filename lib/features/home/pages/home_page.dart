@@ -28,6 +28,8 @@ import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
+import '../controllers/chat_controller.dart';
+import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
@@ -116,20 +118,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   double _inputBarHeight = 72;
 
   late ChatService _chatService;
-  Conversation? _currentConversation;
-  List<ChatMessage> _messages = [];
-  // Support concurrent generation per conversation
-  final Map<String, StreamSubscription> _conversationStreams = <String, StreamSubscription>{}; // conversationId -> subscription
-  final Set<String> _loadingConversationIds = <String>{}; // active generating conversations
-  final Map<String, _ReasoningData> _reasoning = <String, _ReasoningData>{};
+  late ChatController _chatController;
+  late stream_ctrl.StreamController _streamController;
+
+  // Delegate to ChatController for conversation state
+  Conversation? get _currentConversation => _chatController.currentConversation;
+  List<ChatMessage> get _messages => _chatController.messages;
+  Map<String, int> get _versionSelections => _chatController.versionSelections;
+  Set<String> get _loadingConversationIds => _chatController.loadingConversationIds;
+  Map<String, StreamSubscription<dynamic>> get _conversationStreams => _chatController.conversationStreams;
+
+  // Delegate to StreamController for streaming state
+  Map<String, stream_ctrl.ReasoningData> get _reasoning => _streamController.reasoning;
+  Map<String, List<stream_ctrl.ReasoningSegmentData>> get _reasoningSegments => _streamController.reasoningSegments;
+  Map<String, List<ToolUIPart>> get _toolParts => _streamController.toolParts;
+
   final Map<String, _TranslationData> _translations = <String, _TranslationData>{};
-  final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{}; // assistantMessageId -> parts
-  final Map<String, List<_ReasoningSegmentData>> _reasoningSegments = <String, List<_ReasoningSegmentData>>{}; // assistantMessageId -> reasoning segments
   static const int _maxOcrCacheEntries = 48;
   final Map<String, _OcrCacheEntry> _ocrCache = <String, _OcrCacheEntry>{}; // path -> cached OCR
   final List<String> _ocrCacheOrder = <String>[]; // LRU order of paths
-  final Map<String, String> _geminiThoughtSigs = <String, String>{}; // assistantMessageId -> signature comment
-  static final RegExp _geminiThoughtSigRe = RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
   bool _appInForeground = true; // used to gate notifications only when app is background
   // Message widget keys for navigation to previous question
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
@@ -145,14 +152,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _autoScrollAnimateNext = true;
   static const double _autoScrollSnapTolerance = 56.0;
 
-  // Streaming content throttle mechanism to reduce UI rebuild frequency
-  static const Duration _streamThrottleInterval = Duration(milliseconds: 60);
-  final Map<String, Timer?> _streamThrottleTimers = <String, Timer?>{};
-  final Map<String, String> _pendingStreamContent = <String, String>{};
-  // Debounce inline base64 -> local file sanitization to avoid keeping huge blobs in-memory
-  static const Duration _inlineImageSanitizeDelay = Duration(milliseconds: 120);
-  final Map<String, Timer?> _inlineImageSanitizeTimers = <String, Timer?>{};
-  final Set<String> _inlineImageSanitizing = <String>{};
+  // NOTE: Streaming content throttle mechanism moved to StreamController
 
   // Sanitize/translate JSON Schema to each provider's accepted subset
   static Map<String, dynamic> _sanitizeToolParametersForProvider(Map<String, dynamic> schema, ProviderKind kind) {
@@ -553,16 +553,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Anchor for chained "jump to previous question" navigation
   String? _lastJumpUserMessageId;
 
-  // Deduplicate tool UI parts by id or by name+args when id is empty
+  // Deduplicate tool UI parts (delegate to StreamController)
   List<ToolUIPart> _dedupeToolPartsList(List<ToolUIPart> parts) {
-    final seen = <String>{};
-    final out = <ToolUIPart>[];
-    for (final p in parts) {
-      final id = (p.id).trim();
-      final key = id.isNotEmpty ? 'id:$id' : 'name:${p.toolName}|args:${jsonEncode(p.arguments)}';
-      if (seen.add(key)) out.add(p);
-    }
-    return out;
+    return _streamController.dedupeToolPartsList(parts);
   }
 
   @override
@@ -570,52 +563,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _appInForeground = (state == AppLifecycleState.resumed);
   }
 
-  // Deduplicate raw persisted tool events using same criteria
+  // Deduplicate raw persisted tool events (delegate to StreamController)
   List<Map<String, dynamic>> _dedupeToolEvents(List<Map<String, dynamic>> events) {
-    final seen = <String>{};
-    final out = <Map<String, dynamic>>[];
-    for (final e in events) {
-      final id = (e['id']?.toString() ?? '').trim();
-      final name = (e['name']?.toString() ?? '');
-      final args = ((e['arguments'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{});
-      final key = id.isNotEmpty ? 'id:$id' : 'name:$name|args:${jsonEncode(args)}';
-      if (seen.add(key)) out.add(e.map((k, v) => MapEntry(k.toString(), v)));
-    }
-    return out;
+    return _streamController.dedupeToolEvents(events);
   }
 
   // Selection mode state for export/share
   bool _selecting = false;
   final Set<String> _selectedItems = <String>{}; // selected message ids (collapsed view)
 
-  // Helper methods to serialize/deserialize reasoning segments
-  String _serializeReasoningSegments(List<_ReasoningSegmentData> segments) {
-    final list = segments.map((s) => {
-      'text': s.text,
-      'startAt': s.startAt?.toIso8601String(),
-      'finishedAt': s.finishedAt?.toIso8601String(),
-      'expanded': s.expanded,
-      'toolStartIndex': s.toolStartIndex,
-    }).toList();
-    return jsonEncode(list);
+  // Helper methods to serialize/deserialize reasoning segments (delegate to StreamController)
+  String _serializeReasoningSegments(List<stream_ctrl.ReasoningSegmentData> segments) {
+    return _streamController.serializeReasoningSegments(segments);
   }
 
-  List<_ReasoningSegmentData> _deserializeReasoningSegments(String? json) {
-    if (json == null || json.isEmpty) return [];
-    try {
-      final list = jsonDecode(json) as List;
-      return list.map((item) {
-        final s = _ReasoningSegmentData();
-        s.text = item['text'] ?? '';
-        s.startAt = item['startAt'] != null ? DateTime.parse(item['startAt']) : null;
-        s.finishedAt = item['finishedAt'] != null ? DateTime.parse(item['finishedAt']) : null;
-        s.expanded = item['expanded'] ?? false;
-        s.toolStartIndex = (item['toolStartIndex'] as int?) ?? 0;
-        return s;
-      }).toList();
-    } catch (_) {
-      return [];
-    }
+  List<stream_ctrl.ReasoningSegmentData> _deserializeReasoningSegments(String? json) {
+    return _streamController.deserializeReasoningSegments(json);
   }
 
   bool _isReasoningModel(String providerKey, String modelId) {
@@ -761,11 +724,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Update loading state for a conversation and refresh UI if needed
   void _setConversationLoading(String conversationId, bool loading) {
     final prev = _loadingConversationIds.contains(conversationId);
-    if (loading) {
-      _loadingConversationIds.add(conversationId);
-    } else {
-      _loadingConversationIds.remove(conversationId);
-    }
+    _chatController.setConversationLoading(conversationId, loading);
     if (mounted && prev != loading) {
       setState(() {}); // Update input bar + drawer indicators
     }
@@ -860,38 +819,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Debounce per message
-    _inlineImageSanitizeTimers[messageId]?.cancel();
-    _inlineImageSanitizeTimers[messageId] = Timer(immediate ? Duration.zero : _inlineImageSanitizeDelay, () async {
-      if (_inlineImageSanitizing.contains(messageId)) return;
-      _inlineImageSanitizing.add(messageId);
-      try {
-        // Refresh to the most recent content before sanitizing
-        String current = snapshot;
-        final idx = _messages.indexWhere((m) => m.id == messageId);
-        if (idx != -1) current = _messages[idx].content;
-        if (current.isEmpty || !current.contains('data:image') || !current.contains('base64,')) return;
-
-        final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(current);
-        if (sanitized == current) return;
-
-        // Keep throttled UI updates in sync to avoid reverting to base64
-        _pendingStreamContent[messageId] = sanitized;
-        await _chatService.updateMessage(messageId, content: sanitized);
+    _streamController.scheduleInlineImageSanitize(
+      messageId,
+      latestContent: snapshot,
+      immediate: immediate,
+      onSanitized: (id, sanitized) async {
+        await _chatService.updateMessage(id, content: sanitized);
         if (!mounted) return;
         setState(() {
-          final i = _messages.indexWhere((m) => m.id == messageId);
+          final i = _messages.indexWhere((m) => m.id == id);
           if (i != -1) {
             _messages[i] = _messages[i].copyWith(content: sanitized);
           }
         });
-      } catch (_) {
-        // Swallow errors to avoid crashing streaming UI; fallback keeps original content.
-      } finally {
-        _inlineImageSanitizing.remove(messageId);
-        _inlineImageSanitizeTimers.remove(messageId);
-      }
-    });
+      },
+    );
   }
 
   Future<void> _forceInlineImageSanitize(String messageId) async {
@@ -918,51 +860,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  // Delegate to StreamController for Gemini thought signature handling
   String _captureGeminiThoughtSignature(String content, String messageId) {
-    if (content.isEmpty) return content;
-    final m = _geminiThoughtSigRe.firstMatch(content);
-    if (m != null) {
-      final sig = m.group(0) ?? '';
-      if (sig.isNotEmpty) {
-        if (_geminiThoughtSigs[messageId] != sig) {
-          _geminiThoughtSigs[messageId] = sig;
-          unawaited(_chatService.setGeminiThoughtSignature(messageId, sig));
-        }
-      }
-      content = content.replaceAll(_geminiThoughtSigRe, '').trimRight();
-    }
-    return content;
+    return _streamController.captureGeminiThoughtSignature(content, messageId);
   }
 
   String _appendGeminiThoughtSignatureForApi(ChatMessage message, String content) {
-    String? sig = _geminiThoughtSigs[message.id];
-    sig ??= _chatService.getGeminiThoughtSignature(message.id);
-    if (sig != null && sig.isNotEmpty && !content.contains('gemini_thought_signatures:')) {
-      if (content.isEmpty) return sig;
-      return '$content\n$sig';
-    }
-    return content;
+    return _streamController.appendGeminiThoughtSignatureForApi(message, content);
   }
 
   String _titleForLocale(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return l10n.titleForLocale;
-  }
-
-  // Version selections (groupId -> selected version index)
-  Map<String, int> _versionSelections = <String, int>{};
-
-  void _loadVersionSelections() {
-    final cid = _currentConversation?.id;
-    if (cid == null) {
-      _versionSelections = <String, int>{};
-      return;
-    }
-    try {
-      _versionSelections = _chatService.getVersionSelections(cid);
-    } catch (_) {
-      _versionSelections = <String, int>{};
-    }
   }
 
   // Restore per-message UI states (reasoning/segments/tool parts/translation) after switching conversations
@@ -972,47 +881,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     for (int i = 0; i < _messages.length; i++) {
       final m = _messages[i];
       if (m.role == 'assistant') {
-        final storedSig = _chatService.getGeminiThoughtSignature(m.id);
-        if (storedSig != null && storedSig.isNotEmpty) {
-          _geminiThoughtSigs[m.id] = storedSig;
-        }
+        // Restore message UI state via StreamController
+        _streamController.restoreMessageUiState(
+          m,
+          getToolEventsFromDb: (id) => _chatService.getToolEvents(id),
+          getGeminiThoughtSigFromDb: (id) => _chatService.getGeminiThoughtSignature(id),
+        );
+
+        // Clean content from gemini thought signatures
         final cleanedContent = _captureGeminiThoughtSignature(m.content, m.id);
         if (cleanedContent != m.content) {
           final updated = m.copyWith(content: cleanedContent);
           _messages[i] = updated;
           unawaited(_chatService.updateMessage(m.id, content: cleanedContent));
-        }
-        // Restore reasoning state
-        final txt = m.reasoningText ?? '';
-        if (txt.isNotEmpty || m.reasoningStartAt != null || m.reasoningFinishedAt != null) {
-          final rd = _ReasoningData();
-          rd.text = txt;
-          rd.startAt = m.reasoningStartAt;
-          rd.finishedAt = m.reasoningFinishedAt;
-          rd.expanded = false;
-          _reasoning[m.id] = rd;
-        }
-
-        // Restore tool events persisted for this assistant message
-        try {
-          final events = _dedupeToolEvents(_chatService.getToolEvents(m.id));
-          if (events.isNotEmpty) {
-            _toolParts[m.id] = events
-                .map((e) => ToolUIPart(
-                      id: (e['id'] ?? '').toString(),
-                      toolName: (e['name'] ?? '').toString(),
-                      arguments: (e['arguments'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{},
-                      content: (e['content']?.toString().isNotEmpty == true) ? e['content'].toString() : null,
-                      loading: !(e['content']?.toString().isNotEmpty == true),
-                    ))
-                .toList();
-          }
-        } catch (_) {}
-
-        // Restore reasoning segments
-        final segments = _deserializeReasoningSegments(m.reasoningSegmentsJson);
-        if (segments.isNotEmpty) {
-          _reasoningSegments[m.id] = segments;
         }
 
         // Clean up any inline base64 images persisted from earlier runs
@@ -1091,7 +972,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     if (!mounted) return;
     if (updated != null) {
       setState(() {
-        _currentConversation = updated;
+        _chatController.updateCurrentConversation(updated);
       });
     }
     // No inline panel to close; modal sheet is dismissed before action
@@ -1191,6 +1072,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _convoFadeController.value = 1.0;
     // Use the provided ChatService instance
     _chatService = context.read<ChatService>();
+    // Initialize ChatController for conversation state management
+    _chatController = ChatController(chatService: _chatService);
+    // Initialize StreamController for streaming state management
+    _streamController = stream_ctrl.StreamController(
+      chatService: _chatService,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+      getSettingsProvider: () => context.read<SettingsProvider>(),
+      getCurrentConversationId: () => _currentConversation?.id,
+    );
     _initChat();
     _scrollController.addListener(_onScrollControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
@@ -1393,12 +1285,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           try { await context.read<AssistantProvider>().setCurrentAssistant(recent.assistantId!); } catch (_) {}
         }
         _chatService.setCurrentConversation(recent.id);
-        final msgs = _chatService.getMessages(recent.id);
         setState(() {
-          _currentConversation = recent;
-          _messages = List.of(msgs);
-          _geminiThoughtSigs.clear();
-          _loadVersionSelections();
+          _chatController.setCurrentConversation(recent);
+          _streamController.clearGeminiThoughtSigs();
           _restoreMessageUiState();
         });
         _scrollToBottomSoon(animate: false);
@@ -1421,13 +1310,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _chatService.setCurrentConversation(id);
     final convo = _chatService.getConversation(id);
     if (convo != null) {
-      final msgs = _chatService.getMessages(id);
       if (mounted) {
         setState(() {
-          _currentConversation = convo;
-          _messages = List.of(msgs);
-          _geminiThoughtSigs.clear();
-          _loadVersionSelections();
+          _chatController.setCurrentConversation(convo);
+          _streamController.clearGeminiThoughtSigs();
           _restoreMessageUiState();
         });
         // Ensure list lays out, then jump to bottom while hidden
@@ -1761,14 +1647,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Default-enable MCP: select all connected servers for this conversation
     // MCP defaults are now managed per assistant; no per-conversation enabling here
     setState(() {
-      _currentConversation = conversation;
-      _messages = [];
-      _versionSelections.clear();
-      _reasoning.clear();
+      _chatController.setCurrentConversation(conversation);
+      _streamController.clearAllState();
       _translations.clear();
-      _toolParts.clear();
-      _reasoningSegments.clear();
-      _geminiThoughtSigs.clear();
     });
     // Inject assistant preset messages into new conversation (ordered)
     try {
@@ -1785,7 +1666,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             content: content,
           );
           if (mounted) {
-            setState(() { _messages.add(m); });
+            setState(() { _chatController.reloadMessages(); });
           }
         }
       }
@@ -1919,7 +1800,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final supportsReasoning = _isReasoningModel(providerKey, modelId);
     final enableReasoning = supportsReasoning && _isReasoningEnabled((assistant?.thinkingBudget) ?? settings.thinkingBudget);
     if (enableReasoning) {
-      final rd = _ReasoningData();
+      final rd = stream_ctrl.ReasoningData();
       _reasoning[assistantMessage.id] = rd;
       await _chatService.updateMessage(
         assistantMessage.id,
@@ -1971,7 +1852,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           ];
 
     // === Step 8: Execute generation ===
-    final ctx = _GenerationContext(
+    final ctx = stream_ctrl.GenerationContext(
       assistantMessage: assistantMessage,
       apiMessages: apiMessages,
       userImagePaths: userImagePaths,
@@ -2141,7 +2022,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final supportsReasoning = _isReasoningModel(providerKey, modelId);
     final enableReasoning = supportsReasoning && _isReasoningEnabled((assistant?.thinkingBudget) ?? settings.thinkingBudget);
     if (enableReasoning) {
-      final rd = _ReasoningData();
+      final rd = stream_ctrl.ReasoningData();
       _reasoning[assistantMessage.id] = rd;
       await _chatService.updateMessage(assistantMessage.id, reasoningStartAt: DateTime.now());
     }
@@ -2175,7 +2056,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final userImagePaths = ocrActive ? const <String>[] : lastUserImagePaths;
 
     // === Execute generation using shared method ===
-    final ctx = _GenerationContext(
+    final ctx = stream_ctrl.GenerationContext(
       assistantMessage: assistantMessage,
       apiMessages: apiMessages,
       userImagePaths: userImagePaths,
@@ -2283,7 +2164,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         await _chatService.renameConversation(convo.id, title);
         if (mounted && _currentConversation?.id == convo.id) {
           setState(() {
-            _currentConversation = _chatService.getConversation(convo.id);
+            _chatController.updateCurrentConversation(_chatService.getConversation(convo.id));
           });
         }
       }
@@ -3171,9 +3052,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     await _chatService.deleteMessage(id);
     if (!mounted || _currentConversation == null) return;
-    final msgs = _chatService.getMessages(_currentConversation!.id);
     setState(() {
-      _messages = List.of(msgs);
+      _chatController.reloadMessages();
     });
   }
 
@@ -3216,12 +3096,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       await _convoFadeController.reverse();
     }
     _chatService.setCurrentConversation(newConvo.id);
-    final msgs = _chatService.getMessages(newConvo.id);
     if (!mounted) return;
     setState(() {
-      _currentConversation = newConvo;
-      _messages = List.of(msgs);
-      _loadVersionSelections();
+      _chatController.setCurrentConversation(newConvo);
       _restoreMessageUiState();
     });
     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
@@ -3866,23 +3743,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _scrollController.removeListener(_onScrollControllerChanged);
     _scrollController.dispose();
     try { _chatActionSub?.cancel(); } catch (_) {}
-    try {
-      for (final s in _conversationStreams.values) { s.cancel(); }
-    } catch (_) {}
-    _conversationStreams.clear();
+    // Dispose ChatController (handles stream cleanup)
+    _chatController.dispose();
+    // Dispose StreamController (handles throttle timers cleanup)
+    _streamController.dispose();
     _userScrollTimer?.cancel();
-    // Cancel all stream throttle timers
-    for (final timer in _streamThrottleTimers.values) {
-      timer?.cancel();
-    }
-    _streamThrottleTimers.clear();
-    _pendingStreamContent.clear();
-    // Cancel pending inline image sanitizers
-    for (final timer in _inlineImageSanitizeTimers.values) {
-      timer?.cancel();
-    }
-    _inlineImageSanitizeTimers.clear();
-    _inlineImageSanitizing.clear();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
@@ -4392,7 +4257,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // ===========================================================================
 
   /// Transform raw content using assistant regexes.
-  String _transformAssistantContent(_StreamingState state, [String? raw]) {
+  String _transformAssistantContent(stream_ctrl.StreamingState state, [String? raw]) {
     return applyAssistantRegexes(
       raw ?? state.fullContentRaw,
       assistant: state.ctx.assistant,
@@ -4403,32 +4268,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   /// Clean up stream throttle timers for a message.
   void _cleanupStreamTimers(String messageId) {
-    _streamThrottleTimers[messageId]?.cancel();
-    _streamThrottleTimers.remove(messageId);
-    _pendingStreamContent.remove(messageId);
-    _inlineImageSanitizeTimers[messageId]?.cancel();
-    _inlineImageSanitizeTimers.remove(messageId);
-    _inlineImageSanitizing.remove(messageId);
+    _streamController.cleanupTimers(messageId);
   }
 
   /// Handle reasoning chunk from stream.
-  Future<void> _handleReasoningChunk(ChatStreamChunk chunk, _StreamingState state) async {
+  Future<void> _handleReasoningChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
     if ((chunk.reasoning ?? '').isEmpty || !state.ctx.supportsReasoning) return;
 
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
     if (state.ctx.streamOutput) {
-      final r = _reasoning[messageId] ?? _ReasoningData();
+      final r = _reasoning[messageId] ?? stream_ctrl.ReasoningData();
       r.text += chunk.reasoning!;
       r.startAt ??= DateTime.now();
       r.expanded = false;
       _reasoning[messageId] = r;
 
       // Add to reasoning segments for mixed display
-      final segments = _reasoningSegments[messageId] ?? <_ReasoningSegmentData>[];
+      final segments = _reasoningSegments[messageId] ?? <stream_ctrl.ReasoningSegmentData>[];
       if (segments.isEmpty) {
-        final newSegment = _ReasoningSegmentData();
+        final newSegment = stream_ctrl.ReasoningSegmentData();
         newSegment.text = chunk.reasoning!;
         newSegment.startAt = DateTime.now();
         newSegment.expanded = false;
@@ -4438,7 +4298,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final hasToolsAfterLastSegment = (_toolParts[messageId]?.isNotEmpty ?? false);
         final lastSegment = segments.last;
         if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
-          final newSegment = _ReasoningSegmentData();
+          final newSegment = stream_ctrl.ReasoningSegmentData();
           newSegment.text = chunk.reasoning!;
           newSegment.startAt = DateTime.now();
           newSegment.expanded = false;
@@ -4474,14 +4334,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle tool calls chunk from stream.
-  Future<void> _handleToolCallsChunk(ChatStreamChunk chunk, _StreamingState state) async {
+  Future<void> _handleToolCallsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
     if ((chunk.toolCalls ?? const []).isEmpty) return;
 
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
     // Finish any unfinished reasoning segment when tools start
-    final segments = _reasoningSegments[messageId] ?? <_ReasoningSegmentData>[];
+    final segments = _reasoningSegments[messageId] ?? <stream_ctrl.ReasoningSegmentData>[];
     if (segments.isNotEmpty && segments.last.finishedAt == null) {
       segments.last.finishedAt = DateTime.now();
       final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
@@ -4521,7 +4381,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle tool results chunk from stream.
-  Future<void> _handleToolResultsChunk(ChatStreamChunk chunk, _StreamingState state) async {
+  Future<void> _handleToolResultsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
     if ((chunk.toolResults ?? const []).isEmpty) return;
 
     final messageId = state.messageId;
@@ -4576,7 +4436,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle content chunk from stream (non-done).
-  Future<void> _handleContentChunk(ChatStreamChunk chunk, _StreamingState state, String chunkContent) async {
+  Future<void> _handleContentChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state, String chunkContent) async {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
@@ -4624,29 +4484,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       await _finishReasoningOnContent(state);
     }
 
-    // Schedule throttled UI update
+    // Schedule throttled UI update via StreamController
     if (state.ctx.streamOutput) {
-      _pendingStreamContent[messageId] = streamingProcessed;
-      _streamThrottleTimers[messageId] ??= Timer.periodic(_streamThrottleInterval, (_) {
-        final pending = _pendingStreamContent[messageId];
-        if (pending != null && mounted && _currentConversation?.id == conversationId) {
-          setState(() {
-            final index = _messages.indexWhere((m) => m.id == messageId);
-            if (index != -1) {
-              _messages[index] = _messages[index].copyWith(
-                content: pending,
-                totalTokens: state.totalTokens,
-              );
-            }
-          });
+      _streamController.scheduleThrottledUpdate(
+        messageId,
+        conversationId,
+        streamingProcessed,
+        totalTokens: state.totalTokens,
+        updateMessageInList: (id, content, tokens) {
+          final index = _messages.indexWhere((m) => m.id == id);
+          if (index != -1) {
+            _messages[index] = _messages[index].copyWith(
+              content: content,
+              totalTokens: tokens,
+            );
+          }
           _autoScrollToBottomIfNeeded();
-        }
-      });
+        },
+      );
     }
   }
 
   /// Finish reasoning segment when content starts arriving.
-  Future<void> _finishReasoningOnContent(_StreamingState state) async {
+  Future<void> _finishReasoningOnContent(stream_ctrl.StreamingState state) async {
     final messageId = state.messageId;
 
     final r = _reasoning[messageId];
@@ -4682,7 +4542,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle stream finish (isDone == true).
-  Future<void> _handleStreamFinish(ChatStreamChunk chunk, _StreamingState state, String chunkContent) async {
+  Future<void> _handleStreamFinish(ChatStreamChunk chunk, stream_ctrl.StreamingState state, String chunkContent) async {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
@@ -4728,7 +4588,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         reasoningFinishedAt: now,
       );
       final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      _reasoning[messageId] = _ReasoningData()
+      _reasoning[messageId] = stream_ctrl.ReasoningData()
         ..text = state.bufferedReasoning
         ..startAt = startAt
         ..finishedAt = now
@@ -4751,7 +4611,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Finish streaming and persist final state.
-  Future<void> _finishStreaming(_StreamingState state, {bool generateTitle = true}) async {
+  Future<void> _finishStreaming(stream_ctrl.StreamingState state, {bool generateTitle = true}) async {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
@@ -4832,7 +4692,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle stream error.
-  Future<void> _handleStreamError(dynamic e, _StreamingState state) async {
+  Future<void> _handleStreamError(dynamic e, stream_ctrl.StreamingState state) async {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
@@ -4905,7 +4765,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle stream done callback.
-  Future<void> _handleStreamDone(_StreamingState state) async {
+  Future<void> _handleStreamDone(stream_ctrl.StreamingState state) async {
     final conversationId = state.conversationId;
 
     _cleanupStreamTimers(state.messageId);
@@ -4925,7 +4785,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Dispatch stream chunk to appropriate handler.
-  Future<void> _handleStreamChunk(ChatStreamChunk chunk, _StreamingState state) async {
+  Future<void> _handleStreamChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
     final chunkContent = chunk.content.isNotEmpty
         ? _captureGeminiThoughtSignature(chunk.content, state.messageId)
         : '';
@@ -4968,8 +4828,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   /// - _handleStreamError: Handle stream errors
   /// - _handleStreamDone: Handle stream done callback
   /// - _finishStreaming: Finalize streaming and persist state
-  Future<void> _executeGeneration(_GenerationContext ctx) async {
-    final state = _StreamingState(ctx);
+  Future<void> _executeGeneration(stream_ctrl.GenerationContext ctx) async {
+    final state = stream_ctrl.StreamingState(ctx);
     final assistant = ctx.assistant;
     final conversationId = state.conversationId;
 
@@ -5049,77 +4909,8 @@ class _SidebarResizeHandleState extends State<_SidebarResizeHandle> {
   }
 }
 
-/// Context object for message generation, encapsulating all parameters needed
-/// by the shared _executeGeneration method.
-class _GenerationContext {
-  _GenerationContext({
-    required this.assistantMessage,
-    required this.apiMessages,
-    required this.userImagePaths,
-    required this.providerKey,
-    required this.modelId,
-    required this.assistant,
-    required this.settings,
-    required this.config,
-    required this.toolDefs,
-    this.onToolCall,
-    this.extraHeaders,
-    this.extraBody,
-    required this.supportsReasoning,
-    required this.enableReasoning,
-    required this.streamOutput,
-    this.generateTitleOnFinish = true,
-  });
-
-  final ChatMessage assistantMessage;
-  final List<Map<String, dynamic>> apiMessages;
-  final List<String> userImagePaths;
-  final String providerKey;
-  final String modelId;
-  final dynamic assistant; // Assistant?
-  final SettingsProvider settings;
-  final ProviderConfig config;
-  final List<Map<String, dynamic>> toolDefs;
-  final Future<String> Function(String, Map<String, dynamic>)? onToolCall;
-  final Map<String, String>? extraHeaders;
-  final Map<String, dynamic>? extraBody;
-  final bool supportsReasoning;
-  final bool enableReasoning;
-  final bool streamOutput;
-  final bool generateTitleOnFinish;
-}
-
-/// State object for streaming message generation, encapsulating mutable state that changes during the streaming process.
-class _StreamingState {
-  _StreamingState(this.ctx);
-
-  final _GenerationContext ctx;
-  String fullContentRaw = '';
-  int totalTokens = 0;
-  TokenUsage? usage;
-  String bufferedReasoning = '';
-  DateTime? reasoningStartAt;
-  bool finishHandled = false;
-  bool titleQueued = false;
-
-  String get messageId => ctx.assistantMessage.id;
-  String get conversationId => ctx.assistantMessage.conversationId;
-}
-
-class _ReasoningData {
-  String text = '';
-  DateTime? startAt;
-  DateTime? finishedAt;
-  bool expanded = false;
-}
-
-class _ReasoningSegmentData {
-  String text = '';
-  DateTime? startAt;
-  DateTime? finishedAt;
-  bool expanded = true;
-  int toolStartIndex = 0;
-}
+// NOTE: GenerationContext, StreamingState, ReasoningData, ReasoningSegmentData
+// have been moved to stream_controller.dart
 
 class _TranslationData {
   bool expanded = true; // default to expanded when translation is added
