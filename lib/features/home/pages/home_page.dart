@@ -4810,187 +4810,591 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return null;
   }
 
-  /// Execute generation with the given context. This is the shared streaming
-  /// logic used by both _sendMessage and _regenerateAtMessage.
-  Future<void> _executeGeneration(_GenerationContext ctx) async {
-    final assistantMessage = ctx.assistantMessage;
-    final assistant = ctx.assistant;
-    final bool streamOutput = ctx.streamOutput;
-    final String conversationId = assistantMessage.conversationId;
+  // ===========================================================================
+  // REGION: Streaming Chunk Handlers
+  // ===========================================================================
 
-    String fullContentRaw = '';
-    int totalTokens = 0;
-    TokenUsage? usage;
-    String bufferedReasoning = '';
-    DateTime? reasoningStartAt;
-    bool finishHandled = false;
-    bool titleQueued = false;
+  /// Transform raw content using assistant regexes.
+  String _transformAssistantContent(_StreamingState state, [String? raw]) {
+    return applyAssistantRegexes(
+      raw ?? state.fullContentRaw,
+      assistant: state.ctx.assistant,
+      scope: AssistantRegexScope.assistant,
+      visual: false,
+    );
+  }
 
-    String transformAssistantContent([String? raw]) {
-      return applyAssistantRegexes(
-        raw ?? fullContentRaw,
-        assistant: assistant,
-        scope: AssistantRegexScope.assistant,
-        visual: false,
+  /// Clean up stream throttle timers for a message.
+  void _cleanupStreamTimers(String messageId) {
+    _streamThrottleTimers[messageId]?.cancel();
+    _streamThrottleTimers.remove(messageId);
+    _pendingStreamContent.remove(messageId);
+    _inlineImageSanitizeTimers[messageId]?.cancel();
+    _inlineImageSanitizeTimers.remove(messageId);
+    _inlineImageSanitizing.remove(messageId);
+  }
+
+  /// Handle reasoning chunk from stream.
+  Future<void> _handleReasoningChunk(ChatStreamChunk chunk, _StreamingState state) async {
+    if ((chunk.reasoning ?? '').isEmpty || !state.ctx.supportsReasoning) return;
+
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    if (state.ctx.streamOutput) {
+      final r = _reasoning[messageId] ?? _ReasoningData();
+      r.text += chunk.reasoning!;
+      r.startAt ??= DateTime.now();
+      r.expanded = false;
+      _reasoning[messageId] = r;
+
+      // Add to reasoning segments for mixed display
+      final segments = _reasoningSegments[messageId] ?? <_ReasoningSegmentData>[];
+      if (segments.isEmpty) {
+        final newSegment = _ReasoningSegmentData();
+        newSegment.text = chunk.reasoning!;
+        newSegment.startAt = DateTime.now();
+        newSegment.expanded = false;
+        newSegment.toolStartIndex = (_toolParts[messageId]?.length ?? 0);
+        segments.add(newSegment);
+      } else {
+        final hasToolsAfterLastSegment = (_toolParts[messageId]?.isNotEmpty ?? false);
+        final lastSegment = segments.last;
+        if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
+          final newSegment = _ReasoningSegmentData();
+          newSegment.text = chunk.reasoning!;
+          newSegment.startAt = DateTime.now();
+          newSegment.expanded = false;
+          newSegment.toolStartIndex = (_toolParts[messageId]?.length ?? 0);
+          segments.add(newSegment);
+        } else {
+          lastSegment.text += chunk.reasoning!;
+          lastSegment.startAt ??= DateTime.now();
+        }
+      }
+      _reasoningSegments[messageId] = segments;
+
+      await _chatService.updateMessage(
+        messageId,
+        reasoningSegmentsJson: _serializeReasoningSegments(segments),
+      );
+
+      if (mounted && _currentConversation?.id == conversationId) setState(() {});
+      await _chatService.updateMessage(
+        messageId,
+        reasoningText: r.text,
+        reasoningStartAt: r.startAt,
+      );
+    } else {
+      state.reasoningStartAt ??= DateTime.now();
+      state.bufferedReasoning += chunk.reasoning!;
+      await _chatService.updateMessage(
+        messageId,
+        reasoningText: state.bufferedReasoning,
+        reasoningStartAt: state.reasoningStartAt,
+      );
+    }
+  }
+
+  /// Handle tool calls chunk from stream.
+  Future<void> _handleToolCallsChunk(ChatStreamChunk chunk, _StreamingState state) async {
+    if ((chunk.toolCalls ?? const []).isEmpty) return;
+
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    // Finish any unfinished reasoning segment when tools start
+    final segments = _reasoningSegments[messageId] ?? <_ReasoningSegmentData>[];
+    if (segments.isNotEmpty && segments.last.finishedAt == null) {
+      segments.last.finishedAt = DateTime.now();
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        segments.last.expanded = false;
+        final rd = _reasoning[messageId];
+        if (rd != null) rd.expanded = false;
+      }
+      _reasoningSegments[messageId] = segments;
+      await _chatService.updateMessage(
+        messageId,
+        reasoningSegmentsJson: _serializeReasoningSegments(segments),
       );
     }
 
-    Future<void> finish({bool generateTitle = true}) async {
-      // Clean up stream throttle timer and flush final content
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-
-      final shouldGenerateTitle = generateTitle && ctx.generateTitleOnFinish && !titleQueued;
-      if (finishHandled) {
-        if (shouldGenerateTitle) {
-          titleQueued = true;
-          _maybeGenerateTitleFor(assistantMessage.conversationId);
-        }
-        return;
-      }
-      finishHandled = true;
-      if (shouldGenerateTitle) {
-        titleQueued = true;
-      }
-      // Replace extremely long inline base64 images with local files to avoid jank
-      final processedContent = transformAssistantContent();
-      final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
-      await _chatService.updateMessage(
-        assistantMessage.id,
-        content: sanitizedContent,
-        totalTokens: totalTokens,
-        isStreaming: false,
-      );
-      if (!mounted) return;
+    // Add tool call placeholders
+    final existing = List<ToolUIPart>.of(_toolParts[messageId] ?? const []);
+    for (final c in chunk.toolCalls!) {
+      existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
+    }
+    if (mounted && _currentConversation?.id == conversationId) {
       setState(() {
-        final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+        _toolParts[messageId] = _dedupeToolPartsList(existing);
+      });
+    }
+
+    // Persist tool events
+    try {
+      final prev = _chatService.getToolEvents(messageId);
+      final newEvents = <Map<String, dynamic>>[
+        ...prev,
+        for (final c in chunk.toolCalls!)
+          {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
+      ];
+      await _chatService.setToolEvents(messageId, _dedupeToolEvents(newEvents));
+    } catch (_) {}
+  }
+
+  /// Handle tool results chunk from stream.
+  Future<void> _handleToolResultsChunk(ChatStreamChunk chunk, _StreamingState state) async {
+    if ((chunk.toolResults ?? const []).isEmpty) return;
+
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    final parts = List<ToolUIPart>.of(_toolParts[messageId] ?? const []);
+    for (final r in chunk.toolResults!) {
+      int idx = -1;
+      for (int i = 0; i < parts.length; i++) {
+        if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx >= 0) {
+        parts[idx] = ToolUIPart(
+          id: parts[idx].id,
+          toolName: parts[idx].toolName,
+          arguments: (r.arguments is Map && (r.arguments as Map).isNotEmpty)
+              ? Map<String, dynamic>.from(r.arguments)
+              : parts[idx].arguments,
+          content: r.content,
+          loading: false,
+        );
+      } else {
+        parts.add(ToolUIPart(
+          id: r.id,
+          toolName: r.name,
+          arguments: r.arguments,
+          content: r.content,
+          loading: false,
+        ));
+      }
+      try {
+        await _chatService.upsertToolEvent(
+          messageId,
+          id: r.id,
+          name: r.name,
+          arguments: r.arguments,
+          content: r.content,
+        );
+      } catch (_) {}
+    }
+    if (mounted && _currentConversation?.id == conversationId) {
+      setState(() {
+        _toolParts[messageId] = _dedupeToolPartsList(parts);
+      });
+    }
+    if (!_isUserScrolling) {
+      _scrollToBottomSoon();
+    }
+  }
+
+  /// Handle content chunk from stream (non-done).
+  Future<void> _handleContentChunk(ChatStreamChunk chunk, _StreamingState state, String chunkContent) async {
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    state.fullContentRaw += chunkContent;
+    if (chunk.totalTokens > 0) {
+      state.totalTokens = chunk.totalTokens;
+    }
+    if (chunk.usage != null) {
+      state.usage = (state.usage ?? const TokenUsage()).merge(chunk.usage!);
+      state.totalTokens = state.usage!.totalTokens;
+    }
+
+    String streamingProcessed = _transformAssistantContent(state);
+    if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
+      try {
+        final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
+        if (sanitized != streamingProcessed) {
+          streamingProcessed = sanitized;
+          state.fullContentRaw = sanitized;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    _scheduleInlineImageSanitize(messageId, latestContent: streamingProcessed, immediate: true);
+    await _chatService.updateMessage(
+      messageId,
+      content: streamingProcessed,
+      totalTokens: state.totalTokens,
+    );
+    if (state.ctx.streamOutput && mounted && _currentConversation?.id == conversationId) {
+      setState(() {
+        final index = _messages.indexWhere((m) => m.id == messageId);
         if (index != -1) {
           _messages[index] = _messages[index].copyWith(
-            content: sanitizedContent,
-            totalTokens: totalTokens,
-            isStreaming: false,
+            content: streamingProcessed,
+            totalTokens: state.totalTokens,
           );
         }
       });
-      _setConversationLoading(assistantMessage.conversationId, false);
-      final r = _reasoning[assistantMessage.id];
-      if (r != null) {
-        if (r.finishedAt == null) {
-          r.finishedAt = DateTime.now();
-        }
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          r.expanded = false;
-        }
-        _reasoning[assistantMessage.id] = r;
-        if (mounted) setState(() {});
-      }
+    }
 
-      // Also finish any unfinished reasoning segments
-      final segments = _reasoningSegments[assistantMessage.id];
-      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-        segments.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          segments.last.expanded = false;
-        }
-        _reasoningSegments[assistantMessage.id] = segments;
-        if (mounted) setState(() {});
-      }
+    // End reasoning when content starts
+    if (state.ctx.streamOutput && chunkContent.isNotEmpty) {
+      await _finishReasoningOnContent(state);
+    }
 
-      // Save reasoning segments to database
-      if (segments != null && segments.isNotEmpty) {
-        await _chatService.updateMessage(
-          assistantMessage.id,
-          reasoningSegmentsJson: _serializeReasoningSegments(segments),
+    // Schedule throttled UI update
+    if (state.ctx.streamOutput) {
+      _pendingStreamContent[messageId] = streamingProcessed;
+      _streamThrottleTimers[messageId] ??= Timer.periodic(_streamThrottleInterval, (_) {
+        final pending = _pendingStreamContent[messageId];
+        if (pending != null && mounted && _currentConversation?.id == conversationId) {
+          setState(() {
+            final index = _messages.indexWhere((m) => m.id == messageId);
+            if (index != -1) {
+              _messages[index] = _messages[index].copyWith(
+                content: pending,
+                totalTokens: state.totalTokens,
+              );
+            }
+          });
+          _autoScrollToBottomIfNeeded();
+        }
+      });
+    }
+  }
+
+  /// Finish reasoning segment when content starts arriving.
+  Future<void> _finishReasoningOnContent(_StreamingState state) async {
+    final messageId = state.messageId;
+
+    final r = _reasoning[messageId];
+    if (r != null && r.startAt != null && r.finishedAt == null) {
+      r.finishedAt = DateTime.now();
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        r.expanded = false;
+      }
+      _reasoning[messageId] = r;
+      await _chatService.updateMessage(
+        messageId,
+        reasoningText: r.text,
+        reasoningFinishedAt: r.finishedAt,
+      );
+      if (mounted) setState(() {});
+    }
+
+    final segments = _reasoningSegments[messageId];
+    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+      segments.last.finishedAt = DateTime.now();
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        segments.last.expanded = false;
+      }
+      _reasoningSegments[messageId] = segments;
+      if (mounted) setState(() {});
+      await _chatService.updateMessage(
+        messageId,
+        reasoningSegmentsJson: _serializeReasoningSegments(segments),
+      );
+    }
+  }
+
+  /// Handle stream finish (isDone == true).
+  Future<void> _handleStreamFinish(ChatStreamChunk chunk, _StreamingState state, String chunkContent) async {
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    if (chunkContent.isNotEmpty) {
+      state.fullContentRaw += chunkContent;
+    }
+
+    // Don't finish if tools are still loading
+    final hasLoadingTool = (_toolParts[messageId]?.any((p) => p.loading) ?? false);
+    if (hasLoadingTool) {
+      return;
+    }
+
+    if (chunk.totalTokens > 0) {
+      state.totalTokens = chunk.totalTokens;
+    }
+    if (chunk.usage != null) {
+      state.usage = (state.usage ?? const TokenUsage()).merge(chunk.usage!);
+      state.totalTokens = state.usage!.totalTokens;
+    }
+
+    await _finishStreaming(state);
+
+    // Show notification if in background
+    try {
+      final sp = context.read<SettingsProvider>();
+      if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+        await NotificationService.showChatCompleted(
+          title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+          body: AppLocalizations.of(context)!.notificationChatCompletedBody,
         );
       }
-      if (shouldGenerateTitle) {
-        _maybeGenerateTitleFor(assistantMessage.conversationId);
-      }
-    }
+    } catch (_) {}
 
-    void cleanupTimers() {
-      _streamThrottleTimers[assistantMessage.id]?.cancel();
-      _streamThrottleTimers.remove(assistantMessage.id);
-      _pendingStreamContent.remove(assistantMessage.id);
-      _inlineImageSanitizeTimers[assistantMessage.id]?.cancel();
-      _inlineImageSanitizeTimers.remove(assistantMessage.id);
-      _inlineImageSanitizing.remove(assistantMessage.id);
-    }
-
-    Future<void> handleError(dynamic e) async {
-      cleanupTimers();
-      final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-      final processed = transformAssistantContent();
-      final displayContent = processed.isNotEmpty ? processed : errText;
+    // Handle buffered reasoning for non-streaming mode
+    if (!state.ctx.streamOutput && state.bufferedReasoning.isNotEmpty) {
+      final now = DateTime.now();
+      final startAt = state.reasoningStartAt ?? now;
       await _chatService.updateMessage(
-        assistantMessage.id,
-        content: displayContent,
-        totalTokens: totalTokens,
-        isStreaming: false,
+        messageId,
+        reasoningText: state.bufferedReasoning,
+        reasoningStartAt: startAt,
+        reasoningFinishedAt: now,
       );
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      _reasoning[messageId] = _ReasoningData()
+        ..text = state.bufferedReasoning
+        ..startAt = startAt
+        ..finishedAt = now
+        ..expanded = !autoCollapse;
+      if (mounted && _currentConversation?.id == conversationId) setState(() {});
+    }
 
-      if (mounted) {
-        setState(() {
-          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-          if (index != -1) {
-            _messages[index] = _messages[index].copyWith(
-              content: displayContent,
-              isStreaming: false,
-              totalTokens: totalTokens,
-            );
-          }
-        });
-      }
-      _setConversationLoading(assistantMessage.conversationId, false);
+    await _conversationStreams.remove(conversationId)?.cancel();
 
-      // End reasoning on error
-      final r = _reasoning[assistantMessage.id];
-      if (r != null) {
-        if (r.finishedAt == null) {
-          r.finishedAt = DateTime.now();
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningText: r.text,
-            reasoningFinishedAt: r.finishedAt,
-          );
-        }
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          r.expanded = false;
-        }
-        _reasoning[assistantMessage.id] = r;
-      }
-
-      // Also finish any unfinished reasoning segments on error
-      final segments = _reasoningSegments[assistantMessage.id];
-      if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-        segments.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          segments.last.expanded = false;
-        }
-        _reasoningSegments[assistantMessage.id] = segments;
-        try {
-          await _chatService.updateMessage(
-            assistantMessage.id,
-            reasoningSegmentsJson: _serializeReasoningSegments(segments),
-          );
-        } catch (_) {}
-      }
-
-      await _conversationStreams.remove(conversationId)?.cancel();
-      showAppSnackBar(
-        context,
-        message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
-        type: NotificationType.error,
+    // Ensure reasoning is finished
+    final r = _reasoning[messageId];
+    if (r != null && r.finishedAt == null) {
+      r.finishedAt = DateTime.now();
+      await _chatService.updateMessage(
+        messageId,
+        reasoningText: r.text,
+        reasoningFinishedAt: r.finishedAt,
       );
     }
+  }
+
+  /// Finish streaming and persist final state.
+  Future<void> _finishStreaming(_StreamingState state, {bool generateTitle = true}) async {
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    // Clean up stream throttle timer and flush final content
+    _cleanupStreamTimers(messageId);
+
+    final shouldGenerateTitle = generateTitle && state.ctx.generateTitleOnFinish && !state.titleQueued;
+    if (state.finishHandled) {
+      if (shouldGenerateTitle) {
+        state.titleQueued = true;
+        _maybeGenerateTitleFor(conversationId);
+      }
+      return;
+    }
+    state.finishHandled = true;
+    if (shouldGenerateTitle) {
+      state.titleQueued = true;
+    }
+
+    // Replace extremely long inline base64 images with local files to avoid jank
+    final processedContent = _transformAssistantContent(state);
+    final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
+    await _chatService.updateMessage(
+      messageId,
+      content: sanitizedContent,
+      totalTokens: state.totalTokens,
+      isStreaming: false,
+    );
+    if (!mounted) return;
+    setState(() {
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(
+          content: sanitizedContent,
+          totalTokens: state.totalTokens,
+          isStreaming: false,
+        );
+      }
+    });
+    _setConversationLoading(conversationId, false);
+
+    // Finish reasoning data
+    final r = _reasoning[messageId];
+    if (r != null) {
+      if (r.finishedAt == null) {
+        r.finishedAt = DateTime.now();
+      }
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        r.expanded = false;
+      }
+      _reasoning[messageId] = r;
+      if (mounted) setState(() {});
+    }
+
+    // Also finish any unfinished reasoning segments
+    final segments = _reasoningSegments[messageId];
+    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+      segments.last.finishedAt = DateTime.now();
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        segments.last.expanded = false;
+      }
+      _reasoningSegments[messageId] = segments;
+      if (mounted) setState(() {});
+    }
+
+    // Save reasoning segments to database
+    if (segments != null && segments.isNotEmpty) {
+      await _chatService.updateMessage(
+        messageId,
+        reasoningSegmentsJson: _serializeReasoningSegments(segments),
+      );
+    }
+    if (shouldGenerateTitle) {
+      _maybeGenerateTitleFor(conversationId);
+    }
+  }
+
+  /// Handle stream error.
+  Future<void> _handleStreamError(dynamic e, _StreamingState state) async {
+    final messageId = state.messageId;
+    final conversationId = state.conversationId;
+
+    _cleanupStreamTimers(messageId);
+    final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
+    final processed = _transformAssistantContent(state);
+    final displayContent = processed.isNotEmpty ? processed : errText;
+    await _chatService.updateMessage(
+      messageId,
+      content: displayContent,
+      totalTokens: state.totalTokens,
+      isStreaming: false,
+    );
+
+    if (mounted) {
+      setState(() {
+        final index = _messages.indexWhere((m) => m.id == messageId);
+        if (index != -1) {
+          _messages[index] = _messages[index].copyWith(
+            content: displayContent,
+            isStreaming: false,
+            totalTokens: state.totalTokens,
+          );
+        }
+      });
+    }
+    _setConversationLoading(conversationId, false);
+
+    // End reasoning on error
+    final r = _reasoning[messageId];
+    if (r != null) {
+      if (r.finishedAt == null) {
+        r.finishedAt = DateTime.now();
+        await _chatService.updateMessage(
+          messageId,
+          reasoningText: r.text,
+          reasoningFinishedAt: r.finishedAt,
+        );
+      }
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        r.expanded = false;
+      }
+      _reasoning[messageId] = r;
+    }
+
+    // Also finish any unfinished reasoning segments on error
+    final segments = _reasoningSegments[messageId];
+    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
+      segments.last.finishedAt = DateTime.now();
+      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
+      if (autoCollapse) {
+        segments.last.expanded = false;
+      }
+      _reasoningSegments[messageId] = segments;
+      try {
+        await _chatService.updateMessage(
+          messageId,
+          reasoningSegmentsJson: _serializeReasoningSegments(segments),
+        );
+      } catch (_) {}
+    }
+
+    await _conversationStreams.remove(conversationId)?.cancel();
+    showAppSnackBar(
+      context,
+      message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
+      type: NotificationType.error,
+    );
+  }
+
+  /// Handle stream done callback.
+  Future<void> _handleStreamDone(_StreamingState state) async {
+    final conversationId = state.conversationId;
+
+    _cleanupStreamTimers(state.messageId);
+    if (_loadingConversationIds.contains(conversationId)) {
+      await _finishStreaming(state, generateTitle: state.ctx.generateTitleOnFinish);
+    }
+    try {
+      final sp = context.read<SettingsProvider>();
+      if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+        await NotificationService.showChatCompleted(
+          title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
+          body: AppLocalizations.of(context)!.notificationChatCompletedBody,
+        );
+      }
+    } catch (_) {}
+    await _conversationStreams.remove(conversationId)?.cancel();
+  }
+
+  /// Dispatch stream chunk to appropriate handler.
+  Future<void> _handleStreamChunk(ChatStreamChunk chunk, _StreamingState state) async {
+    final chunkContent = chunk.content.isNotEmpty
+        ? _captureGeminiThoughtSignature(chunk.content, state.messageId)
+        : '';
+
+    // Handle reasoning
+    if ((chunk.reasoning ?? '').isNotEmpty && state.ctx.supportsReasoning) {
+      await _handleReasoningChunk(chunk, state);
+    }
+
+    // Handle tool calls
+    if ((chunk.toolCalls ?? const []).isNotEmpty) {
+      await _handleToolCallsChunk(chunk, state);
+    }
+
+    // Handle tool results
+    if ((chunk.toolResults ?? const []).isNotEmpty) {
+      await _handleToolResultsChunk(chunk, state);
+    }
+
+    // Handle finish or content
+    if (chunk.isDone) {
+      await _handleStreamFinish(chunk, state, chunkContent);
+    } else {
+      await _handleContentChunk(chunk, state, chunkContent);
+    }
+  }
+
+  // ===========================================================================
+  // END REGION: Streaming Chunk Handlers
+  // ===========================================================================
+
+  /// Execute generation with the given context. This is the shared streaming logic used by both _sendMessage and _regenerateAtMessage.
+
+  /// - _handleStreamChunk: Main dispatcher for stream chunks
+  /// - _handleReasoningChunk: Handle reasoning content
+  /// - _handleToolCallsChunk: Handle MCP tool call placeholders
+  /// - _handleToolResultsChunk: Handle MCP tool results
+  /// - _handleContentChunk: Handle regular content chunks
+  /// - _handleStreamFinish: Handle stream completion (isDone)
+  /// - _handleStreamError: Handle stream errors
+  /// - _handleStreamDone: Handle stream done callback
+  /// - _finishStreaming: Finalize streaming and persist state
+  Future<void> _executeGeneration(_GenerationContext ctx) async {
+    final state = _StreamingState(ctx);
+    final assistant = ctx.assistant;
+    final conversationId = state.conversationId;
 
     try {
       final stream = ChatApiService.sendMessageStream(
@@ -5006,329 +5410,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         onToolCall: ctx.onToolCall,
         extraHeaders: ctx.extraHeaders,
         extraBody: ctx.extraBody,
-        stream: streamOutput,
+        stream: ctx.streamOutput,
       );
 
       await _conversationStreams[conversationId]?.cancel();
       final sub = stream.listen(
-        (chunk) async {
-          final chunkContent = chunk.content.isNotEmpty
-              ? _captureGeminiThoughtSignature(chunk.content, assistantMessage.id)
-              : '';
-
-          // Capture reasoning deltas only when reasoning is enabled
-          if ((chunk.reasoning ?? '').isNotEmpty && ctx.supportsReasoning) {
-            if (streamOutput) {
-              final r = _reasoning[assistantMessage.id] ?? _ReasoningData();
-              r.text += chunk.reasoning!;
-              r.startAt ??= DateTime.now();
-              r.expanded = false;
-              _reasoning[assistantMessage.id] = r;
-
-              // Add to reasoning segments for mixed display
-              final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-              if (segments.isEmpty) {
-                final newSegment = _ReasoningSegmentData();
-                newSegment.text = chunk.reasoning!;
-                newSegment.startAt = DateTime.now();
-                newSegment.expanded = false;
-                newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-                segments.add(newSegment);
-              } else {
-                final hasToolsAfterLastSegment = (_toolParts[assistantMessage.id]?.isNotEmpty ?? false);
-                final lastSegment = segments.last;
-                if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
-                  final newSegment = _ReasoningSegmentData();
-                  newSegment.text = chunk.reasoning!;
-                  newSegment.startAt = DateTime.now();
-                  newSegment.expanded = false;
-                  newSegment.toolStartIndex = (_toolParts[assistantMessage.id]?.length ?? 0);
-                  segments.add(newSegment);
-                } else {
-                  lastSegment.text += chunk.reasoning!;
-                  lastSegment.startAt ??= DateTime.now();
-                }
-              }
-              _reasoningSegments[assistantMessage.id] = segments;
-
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningSegmentsJson: _serializeReasoningSegments(segments),
-              );
-
-              if (mounted && _currentConversation?.id == conversationId) setState(() {});
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: r.text,
-                reasoningStartAt: r.startAt,
-              );
-            } else {
-              reasoningStartAt ??= DateTime.now();
-              bufferedReasoning += chunk.reasoning!;
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: bufferedReasoning,
-                reasoningStartAt: reasoningStartAt,
-              );
-            }
-          }
-
-          // MCP tool call placeholders
-          if ((chunk.toolCalls ?? const []).isNotEmpty) {
-            final segments = _reasoningSegments[assistantMessage.id] ?? <_ReasoningSegmentData>[];
-            if (segments.isNotEmpty && segments.last.finishedAt == null) {
-              segments.last.finishedAt = DateTime.now();
-              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-              if (autoCollapse) {
-                segments.last.expanded = false;
-                final rd = _reasoning[assistantMessage.id];
-                if (rd != null) rd.expanded = false;
-              }
-              _reasoningSegments[assistantMessage.id] = segments;
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningSegmentsJson: _serializeReasoningSegments(segments),
-              );
-            }
-
-            final existing = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-            for (final c in chunk.toolCalls!) {
-              existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
-            }
-            if (mounted && _currentConversation?.id == conversationId) setState(() {
-              _toolParts[assistantMessage.id] = _dedupeToolPartsList(existing);
-            });
-
-            try {
-              final prev = _chatService.getToolEvents(assistantMessage.id);
-              final newEvents = <Map<String, dynamic>>[
-                ...prev,
-                for (final c in chunk.toolCalls!)
-                  {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
-              ];
-              await _chatService.setToolEvents(assistantMessage.id, _dedupeToolEvents(newEvents));
-            } catch (_) {}
-          }
-
-          // MCP tool results
-          if ((chunk.toolResults ?? const []).isNotEmpty) {
-            final parts = List<ToolUIPart>.of(_toolParts[assistantMessage.id] ?? const []);
-            for (final r in chunk.toolResults!) {
-              int idx = -1;
-              for (int i = 0; i < parts.length; i++) {
-                if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
-                  idx = i;
-                  break;
-                }
-              }
-              if (idx >= 0) {
-                parts[idx] = ToolUIPart(
-                  id: parts[idx].id,
-                  toolName: parts[idx].toolName,
-                  arguments: (r.arguments is Map && (r.arguments as Map).isNotEmpty)
-                      ? Map<String, dynamic>.from(r.arguments)
-                      : parts[idx].arguments,
-                  content: r.content,
-                  loading: false,
-                );
-              } else {
-                parts.add(ToolUIPart(
-                  id: r.id,
-                  toolName: r.name,
-                  arguments: r.arguments,
-                  content: r.content,
-                  loading: false,
-                ));
-              }
-              try {
-                await _chatService.upsertToolEvent(
-                  assistantMessage.id,
-                  id: r.id,
-                  name: r.name,
-                  arguments: r.arguments,
-                  content: r.content,
-                );
-              } catch (_) {}
-            }
-            if (mounted && _currentConversation?.id == conversationId) setState(() {
-              _toolParts[assistantMessage.id] = _dedupeToolPartsList(parts);
-            });
-            if (!_isUserScrolling) {
-              _scrollToBottomSoon();
-            }
-          }
-
-          if (chunk.isDone) {
-            if (chunkContent.isNotEmpty) {
-              fullContentRaw += chunkContent;
-            }
-            final hasLoadingTool = (_toolParts[assistantMessage.id]?.any((p) => p.loading) ?? false);
-            if (hasLoadingTool) {
-              return;
-            }
-            if (chunk.totalTokens > 0) {
-              totalTokens = chunk.totalTokens;
-            }
-            if (chunk.usage != null) {
-              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
-              totalTokens = usage!.totalTokens;
-            }
-            await finish();
-            try {
-              final sp = context.read<SettingsProvider>();
-              if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-                await NotificationService.showChatCompleted(
-                  title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-                  body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-                );
-              }
-            } catch (_) {}
-            if (!streamOutput && bufferedReasoning.isNotEmpty) {
-              final now = DateTime.now();
-              final startAt = reasoningStartAt ?? now;
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: bufferedReasoning,
-                reasoningStartAt: startAt,
-                reasoningFinishedAt: now,
-              );
-              final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-              _reasoning[assistantMessage.id] = _ReasoningData()
-                ..text = bufferedReasoning
-                ..startAt = startAt
-                ..finishedAt = now
-                ..expanded = !autoCollapse;
-              if (mounted && _currentConversation?.id == conversationId) setState(() {});
-            }
-            await _conversationStreams.remove(conversationId)?.cancel();
-            final r = _reasoning[assistantMessage.id];
-            if (r != null && r.finishedAt == null) {
-              r.finishedAt = DateTime.now();
-              await _chatService.updateMessage(
-                assistantMessage.id,
-                reasoningText: r.text,
-                reasoningFinishedAt: r.finishedAt,
-              );
-            }
-          } else {
-            fullContentRaw += chunkContent;
-            if (chunk.totalTokens > 0) {
-              totalTokens = chunk.totalTokens;
-            }
-            if (chunk.usage != null) {
-              usage = (usage ?? const TokenUsage()).merge(chunk.usage!);
-              totalTokens = usage!.totalTokens;
-            }
-
-            String streamingProcessed = transformAssistantContent();
-            if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
-              try {
-                final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
-                if (sanitized != streamingProcessed) {
-                  streamingProcessed = sanitized;
-                  fullContentRaw = sanitized;
-                }
-              } catch (e) {
-                // ignore
-              }
-            }
-            _scheduleInlineImageSanitize(assistantMessage.id, latestContent: streamingProcessed, immediate: true);
-            await _chatService.updateMessage(
-              assistantMessage.id,
-              content: streamingProcessed,
-              totalTokens: totalTokens,
-            );
-            if (streamOutput && mounted && _currentConversation?.id == conversationId) {
-              setState(() {
-                final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                if (index != -1) {
-                  _messages[index] = _messages[index].copyWith(
-                    content: streamingProcessed,
-                    totalTokens: totalTokens,
-                  );
-                }
-              });
-            }
-
-            if (streamOutput) {
-              if ((chunkContent).isNotEmpty) {
-                final r = _reasoning[assistantMessage.id];
-                if (r != null && r.startAt != null && r.finishedAt == null) {
-                  r.finishedAt = DateTime.now();
-                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-                  if (autoCollapse) {
-                    r.expanded = false;
-                  }
-                  _reasoning[assistantMessage.id] = r;
-                  await _chatService.updateMessage(
-                    assistantMessage.id,
-                    reasoningText: r.text,
-                    reasoningFinishedAt: r.finishedAt,
-                  );
-                  if (mounted) setState(() {});
-                }
-
-                final segments = _reasoningSegments[assistantMessage.id];
-                if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-                  segments.last.finishedAt = DateTime.now();
-                  final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-                  if (autoCollapse) {
-                    segments.last.expanded = false;
-                  }
-                  _reasoningSegments[assistantMessage.id] = segments;
-                  if (mounted) setState(() {});
-                  await _chatService.updateMessage(
-                    assistantMessage.id,
-                    reasoningSegmentsJson: _serializeReasoningSegments(segments),
-                  );
-                }
-              }
-            }
-
-            if (streamOutput) {
-              _pendingStreamContent[assistantMessage.id] = streamingProcessed;
-              _streamThrottleTimers[assistantMessage.id] ??= Timer.periodic(_streamThrottleInterval, (_) {
-                final pending = _pendingStreamContent[assistantMessage.id];
-                if (pending != null && mounted && _currentConversation?.id == conversationId) {
-                  setState(() {
-                    final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
-                    if (index != -1) {
-                      _messages[index] = _messages[index].copyWith(
-                        content: pending,
-                        totalTokens: totalTokens,
-                      );
-                    }
-                  });
-                  _autoScrollToBottomIfNeeded();
-                }
-              });
-            }
-          }
-        },
-        onError: (e) async {
-          await handleError(e);
-        },
-        onDone: () async {
-          cleanupTimers();
-          if (_loadingConversationIds.contains(conversationId)) {
-            await finish(generateTitle: ctx.generateTitleOnFinish);
-          }
-          try {
-            final sp = context.read<SettingsProvider>();
-            if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-              await NotificationService.showChatCompleted(
-                title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-                body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-              );
-            }
-          } catch (_) {}
-          await _conversationStreams.remove(conversationId)?.cancel();
-        },
+        (chunk) => _handleStreamChunk(chunk, state),
+        onError: (e) => _handleStreamError(e, state),
+        onDone: () => _handleStreamDone(state),
         cancelOnError: true,
       );
       _conversationStreams[conversationId] = sub;
     } catch (e) {
-      await handleError(e);
+      await _handleStreamError(e, state);
     }
   }
 
@@ -5416,6 +5510,23 @@ class _GenerationContext {
   final bool enableReasoning;
   final bool streamOutput;
   final bool generateTitleOnFinish;
+}
+
+/// State object for streaming message generation, encapsulating mutable state that changes during the streaming process.
+class _StreamingState {
+  _StreamingState(this.ctx);
+
+  final _GenerationContext ctx;
+  String fullContentRaw = '';
+  int totalTokens = 0;
+  TokenUsage? usage;
+  String bufferedReasoning = '';
+  DateTime? reasoningStartAt;
+  bool finishHandled = false;
+  bool titleQueued = false;
+
+  String get messageId => ctx.assistantMessage.id;
+  String get conversationId => ctx.assistantMessage.conversationId;
 }
 
 class _ReasoningData {
