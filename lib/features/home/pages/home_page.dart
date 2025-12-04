@@ -3405,6 +3405,155 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Builds the context divider widget shown at truncate position.
+  Widget _buildContextDivider(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final label = l10n.homePageClearContext;
+    return Row(
+      children: [
+        Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
+        ),
+        Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
+      ],
+    );
+  }
+
+  /// Handles message deletion with confirmation dialog and version selection adjustment.
+  Future<void> _handleDeleteMessage(
+    BuildContext context,
+    ChatMessage message,
+    Map<String, List<ChatMessage>> byGroup,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.homePageDeleteMessage),
+        content: Text(l10n.homePageDeleteMessageConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.homePageCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.homePageDelete, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final id = message.id;
+    final gid = (message.groupId ?? message.id);
+    // Compute selection adjustment before removal
+    final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
+    final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+    final delIndex = versBefore.indexWhere((m) => m.id == id);
+    setState(() {
+      _reasoning.remove(id);
+      _translations.remove(id);
+      _toolParts.remove(id);
+      _reasoningSegments.remove(id);
+      // Adjust selected version index for this group
+      final newTotal = versBefore.length - 1;
+      if (newTotal <= 0) {
+        _versionSelections.remove(gid);
+      } else {
+        int newSel = oldSel;
+        if (delIndex >= 0) {
+          if (delIndex < oldSel) newSel = oldSel - 1;
+          else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
+        }
+        if (newSel < 0) newSel = 0;
+        if (newSel > newTotal - 1) newSel = newTotal - 1;
+        _versionSelections[gid] = newSel;
+      }
+    });
+    // Persist updated selection if group still exists
+    final sel = _versionSelections[gid];
+    if (sel != null && _currentConversation != null) {
+      try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
+    }
+    await _chatService.deleteMessage(id);
+    if (!mounted || _currentConversation == null) return;
+    final msgs = _chatService.getMessages(_currentConversation!.id);
+    setState(() {
+      _messages = List.of(msgs);
+    });
+  }
+
+  /// Handles forking conversation at a specific message.
+  Future<void> _handleForkConversation(BuildContext context, ChatMessage message) async {
+    // Determine included groups up to the message's group (inclusive)
+    final Map<String, int> groupFirstIndex = <String, int>{};
+    final List<String> groupOrder = <String>[];
+    for (int i = 0; i < _messages.length; i++) {
+      final gid0 = (_messages[i].groupId ?? _messages[i].id);
+      if (!groupFirstIndex.containsKey(gid0)) {
+        groupFirstIndex[gid0] = i;
+        groupOrder.add(gid0);
+      }
+    }
+    final targetGroup = (message.groupId ?? message.id);
+    final targetOrderIndex = groupOrder.indexOf(targetGroup);
+    if (targetOrderIndex < 0) return;
+
+    final includeGroups = groupOrder.take(targetOrderIndex + 1).toSet();
+    final selected = [
+      for (final m in _messages)
+        if (includeGroups.contains(m.groupId ?? m.id)) m
+    ];
+    // Filter version selections to included groups
+    final sel = <String, int>{};
+    for (final gid in includeGroups) {
+      final v = _versionSelections[gid];
+      if (v != null) sel[gid] = v;
+    }
+    final newConvo = await _chatService.forkConversation(
+      title: _titleForLocale(context),
+      assistantId: _currentConversation?.assistantId,
+      sourceMessages: selected,
+      versionSelections: sel,
+    );
+    // Switch to the new conversation; skip fade on desktop for instant switch
+    if (!mounted) return;
+    if (!_isDesktopPlatform) {
+      await _convoFadeController.reverse();
+    }
+    _chatService.setCurrentConversation(newConvo.id);
+    final msgs = _chatService.getMessages(newConvo.id);
+    if (!mounted) return;
+    setState(() {
+      _currentConversation = newConvo;
+      _messages = List.of(msgs);
+      _loadVersionSelections();
+      _restoreMessageUiState();
+    });
+    try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
+    _scrollToBottom(animate: false);
+    if (!_isDesktopPlatform) {
+      await _convoFadeController.forward();
+    }
+  }
+
+  /// Handles entering share/selection mode with messages up to the specified index.
+  void _handleShareMessage(int messageIndex, List<ChatMessage> messages) {
+    setState(() {
+      _selecting = true;
+      _selectedItems.clear();
+      for (int i = 0; i <= messageIndex && i < messages.length; i++) {
+        final m = messages[i];
+        final enabled = (m.role == 'user' || m.role == 'assistant');
+        if (enabled) _selectedItems.add(m.id);
+      }
+    });
+  }
+
   /// Builds the message list view shared by both mobile and tablet layouts.
   ///
   /// This method extracts the common ListView.builder logic to reduce code duplication.
@@ -3450,20 +3599,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final chatScale = context.watch<SettingsProvider>().chatFontScale;
         final assistant = context.watch<AssistantProvider>().currentAssistant;
         final useAssist = assistant?.useAssistantAvatar == true;
-        final l10n = AppLocalizations.of(context)!;
         final showDivider = truncCollapsed >= 0 && index == truncCollapsed;
-        final cs = Theme.of(context).colorScheme;
-        final label = l10n.homePageClearContext;
-        final divider = Row(
-          children: [
-            Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
-            ),
-            Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
-          ],
-        );
         final gid = (message.groupId ?? message.id);
         final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()..sort((a,b)=>a.version.compareTo(b.version));
         int selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
@@ -3583,187 +3719,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       onEdit: (message.role == 'user' || message.role == 'assistant')
                           ? () { _onEditMessage(message); }
                           : null,
-                      onDelete: message.role == 'user' ? () async {
-                        final l10n = AppLocalizations.of(context)!;
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: Text(l10n.homePageDeleteMessage),
-                            content: Text(l10n.homePageDeleteMessageConfirm),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(false),
-                                child: Text(l10n.homePageCancel),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(true),
-                                child: Text(l10n.homePageDelete, style: const TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true) {
-                          final id = message.id;
-                          final gid = (message.groupId ?? message.id);
-                          // Compute selection adjustment before removal
-                          final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
-                          final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
-                          final delIndex = versBefore.indexWhere((m) => m.id == id);
-                          setState(() {
-                            _reasoning.remove(id);
-                            _translations.remove(id);
-                            _toolParts.remove(id);
-                            _reasoningSegments.remove(id);
-                            // Adjust selected version index for this group
-                            final newTotal = versBefore.length - 1;
-                            if (newTotal <= 0) {
-                              _versionSelections.remove(gid);
-                            } else {
-                              int newSel = oldSel;
-                              if (delIndex >= 0) {
-                                if (delIndex < oldSel) newSel = oldSel - 1;
-                                else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
-                              }
-                              if (newSel < 0) newSel = 0;
-                              if (newSel > newTotal - 1) newSel = newTotal - 1;
-                              _versionSelections[gid] = newSel;
-                            }
-                          });
-                          // Persist updated selection if group still exists
-                          final sel = _versionSelections[gid];
-                          if (sel != null && _currentConversation != null) {
-                            try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
-                          }
-                          await _chatService.deleteMessage(id);
-                          if (!mounted || _currentConversation == null) return;
-                          final msgs = _chatService.getMessages(_currentConversation!.id);
-                          setState(() {
-                            _messages = List.of(msgs);
-                          });
-                        }
-                      } : null,
+                      onDelete: message.role == 'user'
+                          ? () => _handleDeleteMessage(context, message, byGroup)
+                          : null,
                       onMore: () async {
                         final action = await showMessageMoreSheet(context, message);
                         if (!mounted) return;
                         if (action == MessageMoreAction.delete) {
-                          final l10n = AppLocalizations.of(context)!;
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(l10n.homePageDeleteMessage),
-                              content: Text(l10n.homePageDeleteMessageConfirm),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: Text(l10n.homePageCancel),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: Text(l10n.homePageDelete, style: const TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            final id = message.id;
-                            final gid = (message.groupId ?? message.id);
-                            final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
-                            final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
-                            final delIndex = versBefore.indexWhere((m) => m.id == id);
-                            setState(() {
-                              _reasoning.remove(id);
-                              _translations.remove(id);
-                              _toolParts.remove(id);
-                              _reasoningSegments.remove(id);
-                              final newTotal = versBefore.length - 1;
-                              if (newTotal <= 0) {
-                                _versionSelections.remove(gid);
-                              } else {
-                                int newSel = oldSel;
-                                if (delIndex >= 0) {
-                                  if (delIndex < oldSel) newSel = oldSel - 1;
-                                  else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
-                                }
-                                if (newSel < 0) newSel = 0;
-                                if (newSel > newTotal - 1) newSel = newTotal - 1;
-                                _versionSelections[gid] = newSel;
-                              }
-                            });
-                            final sel = _versionSelections[gid];
-                            if (sel != null && _currentConversation != null) {
-                              try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
-                            }
-                            await _chatService.deleteMessage(id);
-                            if (!mounted || _currentConversation == null) return;
-                            final msgs = _chatService.getMessages(_currentConversation!.id);
-                            setState(() {
-                              _messages = List.of(msgs);
-                            });
-                          }
+                          await _handleDeleteMessage(context, message, byGroup);
                         } else if (action == MessageMoreAction.edit) {
                           await _onEditMessage(message);
                         } else if (action == MessageMoreAction.fork) {
-                          // Determine included groups up to the message's group (inclusive)
-                          final Map<String, int> groupFirstIndex = <String, int>{};
-                          final List<String> groupOrder = <String>[];
-                          for (int i = 0; i < _messages.length; i++) {
-                            final gid0 = (_messages[i].groupId ?? _messages[i].id);
-                            if (!groupFirstIndex.containsKey(gid0)) {
-                              groupFirstIndex[gid0] = i;
-                              groupOrder.add(gid0);
-                            }
-                          }
-                          final targetGroup = (message.groupId ?? message.id);
-                          final targetOrderIndex = groupOrder.indexOf(targetGroup);
-                          if (targetOrderIndex >= 0) {
-                            final includeGroups = groupOrder.take(targetOrderIndex + 1).toSet();
-                            final selected = [
-                              for (final m in _messages)
-                                if (includeGroups.contains(m.groupId ?? m.id)) m
-                            ];
-                            // Filter version selections to included groups
-                            final sel = <String, int>{};
-                            for (final gid in includeGroups) {
-                              final v = _versionSelections[gid];
-                              if (v != null) sel[gid] = v;
-                            }
-                            final newConvo = await _chatService.forkConversation(
-                              title: _titleForLocale(context),
-                              assistantId: _currentConversation?.assistantId,
-                              sourceMessages: selected,
-                              versionSelections: sel,
-                            );
-                            // Switch to the new conversation; skip fade on desktop for instant switch
-                            if (!mounted) return;
-                            if (!_isDesktopPlatform) {
-                              await _convoFadeController.reverse();
-                            }
-                            _chatService.setCurrentConversation(newConvo.id);
-                            final msgs = _chatService.getMessages(newConvo.id);
-                            if (!mounted) return;
-                            setState(() {
-                              _currentConversation = newConvo;
-                              _messages = List.of(msgs);
-                              _loadVersionSelections();
-                              _restoreMessageUiState();
-                            });
-                            try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
-                            _scrollToBottom(animate: false);
-                            if (!_isDesktopPlatform) {
-                              await _convoFadeController.forward();
-                            }
-                          }
+                          await _handleForkConversation(context, message);
                         } else if (action == MessageMoreAction.share) {
-                          // Enter selection mode and preselect up to this message (inclusive)
-                          setState(() {
-                            _selecting = true;
-                            _selectedItems.clear();
-                            for (int i = 0; i <= index && i < messages.length; i++) {
-                              final m = messages[i];
-                              final enabled0 = (m.role == 'user' || m.role == 'assistant');
-                              if (enabled0) _selectedItems.add(m.id);
-                            }
-                          });
+                          _handleShareMessage(index, messages);
                         }
                       },
                       toolParts: message.role == 'assistant' ? _toolParts[message.id] : null,
@@ -3796,7 +3765,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             if (showDivider)
               Padding(
                 padding: dividerPadding,
-                child: divider,
+                child: _buildContextDivider(context),
               ),
           ],
         );
