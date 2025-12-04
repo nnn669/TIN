@@ -3070,68 +3070,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           // Scroll-to-bottom button (bottom-right, above input bar)
           Builder(builder: (context) {
             final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
-            // Hide nav button in brand-new chats with no messages
             if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-            final cs = Theme.of(context).colorScheme;
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final bottomOffset = _inputBarHeight + 12;
-            return Align(
-              alignment: Alignment.bottomRight,
-              child: SafeArea(
-                top: false,
-                bottom: false, // avoid double bottom inset so button hugs input bar
-                child: IgnorePointer(
-                  ignoring: !_showJumpToBottom,
-                  child: AnimatedScale(
-                    scale: _showJumpToBottom ? 1.0 : 0.9,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      opacity: _showJumpToBottom ? 1 : 0,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
-                        child: ClipOval(
-                          child: BackdropFilter(
-                            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withOpacity(0.06)
-                                    : Colors.white.withOpacity(0.07),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.10)
-                                      : Theme.of(context).colorScheme.outline.withOpacity(0.20),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Material(
-                                type: MaterialType.transparency,
-                                shape: const CircleBorder(),
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: _forceScrollToBottom,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Icon(
-                                      Lucide.ChevronDown,
-                                      size: 16,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ),
-                  ),
-                ),
+            return _GlassyScrollButton(
+              icon: Lucide.ChevronDown,
+              onTap: _forceScrollToBottom,
+              bottomOffset: _inputBarHeight + 12,
+              visible: _showJumpToBottom,
             );
           }),
 
@@ -3139,67 +3083,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           Builder(builder: (context) {
             final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
             if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final bottomOffset = _inputBarHeight + 12 + 52; // place above the bottom button with gap
-            // Visibility follows the same logic as the bottom button (hide at bottom)
-            final showUp = _showJumpToBottom;
-            return Align(
-              alignment: Alignment.bottomRight,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: IgnorePointer(
-                  ignoring: !showUp,
-                  child: AnimatedScale(
-                    scale: showUp ? 1.0 : 0.9,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      opacity: showUp ? 1 : 0,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
-                        child: ClipOval(
-                          child: BackdropFilter(
-                            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withOpacity(0.06)
-                                    : Colors.white.withOpacity(0.07),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.10)
-                                      : Theme.of(context).colorScheme.outline.withOpacity(0.20),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Material(
-                                type: MaterialType.transparency,
-                                shape: const CircleBorder(),
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: _jumpToPreviousQuestion,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Icon(
-                                      Lucide.ChevronUp,
-                                      size: 16,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ),
-                  ),
-                ),
+            return _GlassyScrollButton(
+              icon: Lucide.ChevronUp,
+              onTap: _jumpToPreviousQuestion,
+              bottomOffset: _inputBarHeight + 12 + 52, // place above the bottom button with gap
+              visible: _showJumpToBottom,
             );
           }),
         ],
@@ -3933,66 +3821,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 Builder(builder: (context) {
                   final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
                   if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-                  final cs = Theme.of(context).colorScheme;
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
-                  final bottomOffset = _inputBarHeight + 12;
-                  return Align(
-                    alignment: Alignment.bottomRight,
-                    child: SafeArea(
-                      top: false,
-                      bottom: false,
-                      child: IgnorePointer(
-                        ignoring: !_showJumpToBottom,
-                        child: AnimatedScale(
-                          scale: _showJumpToBottom ? 1.0 : 0.9,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                            opacity: _showJumpToBottom ? 1 : 0,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
-                              child: ClipOval(
-                                child: BackdropFilter(
-                                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withOpacity(0.06)
-                                          : Colors.white.withOpacity(0.07),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.white.withOpacity(0.10)
-                                            : Theme.of(context).colorScheme.outline.withOpacity(0.20),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Material(
-                                      type: MaterialType.transparency,
-                                      shape: const CircleBorder(),
-                                      child: InkWell(
-                                        customBorder: const CircleBorder(),
-                                        onTap: _forceScrollToBottom,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8),
-                                          child: Icon(
-                                            Lucide.ChevronDown,
-                                            size: 18,
-                                            color: isDark ? Colors.white : Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  return _GlassyScrollButton(
+                    icon: Lucide.ChevronDown,
+                    onTap: _forceScrollToBottom,
+                    bottomOffset: _inputBarHeight + 12,
+                    visible: _showJumpToBottom,
                   );
                 }),
 
@@ -4000,66 +3833,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 Builder(builder: (context) {
                   final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
                   if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
-                  final bottomOffset = _inputBarHeight + 12 + 52;
-                  final showUp = _showJumpToBottom;
-                  return Align(
-                    alignment: Alignment.bottomRight,
-                    child: SafeArea(
-                      top: false,
-                      bottom: false,
-                      child: IgnorePointer(
-                        ignoring: !showUp,
-                        child: AnimatedScale(
-                          scale: showUp ? 1.0 : 0.9,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                            opacity: showUp ? 1 : 0,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
-                              child: ClipOval(
-                                child: BackdropFilter(
-                                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withOpacity(0.06)
-                                          : Colors.white.withOpacity(0.07),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.white.withOpacity(0.10)
-                                            : Theme.of(context).colorScheme.outline.withOpacity(0.20),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Material(
-                                      type: MaterialType.transparency,
-                                      shape: const CircleBorder(),
-                                      child: InkWell(
-                                        customBorder: const CircleBorder(),
-                                        onTap: _jumpToPreviousQuestion,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8),
-                                          child: Icon(
-                                            Lucide.ChevronUp,
-                                            size: 18,
-                                            color: isDark ? Colors.white : Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  return _GlassyScrollButton(
+                    icon: Lucide.ChevronUp,
+                    onTap: _jumpToPreviousQuestion,
+                    bottomOffset: _inputBarHeight + 12 + 52,
+                    visible: _showJumpToBottom,
                   );
                 }),
               ],
@@ -5531,6 +5309,91 @@ class _GlassCapsuleButtonState extends State<_GlassCapsuleButton> {
                     style: TextStyle(color: widget.color, fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Glassy scroll navigation button with backdrop blur effect.
+///
+/// Used for scroll-to-bottom and scroll-to-previous-question buttons.
+/// Includes fade and scale animation support via [visible] parameter.
+class _GlassyScrollButton extends StatelessWidget {
+  const _GlassyScrollButton({
+    required this.icon,
+    required this.onTap,
+    required this.bottomOffset,
+    required this.visible,
+    this.iconSize = 16,
+    this.padding = 6,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final double bottomOffset;
+  final bool visible;
+  final double iconSize;
+  final double padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: IgnorePointer(
+          ignoring: !visible,
+          child: AnimatedScale(
+            scale: visible ? 1.0 : 0.9,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              opacity: visible ? 1 : 0,
+              child: Padding(
+                padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
+                child: ClipOval(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.white.withOpacity(0.07),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.10)
+                              : Theme.of(context).colorScheme.outline.withOpacity(0.20),
+                          width: 1,
+                        ),
+                      ),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: onTap,
+                          child: Padding(
+                            padding: EdgeInsets.all(padding),
+                            child: Icon(
+                              icon,
+                              size: iconSize,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
