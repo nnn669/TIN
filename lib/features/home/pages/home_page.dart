@@ -34,6 +34,7 @@ import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
 import '../services/message_builder_service.dart';
 import '../services/ocr_service.dart';
+import '../services/translation_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
@@ -127,6 +128,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late GenerationController _generationController;
   late MessageBuilderService _messageBuilderService;
   late OcrService _ocrService;
+  late TranslationService _translationService;
 
   // Delegate to ChatController for conversation state
   Conversation? get _currentConversation => _chatController.currentConversation;
@@ -906,6 +908,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
     // Initialize OcrService for OCR processing
     _ocrService = OcrService();
+    // Initialize TranslationService for message translation
+    _translationService = TranslationService(
+      chatService: _chatService,
+      contextProvider: context,
+    );
     // Initialize MessageBuilderService for API message construction
     _messageBuilderService = MessageBuilderService(
       chatService: _chatService,
@@ -2434,38 +2441,49 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Translate message functionality
   Future<void> _translateMessage(ChatMessage message) async {
     final l10n = AppLocalizations.of(context)!;
-    // Show language selector
-    final language = await showLanguageSelector(context);
-    if (language == null) return;
 
-    // Check if clear translation is selected
-    if (language.code == '__clear__') {
-      // Clear the translation (use empty string so UI hides immediately)
-      final updatedMessage = message.copyWith(translation: '');
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == message.id);
-        if (index != -1) {
-          _messages[index] = updatedMessage;
-        }
-        // Remove translation state
-        _translations.remove(message.id);
-      });
-      await _chatService.updateMessage(message.id, translation: '');
+    final result = await _translationService.translateMessage(
+      message: message,
+      onTranslationStarted: () {
+        // Set loading state and initialize translation data (called after language selection)
+        final loadingMessage = message.copyWith(translation: l10n.homePageTranslating);
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == message.id);
+          if (index != -1) {
+            _messages[index] = loadingMessage;
+          }
+          // Initialize translation state with expanded
+          _translations[message.id] = _TranslationData();
+        });
+      },
+      onTranslationUpdate: (translation) {
+        final updatingMessage = message.copyWith(translation: translation);
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == message.id);
+          if (index != -1) {
+            _messages[index] = updatingMessage;
+          }
+        });
+      },
+      onTranslationCleared: () {
+        final clearedMessage = message.copyWith(translation: '');
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == message.id);
+          if (index != -1) {
+            _messages[index] = clearedMessage;
+          }
+          _translations.remove(message.id);
+        });
+      },
+    );
+
+    // Handle result
+    if (result.isCancelled) {
+      // User cancelled, no state change needed
       return;
     }
 
-    final settings = context.read<SettingsProvider>();
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-
-    // Check if translation model is set, fallback to assistant's model, then to global default
-    final translateProvider = settings.translateModelProvider
-        ?? assistant?.chatModelProvider
-        ?? settings.currentModelProvider;
-    final translateModelId = settings.translateModelId
-        ?? assistant?.chatModelId
-        ?? settings.currentModelId;
-
-    if (translateProvider == null || translateModelId == null) {
+    if (result.type == TranslationResultType.noModelConfigured) {
       showAppSnackBar(
         context,
         message: l10n.homePagePleaseSetupTranslateModel,
@@ -2474,72 +2492,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Extract text content from message (removing reasoning text if present)
-    String textToTranslate = message.content;
-
-    // Set loading state and initialize translation data
-    final loadingMessage = message.copyWith(translation: l10n.homePageTranslating);
-    setState(() {
-      final index = _messages.indexWhere((m) => m.id == message.id);
-      if (index != -1) {
-        _messages[index] = loadingMessage;
-      }
-      // Initialize translation state with expanded
-      _translations[message.id] = _TranslationData();
-    });
-
-    try {
-      // Get translation prompt with placeholders replaced
-      String prompt = settings.translatePrompt
-          .replaceAll('{source_text}', textToTranslate)
-          .replaceAll('{target_lang}', language.displayName);
-
-      // Create translation request
-      final provider = settings.getProviderConfig(translateProvider);
-
-      final translationStream = ChatApiService.sendMessageStream(
-        config: provider,
-        modelId: translateModelId,
-        messages: [
-          {'role': 'user', 'content': prompt}
-        ],
-      );
-
-      final buffer = StringBuffer();
-
-      await for (final chunk in translationStream) {
-        buffer.write(chunk.content);
-
-        // Update translation in real-time
-        final updatingMessage = message.copyWith(translation: buffer.toString());
-        setState(() {
-          final index = _messages.indexWhere((m) => m.id == message.id);
-          if (index != -1) {
-            _messages[index] = updatingMessage;
-          }
-        });
-      }
-
-      // Save final translation
-      await _chatService.updateMessage(message.id, translation: buffer.toString());
-
-    } catch (e) {
-      // Clear translation on error (empty to hide immediately)
-      final errorMessage = message.copyWith(translation: '');
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == message.id);
-        if (index != -1) {
-          _messages[index] = errorMessage;
-        }
-        // Remove translation state on error
-        _translations.remove(message.id);
-      });
-
-      await _chatService.updateMessage(message.id, translation: '');
-
+    if (result.type == TranslationResultType.error) {
       showAppSnackBar(
         context,
-        message: l10n.homePageTranslateFailed(e.toString()),
+        message: l10n.homePageTranslateFailed(result.errorMessage ?? ''),
         type: NotificationType.error,
       );
     }
