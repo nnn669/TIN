@@ -3046,174 +3046,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 },
                 child: SizeChangedLayoutNotifier(
                   child: Builder(
-                    builder: (context) {
-                      // Enforce model capabilities: disable MCP selection if model doesn't support tools
-                      final settings = context.watch<SettingsProvider>();
-                      final ap = context.watch<AssistantProvider>();
-                      final a = ap.currentAssistant;
-                      // Use assistant's model if set, otherwise fall back to global default
-                      final pk = a?.chatModelProvider ?? settings.currentModelProvider;
-                      final mid = a?.chatModelId ?? settings.currentModelId;
-                      if (pk != null && mid != null) {
-                        final supportsTools = _isToolModel(pk, mid);
-                        if (!supportsTools && (a?.mcpServerIds.isNotEmpty ?? false)) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            final aa = ap.currentAssistant;
-                            if (aa != null && aa.mcpServerIds.isNotEmpty) {
-                              ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
-                            }
-                          });
-                        }
-                        final supportsReasoning = _isReasoningModel(pk, mid);
-                        if (!supportsReasoning && a != null) {
-                          final enabledNow = _isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
-                          if (enabledNow) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) async {
-                              final aa = ap.currentAssistant;
-                              if (aa != null) {
-                                await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
-                              }
-                            });
-                          }
-                        }
-                      }
-                      // Compute whether built-in search (Gemini incl. Vertex or Claude) is active to highlight the search button
-                      final currentProvider = a?.chatModelProvider ?? settings.currentModelProvider;
-                      final currentModelId = a?.chatModelId ?? settings.currentModelId;
-                      final cfg = (currentProvider != null)
-                          ? settings.getProviderConfig(currentProvider)
-                          : null;
-                      bool builtinSearchActive = false;
-                      if (cfg != null && currentModelId != null) {
-                        final mid2 = currentModelId;
-                        final isGemini = cfg.providerType == ProviderKind.google;
-                        final isClaude = cfg.providerType == ProviderKind.claude;
-                        final isOpenAIResponses =
-                            cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-                        if (isGemini || isClaude || isOpenAIResponses) {
-                          final ov = cfg.modelOverrides[mid2] as Map?;
-                          final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-                          builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-                        }
-                      }
-                      return ChatInputBar(
-                        key: _inputBarKey,
-                        onMore: _toggleTools,
-                        // Highlight when app-level search enabled OR model built-in search enabled
-                        searchEnabled: context.watch<SettingsProvider>().searchEnabled || builtinSearchActive,
-                        onToggleSearch: (enabled) {
-                          context.read<SettingsProvider>().setSearchEnabled(enabled);
-                        },
-                        onSelectModel: () => showModelSelectSheet(context),
-                        onLongPressSelectModel: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const ProvidersPage()),
-                          );
-                        },
-                        onOpenMcp: () {
-                          final a = context.read<AssistantProvider>().currentAssistant;
-                          if (a != null) {
-                            try {
-                              if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-                                showDesktopMcpServersPopover(context, anchorKey: _inputBarKey, assistantId: a.id);
-                              } else {
-                                showAssistantMcpSheet(context, assistantId: a.id);
-                              }
-                            } catch (_) {
-                              showAssistantMcpSheet(context, assistantId: a.id);
-                            }
-                          }
-                        },
-                        onLongPressMcp: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const McpPage()),
-                          );
-                        },
-                        onStop: _cancelStreaming,
-                        modelIcon: (settings.showModelIcon && ((a?.chatModelProvider ?? settings.currentModelProvider) != null) && ((a?.chatModelId ?? settings.currentModelId) != null))
-                            ? _CurrentModelIcon(
-                                providerKey: a?.chatModelProvider ?? settings.currentModelProvider,
-                                modelId: a?.chatModelId ?? settings.currentModelId,
-                                size: 40,
-                                withBackground: true,
-                                backgroundColor: Colors.transparent,
-                              )
-                            : null,
-                        focusNode: _inputFocus,
-                        controller: _inputController,
-                        mediaController: _mediaController,
-                        onConfigureReasoning: () async {
-                          final assistant = context.read<AssistantProvider>().currentAssistant;
-                          if (assistant != null) {
-                            if (assistant.thinkingBudget != null) {
-                              context.read<SettingsProvider>().setThinkingBudget(assistant.thinkingBudget);
-                            }
-                            await _openReasoningSettings();
-                            final chosen = context.read<SettingsProvider>().thinkingBudget;
-                            await context.read<AssistantProvider>().updateAssistant(
-                              assistant.copyWith(thinkingBudget: chosen),
-                            );
-                          }
-                        },
-                        reasoningActive: _isReasoningEnabled((context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ?? settings.thinkingBudget),
-                        supportsReasoning: (pk != null && mid != null)
-                            ? _isReasoningModel(pk, mid)
-                            : false,
-                        onOpenSearch: _openSearchSettings,
-                        onSend: (text) {
-                          _sendMessage(text);
-                          _inputController.clear();
-                          // Keep focus on desktop; only dismiss on mobile to hide soft keyboard
-                          if (Platform.isAndroid || Platform.isIOS) {
-                            _dismissKeyboard();
-                          } else {
-                            _inputFocus.requestFocus();
-                          }
-                        },
-                        loading: _isCurrentConversationLoading,
-                        showMcpButton: (() {
-                          final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
-                          final mid3 = a?.chatModelId ?? settings.currentModelId;
-                          if (pk2 == null || mid3 == null) return false;
-                          final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
-                          return _isToolModel(pk2, mid3) && hasEnabledMcp;
-                        })(),
-                        mcpActive: (() {
-                          final a = context.watch<AssistantProvider>().currentAssistant;
-                          final connected = context.watch<McpProvider>().connectedServers;
-                          final selected = a?.mcpServerIds ?? const <String>[];
-                          if (selected.isEmpty || connected.isEmpty) return false;
-                          return connected.any((s) => selected.contains(s.id));
-                        })(),
-                        showQuickPhraseButton: (() {
-                          final assistant = context.watch<AssistantProvider>().currentAssistant;
-                          final quickPhraseProvider = context.watch<QuickPhraseProvider>();
-                          final globalCount = quickPhraseProvider.globalPhrases.length;
-                          final assistantCount = assistant != null
-                              ? quickPhraseProvider.getForAssistant(assistant.id).length
-                              : 0;
-                          return (globalCount + assistantCount) > 0;
-                        })(),
-                        onQuickPhrase: _showQuickPhraseMenu,
-                        onLongPressQuickPhrase: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
-                          );
-                        },
-                        showOcrButton: (() {
-                          final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                              defaultTargetPlatform == TargetPlatform.windows ||
-                              defaultTargetPlatform == TargetPlatform.linux;
-                          if (!isDesktop) return false;
-                          return settings.ocrModelProvider != null && settings.ocrModelId != null;
-                        })(),
-                        ocrActive: settings.ocrEnabled,
-                        onToggleOcr: () async {
-                          final sp = context.read<SettingsProvider>();
-                          await sp.setOcrEnabled(!sp.ocrEnabled);
-                        },
-                      );
-                    },
+                    builder: (context) => _buildChatInputBar(context, isTablet: false),
                   ),
                 ),
               ),
@@ -3782,6 +3615,204 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Builds the ChatInputBar widget with common parameters.
+  /// [isTablet] determines whether to include tablet-specific features like
+  /// mini map, learning mode, camera/photos pickers, and file upload.
+  Widget _buildChatInputBar(BuildContext context, {required bool isTablet}) {
+    final settings = context.watch<SettingsProvider>();
+    final ap = context.watch<AssistantProvider>();
+    final a = ap.currentAssistant;
+    final assistantId = a?.id;
+    final pk = a?.chatModelProvider ?? settings.currentModelProvider;
+    final mid = a?.chatModelId ?? settings.currentModelId;
+
+    // Enforce model capabilities: disable MCP selection if model doesn't support tools
+    if (pk != null && mid != null) {
+      final supportsTools = _isToolModel(pk, mid);
+      if (!supportsTools && (a?.mcpServerIds.isNotEmpty ?? false)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final aa = ap.currentAssistant;
+          if (aa != null && aa.mcpServerIds.isNotEmpty) {
+            ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
+          }
+        });
+      }
+      final supportsReasoning = _isReasoningModel(pk, mid);
+      if (!supportsReasoning && a != null) {
+        final enabledNow = _isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
+        if (enabledNow) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final aa = ap.currentAssistant;
+            if (aa != null) {
+              await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
+            }
+          });
+        }
+      }
+    }
+
+    // Compute whether built-in search (Gemini incl. Vertex or Claude) is active to highlight the search button
+    final currentProvider = a?.chatModelProvider ?? settings.currentModelProvider;
+    final currentModelId = a?.chatModelId ?? settings.currentModelId;
+    final cfg = (currentProvider != null) ? settings.getProviderConfig(currentProvider) : null;
+    bool builtinSearchActive = false;
+    if (cfg != null && currentModelId != null) {
+      final mid2 = currentModelId;
+      final isGemini = cfg.providerType == ProviderKind.google;
+      final isClaude = cfg.providerType == ProviderKind.claude;
+      final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
+      if (isGemini || isClaude || isOpenAIResponses) {
+        final ov = cfg.modelOverrides[mid2] as Map?;
+        final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
+        builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
+      }
+    }
+
+    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+
+    return ChatInputBar(
+      key: _inputBarKey,
+      onMore: _toggleTools,
+      searchEnabled: context.watch<SettingsProvider>().searchEnabled || builtinSearchActive,
+      onToggleSearch: (enabled) {
+        context.read<SettingsProvider>().setSearchEnabled(enabled);
+      },
+      onSelectModel: () => showModelSelectSheet(context),
+      onLongPressSelectModel: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ProvidersPage()),
+        );
+      },
+      onOpenMcp: () {
+        final a = context.read<AssistantProvider>().currentAssistant;
+        if (a != null) {
+          try {
+            if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+              showDesktopMcpServersPopover(context, anchorKey: _inputBarKey, assistantId: a.id);
+            } else {
+              showAssistantMcpSheet(context, assistantId: a.id);
+            }
+          } catch (_) {
+            showAssistantMcpSheet(context, assistantId: a.id);
+          }
+        }
+      },
+      onLongPressMcp: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const McpPage()),
+        );
+      },
+      onStop: _cancelStreaming,
+      modelIcon: (settings.showModelIcon && ((a?.chatModelProvider ?? settings.currentModelProvider) != null) && ((a?.chatModelId ?? settings.currentModelId) != null))
+          ? _CurrentModelIcon(
+              providerKey: a?.chatModelProvider ?? settings.currentModelProvider,
+              modelId: a?.chatModelId ?? settings.currentModelId,
+              size: 40,
+              withBackground: true,
+              backgroundColor: Colors.transparent,
+            )
+          : null,
+      focusNode: _inputFocus,
+      controller: _inputController,
+      mediaController: _mediaController,
+      onConfigureReasoning: () async {
+        final assistant = context.read<AssistantProvider>().currentAssistant;
+        if (assistant != null) {
+          if (assistant.thinkingBudget != null) {
+            context.read<SettingsProvider>().setThinkingBudget(assistant.thinkingBudget);
+          }
+          await _openReasoningSettings();
+          final chosen = context.read<SettingsProvider>().thinkingBudget;
+          await context.read<AssistantProvider>().updateAssistant(
+            assistant.copyWith(thinkingBudget: chosen),
+          );
+        }
+      },
+      reasoningActive: _isReasoningEnabled((context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ?? settings.thinkingBudget),
+      supportsReasoning: (pk != null && mid != null) ? _isReasoningModel(pk, mid) : false,
+      onOpenSearch: _openSearchSettings,
+      onSend: (text) {
+        _sendMessage(text);
+        _inputController.clear();
+        // Keep focus on desktop; only dismiss on mobile to hide soft keyboard
+        if (Platform.isAndroid || Platform.isIOS) {
+          _dismissKeyboard();
+        } else {
+          _inputFocus.requestFocus();
+        }
+      },
+      loading: _isCurrentConversationLoading,
+      showMcpButton: (() {
+        final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
+        final mid3 = a?.chatModelId ?? settings.currentModelId;
+        if (pk2 == null || mid3 == null) return false;
+        final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
+        return _isToolModel(pk2, mid3) && hasEnabledMcp;
+      })(),
+      mcpActive: (() {
+        final a = context.watch<AssistantProvider>().currentAssistant;
+        final connected = context.watch<McpProvider>().connectedServers;
+        final selected = a?.mcpServerIds ?? const <String>[];
+        if (selected.isEmpty || connected.isEmpty) return false;
+        return connected.any((s) => selected.contains(s.id));
+      })(),
+      showQuickPhraseButton: (() {
+        final assistant = context.watch<AssistantProvider>().currentAssistant;
+        final quickPhraseProvider = context.watch<QuickPhraseProvider>();
+        final globalCount = quickPhraseProvider.globalPhrases.length;
+        final assistantCount = assistant != null
+            ? quickPhraseProvider.getForAssistant(assistant.id).length
+            : 0;
+        return (globalCount + assistantCount) > 0;
+      })(),
+      onQuickPhrase: _showQuickPhraseMenu,
+      onLongPressQuickPhrase: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
+        );
+      },
+      // OCR button: show on desktop for mobile layout, always check settings for tablet layout
+      showOcrButton: isTablet
+          ? (settings.ocrModelProvider != null && settings.ocrModelId != null)
+          : (isDesktop && settings.ocrModelProvider != null && settings.ocrModelId != null),
+      ocrActive: settings.ocrEnabled,
+      onToggleOcr: () async {
+        final sp = context.read<SettingsProvider>();
+        await sp.setOcrEnabled(!sp.ocrEnabled);
+      },
+      // Tablet-specific parameters
+      showMiniMapButton: isTablet,
+      onOpenMiniMap: isTablet ? () async {
+        final collapsed = _collapseVersions(_messages);
+        String? selectedId;
+        try {
+          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+            selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
+          } else {
+            selectedId = await showMiniMapSheet(context, collapsed);
+          }
+        } catch (_) {
+          selectedId = await showMiniMapSheet(context, collapsed);
+        }
+        if (selectedId != null && selectedId.isNotEmpty) {
+          await _scrollToMessageId(selectedId);
+        }
+      } : null,
+      onPickCamera: isTablet ? (isDesktop ? null : _onPickCamera) : null,
+      onPickPhotos: isTablet ? (isDesktop ? null : _onPickPhotos) : null,
+      onUploadFiles: isTablet ? _onPickFiles : null,
+      onToggleLearningMode: isTablet ? _openInstructionInjectionPopover : null,
+      onLongPressLearning: isTablet ? _showLearningPromptSheet : null,
+      learningModeActive: isTablet
+          ? context.watch<InstructionInjectionProvider>().activeIdsFor(assistantId).isNotEmpty
+          : false,
+      showMoreButton: !isTablet,
+      onClearContext: isTablet ? _onClearContext : null,
+    );
+  }
+
   Widget _buildTabletLayout(
     BuildContext context, {
     required String title,
@@ -3883,192 +3914,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             child: SizeChangedLayoutNotifier(
                               child: Builder(
                                 builder: (context) {
-                                  final settings = context.watch<SettingsProvider>();
-                                  final ap = context.watch<AssistantProvider>();
-                                  final a = ap.currentAssistant;
-                                  final assistantId = a?.id;
-                                  final pk = a?.chatModelProvider ?? settings.currentModelProvider;
-                                  final mid = a?.chatModelId ?? settings.currentModelId;
-                                  if (pk != null && mid != null) {
-                                    final supportsTools = _isToolModel(pk, mid);
-                                    if (!supportsTools && (a?.mcpServerIds.isNotEmpty ?? false)) {
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        final aa = ap.currentAssistant;
-                                        if (aa != null && aa.mcpServerIds.isNotEmpty) {
-                                          ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
-                                        }
-                                      });
-                                    }
-                                    final supportsReasoning = _isReasoningModel(pk, mid);
-                                    if (!supportsReasoning && a != null) {
-                                      final enabledNow = _isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
-                                      if (enabledNow) {
-                                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                                          final aa = ap.currentAssistant;
-                                          if (aa != null) {
-                                            await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
-                                          }
-                                        });
-                                      }
-                                    }
-                                  }
-                                  final currentProvider = a?.chatModelProvider ?? settings.currentModelProvider;
-                                  final currentModelId = a?.chatModelId ?? settings.currentModelId;
-                                  final cfg = (currentProvider != null) ? settings.getProviderConfig(currentProvider) : null;
-                                  bool builtinSearchActive = false;
-                                  if (cfg != null && currentModelId != null) {
-                                    final mid2 = currentModelId;
-                                    final isGemini = cfg.providerType == ProviderKind.google;
-                                    final isClaude = cfg.providerType == ProviderKind.claude;
-                                    final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-                                    if (isGemini || isClaude || isOpenAIResponses) {
-                                      final ov = cfg.modelOverrides[mid2] as Map?;
-                                      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-                                      builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-                                    }
-                                  }
-
-                                  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-                                      defaultTargetPlatform == TargetPlatform.windows ||
-                                      defaultTargetPlatform == TargetPlatform.linux;
-                                  Widget input = ChatInputBar(
-                                    key: _inputBarKey,
-                                    onMore: _toggleTools,
-                                    searchEnabled: context.watch<SettingsProvider>().searchEnabled || builtinSearchActive,
-                                    onToggleSearch: (enabled) {
-                                      context.read<SettingsProvider>().setSearchEnabled(enabled);
-                                    },
-                                    onSelectModel: () => showModelSelectSheet(context),
-                                    onLongPressSelectModel: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (_) => const ProvidersPage()),
-                                      );
-                                    },
-                                    onOpenMcp: () {
-                                      final a = context.read<AssistantProvider>().currentAssistant;
-                                      if (a != null) {
-                                        try {
-                                          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-                                            showDesktopMcpServersPopover(context, anchorKey: _inputBarKey, assistantId: a.id);
-                                          } else {
-                                            showAssistantMcpSheet(context, assistantId: a.id);
-                                          }
-                                        } catch (_) {
-                                          showAssistantMcpSheet(context, assistantId: a.id);
-                                        }
-                                      }
-                                    },
-                                    onLongPressMcp: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (_) => const McpPage()),
-                                      );
-                                    },
-                                    // Quick Phrase button (tablet): show to the right of MCP
-                                    showQuickPhraseButton: (() {
-                                      final assistant = context.watch<AssistantProvider>().currentAssistant;
-                                      final quickPhraseProvider = context.watch<QuickPhraseProvider>();
-                                      final globalCount = quickPhraseProvider.globalPhrases.length;
-                                      final assistantCount = assistant != null
-                                          ? quickPhraseProvider.getForAssistant(assistant.id).length
-                                          : 0;
-                                      return (globalCount + assistantCount) > 0;
-                                    })(),
-                                    onQuickPhrase: _showQuickPhraseMenu,
-                                    onLongPressQuickPhrase: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
-                                      );
-                                    },
-                                    showOcrButton: settings.ocrModelProvider != null &&
-                                        settings.ocrModelId != null,
-                                    ocrActive: settings.ocrEnabled,
-                                    onToggleOcr: () async {
-                                      final sp = context.read<SettingsProvider>();
-                                      await sp.setOcrEnabled(!sp.ocrEnabled);
-                                    },
-                                    showMiniMapButton: true,
-                                    onOpenMiniMap: () async {
-                                      final collapsed = _collapseVersions(_messages);
-                                      String? selectedId;
-                                      try {
-                                        if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-                                          selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
-                                        } else {
-                                          selectedId = await showMiniMapSheet(context, collapsed);
-                                        }
-                                      } catch (_) {
-                                        selectedId = await showMiniMapSheet(context, collapsed);
-                                      }
-                                      if (selectedId != null && selectedId.isNotEmpty) {
-                                        await _scrollToMessageId(selectedId);
-                                      }
-                                    },
-                                    onPickCamera: isDesktop ? null : _onPickCamera,
-                                    onPickPhotos: isDesktop ? null : _onPickPhotos,
-                                    onUploadFiles: _onPickFiles,
-                                    onToggleLearningMode: _openInstructionInjectionPopover,
-                                    onLongPressLearning: _showLearningPromptSheet,
-                                    learningModeActive: context
-                                            .watch<InstructionInjectionProvider>()
-                                            .activeIdsFor(assistantId)
-                                            .isNotEmpty,
-                                    showMoreButton: false,
-                                    onClearContext: _onClearContext,
-                                    onStop: _cancelStreaming,
-                                    modelIcon: (settings.showModelIcon && ((a?.chatModelProvider ?? settings.currentModelProvider) != null) && ((a?.chatModelId ?? settings.currentModelId) != null))
-                                        ? _CurrentModelIcon(
-                                            providerKey: a?.chatModelProvider ?? settings.currentModelProvider,
-                                            modelId: a?.chatModelId ?? settings.currentModelId,
-                                            size: 40,
-                                            withBackground: true,
-                                            backgroundColor: Colors.transparent,
-                                          )
-                                        : null,
-                                    focusNode: _inputFocus,
-                                    controller: _inputController,
-                                    mediaController: _mediaController,
-                                    onConfigureReasoning: () async {
-                                      final assistant = context.read<AssistantProvider>().currentAssistant;
-                                      if (assistant != null) {
-                                        if (assistant.thinkingBudget != null) {
-                                          context.read<SettingsProvider>().setThinkingBudget(assistant.thinkingBudget);
-                                        }
-                                        await _openReasoningSettings();
-                                        final chosen = context.read<SettingsProvider>().thinkingBudget;
-                                        await context.read<AssistantProvider>().updateAssistant(
-                                          assistant.copyWith(thinkingBudget: chosen),
-                                        );
-                                      }
-                                    },
-                                    reasoningActive: _isReasoningEnabled((context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ?? settings.thinkingBudget),
-                                    supportsReasoning: (pk != null && mid != null) ? _isReasoningModel(pk, mid) : false,
-                                    onOpenSearch: _openSearchSettings,
-                                    onSend: (text) {
-                                      _sendMessage(text);
-                                      _inputController.clear();
-                                      if (Platform.isAndroid || Platform.isIOS) {
-                                        _dismissKeyboard();
-                                      } else {
-                                        _inputFocus.requestFocus();
-                                      }
-                                    },
-                                    loading: _isCurrentConversationLoading,
-                                    showMcpButton: (() {
-                                      final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
-                                      final mid3 = a?.chatModelId ?? settings.currentModelId;
-                                      if (pk2 == null || mid3 == null) return false;
-                                      final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
-                                      return _isToolModel(pk2, mid3) && hasEnabledMcp;
-                                    })(),
-                                    mcpActive: (() {
-                                      final a = context.watch<AssistantProvider>().currentAssistant;
-                                      final connected = context.watch<McpProvider>().connectedServers;
-                                      final selected = a?.mcpServerIds ?? const <String>[];
-                                      if (selected.isEmpty || connected.isEmpty) return false;
-                                      return connected.any((s) => selected.contains(s.id));
-                                    })(),
-                                  );
-
+                                  Widget input = _buildChatInputBar(context, isTablet: true);
                                   input = Center(
                                     child: ConstrainedBox(
                                       constraints: const BoxConstraints(maxWidth: 800),
