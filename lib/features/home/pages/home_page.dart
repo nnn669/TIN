@@ -68,6 +68,7 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
 import 'dart:io' show Platform;
 import '../../../core/services/notification_service.dart';
+import '../../../utils/platform_utils.dart';
 import '../../../desktop/hotkeys/chat_action_bus.dart';
 import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import '../../../core/models/quick_phrase.dart';
@@ -95,10 +96,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, RouteAware, WidgetsBindingObserver {
-  bool get _isDesktopPlatform =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktopPlatform => PlatformUtils.isDesktopTarget;
   // Desktop drag-and-drop state
   bool _isDragHovering = false;
   // Inline bottom tools panel removed; using modal bottom sheet instead
@@ -238,37 +236,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   
   void _openSearchSettings() {
     // On desktop platforms show the floating popover; mobile keeps bottom sheet
-    try {
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        showDesktopSearchProviderPopover(context, anchorKey: _inputBarKey);
-      } else {
-        showSearchSettingsSheet(context);
-      }
-    } catch (_) {
-      // Fallback in case Platform.* is not available
+    if (PlatformUtils.isDesktop) {
+      showDesktopSearchProviderPopover(context, anchorKey: _inputBarKey);
+    } else {
       showSearchSettingsSheet(context);
     }
   }
 
   Future<void> _openReasoningSettings() async {
-    try {
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        await showDesktopReasoningBudgetPopover(context, anchorKey: _inputBarKey);
-      } else {
-        await showReasoningBudgetSheet(context);
-      }
-    } catch (_) {
+    if (PlatformUtils.isDesktop) {
+      await showDesktopReasoningBudgetPopover(context, anchorKey: _inputBarKey);
+    } else {
       await showReasoningBudgetSheet(context);
     }
   }
 
   Future<void> _openInstructionInjectionPopover() async {
-    bool isDesktop = false;
-    try {
-      isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    } catch (_) {
-      isDesktop = false;
-    }
+    final isDesktop = PlatformUtils.isDesktop;
     final assistantId = context.read<AssistantProvider>().currentAssistantId;
     final provider = context.read<InstructionInjectionProvider>();
     await provider.initialize();
@@ -1517,10 +1501,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Future<void> _onPickPhotos() async {
     try {
       // On desktop, fall back to FilePicker as image_picker is not supported.
-      final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.linux;
-      if (isDesktop) {
+      if (PlatformUtils.isDesktopTarget) {
         final res = await FilePicker.platform.pickFiles(
           allowMultiple: true,
           withData: false,
@@ -1557,7 +1538,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Future<void> _onPickCamera() async {
     try {
       // Proactive permission check on mobile
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (PlatformUtils.isMobile) {
         var status = await Permission.camera.status;
         // Request if not determined; otherwise guide user
         if (status.isDenied || status.isRestricted) {
@@ -2496,17 +2477,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _dismissKeyboard();
     
     QuickPhrase? selected;
-    try {
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        selected = await showDesktopQuickPhrasePopover(context, anchorKey: _inputBarKey, phrases: allAvailable);
-      } else {
-        selected = await showQuickPhraseMenu(
-          context: context,
-          phrases: allAvailable,
-          position: position,
-        );
-      }
-    } catch (_) {
+    if (PlatformUtils.isDesktop) {
+      selected = await showDesktopQuickPhrasePopover(context, anchorKey: _inputBarKey, phrases: allAvailable);
+    } else {
       selected = await showQuickPhraseMenu(
         context: context,
         phrases: allAvailable,
@@ -2931,13 +2904,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onOpenMiniMap: () async {
         final collapsed = _collapseVersions(_messages);
         String? selectedId;
-        try {
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-            selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
-          } else {
-            selectedId = await showMiniMapSheet(context, collapsed);
-          }
-        } catch (_) {
+        if (PlatformUtils.isDesktop) {
+          selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
+        } else {
           selectedId = await showMiniMapSheet(context, collapsed);
         }
         if (!mounted) return;
@@ -3389,10 +3358,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   /// Handles TTS speak/stop for a message.
   Future<void> _handleSpeak(BuildContext context, ChatMessage message) async {
-    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
-    if (isDesktop) {
+    if (PlatformUtils.isDesktopTarget) {
       final sp = context.read<SettingsProvider>();
       final hasNetworkTts = sp.ttsServiceSelected >= 0 && sp.ttsServices.isNotEmpty;
       if (!hasNetworkTts) {
@@ -3668,9 +3634,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     }
 
-    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final isDesktop = PlatformUtils.isDesktopTarget;
 
     return ChatInputBar(
       key: _inputBarKey,
@@ -3688,13 +3652,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onOpenMcp: () {
         final a = context.read<AssistantProvider>().currentAssistant;
         if (a != null) {
-          try {
-            if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-              showDesktopMcpServersPopover(context, anchorKey: _inputBarKey, assistantId: a.id);
-            } else {
-              showAssistantMcpSheet(context, assistantId: a.id);
-            }
-          } catch (_) {
+          if (PlatformUtils.isDesktop) {
+            showDesktopMcpServersPopover(context, anchorKey: _inputBarKey, assistantId: a.id);
+          } else {
             showAssistantMcpSheet(context, assistantId: a.id);
           }
         }
@@ -3737,7 +3697,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _sendMessage(text);
         _inputController.clear();
         // Keep focus on desktop; only dismiss on mobile to hide soft keyboard
-        if (Platform.isAndroid || Platform.isIOS) {
+        if (PlatformUtils.isMobile) {
           _dismissKeyboard();
         } else {
           _inputFocus.requestFocus();
@@ -3787,13 +3747,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onOpenMiniMap: isTablet ? () async {
         final collapsed = _collapseVersions(_messages);
         String? selectedId;
-        try {
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-            selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
-          } else {
-            selectedId = await showMiniMapSheet(context, collapsed);
-          }
-        } catch (_) {
+        if (PlatformUtils.isDesktop) {
+          selectedId = await showDesktopMiniMapPopover(context, anchorKey: _inputBarKey, messages: collapsed);
+        } else {
           selectedId = await showMiniMapSheet(context, collapsed);
         }
         if (selectedId != null && selectedId.isNotEmpty) {
@@ -3820,10 +3776,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     required String? modelDisplay,
     required ColorScheme cs,
   }) {
-    final bool isDesktopPlatform = defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
-    if (isDesktopPlatform && !_desktopUiInited) {
+    if (PlatformUtils.isDesktopTarget && !_desktopUiInited) {
       _desktopUiInited = true;
       try {
         final sp = context.read<SettingsProvider>();
@@ -4978,7 +4931,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Show notification if in background
     try {
       final sp = context.read<SettingsProvider>();
-      if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+      if (PlatformUtils.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
         await NotificationService.showChatCompleted(
           title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
           body: AppLocalizations.of(context)!.notificationChatCompletedBody,
@@ -5183,7 +5136,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     try {
       final sp = context.read<SettingsProvider>();
-      if (Platform.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
+      if (PlatformUtils.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
         await NotificationService.showChatCompleted(
           title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
           body: AppLocalizations.of(context)!.notificationChatCompletedBody,
