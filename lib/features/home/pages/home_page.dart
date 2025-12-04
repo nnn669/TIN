@@ -33,6 +33,7 @@ import '../controllers/chat_controller.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
 import '../services/message_builder_service.dart';
+import '../services/ocr_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
@@ -125,6 +126,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late stream_ctrl.StreamController _streamController;
   late GenerationController _generationController;
   late MessageBuilderService _messageBuilderService;
+  late OcrService _ocrService;
 
   // Delegate to ChatController for conversation state
   Conversation? get _currentConversation => _chatController.currentConversation;
@@ -139,9 +141,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Map<String, List<ToolUIPart>> get _toolParts => _streamController.toolParts;
 
   final Map<String, _TranslationData> _translations = <String, _TranslationData>{};
-  static const int _maxOcrCacheEntries = 48;
-  final Map<String, _OcrCacheEntry> _ocrCache = <String, _OcrCacheEntry>{}; // path -> cached OCR
-  final List<String> _ocrCacheOrder = <String>[]; // LRU order of paths
   bool _appInForeground = true; // used to gate notifications only when app is background
   // Message widget keys for navigation to previous question
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
@@ -536,123 +535,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return inferred.abilities.contains(ModelAbility.reasoning);
   }
 
-  Future<String?> _runOcrForImages(List<String> imagePaths) async {
-    if (imagePaths.isEmpty) return null;
-    final settings = context.read<SettingsProvider>();
-    final prov = settings.ocrModelProvider;
-    final model = settings.ocrModelId;
-    if (prov == null || model == null) return null;
-    final cfg = settings.getProviderConfig(prov);
-
-    final messages = <Map<String, dynamic>>[
-      {
-        'role': 'system',
-        'content': settings.ocrPrompt,
-      },
-      {
-        'role': 'user',
-        'content': 'Please perform OCR on the attached image(s) and return only the extracted text and visual descriptions.',
-      },
-    ];
-
-    final stream = ChatApiService.sendMessageStream(
-      config: cfg,
-      modelId: model,
-      messages: messages,
-      userImagePaths: imagePaths,
-      thinkingBudget: null,
-      temperature: 0.0,
-      topP: null,
-      maxTokens: null,
-      tools: null,
-      onToolCall: null,
-      extraHeaders: null,
-      extraBody: null,
-      stream: false,
-    );
-
-    String out = '';
-    try {
-      await for (final chunk in stream) {
-        if (chunk.content.isNotEmpty) {
-          out += chunk.content;
-        }
-      }
-    } catch (_) {
-      return null;
-    }
-    out = out.trim();
-    return out.isEmpty ? null : out;
-  }
-
-  void _cacheOcrText(String path, String text) {
-    final p = path.trim();
-    if (p.isEmpty) return;
-    _ocrCache[p] = _OcrCacheEntry(text: text);
-    _ocrCacheOrder.remove(p);
-    _ocrCacheOrder.add(p);
-    while (_ocrCacheOrder.length > _maxOcrCacheEntries) {
-      final oldest = _ocrCacheOrder.removeAt(0);
-      _ocrCache.remove(oldest);
-    }
-  }
-
-  String? _cachedOcrText(String path) {
-    final p = path.trim();
-    if (p.isEmpty) return null;
-    final entry = _ocrCache[p];
-    if (entry != null) {
-      // bump to most-recent
-      _ocrCacheOrder.remove(p);
-      _ocrCacheOrder.add(p);
-      return entry.text;
-    }
-    return null;
-  }
-
-  String _wrapOcrBlock(String ocrText) {
-    final buf = StringBuffer();
-    buf.writeln("The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
-    buf.writeln('<image_file_ocr>');
-    buf.writeln(ocrText.trim());
-    buf.writeln('</image_file_ocr>');
-    buf.writeln();
-    return buf.toString();
-  }
-
-  Future<String?> _getOcrTextForImages(List<String> imagePaths) async {
-    if (imagePaths.isEmpty) return null;
-    final settings = context.read<SettingsProvider>();
-    if (!(settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null)) {
-      return null;
-    }
-    final combined = StringBuffer();
-    final List<String> uncached = <String>[];
-    for (final raw in imagePaths) {
-      final path = raw.trim();
-      if (path.isEmpty) continue;
-      final cached = _cachedOcrText(path);
-      if (cached != null && cached.trim().isNotEmpty) {
-        combined.writeln(cached.trim());
-      } else {
-        uncached.add(path);
-      }
-    }
-    // Fetch OCR for uncached images one-by-one to populate cache and avoid huge combined prompts.
-    for (final path in uncached) {
-      final text = await _runOcrForImages([path]);
-      if (text != null && text.trim().isNotEmpty) {
-        final t = text.trim();
-        _cacheOcrText(path, t);
-        combined.writeln(t);
-      }
-    }
-    final out = combined.toString().trim();
-    return out.isEmpty ? null : out;
-  }
-
   // Whether current conversation is generating
   bool get _isCurrentConversationLoading {
     final cid = _currentConversation?.id;
@@ -1022,14 +904,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       getSettingsProvider: () => context.read<SettingsProvider>(),
       getCurrentConversationId: () => _currentConversation?.id,
     );
+    // Initialize OcrService for OCR processing
+    _ocrService = OcrService();
     // Initialize MessageBuilderService for API message construction
     _messageBuilderService = MessageBuilderService(
       chatService: _chatService,
       contextProvider: context,
-      ocrHandler: _getOcrTextForImages,
+      ocrHandler: (imagePaths) => _ocrService.getOcrTextForImages(imagePaths, context),
       geminiThoughtSignatureHandler: _appendGeminiThoughtSignatureForApi,
     );
-    _messageBuilderService.ocrTextWrapper = _wrapOcrBlock;
+    _messageBuilderService.ocrTextWrapper = _ocrService.wrapOcrBlock;
     // Initialize GenerationController for message generation coordination
     _generationController = GenerationController(
       chatService: _chatService,
@@ -4516,11 +4400,6 @@ class _SidebarResizeHandleState extends State<_SidebarResizeHandle> {
 
 class _TranslationData {
   bool expanded = true; // default to expanded when translation is added
-}
-
-class _OcrCacheEntry {
-  _OcrCacheEntry({required this.text});
-  final String text;
 }
 
 class _CurrentModelIcon extends StatelessWidget {
