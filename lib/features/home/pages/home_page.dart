@@ -28,8 +28,11 @@ import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
+import '../../../core/models/assistant.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
+import '../controllers/generation_controller.dart';
+import '../services/message_builder_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
@@ -120,6 +123,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late ChatService _chatService;
   late ChatController _chatController;
   late stream_ctrl.StreamController _streamController;
+  late GenerationController _generationController;
+  late MessageBuilderService _messageBuilderService;
 
   // Delegate to ChatController for conversation state
   Conversation? get _currentConversation => _chatController.currentConversation;
@@ -153,73 +158,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   static const double _autoScrollSnapTolerance = 56.0;
 
   // NOTE: Streaming content throttle mechanism moved to StreamController
-
-  // Sanitize/translate JSON Schema to each provider's accepted subset
-  static Map<String, dynamic> _sanitizeToolParametersForProvider(Map<String, dynamic> schema, ProviderKind kind) {
-    Map<String, dynamic> clone = _deepCloneMap(schema);
-    clone = _sanitizeNode(clone, kind) as Map<String, dynamic>;
-    return clone;
-  }
-
-  static dynamic _sanitizeNode(dynamic node, ProviderKind kind) {
-    if (node is List) {
-      return node.map((e) => _sanitizeNode(e, kind)).toList();
-    }
-    if (node is! Map) return node;
-
-    final m = Map<String, dynamic>.from(node as Map);
-    m.remove(r'$schema');
-    if (m.containsKey('const')) {
-      final v = m['const'];
-      if (v is String || v is num || v is bool) {
-        m['enum'] = [v];
-      }
-      m.remove('const');
-    }
-    for (final key in ['anyOf', 'oneOf', 'allOf', 'any_of', 'one_of', 'all_of']) {
-      if (m[key] is List && (m[key] as List).isNotEmpty) {
-        final first = (m[key] as List).first;
-        final flattened = _sanitizeNode(first, kind);
-        m.remove(key);
-        if (flattened is Map<String, dynamic>) {
-          m
-            ..remove('type')
-            ..remove('properties')
-            ..remove('items');
-          m.addAll(flattened);
-        }
-      }
-    }
-    final t = m['type'];
-    if (t is List && t.isNotEmpty) m['type'] = t.first.toString();
-    final items = m['items'];
-    if (items is List && items.isNotEmpty) m['items'] = items.first;
-    if (m['items'] is Map) m['items'] = _sanitizeNode(m['items'], kind);
-    if (m['properties'] is Map) {
-      final props = Map<String, dynamic>.from(m['properties']);
-      final norm = <String, dynamic>{};
-      props.forEach((k, v) {
-        norm[k] = _sanitizeNode(v, kind);
-      });
-      m['properties'] = norm;
-    }
-    Set<String> allowed;
-    switch (kind) {
-      case ProviderKind.google:
-        allowed = {'type', 'description', 'properties', 'required', 'items', 'enum'};
-        break;
-      case ProviderKind.openai:
-      case ProviderKind.claude:
-        allowed = {'type', 'description', 'properties', 'required', 'items', 'enum'};
-        break;
-    }
-    m.removeWhere((k, v) => !allowed.contains(k));
-    return m;
-  }
-
-  static Map<String, dynamic> _deepCloneMap(Map<String, dynamic> input) {
-    return jsonDecode(jsonEncode(input)) as Map<String, dynamic>;
-  }
+  // NOTE: Tool schema sanitization moved to GenerationController
   // Tablet: whether the left embedded sidebar is visible
   bool _tabletSidebarOpen = true;
   // Desktop: whether the right embedded topics sidebar is visible
@@ -1082,6 +1021,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
       getSettingsProvider: () => context.read<SettingsProvider>(),
       getCurrentConversationId: () => _currentConversation?.id,
+    );
+    // Initialize MessageBuilderService for API message construction
+    _messageBuilderService = MessageBuilderService(
+      chatService: _chatService,
+      contextProvider: context,
+      ocrHandler: _getOcrTextForImages,
+      geminiThoughtSignatureHandler: _appendGeminiThoughtSignatureForApi,
+    );
+    _messageBuilderService.ocrTextWrapper = _wrapOcrBlock;
+    // Initialize GenerationController for message generation coordination
+    _generationController = GenerationController(
+      chatService: _chatService,
+      chatController: _chatController,
+      streamController: _streamController,
+      messageBuilderService: _messageBuilderService,
+      contextProvider: context,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+      getTitleForLocale: _titleForLocale,
     );
     _initChat();
     _scrollController.addListener(_onScrollControllerChanged);
@@ -3780,309 +3739,84 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   /// Build API messages list from current conversation state.
   /// Applies truncation, version collapsing, and strips [image:] / [file:] markers.
+  /// NOTE: Delegates to MessageBuilderService.
   List<Map<String, dynamic>> _buildApiMessages() {
-    final tIndex = _currentConversation?.truncateIndex ?? -1;
-    final List<ChatMessage> sourceAll = (tIndex >= 0 && tIndex <= _messages.length)
-        ? _messages.sublist(tIndex)
-        : List.of(_messages);
-    final List<ChatMessage> source = _collapseVersions(sourceAll);
-    return source
-        .where((m) => m.content.isNotEmpty)
-        .map<Map<String, dynamic>>((m) {
-          var content = m.content;
-          if (m.role == 'assistant') {
-            content = _appendGeminiThoughtSignatureForApi(m, content);
-          }
-          return <String, dynamic>{
-            'role': m.role == 'assistant' ? 'assistant' : 'user',
-            'content': content,
-          };
-        })
-        .toList();
+    return _messageBuilderService.buildApiMessages(
+      messages: _messages,
+      versionSelections: _versionSelections,
+      currentConversation: _currentConversation,
+    );
   }
 
   /// Process user messages in apiMessages: extract documents, apply OCR, inject file prompts.
   /// Returns the image paths from the last user message (for API call).
+  /// NOTE: Delegates to MessageBuilderService.
   Future<List<String>> _processUserMessagesForApi(
     List<Map<String, dynamic>> apiMessages,
     SettingsProvider settings,
     dynamic assistant,
   ) async {
-    final bool ocrActive = settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null;
-
-    List<String>? lastUserImagePaths;
-
-    // Find last user message index
-    int lastUserIdx = -1;
-    for (int i = apiMessages.length - 1; i >= 0; i--) {
-      if (apiMessages[i]['role'] == 'user') { lastUserIdx = i; break; }
-    }
-
-    final Map<String, String?> docTextCache = <String, String?>{};
-    Future<String?> readDocument(DocumentAttachment d) async {
-      if (docTextCache.containsKey(d.path)) return docTextCache[d.path];
-      try {
-        final text = await DocumentTextExtractor.extract(path: d.path, mime: d.mime);
-        docTextCache[d.path] = text;
-        return text;
-      } catch (_) {
-        docTextCache[d.path] = null;
-        return null;
-      }
-    }
-
-    for (int i = 0; i < apiMessages.length; i++) {
-      if (apiMessages[i]['role'] != 'user') continue;
-      final rawUser = (apiMessages[i]['content'] ?? '').toString();
-      final parsedUser = _parseInputFromRaw(rawUser);
-
-      // Capture image paths from last user message
-      if (i == lastUserIdx && lastUserImagePaths == null && parsedUser.imagePaths.isNotEmpty) {
-        lastUserImagePaths = List<String>.of(parsedUser.imagePaths);
-      }
-
-      final videoPaths = <String>{
-        for (final d in parsedUser.documents)
-          if (d.mime.toLowerCase().startsWith('video/')) d.path.trim(),
-      }..removeWhere((p) => p.isEmpty);
-
-      String cleanedUser = rawUser.replaceAll(RegExp(r"\[file:.*?\]"), '').trim();
-      if (ocrActive) {
-        cleanedUser = cleanedUser.replaceAll(RegExp(r"\[image:.*?\]"), '');
-      }
-
-      final filePrompts = StringBuffer();
-      for (final d in parsedUser.documents) {
-        if (d.mime.toLowerCase().startsWith('video/')) continue;
-        final text = await readDocument(d);
-        if (text == null || text.trim().isEmpty) continue;
-        filePrompts.writeln('## user sent a file: ${d.fileName}');
-        filePrompts.writeln('<content>');
-        filePrompts.writeln('```');
-        filePrompts.writeln(text);
-        filePrompts.writeln('```');
-        filePrompts.writeln('</content>');
-        filePrompts.writeln();
-      }
-
-      String merged = (filePrompts.toString() + cleanedUser).trim();
-
-      if (ocrActive) {
-        final ocrTargets = parsedUser.imagePaths
-            .map((p) => p.trim())
-            .where((p) => p.isNotEmpty && !videoPaths.contains(p))
-            .toSet()
-            .toList();
-        if (ocrTargets.isNotEmpty) {
-          final ocrText = await _getOcrTextForImages(ocrTargets);
-          if (ocrText != null && ocrText.trim().isNotEmpty) {
-            merged = (_wrapOcrBlock(ocrText) + merged).trim();
-          }
-        }
-      }
-
-      apiMessages[i]['content'] = merged.isEmpty ? cleanedUser : merged;
-    }
-
-    // Apply message template to last user message
-    if (lastUserIdx != -1) {
-      final userText = (apiMessages[lastUserIdx]['content'] ?? '').toString();
-      final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
-          ? '{{ message }}'
-          : (assistant!.messageTemplate);
-      final templated = PromptTransformer.applyMessageTemplate(
-        templ,
-        role: 'user',
-        message: userText,
-        now: DateTime.now(),
-      );
-      apiMessages[lastUserIdx]['content'] = templated;
-    }
-
-    return lastUserImagePaths ?? <String>[];
+    return _messageBuilderService.processUserMessagesForApi(apiMessages, settings, assistant as Assistant?);
   }
 
   /// Inject system prompt into apiMessages.
+  /// NOTE: Delegates to MessageBuilderService.
   void _injectSystemPrompt(
     List<Map<String, dynamic>> apiMessages,
     dynamic assistant,
     String modelId,
   ) {
-    if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
-      final vars = PromptTransformer.buildPlaceholders(
-        context: context,
-        assistant: assistant!,
-        modelId: modelId,
-        modelName: modelId,
-        userNickname: context.read<UserProvider>().name,
-      );
-      final sys = PromptTransformer.replacePlaceholders(assistant.systemPrompt, vars);
-      apiMessages.insert(0, {'role': 'system', 'content': sys});
-    }
+    _messageBuilderService.injectSystemPrompt(apiMessages, assistant as Assistant?, modelId);
   }
 
   /// Inject memory prompts and recent chats reference into apiMessages.
+  /// NOTE: Delegates to MessageBuilderService.
   Future<void> _injectMemoryAndRecentChats(
     List<Map<String, dynamic>> apiMessages,
     dynamic assistant,
   ) async {
-    try {
-      if (assistant?.enableMemory == true) {
-        final mp = context.read<MemoryProvider>();
-        final mems = mp.getForAssistant(assistant!.id);
-        final buf = StringBuffer();
-        buf.writeln('## Memories');
-        buf.writeln('These are memories that you can reference in the future conversations.');
-        buf.writeln('<memories>');
-        for (final m in mems) {
-          buf.writeln('<record>');
-          buf.writeln('<id>${m.id}</id>');
-          buf.writeln('<content>${m.content}</content>');
-          buf.writeln('</record>');
-        }
-        buf.writeln('</memories>');
-        buf.writeln('''
-## Memory Tool
-你是一个无状态的大模型，你无法存储记忆，因此为了记住信息，你需要使用**记忆工具**。
-你可以使用 `create_memory`, `edit_memory`, `delete_memory` 工具创建、更新或删除记忆。
-- 如果记忆中没有相关信息，请使用 create_memory 创建一条新的记录。
-- 如果已有相关记录，请使用 edit_memory 更新内容。
-- 若记忆过时或无用，请使用 delete_memory 删除。
-这些记忆会自动包含在未来的对话上下文中，在<memories>标签内。
-请勿在记忆中存储敏感信息，敏感信息包括：用户的民族、宗教信仰、性取向、政治观点及党派归属、性生活、犯罪记录等。
-在与用户聊天过程中，你可以像一个私人秘书一样**主动的**记录用户相关的信息到记忆里，包括但不限于：
-- 用户昵称/姓名
-- 年龄/性别/兴趣爱好
-- 计划事项等
-- 聊天风格偏好
-- 工作相关
-- 首次聊天时间
-- ...
-请主动调用工具记录，而不是需要用户要求。
-记忆如果包含日期信息，请包含在内，请使用绝对时间格式，并且当前时间是 ${DateTime.now().toIso8601String()}。
-无需告知用户你已更改记忆记录，也不要在对话中直接显示记忆内容，除非用户主动要求。
-相似或相关的记忆应合并为一条记录，而不要重复记录，过时记录应删除。
-你可以在和用户闲聊的时候暗示用户你能记住东西。
-''');
-        _appendToSystemMessage(apiMessages, buf.toString());
-      }
-      if (assistant?.enableRecentChatsReference == true) {
-        final chats = context.read<ChatService>().getAllConversations();
-        final titles = chats
-            .where((c) => c.assistantId == assistant!.id)
-            .take(10)
-            .map((c) => c.title)
-            .where((t) => t.trim().isNotEmpty)
-            .toList();
-        if (titles.isNotEmpty) {
-          final sb = StringBuffer();
-          sb.writeln('## 最近的对话');
-          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
-          sb.writeln('<recent_chats>');
-          for (final t in titles) {
-            sb.writeln('<conversation>');
-            sb.writeln('  <title>$t</title>');
-            sb.writeln('</conversation>');
-          }
-          sb.writeln('</recent_chats>');
-          _appendToSystemMessage(apiMessages, sb.toString());
-        }
-      }
-    } catch (_) {}
+    await _messageBuilderService.injectMemoryAndRecentChats(apiMessages, assistant as Assistant?);
   }
 
   /// Inject search tool usage prompt into apiMessages.
+  /// NOTE: Delegates to MessageBuilderService.
   void _injectSearchPrompt(
     List<Map<String, dynamic>> apiMessages,
     SettingsProvider settings,
     bool hasBuiltInSearch,
   ) {
-    if (settings.searchEnabled && !hasBuiltInSearch) {
-      final prompt = SearchToolService.getSystemPrompt();
-      _appendToSystemMessage(apiMessages, prompt);
-    }
+    _messageBuilderService.injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
   }
 
   /// Inject instruction injection prompts into apiMessages.
+  /// NOTE: Delegates to MessageBuilderService.
   Future<void> _injectInstructionPrompts(
     List<Map<String, dynamic>> apiMessages,
     String? assistantId,
   ) async {
-    try {
-      List<InstructionInjection> actives = const <InstructionInjection>[];
-      try {
-        final ip = context.read<InstructionInjectionProvider>();
-        actives = ip.activesFor(assistantId);
-        if (actives.isEmpty) {
-          actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-        }
-      } catch (_) {
-        actives = await InstructionInjectionStore.getActives(assistantId: assistantId);
-      }
-      final prompts = actives
-          .map((e) => e.prompt.trim())
-          .where((p) => p.isNotEmpty)
-          .toList(growable: false);
-      if (prompts.isNotEmpty) {
-        final lp = prompts.join('\n\n');
-        _appendToSystemMessage(apiMessages, lp);
-      }
-    } catch (_) {}
-  }
-
-  /// Helper to append content to the system message (or create one if missing).
-  void _appendToSystemMessage(List<Map<String, dynamic>> apiMessages, String content) {
-    if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-      apiMessages[0]['content'] = ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + content;
-    } else {
-      apiMessages.insert(0, {'role': 'system', 'content': content});
-    }
+    await _messageBuilderService.injectInstructionPrompts(apiMessages, assistantId);
   }
 
   /// Apply context message limit based on assistant settings.
+  /// NOTE: Delegates to MessageBuilderService.
   void _applyContextLimit(List<Map<String, dynamic>> apiMessages, dynamic assistant) {
-    if ((assistant?.limitContextMessages ?? true) && (assistant?.contextMessageSize ?? 0) > 0) {
-      final int keep = (assistant!.contextMessageSize as num).clamp(1, 512).toInt();
-      int startIdx = 0;
-      if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
-        startIdx = 1;
-      }
-      final tail = apiMessages.sublist(startIdx);
-      if (tail.length > keep) {
-        final trimmed = tail.sublist(tail.length - keep);
-        apiMessages
-          ..removeRange(startIdx, apiMessages.length)
-          ..addAll(trimmed);
-      }
-    }
+    _messageBuilderService.applyContextLimit(apiMessages, assistant as Assistant?);
   }
 
   /// Convert local Markdown image links to inline base64 for model context.
+  /// NOTE: Delegates to MessageBuilderService.
   Future<void> _inlineLocalImages(List<Map<String, dynamic>> apiMessages) async {
-    for (int i = 0; i < apiMessages.length; i++) {
-      final s = (apiMessages[i]['content'] ?? '').toString();
-      if (s.isNotEmpty) {
-        apiMessages[i]['content'] = await MarkdownMediaSanitizer.inlineLocalImagesToBase64(s);
-      }
-    }
+    await _messageBuilderService.inlineLocalImages(apiMessages);
   }
 
   /// Check if Gemini built-in search is enabled for the given provider/model.
+  /// NOTE: Delegates to MessageBuilderService.
   bool _hasBuiltInGeminiSearch(SettingsProvider settings, String providerKey, String modelId) {
-    try {
-      final cfg = settings.getProviderConfig(providerKey);
-      if (cfg.providerType != ProviderKind.google) return false;
-      final ov = cfg.modelOverrides[modelId] as Map?;
-      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      return list.map((e) => e.toString().toLowerCase()).contains('search');
-    } catch (_) {
-      return false;
-    }
+    return _messageBuilderService.hasBuiltInGeminiSearch(settings, providerKey, modelId);
   }
 
   /// Prepare tool definitions for API call.
+  /// NOTE: Delegates to GenerationController.
   List<Map<String, dynamic>> _buildToolDefinitions(
     SettingsProvider settings,
     dynamic assistant,
@@ -4090,166 +3824,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     String modelId,
     bool hasBuiltInSearch,
   ) {
-    final List<Map<String, dynamic>> toolDefs = <Map<String, dynamic>>[];
-    final supportsTools = _isToolModel(providerKey, modelId);
-
-    // Search tool (skip when Gemini built-in search is active)
-    if (settings.searchEnabled && !hasBuiltInSearch && supportsTools) {
-      toolDefs.add(SearchToolService.getToolDefinition());
-    }
-
-    // Memory tools
-    if (assistant?.enableMemory == true && supportsTools) {
-      toolDefs.addAll([
-        {
-          'type': 'function',
-          'function': {
-            'name': 'create_memory',
-            'description': 'create a memory record',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'content': {'type': 'string', 'description': 'The content of the memory record'}
-              },
-              'required': ['content']
-            }
-          }
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'edit_memory',
-            'description': 'update a memory record',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'id': {'type': 'integer', 'description': 'The id of the memory record'},
-                'content': {'type': 'string', 'description': 'The content of the memory record'}
-              },
-              'required': ['id', 'content']
-            }
-          }
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'delete_memory',
-            'description': 'delete a memory record',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'id': {'type': 'integer', 'description': 'The id of the memory record'}
-              },
-              'required': ['id']
-            }
-          }
-        },
-      ]);
-    }
-
-    // MCP tools
-    final mcp = context.read<McpProvider>();
-    final toolSvc = context.read<McpToolService>();
-    final tools = toolSvc.listAvailableToolsForAssistant(mcp, context.read<AssistantProvider>(), assistant?.id);
-    if (supportsTools && tools.isNotEmpty) {
-      final providerCfg = settings.getProviderConfig(providerKey);
-      final providerKind = ProviderConfig.classify(providerCfg.id, explicitType: providerCfg.providerType);
-      toolDefs.addAll(tools.map((t) {
-        Map<String, dynamic> baseSchema;
-        if (t.schema != null && t.schema!.isNotEmpty) {
-          baseSchema = Map<String, dynamic>.from(t.schema!);
-        } else {
-          final props = <String, dynamic>{for (final p in t.params) p.name: {'type': (p.type ?? 'string')}};
-          final required = [for (final p in t.params.where((e) => e.required)) p.name];
-          baseSchema = {'type': 'object', 'properties': props, if (required.isNotEmpty) 'required': required};
-        }
-        final sanitized = _sanitizeToolParametersForProvider(baseSchema, providerKind);
-        return {
-          'type': 'function',
-          'function': {
-            'name': t.name,
-            if ((t.description ?? '').isNotEmpty) 'description': t.description,
-            'parameters': sanitized,
-          }
-        };
-      }));
-    }
-
-    return toolDefs;
+    return _generationController.buildToolDefinitions(
+      settings,
+      assistant as Assistant?,
+      providerKey,
+      modelId,
+      hasBuiltInSearch,
+    );
   }
 
   /// Build tool call handler function.
+  /// NOTE: Delegates to GenerationController.
   Future<String> Function(String, Map<String, dynamic>)? _buildToolCallHandler(
     SettingsProvider settings,
     dynamic assistant,
   ) {
-    final mcp = context.read<McpProvider>();
-    final toolSvc = context.read<McpToolService>();
-
-    return (name, args) async {
-      // Search tool
-      if (name == SearchToolService.toolName && settings.searchEnabled) {
-        final q = (args['query'] ?? '').toString();
-        return await SearchToolService.executeSearch(q, settings);
-      }
-      // Memory tools
-      if (assistant?.enableMemory == true) {
-        try {
-          final mp = context.read<MemoryProvider>();
-          if (name == 'create_memory') {
-            final content = (args['content'] ?? '').toString();
-            if (content.isEmpty) return '';
-            final m = await mp.add(assistantId: assistant!.id, content: content);
-            return m.content;
-          } else if (name == 'edit_memory') {
-            final id = (args['id'] as num?)?.toInt() ?? -1;
-            final content = (args['content'] ?? '').toString();
-            if (id <= 0 || content.isEmpty) return '';
-            final m = await mp.update(id: id, content: content);
-            return m?.content ?? '';
-          } else if (name == 'delete_memory') {
-            final id = (args['id'] as num?)?.toInt() ?? -1;
-            if (id <= 0) return '';
-            final ok = await mp.delete(id: id);
-            return ok ? 'deleted' : '';
-          }
-        } catch (_) {}
-      }
-      // MCP tools
-      final text = await toolSvc.callToolTextForAssistant(
-        mcp,
-        context.read<AssistantProvider>(),
-        assistantId: assistant?.id,
-        toolName: name,
-        arguments: args,
-      );
-      return text;
-    };
+    return _generationController.buildToolCallHandler(settings, assistant as Assistant?);
   }
 
   /// Build custom headers from assistant settings.
+  /// NOTE: Delegates to GenerationController.
   Map<String, String>? _buildCustomHeaders(dynamic assistant) {
-    if ((assistant?.customHeaders.isNotEmpty ?? false)) {
-      final headers = <String, String>{
-        for (final e in assistant!.customHeaders)
-          if ((e['name'] ?? '').trim().isNotEmpty) (e['name']!.trim()): (e['value'] ?? '')
-      };
-      return headers.isEmpty ? null : headers;
-    }
-    return null;
+    return _generationController.buildCustomHeaders(assistant as Assistant?);
   }
 
   /// Build custom body from assistant settings.
+  /// NOTE: Delegates to GenerationController.
   Map<String, dynamic>? _buildCustomBody(dynamic assistant) {
-    if ((assistant?.customBody.isNotEmpty ?? false)) {
-      final body = <String, dynamic>{
-        for (final e in assistant!.customBody)
-          if ((e['key'] ?? '').trim().isNotEmpty)
-            (e['key']!.trim()): (e['value'] ?? '')
-      };
-      return body.isEmpty ? null : body;
-    }
-    return null;
+    return _generationController.buildCustomBody(assistant as Assistant?);
   }
 
   // ===========================================================================
