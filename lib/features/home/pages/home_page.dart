@@ -25,6 +25,7 @@ import '../controllers/chat_controller.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
 import '../controllers/scroll_controller.dart' as scroll_ctrl;
+import '../controllers/home_view_model.dart';
 import '../services/message_builder_service.dart';
 import '../services/ocr_service.dart';
 import '../services/translation_service.dart';
@@ -109,6 +110,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late GenerationController _generationController;
   late MessageBuilderService _messageBuilderService;
   late MessageGenerationService _messageGenerationService;
+  late HomeViewModel _viewModel;
   late OcrService _ocrService;
   late TranslationService _translationService;
   late FileUploadService _fileUploadService;
@@ -471,11 +473,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _selecting = false;
   final Set<String> _selectedItems = <String>{}; // selected message ids (collapsed view)
 
-  // Helper methods to serialize/deserialize reasoning segments (delegate to StreamController)
-  String _serializeReasoningSegments(List<stream_ctrl.ReasoningSegmentData> segments) {
-    return _streamController.serializeReasoningSegments(segments);
-  }
-
   bool _isReasoningModel(String providerKey, String modelId) {
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
@@ -508,61 +505,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  /// Cancel the active streaming for the current conversation.
+  /// Delegates to HomeViewModel for business logic.
   Future<void> _cancelStreaming() async {
-    final cid = _currentConversation?.id;
-    if (cid == null) return;
-    // Cancel active stream for current conversation only
-    final sub = _conversationStreams.remove(cid);
-    await sub?.cancel();
-
-    // Find the latest assistant streaming message within current conversation and mark it finished
-    ChatMessage? streaming;
-    for (var i = _messages.length - 1; i >= 0; i--) {
-      final m = _messages[i];
-      if (m.role == 'assistant' && m.isStreaming) {
-        streaming = m;
-        break;
-      }
-    }
-    if (streaming != null) {
-      await _chatService.updateMessage(
-        streaming.id,
-        content: streaming.content,
-        isStreaming: false,
-        totalTokens: streaming.totalTokens,
-      );
-      if (mounted) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == streaming!.id);
-          if (idx != -1) {
-            _messages[idx] = _messages[idx].copyWith(isStreaming: false);
-          }
-        });
-      }
-      _setConversationLoading(cid, false);
-
-      // Use unified reasoning completion method
-      await _streamController.finishReasoningAndPersist(
-        streaming.id,
-        updateReasoningInDb: (
-          String messageId, {
-          String? reasoningText,
-          DateTime? reasoningFinishedAt,
-          String? reasoningSegmentsJson,
-        }) async {
-          await _chatService.updateMessage(
-            messageId,
-            reasoningText: reasoningText,
-            reasoningFinishedAt: reasoningFinishedAt,
-            reasoningSegmentsJson: reasoningSegmentsJson,
-          );
-        },
-      );
-
-      // If streaming output included inline base64 images, sanitize them even on manual cancel
-      _scheduleInlineImageSanitize(streaming.id, latestContent: streaming.content, immediate: true);
-    } else {
-      _setConversationLoading(cid, false);
+    await _viewModel.cancelStreaming();
+    if (mounted) {
+      setState(() {}); // Refresh UI after cancellation
     }
   }
 
@@ -673,47 +621,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return out;
   }
 
+  /// Get clear context label based on current state.
+  /// Delegates calculation to HomeViewModel.
   String _clearContextLabel() {
     final l10n = AppLocalizations.of(context)!;
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-    final configured = (assistant?.limitContextMessages ?? true) ? (assistant?.contextMessageSize ?? 0) : 0;
-    // Use collapsed view for counting
-    final collapsed = _collapseVersions(_messages);
-    // Map raw truncate index to collapsed start index
-    final int tRaw = _currentConversation?.truncateIndex ?? -1;
-    int startCollapsed = 0;
-    if (tRaw > 0) {
-      final seen = <String>{};
-      final int limit = tRaw < _messages.length ? tRaw : _messages.length;
-      int count = 0;
-      for (int i = 0; i < limit; i++) {
-        final gid0 = (_messages[i].groupId ?? _messages[i].id);
-        if (seen.add(gid0)) count++;
-      }
-      startCollapsed = count; // inclusive start index in collapsed list
-    }
-    int remaining = 0;
-    for (int i = 0; i < collapsed.length; i++) {
-      if (i >= startCollapsed) {
-        if (collapsed[i].content.trim().isNotEmpty) remaining++;
-      }
-    }
-    if (configured > 0) {
-      final actual = remaining > configured ? configured : remaining;
-      return l10n.homePageClearContextWithCount(actual.toString(), configured.toString());
-    }
-    return l10n.homePageClearContext;
+    return _viewModel.getClearContextLabel(
+      (actual, configured) => l10n.homePageClearContextWithCount(actual, configured),
+      l10n.homePageClearContext,
+    );
   }
 
+  /// Clear context (toggle truncate at tail).
+  /// Uses ViewModel for business logic.
   Future<void> _onClearContext() async {
-    final convo = _currentConversation;
-    if (convo == null) return;
-    final updated = await _chatService.toggleTruncateAtTail(convo.id, defaultTitle: _titleForLocale(context));
-    if (!mounted) return;
-    if (updated != null) {
-      setState(() {
-        _chatController.updateCurrentConversation(updated);
-      });
+    await _viewModel.clearContext();
+    if (mounted) {
+      setState(() {});
     }
     // No inline panel to close; modal sheet is dismissed before action
   }
@@ -849,6 +772,47 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       streamController: _streamController,
       contextProvider: context,
     );
+    // Initialize HomeViewModel for combining actions + services
+    _viewModel = HomeViewModel(
+      chatService: _chatService,
+      messageBuilderService: _messageBuilderService,
+      messageGenerationService: _messageGenerationService,
+      generationController: _generationController,
+      streamController: _streamController,
+      chatController: _chatController,
+      contextProvider: context,
+      getTitleForLocale: _titleForLocale,
+    );
+    // Wire up ViewModel callbacks
+    _viewModel.onError = (error) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      showAppSnackBar(context, message: '${l10n.generationInterrupted}: $error', type: NotificationType.error);
+    };
+    _viewModel.onWarning = (warning) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      if (warning == 'no_model') {
+        showAppSnackBar(context, message: l10n.homePagePleaseSelectModel, type: NotificationType.warning);
+      }
+    };
+    _viewModel.onScrollToBottom = _scrollToBottomSoon;
+    _viewModel.onHapticFeedback = () {
+      try {
+        final settings = context.read<SettingsProvider>();
+        if (settings.hapticsOnGenerate) Haptics.light();
+      } catch (_) {}
+    };
+    _viewModel.onScheduleImageSanitize = (messageId, content, {bool immediate = false}) {
+      _scheduleInlineImageSanitize(messageId, latestContent: content, immediate: immediate);
+    };
+    _viewModel.onStreamFinished = () {
+      // Show notification if in background - handled by _handleStreamDone
+    };
+    _viewModel.onConversationSwitched = () {
+      _restoreMessageUiState();
+      _scrollToBottom(animate: false);
+    };
     // Initialize ChatScrollController for scroll behavior management
     _scrollCtrl = scroll_ctrl.ChatScrollController(
       scrollController: _scrollController,
@@ -1030,9 +994,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  /// Switch to an existing conversation with animation.
+  /// Uses ViewModel for business logic, handles animations in UI layer.
   Future<void> _switchConversationAnimated(String id) async {
     // Before switching, persist any in-flight reasoning/content of current conversation
-    try { await _flushCurrentConversationProgress(); } catch (_) {}
+    try { await _viewModel.flushCurrentConversationProgress(); } catch (_) {}
     if (_currentConversation?.id == id) return;
     if (!_isDesktopPlatform) {
       try {
@@ -1042,20 +1008,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       // Desktop: skip fade-out to switch instantly
       try { _convoFadeController.stop(); _convoFadeController.value = 1.0; } catch (_) {}
     }
-    _chatService.setCurrentConversation(id);
-    final convo = _chatService.getConversation(id);
-    if (convo != null) {
-      if (mounted) {
-        setState(() {
-          _chatController.setCurrentConversation(convo);
-          _streamController.clearGeminiThoughtSigs();
-          _restoreMessageUiState();
-        });
-        // Ensure list lays out, then jump to bottom while hidden
-        try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
-        _scrollToBottom(animate: false);
-      }
+
+    // Use ViewModel for conversation switching
+    await _viewModel.switchConversation(id);
+    if (mounted) {
+      setState(() {});
+      // Ensure list lays out, then jump to bottom while hidden
+      try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
+      _scrollToBottom(animate: false);
     }
+
     if (mounted && !_isDesktopPlatform) {
       try { await _convoFadeController.forward(); } catch (_) {}
     }
@@ -1069,9 +1031,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  /// Create a new conversation with animation.
+  /// Uses ViewModel for business logic, handles animations in UI layer.
   Future<void> _createNewConversationAnimated() async {
     // Flush current conversation progress before creating a new one
-    try { await _flushCurrentConversationProgress(); } catch (_) {}
+    try { await _viewModel.flushCurrentConversationProgress(); } catch (_) {}
     if (!_isDesktopPlatform) {
       try { await _convoFadeController.reverse(); } catch (_) {}
     }
@@ -1149,270 +1113,59 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Create a new conversation.
+  /// Uses ViewModel for business logic.
   Future<void> _createNewConversation() async {
-    // Flush any ongoing generation progress for the current conversation
-    try { await _flushCurrentConversationProgress(); } catch (_) {}
-    final ap = context.read<AssistantProvider>();
-    final assistantId = ap.currentAssistantId;
-    // Don't change global default model - just use assistant's model if set
-    final a = ap.currentAssistant;
-    final conversation = await _chatService.createDraftConversation(title: _titleForLocale(context), assistantId: assistantId);
-    // Default-enable MCP: select all connected servers for this conversation
-    // MCP defaults are now managed per assistant; no per-conversation enabling here
-    setState(() {
-      _chatController.setCurrentConversation(conversation);
-      _streamController.clearAllState();
-      _translations.clear();
-    });
-    // Inject assistant preset messages into new conversation (ordered)
-    try {
-      final ap2 = context.read<AssistantProvider>();
-      final presets = ap2.getPresetMessagesForAssistant(a?.id);
-      if (presets.isNotEmpty && _currentConversation != null) {
-        for (final pm in presets) {
-          final role = (pm['role'] == 'assistant') ? 'assistant' : 'user';
-          final content = (pm['content'] ?? '').trim();
-          if (content.isEmpty) continue;
-          await _chatService.addMessage(
-            conversationId: _currentConversation!.id,
-            role: role,
-            content: content,
-          );
-          if (mounted) {
-            setState(() { _chatController.reloadMessages(); });
-          }
-        }
-      }
-    } catch (_) {}
+    _translations.clear();
+    await _viewModel.createNewConversation();
+    if (mounted) {
+      setState(() {});
+    }
     _scrollToBottomSoon(animate: false);
   }
 
-  // Persist latest in-flight assistant message content and reasoning of the current conversation
-  Future<void> _flushCurrentConversationProgress() async {
-    final cid = _currentConversation?.id;
-    if (cid == null || _messages.isEmpty) return;
-    // Find the latest streaming assistant message in the current conversation
-    ChatMessage? streaming;
-    for (var i = _messages.length - 1; i >= 0; i--) {
-      final m = _messages[i];
-      if (m.role == 'assistant' && m.isStreaming && m.conversationId == cid) {
-        streaming = m;
-        break;
-      }
-    }
-    if (streaming == null) return;
-    // Use the UI-side content snapshot (may be ahead of last persisted chunk)
-    String latestContent = streaming.content;
-    // Also capture reasoning progress if tracked in-memory
-    final r = _reasoning[streaming.id];
-    final segs = _reasoningSegments[streaming.id];
-    try {
-      await _chatService.updateMessage(
-        streaming.id,
-        content: latestContent,
-        totalTokens: streaming.totalTokens,
-        // Do not flip isStreaming here; just flush progress
-      );
-      if (r != null) {
-        await _chatService.updateMessage(
-          streaming.id,
-          reasoningText: r.text,
-          reasoningStartAt: r.startAt ?? DateTime.now(),
-          // keep finishedAt as-is (may be null while thinking)
-        );
-      }
-      if (segs != null && segs.isNotEmpty) {
-        await _chatService.updateMessage(
-          streaming.id,
-          reasoningSegmentsJson: _serializeReasoningSegments(segs),
-        );
-      }
-      // Ensure any inline data URLs get converted even if the user navigates away mid-stream
-      _scheduleInlineImageSanitize(streaming.id, latestContent: latestContent, immediate: true);
-    } catch (_) {}
-  }
-
   /// Send a new message and generate an assistant response.
+  /// Delegates to HomeViewModel for business logic.
   Future<void> _sendMessage(ChatInputData input) async {
     final content = input.text.trim();
     if (content.isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty) return;
     if (_currentConversation == null) await _createNewConversation();
 
-    final settings = context.read<SettingsProvider>();
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-    final assistantId = assistant?.id;
-    final modelConfig = _messageGenerationService.getModelConfig(settings, assistant);
+    // Scroll to bottom before and after sending
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
 
-    if (modelConfig.providerKey == null || modelConfig.modelId == null) {
-      showAppSnackBar(context, message: AppLocalizations.of(context)!.homePagePleaseSelectModel, type: NotificationType.warning);
-      return;
+    final success = await _viewModel.sendMessage(input);
+    if (success && mounted) {
+      setState(() {}); // Refresh UI after message sent
+      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     }
-    final providerKey = modelConfig.providerKey!;
-    final modelId = modelConfig.modelId!;
-
-    // Create user message
-    final userMessage = await _messageGenerationService.createUserMessage(
-      conversationId: _currentConversation!.id,
-      input: input,
-      assistant: assistant,
-    );
-    setState(() => _messages.add(userMessage));
-    _setConversationLoading(_currentConversation!.id, true);
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-
-    // Create assistant message placeholder
-    final assistantMessage = await _messageGenerationService.createAssistantPlaceholder(
-      conversationId: _currentConversation!.id,
-      modelId: modelId,
-      providerKey: providerKey,
-    );
-    setState(() => _messages.add(assistantMessage));
-
-    // Haptics
-    try { if (settings.hapticsOnGenerate) Haptics.light(); } catch (_) {}
-
-    // Reset tool parts and initialize reasoning
-    _toolParts.remove(assistantMessage.id);
-    final supportsReasoning = _isReasoningModel(providerKey, modelId);
-    final enableReasoning = supportsReasoning && _messageGenerationService.isReasoningEnabled(assistant?.thinkingBudget ?? settings.thinkingBudget);
-    await _messageGenerationService.initializeReasoningState(messageId: assistantMessage.id, enableReasoning: enableReasoning);
-
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-
-    // Prepare API messages
-    final prepared = await _messageGenerationService.prepareApiMessagesWithInjections(
-      messages: _messages,
-      versionSelections: _versionSelections,
-      currentConversation: _currentConversation,
-      settings: settings,
-      assistant: assistant,
-      assistantId: assistantId,
-      providerKey: providerKey,
-      modelId: modelId,
-    );
-
-    // Build user image paths
-    final userImagePaths = _messageGenerationService.buildUserImagePaths(
-      input: input,
-      lastUserImagePaths: prepared.lastUserImagePaths,
-      settings: settings,
-    );
-
-    // Execute generation
-    final ctx = _messageGenerationService.buildGenerationContext(
-      assistantMessage: assistantMessage,
-      prepared: prepared,
-      userImagePaths: userImagePaths,
-      providerKey: providerKey,
-      modelId: modelId,
-      assistant: assistant,
-      settings: settings,
-      supportsReasoning: supportsReasoning,
-      enableReasoning: enableReasoning,
-      generateTitleOnFinish: true,
-    );
-    await _executeGeneration(ctx);
   }
 
+  /// Regenerate response at a specific message.
+  /// Delegates to HomeViewModel for business logic.
   Future<void> _regenerateAtMessage(ChatMessage message, {bool assistantAsNewReply = false}) async {
     if (_currentConversation == null) return;
-    await _cancelStreaming();
 
-    final idx = _messages.indexWhere((m) => m.id == message.id);
-    if (idx < 0) return;
-
-    // Calculate versioning using service
+    // Calculate versioning to know which messages will be removed (for translation cleanup)
     final versioning = _messageGenerationService.calculateRegenerationVersioning(
       message: message,
       messages: _messages,
       assistantAsNewReply: assistantAsNewReply,
     );
-    if (versioning.lastKeep < 0) return;
-
-    // Remove trailing messages
-    final removeIds = await _messageGenerationService.removeTrailingMessages(
-      messages: _messages,
-      lastKeep: versioning.lastKeep,
-      targetGroupId: versioning.targetGroupId,
-    );
-    for (final id in removeIds) {
-      _translations.remove(id);
-    }
-    if (removeIds.isNotEmpty) {
-      setState(() => _messages.removeWhere((m) => removeIds.contains(m.id)));
+    if (versioning.lastKeep >= 0 && versioning.lastKeep < _messages.length - 1) {
+      // Pre-clear translations for messages that will be removed
+      for (int i = versioning.lastKeep + 1; i < _messages.length; i++) {
+        _translations.remove(_messages[i].id);
+      }
     }
 
-    // Get model config
-    final settings = context.read<SettingsProvider>();
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-    final assistantId = assistant?.id;
-    final modelConfig = _messageGenerationService.getModelConfig(settings, assistant);
-
-    if (modelConfig.providerKey == null || modelConfig.modelId == null) {
-      showAppSnackBar(context, message: AppLocalizations.of(context)!.homePagePleaseSelectModel, type: NotificationType.warning);
-      return;
+    final success = await _viewModel.regenerateAtMessage(
+      message,
+      assistantAsNewReply: assistantAsNewReply,
+    );
+    if (success && mounted) {
+      setState(() {}); // Refresh UI after regeneration started
     }
-    final providerKey = modelConfig.providerKey!;
-    final modelId = modelConfig.modelId!;
-
-    // Create assistant message placeholder (new version)
-    final assistantMessage = await _messageGenerationService.createAssistantPlaceholder(
-      conversationId: _currentConversation!.id,
-      modelId: modelId,
-      providerKey: providerKey,
-      groupId: versioning.targetGroupId,
-      version: versioning.nextVersion,
-    );
-
-    // Persist version selection
-    final gid = assistantMessage.groupId ?? assistantMessage.id;
-    _versionSelections[gid] = assistantMessage.version;
-    await _chatService.setSelectedVersion(_currentConversation!.id, gid, assistantMessage.version);
-
-    setState(() => _messages.add(assistantMessage));
-    _setConversationLoading(_currentConversation!.id, true);
-
-    // Haptics
-    try { if (settings.hapticsOnGenerate) Haptics.light(); } catch (_) {}
-
-    // Initialize reasoning
-    final supportsReasoning = _isReasoningModel(providerKey, modelId);
-    final enableReasoning = supportsReasoning && _messageGenerationService.isReasoningEnabled(assistant?.thinkingBudget ?? settings.thinkingBudget);
-    await _messageGenerationService.initializeReasoningState(messageId: assistantMessage.id, enableReasoning: enableReasoning);
-
-    // Prepare API messages
-    final prepared = await _messageGenerationService.prepareApiMessagesWithInjections(
-      messages: _messages,
-      versionSelections: _versionSelections,
-      currentConversation: _currentConversation,
-      settings: settings,
-      assistant: assistant,
-      assistantId: assistantId,
-      providerKey: providerKey,
-      modelId: modelId,
-    );
-
-    // Build user image paths
-    final userImagePaths = _messageGenerationService.buildUserImagePaths(
-      input: null,
-      lastUserImagePaths: prepared.lastUserImagePaths,
-      settings: settings,
-    );
-
-    // Execute generation
-    final ctx = _messageGenerationService.buildGenerationContext(
-      assistantMessage: assistantMessage,
-      prepared: prepared,
-      userImagePaths: userImagePaths,
-      providerKey: providerKey,
-      modelId: modelId,
-      assistant: assistant,
-      settings: settings,
-      supportsReasoning: supportsReasoning,
-      enableReasoning: enableReasoning,
-      generateTitleOnFinish: false,
-    );
-    await _executeGeneration(ctx);
   }
 
   Future<void> _maybeGenerateTitleFor(String conversationId, {bool force = false}) async {
@@ -2029,49 +1782,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handles forking conversation at a specific message.
+  /// Uses ViewModel for business logic, handles animations in UI layer.
   Future<void> _handleForkConversation(BuildContext context, ChatMessage message) async {
-    // Determine included groups up to the message's group (inclusive)
-    final Map<String, int> groupFirstIndex = <String, int>{};
-    final List<String> groupOrder = <String>[];
-    for (int i = 0; i < _messages.length; i++) {
-      final gid0 = (_messages[i].groupId ?? _messages[i].id);
-      if (!groupFirstIndex.containsKey(gid0)) {
-        groupFirstIndex[gid0] = i;
-        groupOrder.add(gid0);
-      }
-    }
-    final targetGroup = (message.groupId ?? message.id);
-    final targetOrderIndex = groupOrder.indexOf(targetGroup);
-    if (targetOrderIndex < 0) return;
+    if (!mounted || _currentConversation == null) return;
 
-    final includeGroups = groupOrder.take(targetOrderIndex + 1).toSet();
-    final selected = [
-      for (final m in _messages)
-        if (includeGroups.contains(m.groupId ?? m.id)) m
-    ];
-    // Filter version selections to included groups
-    final sel = <String, int>{};
-    for (final gid in includeGroups) {
-      final v = _versionSelections[gid];
-      if (v != null) sel[gid] = v;
-    }
-    final newConvo = await _chatService.forkConversation(
-      title: _titleForLocale(context),
-      assistantId: _currentConversation?.assistantId,
-      sourceMessages: selected,
-      versionSelections: sel,
-    );
-    // Switch to the new conversation; skip fade on desktop for instant switch
-    if (!mounted) return;
+    // Handle fade animation for mobile
     if (!_isDesktopPlatform) {
       await _convoFadeController.reverse();
     }
-    _chatService.setCurrentConversation(newConvo.id);
+
+    // Use ViewModel to fork and switch
+    await _viewModel.forkConversation(message);
+
     if (!mounted) return;
-    setState(() {
-      _chatController.setCurrentConversation(newConvo);
-      _restoreMessageUiState();
-    });
+    setState(() {});
     try { await WidgetsBinding.instance.endOfFrame; } catch (_) {}
     _scrollToBottom(animate: false);
     if (!_isDesktopPlatform) {
@@ -2552,468 +2276,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  /// Clean up stream throttle timers for a message.
-  void _cleanupStreamTimers(String messageId) {
-    _streamController.cleanupTimers(messageId);
-  }
-
-  /// Handle reasoning chunk from stream.
-  /// Delegates to StreamController.handleReasoningChunk.
-  Future<void> _handleReasoningChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    await _streamController.handleReasoningChunk(
-      chunk,
-      state,
-      updateReasoningInDb: (
-        String messageId, {
-        String? reasoningText,
-        DateTime? reasoningStartAt,
-        String? reasoningSegmentsJson,
-      }) async {
-        await _chatService.updateMessage(
-          messageId,
-          reasoningText: reasoningText,
-          reasoningStartAt: reasoningStartAt,
-          reasoningSegmentsJson: reasoningSegmentsJson,
-        );
-      },
-    );
-    if (mounted && _currentConversation?.id == state.conversationId) {
-      setState(() {});
-    }
-  }
-
-  /// Handle tool calls chunk from stream.
-  /// Delegates to StreamController.handleToolCallsChunk.
-  Future<void> _handleToolCallsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    await _streamController.handleToolCallsChunk(
-      chunk,
-      state,
-      updateReasoningSegmentsInDb: (String messageId, String json) async {
-        await _chatService.updateMessage(messageId, reasoningSegmentsJson: json);
-      },
-      setToolEventsInDb: (String messageId, List<Map<String, dynamic>> events) async {
-        await _chatService.setToolEvents(messageId, events);
-      },
-      getToolEventsFromDb: (String messageId) => _chatService.getToolEvents(messageId),
-    );
-    if (mounted && _currentConversation?.id == state.conversationId) {
-      setState(() {});
-    }
-  }
-
-  /// Handle tool results chunk from stream.
-  /// Delegates to StreamController.handleToolResultsChunk.
-  Future<void> _handleToolResultsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    await _streamController.handleToolResultsChunk(
-      chunk,
-      state,
-      upsertToolEventInDb: (
-        String messageId, {
-        required String id,
-        required String name,
-        required Map<String, dynamic> arguments,
-        String? content,
-      }) async {
-        await _chatService.upsertToolEvent(
-          messageId,
-          id: id,
-          name: name,
-          arguments: arguments,
-          content: content,
-        );
-      },
-    );
-    if (mounted && _currentConversation?.id == state.conversationId) {
-      setState(() {});
-    }
-    if (!_scrollCtrl.isUserScrolling) {
-      _scrollToBottomSoon();
-    }
-  }
-
-  /// Handle content chunk from stream (non-done).
-  Future<void> _handleContentChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state, String chunkContent) async {
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    state.fullContentRaw += chunkContent;
-    if (chunk.totalTokens > 0) {
-      state.totalTokens = chunk.totalTokens;
-    }
-    if (chunk.usage != null) {
-      state.usage = (state.usage ?? const TokenUsage()).merge(chunk.usage!);
-      state.totalTokens = state.usage!.totalTokens;
-    }
-
-    String streamingProcessed = _transformAssistantContent(state);
-    if (streamingProcessed.contains('data:image') && streamingProcessed.contains('base64,')) {
-      try {
-        final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(streamingProcessed);
-        if (sanitized != streamingProcessed) {
-          streamingProcessed = sanitized;
-          state.fullContentRaw = sanitized;
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-    _scheduleInlineImageSanitize(messageId, latestContent: streamingProcessed, immediate: true);
-    await _chatService.updateMessage(
-      messageId,
-      content: streamingProcessed,
-      totalTokens: state.totalTokens,
-    );
-    if (state.ctx.streamOutput && mounted && _currentConversation?.id == conversationId) {
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == messageId);
-        if (index != -1) {
-          _messages[index] = _messages[index].copyWith(
-            content: streamingProcessed,
-            totalTokens: state.totalTokens,
-          );
-        }
-      });
-    }
-
-    // End reasoning when content starts
-    if (state.ctx.streamOutput && chunkContent.isNotEmpty) {
-      await _finishReasoningOnContent(state);
-    }
-
-    // Schedule throttled UI update via StreamController
-    if (state.ctx.streamOutput) {
-      _streamController.scheduleThrottledUpdate(
-        messageId,
-        conversationId,
-        streamingProcessed,
-        totalTokens: state.totalTokens,
-        updateMessageInList: (id, content, tokens) {
-          final index = _messages.indexWhere((m) => m.id == id);
-          if (index != -1) {
-            _messages[index] = _messages[index].copyWith(
-              content: content,
-              totalTokens: tokens,
-            );
-          }
-          _autoScrollToBottomIfNeeded();
-        },
-      );
-    }
-  }
-
-  /// Finish reasoning segment when content starts arriving.
-  Future<void> _finishReasoningOnContent(stream_ctrl.StreamingState state) async {
-    // Use unified reasoning completion method from StreamController
-    await _streamController.finishReasoningAndPersist(
-      state.messageId,
-      updateReasoningInDb: (
-        String messageId, {
-        String? reasoningText,
-        DateTime? reasoningFinishedAt,
-        String? reasoningSegmentsJson,
-      }) async {
-        await _chatService.updateMessage(
-          messageId,
-          reasoningText: reasoningText,
-          reasoningFinishedAt: reasoningFinishedAt,
-          reasoningSegmentsJson: reasoningSegmentsJson,
-        );
-      },
-    );
-  }
-
-  /// Handle stream finish (isDone == true).
-  Future<void> _handleStreamFinish(ChatStreamChunk chunk, stream_ctrl.StreamingState state, String chunkContent) async {
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    if (chunkContent.isNotEmpty) {
-      state.fullContentRaw += chunkContent;
-    }
-
-    // Don't finish if tools are still loading
-    final hasLoadingTool = (_toolParts[messageId]?.any((p) => p.loading) ?? false);
-    if (hasLoadingTool) {
-      return;
-    }
-
-    if (chunk.totalTokens > 0) {
-      state.totalTokens = chunk.totalTokens;
-    }
-    if (chunk.usage != null) {
-      state.usage = (state.usage ?? const TokenUsage()).merge(chunk.usage!);
-      state.totalTokens = state.usage!.totalTokens;
-    }
-
-    await _finishStreaming(state);
-
-    // Show notification if in background
-    try {
-      final sp = context.read<SettingsProvider>();
-      if (PlatformUtils.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-        await NotificationService.showChatCompleted(
-          title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-          body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-        );
-      }
-    } catch (_) {}
-
-    // Handle buffered reasoning for non-streaming mode
-    if (!state.ctx.streamOutput && state.bufferedReasoning.isNotEmpty) {
-      final now = DateTime.now();
-      final startAt = state.reasoningStartAt ?? now;
-      await _chatService.updateMessage(
-        messageId,
-        reasoningText: state.bufferedReasoning,
-        reasoningStartAt: startAt,
-        reasoningFinishedAt: now,
-      );
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      _reasoning[messageId] = stream_ctrl.ReasoningData()
-        ..text = state.bufferedReasoning
-        ..startAt = startAt
-        ..finishedAt = now
-        ..expanded = !autoCollapse;
-      if (mounted && _currentConversation?.id == conversationId) setState(() {});
-    }
-
-    await _conversationStreams.remove(conversationId)?.cancel();
-
-    // Ensure reasoning is finished
-    final r = _reasoning[messageId];
-    if (r != null && r.finishedAt == null) {
-      r.finishedAt = DateTime.now();
-      await _chatService.updateMessage(
-        messageId,
-        reasoningText: r.text,
-        reasoningFinishedAt: r.finishedAt,
-      );
-    }
-  }
-
-  /// Finish streaming and persist final state.
-  Future<void> _finishStreaming(stream_ctrl.StreamingState state, {bool generateTitle = true}) async {
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    // Clean up stream throttle timer and flush final content
-    _cleanupStreamTimers(messageId);
-
-    final shouldGenerateTitle = generateTitle && state.ctx.generateTitleOnFinish && !state.titleQueued;
-    if (state.finishHandled) {
-      if (shouldGenerateTitle) {
-        state.titleQueued = true;
-        _maybeGenerateTitleFor(conversationId);
-      }
-      return;
-    }
-    state.finishHandled = true;
-    if (shouldGenerateTitle) {
-      state.titleQueued = true;
-    }
-
-    // Replace extremely long inline base64 images with local files to avoid jank
-    final processedContent = _transformAssistantContent(state);
-    final sanitizedContent = await MarkdownMediaSanitizer.replaceInlineBase64Images(processedContent);
-    await _chatService.updateMessage(
-      messageId,
-      content: sanitizedContent,
-      totalTokens: state.totalTokens,
-      isStreaming: false,
-    );
-    if (!mounted) return;
-    setState(() {
-      final index = _messages.indexWhere((m) => m.id == messageId);
-      if (index != -1) {
-        _messages[index] = _messages[index].copyWith(
-          content: sanitizedContent,
-          totalTokens: state.totalTokens,
-          isStreaming: false,
-        );
-      }
-    });
-    _setConversationLoading(conversationId, false);
-
-    // Use unified reasoning completion method
-    await _streamController.finishReasoningAndPersist(
-      messageId,
-      updateReasoningInDb: (
-        String messageId, {
-        String? reasoningText,
-        DateTime? reasoningFinishedAt,
-        String? reasoningSegmentsJson,
-      }) async {
-        await _chatService.updateMessage(
-          messageId,
-          reasoningText: reasoningText,
-          reasoningFinishedAt: reasoningFinishedAt,
-          reasoningSegmentsJson: reasoningSegmentsJson,
-        );
-      },
-    );
-
-    if (shouldGenerateTitle) {
-      _maybeGenerateTitleFor(conversationId);
-    }
-  }
-
-  /// Handle stream error.
-  Future<void> _handleStreamError(dynamic e, stream_ctrl.StreamingState state) async {
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    _cleanupStreamTimers(messageId);
-    final errText = '${AppLocalizations.of(context)!.generationInterrupted}: $e';
-    final processed = _transformAssistantContent(state);
-    final displayContent = processed.isNotEmpty ? processed : errText;
-    await _chatService.updateMessage(
-      messageId,
-      content: displayContent,
-      totalTokens: state.totalTokens,
-      isStreaming: false,
-    );
-
-    if (mounted) {
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == messageId);
-        if (index != -1) {
-          _messages[index] = _messages[index].copyWith(
-            content: displayContent,
-            isStreaming: false,
-            totalTokens: state.totalTokens,
-          );
-        }
-      });
-    }
-    _setConversationLoading(conversationId, false);
-
-    // Use unified reasoning completion method on error
-    await _streamController.finishReasoningAndPersist(
-      messageId,
-      updateReasoningInDb: (
-        String messageId, {
-        String? reasoningText,
-        DateTime? reasoningFinishedAt,
-        String? reasoningSegmentsJson,
-      }) async {
-        await _chatService.updateMessage(
-          messageId,
-          reasoningText: reasoningText,
-          reasoningFinishedAt: reasoningFinishedAt,
-          reasoningSegmentsJson: reasoningSegmentsJson,
-        );
-      },
-    );
-
-    await _conversationStreams.remove(conversationId)?.cancel();
-    showAppSnackBar(
-      context,
-      message: '${AppLocalizations.of(context)!.generationInterrupted}: $e',
-      type: NotificationType.error,
-    );
-  }
-
-  /// Handle stream done callback.
-  Future<void> _handleStreamDone(stream_ctrl.StreamingState state) async {
-    final conversationId = state.conversationId;
-
-    _cleanupStreamTimers(state.messageId);
-    if (_loadingConversationIds.contains(conversationId)) {
-      await _finishStreaming(state, generateTitle: state.ctx.generateTitleOnFinish);
-    }
-    try {
-      final sp = context.read<SettingsProvider>();
-      if (PlatformUtils.isAndroid && !_appInForeground && sp.androidBackgroundChatMode == AndroidBackgroundChatMode.onNotify) {
-        await NotificationService.showChatCompleted(
-          title: AppLocalizations.of(context)!.notificationChatCompletedTitle,
-          body: AppLocalizations.of(context)!.notificationChatCompletedBody,
-        );
-      }
-    } catch (_) {}
-    await _conversationStreams.remove(conversationId)?.cancel();
-  }
-
-  /// Dispatch stream chunk to appropriate handler.
-  Future<void> _handleStreamChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    final chunkContent = chunk.content.isNotEmpty
-        ? _captureGeminiThoughtSignature(chunk.content, state.messageId)
-        : '';
-
-    // Handle reasoning
-    if ((chunk.reasoning ?? '').isNotEmpty && state.ctx.supportsReasoning) {
-      await _handleReasoningChunk(chunk, state);
-    }
-
-    // Handle tool calls
-    if ((chunk.toolCalls ?? const []).isNotEmpty) {
-      await _handleToolCallsChunk(chunk, state);
-    }
-
-    // Handle tool results
-    if ((chunk.toolResults ?? const []).isNotEmpty) {
-      await _handleToolResultsChunk(chunk, state);
-    }
-
-    // Handle finish or content
-    if (chunk.isDone) {
-      await _handleStreamFinish(chunk, state, chunkContent);
-    } else {
-      await _handleContentChunk(chunk, state, chunkContent);
-    }
-  }
-
   // ===========================================================================
   // END REGION: Streaming Chunk Handlers
-  // ===========================================================================
-
-  /// Execute generation with the given context. This is the shared streaming logic used by both _sendMessage and _regenerateAtMessage.
-
-  /// - _handleStreamChunk: Main dispatcher for stream chunks
-  /// - _handleReasoningChunk: Handle reasoning content
-  /// - _handleToolCallsChunk: Handle MCP tool call placeholders
-  /// - _handleToolResultsChunk: Handle MCP tool results
-  /// - _handleContentChunk: Handle regular content chunks
-  /// - _handleStreamFinish: Handle stream completion (isDone)
-  /// - _handleStreamError: Handle stream errors
-  /// - _handleStreamDone: Handle stream done callback
-  /// - _finishStreaming: Finalize streaming and persist state
-  Future<void> _executeGeneration(stream_ctrl.GenerationContext ctx) async {
-    final state = stream_ctrl.StreamingState(ctx);
-    final assistant = ctx.assistant;
-    final conversationId = state.conversationId;
-
-    try {
-      final stream = ChatApiService.sendMessageStream(
-        config: ctx.config,
-        modelId: ctx.modelId,
-        messages: ctx.apiMessages,
-        userImagePaths: ctx.userImagePaths,
-        thinkingBudget: assistant?.thinkingBudget ?? ctx.settings.thinkingBudget,
-        temperature: assistant?.temperature,
-        topP: assistant?.topP,
-        maxTokens: assistant?.maxTokens,
-        tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
-        onToolCall: ctx.onToolCall,
-        extraHeaders: ctx.extraHeaders,
-        extraBody: ctx.extraBody,
-        stream: ctx.streamOutput,
-      );
-
-      await _conversationStreams[conversationId]?.cancel();
-      final sub = stream.listen(
-        (chunk) => _handleStreamChunk(chunk, state),
-        onError: (e) => _handleStreamError(e, state),
-        onDone: () => _handleStreamDone(state),
-        cancelOnError: true,
-      );
-      _conversationStreams[conversationId] = sub;
-    } catch (e) {
-      await _handleStreamError(e, state);
-    }
-  }
-
-  // ===========================================================================
-  // END REGION: Message Generation Helpers
+  // NOTE: All stream handling methods have been migrated to ChatActions.
   // ===========================================================================
 
 }
