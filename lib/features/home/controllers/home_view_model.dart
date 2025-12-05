@@ -244,6 +244,61 @@ class HomeViewModel extends ChangeNotifier {
     await _chatActions.cancelStreaming(currentConversation);
   }
 
+  /// Delete a message and adjust version selections.
+  ///
+  /// Returns the list of message IDs to clean up UI state for.
+  /// The UI layer should handle confirmation dialog before calling this.
+  Future<void> deleteMessage({
+    required ChatMessage message,
+    required Map<String, List<ChatMessage>> byGroup,
+  }) async {
+    final id = message.id;
+    final gid = (message.groupId ?? message.id);
+
+    // Compute selection adjustment before removal
+    final versBefore = (byGroup[gid] ?? const <ChatMessage>[])
+      ..sort((a, b) => a.version.compareTo(b.version));
+    final oldSel = versionSelections[gid] ??
+        (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
+    final delIndex = versBefore.indexWhere((m) => m.id == id);
+
+    // Clean up message UI state
+    _streamController.clearMessageState(id);
+
+    // Adjust selected version index for this group
+    final newTotal = versBefore.length - 1;
+    if (newTotal <= 0) {
+      _chatController.versionSelections.remove(gid);
+    } else {
+      int newSel = oldSel;
+      if (delIndex >= 0) {
+        if (delIndex < oldSel) {
+          newSel = oldSel - 1;
+        } else if (delIndex == oldSel) {
+          newSel = (oldSel > 0) ? oldSel - 1 : 0;
+        }
+      }
+      if (newSel < 0) newSel = 0;
+      if (newSel > newTotal - 1) newSel = newTotal - 1;
+      _chatController.versionSelections[gid] = newSel;
+    }
+
+    // Persist updated selection if group still exists
+    final sel = versionSelections[gid];
+    if (sel != null && currentConversation != null) {
+      try {
+        await _chatService.setSelectedVersion(currentConversation!.id, gid, sel);
+      } catch (_) {}
+    }
+
+    // Delete message from storage
+    await _chatService.deleteMessage(id);
+
+    // Reload messages
+    _chatController.reloadMessages();
+    notifyListeners();
+  }
+
   // ============================================================================
   // Public Methods - Conversation Management
   // ============================================================================

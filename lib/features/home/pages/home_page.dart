@@ -376,28 +376,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  /// Collapse versions - delegates to ChatController.
   List<ChatMessage> _collapseVersions(List<ChatMessage> items) {
-    final Map<String, List<ChatMessage>> byGroup = <String, List<ChatMessage>>{};
-    final List<String> order = <String>[];
-    for (final m in items) {
-      final gid = (m.groupId ?? m.id);
-      final list = byGroup.putIfAbsent(gid, () {
-        order.add(gid);
-        return <ChatMessage>[];
-      });
-      list.add(m);
-    }
-    for (final e in byGroup.entries) {
-      e.value.sort((a, b) => a.version.compareTo(b.version));
-    }
-    final out = <ChatMessage>[];
-    for (final gid in order) {
-      final vers = byGroup[gid]!;
-      final sel = _versionSelections[gid];
-      final idx = (sel != null && sel >= 0 && sel < vers.length) ? sel : (vers.length - 1);
-      out.add(vers[idx]);
-    }
-    return out;
+    return _chatController.collapseVersions(items);
   }
 
   /// Get clear context label based on current state.
@@ -495,14 +476,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     try { WidgetsBinding.instance.addObserver(this); } catch (_) {}
+    _initializeAnimations();
+    _initializeControllers();
+    _initializeServices();
+    _initializeViewModel();
+    _wireViewModelCallbacks();
+    _initializeScrollController();
+    _initChat();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
+    _initializeProviders();
+    _setupKeyboardListeners();
+    _setupDesktopFeatures();
+  }
+
+  /// Initialize animation controllers for conversation transitions.
+  void _initializeAnimations() {
     _convoFadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 180));
     _convoFade = CurvedAnimation(parent: _convoFadeController, curve: Curves.easeOutCubic);
     _convoFadeController.value = 1.0;
-    // Use the provided ChatService instance
+  }
+
+  /// Initialize all controllers (ChatController, StreamController).
+  void _initializeControllers() {
     _chatService = context.read<ChatService>();
-    // Initialize ChatController for conversation state management
     _chatController = ChatController(chatService: _chatService);
-    // Initialize StreamController for streaming state management
     _streamController = stream_ctrl.StreamController(
       chatService: _chatService,
       onStateChanged: () {
@@ -511,19 +508,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       getSettingsProvider: () => context.read<SettingsProvider>(),
       getCurrentConversationId: () => _currentConversation?.id,
     );
-    // Initialize OcrService for OCR processing
+  }
+
+  /// Initialize all services (OCR, Translation, FileUpload, MessageBuilder, Generation).
+  void _initializeServices() {
     _ocrService = OcrService();
-    // Initialize TranslationService for message translation
     _translationService = TranslationService(
       chatService: _chatService,
       contextProvider: context,
     );
-    // Initialize FileUploadService for file picking and upload
     _fileUploadService = FileUploadService(
       mediaController: _mediaController,
       onScrollToBottom: _scrollToBottomSoon,
     );
-    // Initialize MessageBuilderService for API message construction
     _messageBuilderService = MessageBuilderService(
       chatService: _chatService,
       contextProvider: context,
@@ -531,7 +528,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       geminiThoughtSignatureHandler: _appendGeminiThoughtSignatureForApi,
     );
     _messageBuilderService.ocrTextWrapper = _ocrService.wrapOcrBlock;
-    // Initialize GenerationController for message generation coordination
     _generationController = GenerationController(
       chatService: _chatService,
       chatController: _chatController,
@@ -543,7 +539,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
       getTitleForLocale: _titleForLocale,
     );
-    // Initialize MessageGenerationService for orchestrating message generation
     _messageGenerationService = MessageGenerationService(
       chatService: _chatService,
       messageBuilderService: _messageBuilderService,
@@ -551,7 +546,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       streamController: _streamController,
       contextProvider: context,
     );
-    // Initialize HomeViewModel for combining actions + services
+  }
+
+  /// Initialize HomeViewModel for combining actions + services.
+  void _initializeViewModel() {
     _viewModel = HomeViewModel(
       chatService: _chatService,
       messageBuilderService: _messageBuilderService,
@@ -562,7 +560,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       contextProvider: context,
       getTitleForLocale: _titleForLocale,
     );
-    // Wire up ViewModel callbacks
+  }
+
+  /// Wire up ViewModel callbacks for UI updates.
+  void _wireViewModelCallbacks() {
     _viewModel.onError = (error) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -592,7 +593,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _restoreMessageUiState();
       _scrollToBottom(animate: false);
     };
-    // Initialize ChatScrollController for scroll behavior management
+  }
+
+  /// Initialize ChatScrollController for scroll behavior management.
+  void _initializeScrollController() {
     _scrollCtrl = scroll_ctrl.ChatScrollController(
       scrollController: _scrollController,
       onStateChanged: () {
@@ -601,9 +605,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       getAutoScrollEnabled: () => context.read<SettingsProvider>().autoScrollEnabled,
       getAutoScrollIdleSeconds: () => context.read<SettingsProvider>().autoScrollIdleSeconds,
     );
-    _initChat();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
+  }
 
+  /// Initialize providers (QuickPhrase, InstructionInjection, MCP).
+  void _initializeProviders() {
     // Initialize quick phrases provider
     Future.microtask(() async {
       try {
@@ -616,13 +621,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         await context.read<InstructionInjectionProvider>().initialize();
       } catch (_) {}
     });
-
     // Attach MCP provider listener (kept for potential future use)
     try {
       _mcpProvider = context.read<McpProvider>();
       _mcpProvider!.addListener(_onMcpChanged);
     } catch (_) {}
+  }
 
+  /// Setup keyboard and drawer listeners.
+  void _setupKeyboardListeners() {
     // 监听键盘弹出
     _inputFocus.addListener(() {
       if (_inputFocus.hasFocus) {
@@ -635,10 +642,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
       }
     });
-
     // Attach drawer value listener to catch swipe-open and close events
     _drawerController.addListener(_onDrawerValueChanged);
+  }
 
+  /// Setup desktop-specific features (auto-focus, hotkeys).
+  void _setupDesktopFeatures() {
     // 桌面端初次进入聊天页时自动聚焦输入框
     if (_isDesktopPlatform) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -647,7 +656,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
       });
     }
-
     // Listen to desktop hotkey actions (chat-only)
     _chatActionSub = ChatActionBus.instance.stream.listen((action) async {
       switch (action) {
@@ -947,59 +955,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _maybeGenerateTitleFor(String conversationId, {bool force = false}) async {
-    final convo = _chatService.getConversation(conversationId);
-    if (convo == null) return;
-    if (!force && convo.title.isNotEmpty && convo.title != _titleForLocale(context)) return;
-
-    final settings = context.read<SettingsProvider>();
-    final assistantProvider = context.read<AssistantProvider>();
-
-    // Get assistant for this conversation
-    final assistant = convo.assistantId != null
-        ? assistantProvider.getById(convo.assistantId!)
-        : assistantProvider.currentAssistant;
-
-    // Decide model: prefer title model, else fall back to assistant's model, then to global default
-    final provKey = settings.titleModelProvider
-        ?? assistant?.chatModelProvider
-        ?? settings.currentModelProvider;
-    final mdlId = settings.titleModelId
-        ?? assistant?.chatModelId
-        ?? settings.currentModelId;
-    if (provKey == null || mdlId == null) return;
-    final cfg = settings.getProviderConfig(provKey);
-
-    // Build content from messages (truncate to reasonable length)
-    final msgs = _chatService.getMessages(convo.id);
-    final tIndex = convo.truncateIndex;
-    final List<ChatMessage> sourceAll = (tIndex >= 0 && tIndex <= msgs.length) ? msgs.sublist(tIndex) : msgs;
-    final List<ChatMessage> source = _collapseVersions(sourceAll);
-    final joined = source
-        .where((m) => m.content.isNotEmpty)
-        .map((m) => '${m.role == 'assistant' ? 'Assistant' : 'User'}: ${m.content}')
-        .join('\n\n');
-    final content = joined.length > 3000 ? joined.substring(0, 3000) : joined;
-    final locale = Localizations.localeOf(context).toLanguageTag();
-
-    String prompt = settings.titlePrompt
-        .replaceAll('{locale}', locale)
-        .replaceAll('{content}', content);
-
-    try {
-      final title = (await ChatApiService.generateText(config: cfg, modelId: mdlId, prompt: prompt)).trim();
-      if (title.isNotEmpty) {
-        await _chatService.renameConversation(convo.id, title);
-        if (mounted && _currentConversation?.id == convo.id) {
-          setState(() {
-            _chatController.updateCurrentConversation(_chatService.getConversation(convo.id));
-          });
-        }
-      }
-    } catch (_) {
-      // Ignore title generation failure silently
-    }
-  }
+  // NOTE: _maybeGenerateTitleFor has been migrated to HomeViewModel._maybeGenerateTitleFor
 
   // ===========================================================================
   // REGION: Scroll Helpers (delegating to ChatScrollController)
@@ -1532,42 +1488,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
     if (confirm != true) return;
 
+    // Clean up UI-specific state before deletion
     final id = message.id;
-    final gid = (message.groupId ?? message.id);
-    // Compute selection adjustment before removal
-    final versBefore = (byGroup[gid] ?? const <ChatMessage>[])..sort((a, b) => a.version.compareTo(b.version));
-    final oldSel = _versionSelections[gid] ?? (versBefore.isNotEmpty ? versBefore.length - 1 : 0);
-    final delIndex = versBefore.indexWhere((m) => m.id == id);
     setState(() {
-      _reasoning.remove(id);
       _translations.remove(id);
-      _toolParts.remove(id);
-      _reasoningSegments.remove(id);
-      // Adjust selected version index for this group
-      final newTotal = versBefore.length - 1;
-      if (newTotal <= 0) {
-        _versionSelections.remove(gid);
-      } else {
-        int newSel = oldSel;
-        if (delIndex >= 0) {
-          if (delIndex < oldSel) newSel = oldSel - 1;
-          else if (delIndex == oldSel) newSel = (oldSel > 0) ? oldSel - 1 : 0;
-        }
-        if (newSel < 0) newSel = 0;
-        if (newSel > newTotal - 1) newSel = newTotal - 1;
-        _versionSelections[gid] = newSel;
-      }
     });
-    // Persist updated selection if group still exists
-    final sel = _versionSelections[gid];
-    if (sel != null && _currentConversation != null) {
-      try { await _chatService.setSelectedVersion(_currentConversation!.id, gid, sel); } catch (_) {}
-    }
-    await _chatService.deleteMessage(id);
-    if (!mounted || _currentConversation == null) return;
-    setState(() {
-      _chatController.reloadMessages();
-    });
+
+    // Delegate business logic to ViewModel
+    await _viewModel.deleteMessage(message: message, byGroup: byGroup);
+
+    if (!mounted) return;
+    setState(() {}); // Refresh UI
   }
 
   /// Handles forking conversation at a specific message.
