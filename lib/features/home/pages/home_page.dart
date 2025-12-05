@@ -77,6 +77,7 @@ import '../utils/model_display_helper.dart';
 import '../widgets/scroll_nav_buttons.dart';
 import '../widgets/selection_toolbar.dart';
 import '../widgets/model_icon.dart';
+import '../services/message_generation_service.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -109,6 +110,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late stream_ctrl.StreamController _streamController;
   late GenerationController _generationController;
   late MessageBuilderService _messageBuilderService;
+  late MessageGenerationService _messageGenerationService;
   late OcrService _ocrService;
   late TranslationService _translationService;
   late FileUploadService _fileUploadService;
@@ -463,19 +465,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  // Deduplicate tool UI parts (delegate to StreamController)
-  List<ToolUIPart> _dedupeToolPartsList(List<ToolUIPart> parts) {
-    return _streamController.dedupeToolPartsList(parts);
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appInForeground = (state == AppLifecycleState.resumed);
-  }
-
-  // Deduplicate raw persisted tool events (delegate to StreamController)
-  List<Map<String, dynamic>> _dedupeToolEvents(List<Map<String, dynamic>> events) {
-    return _streamController.dedupeToolEvents(events);
   }
 
   // Selection mode state for export/share
@@ -851,6 +843,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (mounted) setState(() {});
       },
       getTitleForLocale: _titleForLocale,
+    );
+    // Initialize MessageGenerationService for orchestrating message generation
+    _messageGenerationService = MessageGenerationService(
+      chatService: _chatService,
+      messageBuilderService: _messageBuilderService,
+      generationController: _generationController,
+      streamController: _streamController,
+      contextProvider: context,
     );
     // Initialize ChatScrollController for scroll behavior management
     _scrollCtrl = scroll_ctrl.ChatScrollController(
@@ -1236,12 +1236,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Send a new message and generate an assistant response.
-  /// This method handles:
-  /// 1. Input validation
-  /// 2. User message creation and persistence
-  /// 3. Assistant message placeholder creation
-  /// 4. API message preparation (documents, OCR, system prompts, tools)
-  /// 5. Streaming generation via _executeGeneration
   Future<void> _sendMessage(ChatInputData input) async {
     final content = input.text.trim();
     if (content.isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty) return;
@@ -1250,347 +1244,177 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
     final assistantId = assistant?.id;
+    final modelConfig = _messageGenerationService.getModelConfig(settings, assistant);
 
-    // Use assistant's model if set, otherwise fall back to global default
-    final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final modelId = assistant?.chatModelId ?? settings.currentModelId;
-
-    if (providerKey == null || modelId == null) {
-      final l10n = AppLocalizations.of(context)!;
-      showAppSnackBar(
-        context,
-        message: l10n.homePagePleaseSelectModel,
-        type: NotificationType.warning,
-      );
+    if (modelConfig.providerKey == null || modelConfig.modelId == null) {
+      showAppSnackBar(context, message: AppLocalizations.of(context)!.homePagePleaseSelectModel, type: NotificationType.warning);
       return;
     }
+    final providerKey = modelConfig.providerKey!;
+    final modelId = modelConfig.modelId!;
 
-    // === Step 1: Create and persist user message ===
-    final imageMarkers = input.imagePaths.map((p) => '\n[image:$p]').join();
-    final docMarkers = input.documents.map((d) => '\n[file:${d.path}|${d.fileName}|${d.mime}]').join();
-    final processedUserText = applyAssistantRegexes(
-      content,
+    // Create user message
+    final userMessage = await _messageGenerationService.createUserMessage(
+      conversationId: _currentConversation!.id,
+      input: input,
       assistant: assistant,
-      scope: AssistantRegexScope.user,
-      visual: false,
     );
-    final userMessage = await _chatService.addMessage(
-      conversationId: _currentConversation!.id,
-      role: 'user',
-      content: processedUserText + imageMarkers + docMarkers,
-    );
-
-    setState(() {
-      _messages.add(userMessage);
-    });
+    setState(() => _messages.add(userMessage));
     _setConversationLoading(_currentConversation!.id, true);
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollToBottom();
-    });
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
 
-    // === Step 2: Create assistant message placeholder ===
-    final assistantMessage = await _chatService.addMessage(
+    // Create assistant message placeholder
+    final assistantMessage = await _messageGenerationService.createAssistantPlaceholder(
       conversationId: _currentConversation!.id,
-      role: 'assistant',
-      content: '',
       modelId: modelId,
-      providerId: providerKey,
-      isStreaming: true,
+      providerKey: providerKey,
+    );
+    setState(() => _messages.add(assistantMessage));
+
+    // Haptics
+    try { if (settings.hapticsOnGenerate) Haptics.light(); } catch (_) {}
+
+    // Reset tool parts and initialize reasoning
+    _toolParts.remove(assistantMessage.id);
+    final supportsReasoning = _isReasoningModel(providerKey, modelId);
+    final enableReasoning = supportsReasoning && _messageGenerationService.isReasoningEnabled(assistant?.thinkingBudget ?? settings.thinkingBudget);
+    await _messageGenerationService.initializeReasoningState(messageId: assistantMessage.id, enableReasoning: enableReasoning);
+
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+
+    // Prepare API messages
+    final prepared = await _messageGenerationService.prepareApiMessagesWithInjections(
+      messages: _messages,
+      versionSelections: _versionSelections,
+      currentConversation: _currentConversation,
+      settings: settings,
+      assistant: assistant,
+      assistantId: assistantId,
+      providerKey: providerKey,
+      modelId: modelId,
     );
 
-    setState(() {
-      _messages.add(assistantMessage);
-    });
+    // Build user image paths
+    final userImagePaths = _messageGenerationService.buildUserImagePaths(
+      input: input,
+      lastUserImagePaths: prepared.lastUserImagePaths,
+      settings: settings,
+    );
 
-    // Haptics on generate (if enabled)
-    try {
-      if (context.read<SettingsProvider>().hapticsOnGenerate) {
-        Haptics.light();
-      }
-    } catch (_) {}
-
-    // Reset tool parts for this new assistant message
-    _toolParts.remove(assistantMessage.id);
-
-    // Initialize reasoning state only when enabled and model supports it
-    final supportsReasoning = _isReasoningModel(providerKey, modelId);
-    final enableReasoning = supportsReasoning && _isReasoningEnabled((assistant?.thinkingBudget) ?? settings.thinkingBudget);
-    if (enableReasoning) {
-      final rd = stream_ctrl.ReasoningData();
-      _reasoning[assistantMessage.id] = rd;
-      await _chatService.updateMessage(
-        assistantMessage.id,
-        reasoningStartAt: DateTime.now(),
-      );
-    }
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollToBottom();
-    });
-
-    // === Step 3: Build API messages ===
-    final apiMessages = _buildApiMessages();
-
-    // === Step 4: Process user messages (documents, OCR, templates) ===
-    final bool ocrActive = settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null;
-    await _processUserMessagesForApi(apiMessages, settings, assistant);
-
-    // === Step 5: Inject prompts ===
-    _injectSystemPrompt(apiMessages, assistant, modelId);
-    await _injectMemoryAndRecentChats(apiMessages, assistant);
-
-    final hasBuiltInSearch = _hasBuiltInGeminiSearch(settings, providerKey, modelId);
-    _injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
-    await _injectInstructionPrompts(apiMessages, assistantId);
-
-    // === Step 6: Apply context limit and inline images ===
-    _applyContextLimit(apiMessages, assistant);
-    await _inlineLocalImages(apiMessages);
-
-    // === Step 7: Prepare tools and config ===
-    final toolDefs = _buildToolDefinitions(settings, assistant, providerKey, modelId, hasBuiltInSearch);
-    final onToolCall = toolDefs.isNotEmpty ? _buildToolCallHandler(settings, assistant) : null;
-
-    // Collect video attachments from current input
-    final currentVideoPaths = <String>[
-      for (final d in input.documents)
-        if (d.mime.toLowerCase().startsWith('video/')) d.path,
-    ];
-
-    // Build user image paths for API call
-    final userImagePaths = ocrActive
-        ? const <String>[]
-        : <String>[
-            ...input.imagePaths,
-            ...currentVideoPaths,
-          ];
-
-    // === Step 8: Execute generation ===
-    final ctx = stream_ctrl.GenerationContext(
+    // Execute generation
+    final ctx = _messageGenerationService.buildGenerationContext(
       assistantMessage: assistantMessage,
-      apiMessages: apiMessages,
+      prepared: prepared,
       userImagePaths: userImagePaths,
       providerKey: providerKey,
       modelId: modelId,
       assistant: assistant,
       settings: settings,
-      config: settings.getProviderConfig(providerKey),
-      toolDefs: toolDefs,
-      onToolCall: onToolCall,
-      extraHeaders: _buildCustomHeaders(assistant),
-      extraBody: _buildCustomBody(assistant),
       supportsReasoning: supportsReasoning,
       enableReasoning: enableReasoning,
-      streamOutput: assistant?.streamOutput ?? true,
       generateTitleOnFinish: true,
     );
-
     await _executeGeneration(ctx);
   }
 
   Future<void> _regenerateAtMessage(ChatMessage message, {bool assistantAsNewReply = false}) async {
     if (_currentConversation == null) return;
-    // Cancel any ongoing stream
     await _cancelStreaming();
 
     final idx = _messages.indexWhere((m) => m.id == message.id);
     if (idx < 0) return;
 
-    // Compute versioning target (groupId + nextVersion) and where to cut
-    String? targetGroupId;
-    int nextVersion = 0;
-    int lastKeep;
-    if (message.role == 'assistant') {
-      // Keep the existing assistant message; optionally open a new group for the new reply
-      lastKeep = idx; // remove after this
-      if (assistantAsNewReply) {
-        targetGroupId = null; // start a new group for the upcoming assistant reply
-        nextVersion = 0;
-      } else {
-        targetGroupId = message.groupId ?? message.id;
-        int maxVer = -1;
-        for (final m in _messages) {
-          final gid = (m.groupId ?? m.id);
-          if (gid == targetGroupId) {
-            if (m.version > maxVer) maxVer = m.version;
-          }
-        }
-        nextVersion = maxVer + 1;
-      }
-    } else {
-      // User message: find the first assistant reply after the FIRST occurrence of this user group,
-      // not after the current version's position (which may be appended at tail after edits).
-      final userGroupId = message.groupId ?? message.id;
-      int userFirst = -1;
-      for (int i = 0; i < _messages.length; i++) {
-        final gid0 = (_messages[i].groupId ?? _messages[i].id);
-        if (gid0 == userGroupId) { userFirst = i; break; }
-      }
-      if (userFirst < 0) userFirst = idx; // fallback
+    // Calculate versioning using service
+    final versioning = _messageGenerationService.calculateRegenerationVersioning(
+      message: message,
+      messages: _messages,
+      assistantAsNewReply: assistantAsNewReply,
+    );
+    if (versioning.lastKeep < 0) return;
 
-      int aid = -1;
-      for (int i = userFirst + 1; i < _messages.length; i++) {
-        if (_messages[i].role == 'assistant') { aid = i; break; }
-      }
-      if (aid >= 0) {
-        lastKeep = aid; // keep that assistant message as old version
-        targetGroupId = _messages[aid].groupId ?? _messages[aid].id;
-        int maxVer = -1;
-        for (final m in _messages) {
-          final gid = (m.groupId ?? m.id);
-          if (gid == targetGroupId) {
-            if (m.version > maxVer) maxVer = m.version;
-          }
-        }
-        nextVersion = maxVer + 1;
-      } else {
-        // No assistant reply yet; keep up to the first user message occurrence and start new group
-        lastKeep = userFirst;
-        targetGroupId = null; // will be set to new id automatically
-        nextVersion = 0;
-      }
+    // Remove trailing messages
+    final removeIds = await _messageGenerationService.removeTrailingMessages(
+      messages: _messages,
+      lastKeep: versioning.lastKeep,
+      targetGroupId: versioning.targetGroupId,
+    );
+    for (final id in removeIds) {
+      _translations.remove(id);
+    }
+    if (removeIds.isNotEmpty) {
+      setState(() => _messages.removeWhere((m) => removeIds.contains(m.id)));
     }
 
-    // Remove messages after lastKeep (persistently), but preserve:
-    // - all versions of groups that already appeared up to lastKeep (e.g., edited user messages), and
-    // - all versions of the target assistant group we are regenerating
-    if (lastKeep < _messages.length - 1) {
-      // Collect groups that appear at or before lastKeep
-      final keepGroups = <String>{};
-      for (int i = 0; i <= lastKeep && i < _messages.length; i++) {
-        final g = (_messages[i].groupId ?? _messages[i].id);
-        keepGroups.add(g);
-      }
-      if (targetGroupId != null) keepGroups.add(targetGroupId!);
-
-      final trailing = _messages.sublist(lastKeep + 1);
-      final removeIds = <String>[];
-      for (final m in trailing) {
-        final gid = (m.groupId ?? m.id);
-        final shouldKeep = keepGroups.contains(gid);
-        if (!shouldKeep) removeIds.add(m.id);
-      }
-      for (final id in removeIds) {
-        try { await _chatService.deleteMessage(id); } catch (_) {}
-        _reasoning.remove(id);
-        _translations.remove(id);
-        _toolParts.remove(id);
-        _reasoningSegments.remove(id);
-      }
-      if (removeIds.isNotEmpty) {
-        setState(() {
-          _messages.removeWhere((m) => removeIds.contains(m.id));
-        });
-      }
-    }
-
-    // Start a new assistant generation from current context
+    // Get model config
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
     final assistantId = assistant?.id;
-    
-    // Use assistant's model if set, otherwise fall back to global default
-    final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final modelId = assistant?.chatModelId ?? settings.currentModelId;
+    final modelConfig = _messageGenerationService.getModelConfig(settings, assistant);
 
-    if (providerKey == null || modelId == null) {
-      final l10n = AppLocalizations.of(context)!;
-      showAppSnackBar(
-        context,
-        message: l10n.homePagePleaseSelectModel,
-        type: NotificationType.warning,
-      );
+    if (modelConfig.providerKey == null || modelConfig.modelId == null) {
+      showAppSnackBar(context, message: AppLocalizations.of(context)!.homePagePleaseSelectModel, type: NotificationType.warning);
       return;
     }
+    final providerKey = modelConfig.providerKey!;
+    final modelId = modelConfig.modelId!;
 
-    // Create assistant message placeholder (new version in target group)
-    final assistantMessage = await _chatService.addMessage(
+    // Create assistant message placeholder (new version)
+    final assistantMessage = await _messageGenerationService.createAssistantPlaceholder(
       conversationId: _currentConversation!.id,
-      role: 'assistant',
-      content: '',
       modelId: modelId,
-      providerId: providerKey,
-      isStreaming: true,
-      groupId: targetGroupId,
-      version: nextVersion,
+      providerKey: providerKey,
+      groupId: versioning.targetGroupId,
+      version: versioning.nextVersion,
     );
 
-    // Persist selection to the latest version of this group
+    // Persist version selection
     final gid = assistantMessage.groupId ?? assistantMessage.id;
     _versionSelections[gid] = assistantMessage.version;
     await _chatService.setSelectedVersion(_currentConversation!.id, gid, assistantMessage.version);
 
-    setState(() {
-      _messages.add(assistantMessage);
-    });
+    setState(() => _messages.add(assistantMessage));
     _setConversationLoading(_currentConversation!.id, true);
 
-    // Haptics on regenerate
-    try {
-      if (context.read<SettingsProvider>().hapticsOnGenerate) {
-        Haptics.light();
-      }
-    } catch (_) {}
+    // Haptics
+    try { if (settings.hapticsOnGenerate) Haptics.light(); } catch (_) {}
 
-    // Initialize reasoning state only when enabled and model supports it
+    // Initialize reasoning
     final supportsReasoning = _isReasoningModel(providerKey, modelId);
-    final enableReasoning = supportsReasoning && _isReasoningEnabled((assistant?.thinkingBudget) ?? settings.thinkingBudget);
-    if (enableReasoning) {
-      final rd = stream_ctrl.ReasoningData();
-      _reasoning[assistantMessage.id] = rd;
-      await _chatService.updateMessage(assistantMessage.id, reasoningStartAt: DateTime.now());
-    }
+    final enableReasoning = supportsReasoning && _messageGenerationService.isReasoningEnabled(assistant?.thinkingBudget ?? settings.thinkingBudget);
+    await _messageGenerationService.initializeReasoningState(messageId: assistantMessage.id, enableReasoning: enableReasoning);
 
-    // === Build API messages using shared helpers ===
-    final apiMessages = _buildApiMessages();
+    // Prepare API messages
+    final prepared = await _messageGenerationService.prepareApiMessagesWithInjections(
+      messages: _messages,
+      versionSelections: _versionSelections,
+      currentConversation: _currentConversation,
+      settings: settings,
+      assistant: assistant,
+      assistantId: assistantId,
+      providerKey: providerKey,
+      modelId: modelId,
+    );
 
-    // Process user messages (documents, OCR, templates) and get image paths from last user message
-    final lastUserImagePaths = await _processUserMessagesForApi(apiMessages, settings, assistant);
+    // Build user image paths
+    final userImagePaths = _messageGenerationService.buildUserImagePaths(
+      input: null,
+      lastUserImagePaths: prepared.lastUserImagePaths,
+      settings: settings,
+    );
 
-    // Inject system prompt and additional context
-    _injectSystemPrompt(apiMessages, assistant, modelId);
-    await _injectMemoryAndRecentChats(apiMessages, assistant);
-
-    final hasBuiltInSearch = _hasBuiltInGeminiSearch(settings, providerKey, modelId);
-    _injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
-    await _injectInstructionPrompts(apiMessages, assistantId);
-
-    // Apply context limit and inline images
-    _applyContextLimit(apiMessages, assistant);
-    await _inlineLocalImages(apiMessages);
-
-    // Prepare tools
-    final toolDefs = _buildToolDefinitions(settings, assistant, providerKey, modelId, hasBuiltInSearch);
-    final onToolCall = toolDefs.isNotEmpty ? _buildToolCallHandler(settings, assistant) : null;
-
-    // Build user image paths for API call (OCR mode strips images)
-    final bool ocrActive = settings.ocrEnabled &&
-        settings.ocrModelProvider != null &&
-        settings.ocrModelId != null;
-    final userImagePaths = ocrActive ? const <String>[] : lastUserImagePaths;
-
-    // === Execute generation using shared method ===
-    final ctx = stream_ctrl.GenerationContext(
+    // Execute generation
+    final ctx = _messageGenerationService.buildGenerationContext(
       assistantMessage: assistantMessage,
-      apiMessages: apiMessages,
+      prepared: prepared,
       userImagePaths: userImagePaths,
       providerKey: providerKey,
       modelId: modelId,
       assistant: assistant,
       settings: settings,
-      config: settings.getProviderConfig(providerKey),
-      toolDefs: toolDefs,
-      onToolCall: onToolCall,
-      extraHeaders: _buildCustomHeaders(assistant),
-      extraBody: _buildCustomBody(assistant),
       supportsReasoning: supportsReasoning,
       enableReasoning: enableReasoning,
-      streamOutput: assistant?.streamOutput ?? true,
-      generateTitleOnFinish: false, // Regenerate doesn't need title generation
+      generateTitleOnFinish: false,
     );
-
     await _executeGeneration(ctx);
   }
 
@@ -2942,127 +2766,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // ===========================================================================
-  // REGION: Message Generation Helpers (Refactored)
-  // ===========================================================================
-
-  /// Build API messages list from current conversation state.
-  /// Applies truncation, version collapsing, and strips [image:] / [file:] markers.
-  /// NOTE: Delegates to MessageBuilderService.
-  List<Map<String, dynamic>> _buildApiMessages() {
-    return _messageBuilderService.buildApiMessages(
-      messages: _messages,
-      versionSelections: _versionSelections,
-      currentConversation: _currentConversation,
-    );
-  }
-
-  /// Process user messages in apiMessages: extract documents, apply OCR, inject file prompts.
-  /// Returns the image paths from the last user message (for API call).
-  /// NOTE: Delegates to MessageBuilderService.
-  Future<List<String>> _processUserMessagesForApi(
-    List<Map<String, dynamic>> apiMessages,
-    SettingsProvider settings,
-    dynamic assistant,
-  ) async {
-    return _messageBuilderService.processUserMessagesForApi(apiMessages, settings, assistant as Assistant?);
-  }
-
-  /// Inject system prompt into apiMessages.
-  /// NOTE: Delegates to MessageBuilderService.
-  void _injectSystemPrompt(
-    List<Map<String, dynamic>> apiMessages,
-    dynamic assistant,
-    String modelId,
-  ) {
-    _messageBuilderService.injectSystemPrompt(apiMessages, assistant as Assistant?, modelId);
-  }
-
-  /// Inject memory prompts and recent chats reference into apiMessages.
-  /// NOTE: Delegates to MessageBuilderService.
-  Future<void> _injectMemoryAndRecentChats(
-    List<Map<String, dynamic>> apiMessages,
-    dynamic assistant,
-  ) async {
-    await _messageBuilderService.injectMemoryAndRecentChats(apiMessages, assistant as Assistant?);
-  }
-
-  /// Inject search tool usage prompt into apiMessages.
-  /// NOTE: Delegates to MessageBuilderService.
-  void _injectSearchPrompt(
-    List<Map<String, dynamic>> apiMessages,
-    SettingsProvider settings,
-    bool hasBuiltInSearch,
-  ) {
-    _messageBuilderService.injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
-  }
-
-  /// Inject instruction injection prompts into apiMessages.
-  /// NOTE: Delegates to MessageBuilderService.
-  Future<void> _injectInstructionPrompts(
-    List<Map<String, dynamic>> apiMessages,
-    String? assistantId,
-  ) async {
-    await _messageBuilderService.injectInstructionPrompts(apiMessages, assistantId);
-  }
-
-  /// Apply context message limit based on assistant settings.
-  /// NOTE: Delegates to MessageBuilderService.
-  void _applyContextLimit(List<Map<String, dynamic>> apiMessages, dynamic assistant) {
-    _messageBuilderService.applyContextLimit(apiMessages, assistant as Assistant?);
-  }
-
-  /// Convert local Markdown image links to inline base64 for model context.
-  /// NOTE: Delegates to MessageBuilderService.
-  Future<void> _inlineLocalImages(List<Map<String, dynamic>> apiMessages) async {
-    await _messageBuilderService.inlineLocalImages(apiMessages);
-  }
-
-  /// Check if Gemini built-in search is enabled for the given provider/model.
-  /// NOTE: Delegates to MessageBuilderService.
-  bool _hasBuiltInGeminiSearch(SettingsProvider settings, String providerKey, String modelId) {
-    return _messageBuilderService.hasBuiltInGeminiSearch(settings, providerKey, modelId);
-  }
-
-  /// Prepare tool definitions for API call.
-  /// NOTE: Delegates to GenerationController.
-  List<Map<String, dynamic>> _buildToolDefinitions(
-    SettingsProvider settings,
-    dynamic assistant,
-    String providerKey,
-    String modelId,
-    bool hasBuiltInSearch,
-  ) {
-    return _generationController.buildToolDefinitions(
-      settings,
-      assistant as Assistant?,
-      providerKey,
-      modelId,
-      hasBuiltInSearch,
-    );
-  }
-
-  /// Build tool call handler function.
-  /// NOTE: Delegates to GenerationController.
-  Future<String> Function(String, Map<String, dynamic>)? _buildToolCallHandler(
-    SettingsProvider settings,
-    dynamic assistant,
-  ) {
-    return _generationController.buildToolCallHandler(settings, assistant as Assistant?);
-  }
-
-  /// Build custom headers from assistant settings.
-  /// NOTE: Delegates to GenerationController.
-  Map<String, String>? _buildCustomHeaders(dynamic assistant) {
-    return _generationController.buildCustomHeaders(assistant as Assistant?);
-  }
-
-  /// Build custom body from assistant settings.
-  /// NOTE: Delegates to GenerationController.
-  Map<String, dynamic>? _buildCustomBody(dynamic assistant) {
-    return _generationController.buildCustomBody(assistant as Assistant?);
-  }
-
-  // ===========================================================================
   // REGION: Streaming Chunk Handlers
   // ===========================================================================
 
@@ -3082,163 +2785,73 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   /// Handle reasoning chunk from stream.
+  /// Delegates to StreamController.handleReasoningChunk.
   Future<void> _handleReasoningChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    if ((chunk.reasoning ?? '').isEmpty || !state.ctx.supportsReasoning) return;
-
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    if (state.ctx.streamOutput) {
-      final r = _reasoning[messageId] ?? stream_ctrl.ReasoningData();
-      r.text += chunk.reasoning!;
-      r.startAt ??= DateTime.now();
-      r.expanded = false;
-      _reasoning[messageId] = r;
-
-      // Add to reasoning segments for mixed display
-      final segments = _reasoningSegments[messageId] ?? <stream_ctrl.ReasoningSegmentData>[];
-      if (segments.isEmpty) {
-        final newSegment = stream_ctrl.ReasoningSegmentData();
-        newSegment.text = chunk.reasoning!;
-        newSegment.startAt = DateTime.now();
-        newSegment.expanded = false;
-        newSegment.toolStartIndex = (_toolParts[messageId]?.length ?? 0);
-        segments.add(newSegment);
-      } else {
-        final hasToolsAfterLastSegment = (_toolParts[messageId]?.isNotEmpty ?? false);
-        final lastSegment = segments.last;
-        if (hasToolsAfterLastSegment && lastSegment.finishedAt != null) {
-          final newSegment = stream_ctrl.ReasoningSegmentData();
-          newSegment.text = chunk.reasoning!;
-          newSegment.startAt = DateTime.now();
-          newSegment.expanded = false;
-          newSegment.toolStartIndex = (_toolParts[messageId]?.length ?? 0);
-          segments.add(newSegment);
-        } else {
-          lastSegment.text += chunk.reasoning!;
-          lastSegment.startAt ??= DateTime.now();
-        }
-      }
-      _reasoningSegments[messageId] = segments;
-
-      await _chatService.updateMessage(
-        messageId,
-        reasoningSegmentsJson: _serializeReasoningSegments(segments),
-      );
-
-      if (mounted && _currentConversation?.id == conversationId) setState(() {});
-      await _chatService.updateMessage(
-        messageId,
-        reasoningText: r.text,
-        reasoningStartAt: r.startAt,
-      );
-    } else {
-      state.reasoningStartAt ??= DateTime.now();
-      state.bufferedReasoning += chunk.reasoning!;
-      await _chatService.updateMessage(
-        messageId,
-        reasoningText: state.bufferedReasoning,
-        reasoningStartAt: state.reasoningStartAt,
-      );
+    await _streamController.handleReasoningChunk(
+      chunk,
+      state,
+      updateReasoningInDb: (
+        String messageId, {
+        String? reasoningText,
+        DateTime? reasoningStartAt,
+        String? reasoningSegmentsJson,
+      }) async {
+        await _chatService.updateMessage(
+          messageId,
+          reasoningText: reasoningText,
+          reasoningStartAt: reasoningStartAt,
+          reasoningSegmentsJson: reasoningSegmentsJson,
+        );
+      },
+    );
+    if (mounted && _currentConversation?.id == state.conversationId) {
+      setState(() {});
     }
   }
 
   /// Handle tool calls chunk from stream.
+  /// Delegates to StreamController.handleToolCallsChunk.
   Future<void> _handleToolCallsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    if ((chunk.toolCalls ?? const []).isEmpty) return;
-
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    // Finish any unfinished reasoning segment when tools start
-    final segments = _reasoningSegments[messageId] ?? <stream_ctrl.ReasoningSegmentData>[];
-    if (segments.isNotEmpty && segments.last.finishedAt == null) {
-      segments.last.finishedAt = DateTime.now();
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        segments.last.expanded = false;
-        final rd = _reasoning[messageId];
-        if (rd != null) rd.expanded = false;
-      }
-      _reasoningSegments[messageId] = segments;
-      await _chatService.updateMessage(
-        messageId,
-        reasoningSegmentsJson: _serializeReasoningSegments(segments),
-      );
+    await _streamController.handleToolCallsChunk(
+      chunk,
+      state,
+      updateReasoningSegmentsInDb: (String messageId, String json) async {
+        await _chatService.updateMessage(messageId, reasoningSegmentsJson: json);
+      },
+      setToolEventsInDb: (String messageId, List<Map<String, dynamic>> events) async {
+        await _chatService.setToolEvents(messageId, events);
+      },
+      getToolEventsFromDb: (String messageId) => _chatService.getToolEvents(messageId),
+    );
+    if (mounted && _currentConversation?.id == state.conversationId) {
+      setState(() {});
     }
-
-    // Add tool call placeholders
-    final existing = List<ToolUIPart>.of(_toolParts[messageId] ?? const []);
-    for (final c in chunk.toolCalls!) {
-      existing.add(ToolUIPart(id: c.id, toolName: c.name, arguments: c.arguments, loading: true));
-    }
-    if (mounted && _currentConversation?.id == conversationId) {
-      setState(() {
-        _toolParts[messageId] = _dedupeToolPartsList(existing);
-      });
-    }
-
-    // Persist tool events
-    try {
-      final prev = _chatService.getToolEvents(messageId);
-      final newEvents = <Map<String, dynamic>>[
-        ...prev,
-        for (final c in chunk.toolCalls!)
-          {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
-      ];
-      await _chatService.setToolEvents(messageId, _dedupeToolEvents(newEvents));
-    } catch (_) {}
   }
 
   /// Handle tool results chunk from stream.
+  /// Delegates to StreamController.handleToolResultsChunk.
   Future<void> _handleToolResultsChunk(ChatStreamChunk chunk, stream_ctrl.StreamingState state) async {
-    if ((chunk.toolResults ?? const []).isEmpty) return;
-
-    final messageId = state.messageId;
-    final conversationId = state.conversationId;
-
-    final parts = List<ToolUIPart>.of(_toolParts[messageId] ?? const []);
-    for (final r in chunk.toolResults!) {
-      int idx = -1;
-      for (int i = 0; i < parts.length; i++) {
-        if (parts[i].loading && (parts[i].id == r.id || (parts[i].id.isEmpty && parts[i].toolName == r.name))) {
-          idx = i;
-          break;
-        }
-      }
-      if (idx >= 0) {
-        parts[idx] = ToolUIPart(
-          id: parts[idx].id,
-          toolName: parts[idx].toolName,
-          arguments: (r.arguments is Map && (r.arguments as Map).isNotEmpty)
-              ? Map<String, dynamic>.from(r.arguments)
-              : parts[idx].arguments,
-          content: r.content,
-          loading: false,
-        );
-      } else {
-        parts.add(ToolUIPart(
-          id: r.id,
-          toolName: r.name,
-          arguments: r.arguments,
-          content: r.content,
-          loading: false,
-        ));
-      }
-      try {
+    await _streamController.handleToolResultsChunk(
+      chunk,
+      state,
+      upsertToolEventInDb: (
+        String messageId, {
+        required String id,
+        required String name,
+        required Map<String, dynamic> arguments,
+        String? content,
+      }) async {
         await _chatService.upsertToolEvent(
           messageId,
-          id: r.id,
-          name: r.name,
-          arguments: r.arguments,
-          content: r.content,
+          id: id,
+          name: name,
+          arguments: arguments,
+          content: content,
         );
-      } catch (_) {}
-    }
-    if (mounted && _currentConversation?.id == conversationId) {
-      setState(() {
-        _toolParts[messageId] = _dedupeToolPartsList(parts);
-      });
+      },
+    );
+    if (mounted && _currentConversation?.id == state.conversationId) {
+      setState(() {});
     }
     if (!_scrollCtrl.isUserScrolling) {
       _scrollToBottomSoon();

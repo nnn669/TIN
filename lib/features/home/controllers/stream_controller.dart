@@ -520,7 +520,7 @@ class StreamController {
   Future<void> handleToolResultsChunk(
     ChatStreamChunk chunk,
     StreamingState state, {
-    required Future<void> Function(String messageId, {String? id, String? name, dynamic arguments, String? content}) upsertToolEventInDb,
+    required Future<void> Function(String messageId, {required String id, required String name, required Map<String, dynamic> arguments, String? content}) upsertToolEventInDb,
   }) async {
     if ((chunk.toolResults ?? const []).isEmpty) return;
 
@@ -558,11 +558,14 @@ class StreamController {
         ));
       }
       try {
+        final args = (r.arguments is Map)
+            ? Map<String, dynamic>.from(r.arguments as Map)
+            : <String, dynamic>{};
         await upsertToolEventInDb(
           messageId,
           id: r.id,
           name: r.name,
-          arguments: r.arguments,
+          arguments: args,
           content: r.content,
         );
       } catch (_) {}
