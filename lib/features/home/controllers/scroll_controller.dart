@@ -80,6 +80,14 @@ class ChatScrollController {
     return (pos.maxScrollExtent - pos.pixels) <= tolerance;
   }
 
+  /// Check if the scroll view has enough content to scroll.
+  ///
+  /// [minExtent] - Minimum scroll extent to consider scrollable (default: 56.0).
+  bool hasEnoughContentToScroll([double minExtent = 56.0]) {
+    if (!_scrollController.hasClients) return false;
+    return _scrollController.position.maxScrollExtent >= minExtent;
+  }
+
   /// Refresh auto-stick-to-bottom state based on current position.
   void refreshAutoStickToBottom() {
     try {

@@ -1720,9 +1720,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _shouldPinStreamingIndicator(String? messageId) {
     if (messageId == null) return false;
     if (_scrollCtrl.isUserScrolling) return false;
-    if (!_scrollController.hasClients) return false;
     // Only pin when list is long enough to scroll; otherwise keep inline indicator
-    if (_scrollController.position.maxScrollExtent < 56.0) return false;
+    if (!_scrollCtrl.hasEnoughContentToScroll(56.0)) return false;
     // Only pin when near bottom to avoid covering content mid-scroll
     if (!_scrollCtrl.isNearBottom(48)) return false;
     return true;
