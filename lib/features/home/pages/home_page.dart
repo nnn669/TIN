@@ -69,6 +69,8 @@ import '../../quick_phrase/widgets/quick_phrase_menu.dart';
 import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
+import '../widgets/instruction_injection_sheet.dart';
+import '../widgets/learning_prompt_sheet.dart';
 import 'home_mobile_layout.dart';
 import 'home_desktop_layout.dart';
 import '../utils/model_display_helper.dart';
@@ -182,163 +184,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         assistantId: assistantId,
       );
     } else {
-      // 平板 / 非桌面端使用 bottom sheet，样式与其它设置 bottom sheet 统一
-      final cs = Theme.of(context).colorScheme;
-      final l10n = AppLocalizations.of(context)!;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: cs.surface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (sheetCtx) {
-          return SafeArea(
-            top: false,
-            child: DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: 0.55,
-              maxChildSize: 0.9,
-              minChildSize: 0.35,
-              builder: (ctx, controller) {
-                final p = ctx.watch<InstructionInjectionProvider>();
-                final list = p.items;
-                final activeIds = p.activeIdsFor(assistantId).toSet();
-                return Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurface.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l10n.instructionInjectionTitle,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  l10n.instructionInjectionSheetSubtitle,
-                                  style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: list.isEmpty
-                            ? Center(
-                                child: Text(
-                                  l10n.instructionInjectionEmptyMessage,
-                                  style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-                                ),
-                              )
-                            : ListView.separated(
-                                controller: controller,
-                                itemCount: list.length,
-                                itemBuilder: (ctx, index) {
-                                  final item = list[index];
-                                  final displayTitle = item.title.trim().isEmpty
-                                      ? l10n.instructionInjectionDefaultTitle
-                                      : item.title;
-                                  final active = activeIds.contains(item.id);
-                                  return IosCardPress(
-                                    borderRadius: BorderRadius.circular(14),
-                                    baseColor: Theme.of(ctx).brightness == Brightness.dark
-                                        ? Colors.white10
-                                        : Colors.white.withOpacity(0.96),
-                                    duration: const Duration(milliseconds: 260),
-                                    onTap: () async {
-                                      Haptics.light();
-                                      final prov = ctx.read<InstructionInjectionProvider>();
-                                      await prov.toggleActiveId(item.id, assistantId: assistantId);
-                                    },
-                                    padding: const EdgeInsets.all(12),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          width: 42,
-                                          height: 42,
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(ctx).brightness == Brightness.dark
-                                                ? Colors.white10
-                                                : const Color(0xFFF2F3F5),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Icon(Lucide.Layers, size: 20, color: cs.primary),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      displayTitle,
-                                                      style: TextStyle(
-                                                        fontWeight: FontWeight.w700,
-                                                        color: active ? cs.primary : cs.onSurface,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  if (active) ...[
-                                                    const SizedBox(width: 6),
-                                                    Icon(Lucide.Check, size: 16, color: cs.primary),
-                                                  ],
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                item.prompt,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: cs.onSurface.withOpacity(0.72),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                              ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          );
-        },
-      );
+      // 平板 / 非桌面端使用 bottom sheet
+      await showInstructionInjectionSheet(context, assistantId: assistantId);
     }
   }
 
@@ -393,75 +240,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
 
   Future<void> _showLearningPromptSheet() async {
-    final provider = context.read<InstructionInjectionProvider>();
-    await provider.initialize();
-    final items = provider.items;
-    if (items.isEmpty) return;
-    final target = provider.active ?? items.first;
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final controller = TextEditingController(text: target.prompt);
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(l10n.bottomToolsSheetPrompt, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: controller,
-                  maxLines: 10,
-                  decoration: InputDecoration(
-                    hintText: l10n.bottomToolsSheetPromptHint,
-                    filled: true,
-                    fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.primary.withOpacity(0.5))),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Spacer(),
-                    FilledButton(
-                      onPressed: () async {
-                        final updated = target.copyWith(prompt: controller.text.trim());
-                        await ctx.read<InstructionInjectionProvider>().update(updated);
-                        if (ctx.mounted) Navigator.of(ctx).pop();
-                      },
-                      child: Text(l10n.bottomToolsSheetSave),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await showLearningPromptSheet(context);
   }
 
   @override
@@ -1316,6 +1095,78 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Builds the selection toolbar overlay (shared by mobile and tablet layouts).
+  Widget _buildSelectionToolbarOverlay() {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          // Move higher: 72 + 12 + 38
+          padding: const EdgeInsets.only(bottom: 122),
+          child: AnimatedSelectionBar(
+            visible: _selecting,
+            child: SelectionToolbar(
+              onCancel: () {
+                setState(() {
+                  _selecting = false;
+                  _selectedItems.clear();
+                });
+              },
+              onConfirm: () async {
+                final convo = _currentConversation;
+                if (convo == null) return;
+                final collapsed = _collapseVersions(_messages);
+                final selected = <ChatMessage>[];
+                for (final m in collapsed) {
+                  if (_selectedItems.contains(m.id)) selected.add(m);
+                }
+                if (selected.isEmpty) {
+                  final l10n = AppLocalizations.of(context)!;
+                  showAppSnackBar(
+                    context,
+                    message: l10n.homePageSelectMessagesToShare,
+                    type: NotificationType.info,
+                  );
+                  return;
+                }
+                setState(() { _selecting = false; });
+                await showChatExportSheet(context, conversation: convo, selectedMessages: selected);
+                if (mounted) setState(() { _selectedItems.clear(); });
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the scroll navigation buttons (shared by mobile and tablet layouts).
+  Widget _buildScrollButtons() {
+    return Builder(builder: (context) {
+      final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
+      if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
+      return Stack(
+        children: [
+          // Scroll-to-bottom button (bottom-right, above input bar)
+          GlassyScrollButton(
+            icon: Lucide.ChevronDown,
+            onTap: _forceScrollToBottom,
+            bottomOffset: _inputBarHeight + 12,
+            visible: _scrollCtrl.showJumpToBottom,
+          ),
+          // Scroll-to-previous-question button (stacked above the bottom button)
+          GlassyScrollButton(
+            icon: Lucide.ChevronUp,
+            onTap: _jumpToPreviousQuestion,
+            bottomOffset: _inputBarHeight + 12 + 52, // place above the bottom button with gap
+            visible: _scrollCtrl.showJumpToBottom,
+          ),
+        ],
+      );
+    });
+  }
+
   void _measureInputBar() {
     try {
       final ctx = _inputBarKey.currentContext;
@@ -1646,72 +1497,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           ),
 
           // Selection toolbar overlay (above input bar) with iOS glass capsule + animations
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                // Move higher: 72 + 12 + 38
-                padding: const EdgeInsets.only(bottom: 122),
-                child: AnimatedSelectionBar(
-                  visible: _selecting,
-                  child: SelectionToolbar(
-                    onCancel: () {
-                      setState(() {
-                        _selecting = false;
-                        _selectedItems.clear();
-                      });
-                    },
-                    onConfirm: () async {
-                      final convo = _currentConversation;
-                      if (convo == null) return;
-                      final collapsed = _collapseVersions(_messages);
-                      final selected = <ChatMessage>[];
-                      for (final m in collapsed) {
-                        if (_selectedItems.contains(m.id)) selected.add(m);
-                      }
-                      if (selected.isEmpty) {
-                        final l10n = AppLocalizations.of(context)!;
-                        showAppSnackBar(
-                          context,
-                          message: l10n.homePageSelectMessagesToShare,
-                          type: NotificationType.info,
-                        );
-                        return;
-                      }
-                      setState(() { _selecting = false; });
-                      await showChatExportSheet(context, conversation: convo, selectedMessages: selected);
-                      if (mounted) setState(() { _selectedItems.clear(); });
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _buildSelectionToolbarOverlay(),
 
-          // Scroll-to-bottom button (bottom-right, above input bar)
-          Builder(builder: (context) {
-            final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
-            if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-            return GlassyScrollButton(
-              icon: Lucide.ChevronDown,
-              onTap: _forceScrollToBottom,
-              bottomOffset: _inputBarHeight + 12,
-              visible: _scrollCtrl.showJumpToBottom,
-            );
-          }),
-
-          // Scroll-to-previous-question button (stacked above the bottom button)
-          Builder(builder: (context) {
-            final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
-            if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-            return GlassyScrollButton(
-              icon: Lucide.ChevronUp,
-              onTap: _jumpToPreviousQuestion,
-              bottomOffset: _inputBarHeight + 12 + 52, // place above the bottom button with gap
-              visible: _scrollCtrl.showJumpToBottom,
-            );
-          }),
+          // Scroll navigation buttons (bottom-right, above input bar)
+          _buildScrollButtons(),
         ],
       )),
     );
@@ -2139,72 +1928,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 ),
 
                 // Selection toolbar overlay (tablet) with iOS glass capsule + animations
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      // Move higher: 72 + 12 + 38
-                      padding: const EdgeInsets.only(bottom: 122),
-                      child: AnimatedSelectionBar(
-                        visible: _selecting,
-                        child: SelectionToolbar(
-                          onCancel: () {
-                            setState(() {
-                              _selecting = false;
-                              _selectedItems.clear();
-                            });
-                          },
-                          onConfirm: () async {
-                            final convo = _currentConversation;
-                            if (convo == null) return;
-                            final collapsed = _collapseVersions(_messages);
-                            final selected = <ChatMessage>[];
-                            for (final m in collapsed) {
-                              if (_selectedItems.contains(m.id)) selected.add(m);
-                            }
-                            if (selected.isEmpty) {
-                              final l10n = AppLocalizations.of(context)!;
-                              showAppSnackBar(
-                                context,
-                                message: l10n.homePageSelectMessagesToShare,
-                                type: NotificationType.info,
-                              );
-                              return;
-                            }
-                            setState(() { _selecting = false; });
-                            await showChatExportSheet(context, conversation: convo, selectedMessages: selected);
-                            if (mounted) setState(() { _selectedItems.clear(); });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildSelectionToolbarOverlay(),
 
-                // Scroll-to-bottom button
-                Builder(builder: (context) {
-                  final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
-                  if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-                  return GlassyScrollButton(
-                    icon: Lucide.ChevronDown,
-                    onTap: _forceScrollToBottom,
-                    bottomOffset: _inputBarHeight + 12,
-                    visible: _scrollCtrl.showJumpToBottom,
-                  );
-                }),
-
-                // Scroll-to-previous-question button
-                Builder(builder: (context) {
-                  final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
-                  if (!showSetting || _messages.isEmpty) return const SizedBox.shrink();
-                  return GlassyScrollButton(
-                    icon: Lucide.ChevronUp,
-                    onTap: _jumpToPreviousQuestion,
-                    bottomOffset: _inputBarHeight + 12 + 52,
-                    visible: _scrollCtrl.showJumpToBottom,
-                  );
-                }),
+                // Scroll navigation buttons
+                _buildScrollButtons(),
               ],
             )),
     );
