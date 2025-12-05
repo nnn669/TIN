@@ -25,6 +25,7 @@ import '../../../core/models/assistant.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
+import '../controllers/scroll_controller.dart' as scroll_ctrl;
 import '../services/message_builder_service.dart';
 import '../services/ocr_service.dart';
 import '../services/translation_service.dart';
@@ -49,7 +50,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../utils/brand_assets.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'dart:ui' as ui;
 import 'package:image_picker/image_picker.dart';
@@ -131,14 +131,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
   GlobalKey _keyForMessage(String id) => _messageKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg:$id'));
   McpProvider? _mcpProvider;
-  bool _showJumpToBottom = false;
-  bool _isUserScrolling = false;
-  Timer? _userScrollTimer;
-  bool _autoStickToBottom = true;
-  bool _autoScrollScheduled = false;
-  bool _autoScrollForceNext = false;
-  bool _autoScrollAnimateNext = true;
-  static const double _autoScrollSnapTolerance = 56.0;
+  late scroll_ctrl.ChatScrollController _scrollCtrl;
 
   // NOTE: Streaming content throttle mechanism moved to StreamController
   // NOTE: Tool schema sanitization moved to GenerationController
@@ -469,9 +462,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
     );
   }
-
-  // Anchor for chained "jump to previous question" navigation
-  String? _lastJumpUserMessageId;
 
   // Deduplicate tool UI parts (delegate to StreamController)
   List<ToolUIPart> _dedupeToolPartsList(List<ToolUIPart> parts) {
@@ -862,8 +852,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
       getTitleForLocale: _titleForLocale,
     );
+    // Initialize ChatScrollController for scroll behavior management
+    _scrollCtrl = scroll_ctrl.ChatScrollController(
+      scrollController: _scrollController,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+      getAutoScrollEnabled: () => context.read<SettingsProvider>().autoScrollEnabled,
+      getAutoScrollIdleSeconds: () => context.read<SettingsProvider>().autoScrollIdleSeconds,
+    );
     _initChat();
-    _scrollController.addListener(_onScrollControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureInputBar());
 
     // Initialize quick phrases provider
@@ -892,7 +890,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         // 桌面端：仅聚焦，不再强制滚动，保留当前阅读位置。
         if (!_isDesktopPlatform) {
           Future.delayed(const Duration(milliseconds: 300), () {
-            _scrollToBottom();
+            _scrollCtrl.scrollToBottom();
           });
         }
       }
@@ -1007,45 +1005,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   // ZoomDrawer state listener removed; handled by _onDrawerValueChanged
 
-  void _onScrollControllerChanged() {
-    try {
-      if (!_scrollController.hasClients) return;
-      final settings = context.read<SettingsProvider>();
-      final autoScrollEnabled = settings.autoScrollEnabled;
-
-      // Detect user scrolling
-      if (_scrollController.position.userScrollDirection != ScrollDirection.idle) {
-        _isUserScrolling = true;
-        _autoStickToBottom = false;
-        // Reset chained jump anchor when user manually scrolls
-        _lastJumpUserMessageId = null;
-        
-        // Cancel previous timer and set a new one
-        _userScrollTimer?.cancel();
-        final secs = settings.autoScrollIdleSeconds;
-        _userScrollTimer = Timer(Duration(seconds: secs), () {
-          if (mounted) {
-            setState(() {
-              _isUserScrolling = false;
-            });
-            _refreshAutoStickToBottom();
-          }
-        });
-      }
-      
-      // Only show when not near bottom
-      final atBottom = _isNearBottom(24);
-      if (!atBottom) {
-        _autoStickToBottom = false;
-      } else if (!_isUserScrolling && (autoScrollEnabled || _autoStickToBottom)) {
-        _autoStickToBottom = true;
-      }
-      final shouldShow = !atBottom;
-      if (_showJumpToBottom != shouldShow) {
-        setState(() => _showJumpToBottom = shouldShow);
-      }
-    } catch (_) {}
-  }
+  // NOTE: Scroll controller listener logic moved to ChatScrollController
 
   Future<void> _initChat() async {
     await _chatService.init();
@@ -1688,32 +1648,66 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
-  bool _isNearBottom([double tolerance = _autoScrollSnapTolerance]) {
-    if (!_scrollController.hasClients) return true;
-    final pos = _scrollController.position;
-    return (pos.maxScrollExtent - pos.pixels) <= tolerance;
-  }
+  // ===========================================================================
+  // REGION: Scroll Helpers (delegating to ChatScrollController)
+  // ===========================================================================
 
-  void _refreshAutoStickToBottom() {
-    try {
-      final nearBottom = _isNearBottom();
-      if (!nearBottom) {
-        _autoStickToBottom = false;
-      } else if (!_isUserScrolling) {
-        final enabled = context.read<SettingsProvider>().autoScrollEnabled;
-        if (enabled || _autoStickToBottom) {
-          _autoStickToBottom = true;
-        }
-      }
-    } catch (_) {}
-  }
+  /// Scroll to the bottom of the message list.
+  void _scrollToBottom({bool animate = true}) => _scrollCtrl.scrollToBottom(animate: animate);
 
+  /// Force scroll to bottom when user explicitly clicks the button.
+  void _forceScrollToBottom() => _scrollCtrl.forceScrollToBottom();
+
+  /// Force scroll after rebuilds when switching topics/conversations.
+  void _forceScrollToBottomSoon({bool animate = true}) => _scrollCtrl.forceScrollToBottomSoon(
+    animate: animate,
+    postSwitchDelay: _postSwitchScrollDelay,
+  );
+
+  /// Ensure scroll reaches bottom even after widget tree transitions.
+  void _scrollToBottomSoon({bool animate = true}) => _scrollCtrl.scrollToBottomSoon(animate: animate);
+
+  /// Auto-scroll to bottom if conditions are met.
   void _autoScrollToBottomIfNeeded() {
     if (!mounted) return;
-    final enabled = context.read<SettingsProvider>().autoScrollEnabled;
-    if (!enabled && !_autoStickToBottom) return;
-    _scheduleAutoScrollToBottom(force: false);
+    _scrollCtrl.autoScrollToBottomIfNeeded();
   }
+
+  /// Get viewport bounds for scroll navigation.
+  (double, double) _getViewportBounds() {
+    final media = MediaQuery.of(context);
+    final double listTop = kToolbarHeight + media.padding.top;
+    final double listBottom = media.size.height - media.padding.bottom - _inputBarHeight - 8;
+    return (listTop, listBottom);
+  }
+
+  /// Scroll to a specific message by ID (from mini map selection).
+  Future<void> _scrollToMessageId(String targetId) async {
+    if (!mounted) return;
+    final messages = _collapseVersions(_messages);
+    await _scrollCtrl.scrollToMessageId(
+      targetId: targetId,
+      messages: messages,
+      messageKeys: _messageKeys,
+      getViewportBounds: _getViewportBounds,
+      getViewHeight: () => MediaQuery.of(context).size.height,
+    );
+  }
+
+  /// Jump to the previous user message (question) above the current viewport.
+  Future<void> _jumpToPreviousQuestion() async {
+    if (!mounted) return;
+    final messages = _collapseVersions(_messages);
+    await _scrollCtrl.jumpToPreviousQuestion(
+      messages: messages,
+      messageKeys: _messageKeys,
+      getViewportBounds: _getViewportBounds,
+    );
+  }
+
+  // ===========================================================================
+  // END REGION: Scroll Helpers
+  // ===========================================================================
 
   String? _currentStreamingMessageId() {
     for (int i = _messages.length - 1; i >= 0; i--) {
@@ -1725,12 +1719,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   bool _shouldPinStreamingIndicator(String? messageId) {
     if (messageId == null) return false;
-    if (_isUserScrolling) return false;
+    if (_scrollCtrl.isUserScrolling) return false;
     if (!_scrollController.hasClients) return false;
     // Only pin when list is long enough to scroll; otherwise keep inline indicator
-    if (_scrollController.position.maxScrollExtent < _autoScrollSnapTolerance) return false;
+    if (_scrollController.position.maxScrollExtent < 56.0) return false;
     // Only pin when near bottom to avoid covering content mid-scroll
-    if (!_isNearBottom(48)) return false;
+    if (!_scrollCtrl.isNearBottom(48)) return false;
     return true;
   }
 
@@ -1749,88 +1743,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  void _scrollToBottom({bool animate = true}) {
-    _autoStickToBottom = true;
-    _scheduleAutoScrollToBottom(force: true, animate: animate);
-  }
-
-  void _scheduleAutoScrollToBottom({required bool force, bool animate = true}) {
-    if (!force) {
-      final enabled = context.read<SettingsProvider>().autoScrollEnabled;
-      if (!enabled && !_autoStickToBottom) return;
-    }
-    _autoScrollForceNext = _autoScrollForceNext || force;
-    _autoScrollAnimateNext = _autoScrollAnimateNext && animate;
-    if (_autoScrollScheduled) return;
-    _autoScrollScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _autoScrollScheduled = false;
-      final forceNow = _autoScrollForceNext;
-      final animateNow = _autoScrollAnimateNext;
-      _autoScrollForceNext = false;
-      _autoScrollAnimateNext = true;
-      await _animateToBottom(force: forceNow, animate: animateNow);
-    });
-  }
-
-  Future<void> _animateToBottom({required bool force, bool animate = true}) async {
-    try {
-      if (!_scrollController.hasClients) return;
-      if (!force) {
-        if (_isUserScrolling) return;
-        if (!_autoStickToBottom && !_isNearBottom()) return;
-      }
-
-      // Forced scrolls should jump immediately (no animation) to avoid visible slide when switching topics
-      final bool doAnimate = (!force) && animate;
-      // Prevent using controller while it is still attached to old/new list simultaneously
-      if (_scrollController.positions.length != 1) {
-        // Try again after microtask when the previous list detaches
-        Future.microtask(() => _animateToBottom(force: force, animate: animate));
-        return;
-      }
-      final pos = _scrollController.position;
-      final max = pos.maxScrollExtent;
-      final distance = (max - pos.pixels).abs();
-      if (distance < 0.5) {
-        if (_showJumpToBottom) {
-          setState(() => _showJumpToBottom = false);
-        }
-        return;
-      }
-      if (!doAnimate) {
-        pos.jumpTo(max);
-      } else {
-        final durationMs = distance < 36 ? 120 : distance < 140 ? 180 : 240;
-        await pos.animateTo(
-          max,
-          duration: Duration(milliseconds: durationMs),
-          curve: Curves.easeOutCubic,
-        );
-      }
-      if (_showJumpToBottom) {
-        setState(() => _showJumpToBottom = false);
-      }
-      _autoStickToBottom = true;
-    } catch (_) {}
-  }
-
-  void _forceScrollToBottom() {
-    // Force scroll to bottom when user explicitly clicks the button
-    _isUserScrolling = false;
-    _userScrollTimer?.cancel();
-    _lastJumpUserMessageId = null;
-    _scrollToBottom();
-  }
-
-  // Force scroll after rebuilds when switching topics/conversations
-  void _forceScrollToBottomSoon({bool animate = true}) {
-    _isUserScrolling = false;
-    _userScrollTimer?.cancel();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: animate));
-    Future.delayed(_postSwitchScrollDelay, () => _scrollToBottom(animate: animate));
-  }
-
   void _measureInputBar() {
     try {
       final ctx = _inputBarKey.currentContext;
@@ -1842,12 +1754,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         setState(() => _inputBarHeight = h);
       }
     } catch (_) {}
-  }
-
-  // Ensure scroll reaches bottom even after widget tree transitions
-  void _scrollToBottomSoon({bool animate = true}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: animate));
-    Future.delayed(const Duration(milliseconds: 120), () => _scrollToBottom(animate: animate));
   }
 
   Future<void> _showQuickPhraseMenu() async {
@@ -1906,170 +1812,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       // Don't auto-refocus to prevent keyboard flickering on Android
       // User can tap input field if they want to continue typing
     }
-  }
-
-  // Scroll to a specific message id (from mini map selection)
-  Future<void> _scrollToMessageId(String targetId) async {
-    try {
-      if (!mounted || !_scrollController.hasClients) return;
-      final messages = _collapseVersions(_messages);
-      final tIndex = messages.indexWhere((m) => m.id == targetId);
-      if (tIndex < 0) return;
-
-      // Try direct ensureVisible first
-      final tKey = _messageKeys[targetId];
-      final tCtx = tKey?.currentContext;
-      if (tCtx != null) {
-        await Scrollable.ensureVisible(
-          tCtx,
-          alignment: 0.1,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-        );
-        _lastJumpUserMessageId = targetId; // allow chaining with prev-question
-        return;
-      }
-
-      // Coarse jump based on index ratio to bring target into build range
-      final pos0 = _scrollController.position;
-      final denom = (messages.length - 1).clamp(1, 1 << 30);
-      final ratio = tIndex / denom;
-      final coarse = (pos0.maxScrollExtent * ratio).clamp(0.0, pos0.maxScrollExtent);
-      _scrollController.jumpTo(coarse);
-      await WidgetsBinding.instance.endOfFrame;
-      final tCtxAfterCoarse = _messageKeys[targetId]?.currentContext;
-      if (tCtxAfterCoarse != null) {
-        await Scrollable.ensureVisible(tCtxAfterCoarse, alignment: 0.1, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
-        _lastJumpUserMessageId = targetId;
-        return;
-      }
-
-      // Determine direction using visible anchor indices
-      final media = MediaQuery.of(context);
-      final double listTop = kToolbarHeight + media.padding.top;
-      final double listBottom = media.size.height - media.padding.bottom - _inputBarHeight - 8;
-      int? firstVisibleIdx;
-      int? lastVisibleIdx;
-      for (int i = 0; i < messages.length; i++) {
-        final key = _messageKeys[messages[i].id];
-        final ctx = key?.currentContext;
-        if (ctx == null) continue;
-        final box = ctx.findRenderObject() as RenderBox?;
-        if (box == null || !box.attached) continue;
-        final top = box.localToGlobal(Offset.zero).dy;
-        final bottom = top + box.size.height;
-        final visible = bottom > listTop && top < listBottom;
-        if (visible) {
-          firstVisibleIdx ??= i;
-          lastVisibleIdx = i;
-        }
-      }
-      final anchor = lastVisibleIdx ?? firstVisibleIdx ?? 0;
-      final dirDown = tIndex > anchor; // target below
-
-      // Page in steps until the target builds, then ensureVisible
-      const int maxAttempts = 40;
-      for (int attempt = 0; attempt < maxAttempts; attempt++) {
-        final ctx2 = _messageKeys[targetId]?.currentContext;
-        if (ctx2 != null) {
-          await Scrollable.ensureVisible(
-            ctx2,
-            alignment: 0.1,
-            duration: const Duration(milliseconds: 100),
-            curve: Curves.easeOutCubic,
-          );
-          _lastJumpUserMessageId = targetId;
-          return;
-        }
-        final pos = _scrollController.position;
-        final viewH = media.size.height;
-        final step = viewH * 0.85 * (dirDown ? 1 : -1);
-        double newOffset = pos.pixels + step;
-        if (newOffset < 0) newOffset = 0;
-        if (newOffset > pos.maxScrollExtent) newOffset = pos.maxScrollExtent;
-        if ((newOffset - pos.pixels).abs() < 1) break;
-        _scrollController.jumpTo(newOffset);
-        await WidgetsBinding.instance.endOfFrame;
-      }
-    } catch (_) {}
-  }
-
-  // Jump to the previous user message (question) above the current viewport
-  Future<void> _jumpToPreviousQuestion() async {
-    try {
-      if (!mounted || !_scrollController.hasClients) return;
-      final messages = _collapseVersions(_messages);
-      if (messages.isEmpty) return;
-      // Build an id->index map for quick lookup
-      final Map<String, int> idxById = <String, int>{};
-      for (int i = 0; i < messages.length; i++) { idxById[messages[i].id] = i; }
-
-      // Determine anchor index: prefer last jumped user; otherwise bottom-most visible item
-      int? anchor;
-      if (_lastJumpUserMessageId != null && idxById.containsKey(_lastJumpUserMessageId)) {
-        anchor = idxById[_lastJumpUserMessageId!];
-      } else {
-        final media = MediaQuery.of(context);
-        final double listTop = kToolbarHeight + media.padding.top;
-        final double listBottom = media.size.height - media.padding.bottom - _inputBarHeight - 8;
-        int? firstVisibleIdx;
-        int? lastVisibleIdx;
-        for (int i = 0; i < messages.length; i++) {
-          final key = _messageKeys[messages[i].id];
-          final ctx = key?.currentContext;
-          if (ctx == null) continue;
-          final box = ctx.findRenderObject() as RenderBox?;
-          if (box == null || !box.attached) continue;
-          final top = box.localToGlobal(Offset.zero).dy;
-          final bottom = top + box.size.height;
-          final visible = bottom > listTop && top < listBottom;
-          if (visible) {
-            firstVisibleIdx ??= i;
-            lastVisibleIdx = i;
-          }
-        }
-        anchor = lastVisibleIdx ?? firstVisibleIdx ?? (messages.length - 1);
-      }
-      // Search backward for previous user message from the anchor index
-      int target = -1;
-      for (int i = (anchor ?? 0) - 1; i >= 0; i--) {
-        if (messages[i].role == 'user') { target = i; break; }
-      }
-      if (target < 0) {
-        // No earlier user message; jump to top instantly
-        _scrollController.jumpTo(0.0);
-        _lastJumpUserMessageId = null;
-        return;
-      }
-      // If target widget is not built yet (off-screen far above), page up until it is
-      const int maxAttempts = 12; // about 10 pages max
-      for (int attempt = 0; attempt < maxAttempts; attempt++) {
-        final tKey = _messageKeys[messages[target].id];
-        final tCtx = tKey?.currentContext;
-        if (tCtx != null) {
-          await Scrollable.ensureVisible(
-            tCtx,
-            alignment: 0.08,
-            duration: const Duration(milliseconds: 100),
-            curve: Curves.easeOutCubic,
-          );
-          _lastJumpUserMessageId = messages[target].id;
-          return;
-        }
-        // Step up by ~85% of viewport height
-        final pos = _scrollController.position;
-        final viewH = MediaQuery.of(context).size.height;
-        final step = viewH * 0.85;
-        final newOffset = (pos.pixels - step) < 0 ? 0.0 : (pos.pixels - step);
-        if ((pos.pixels - newOffset).abs() < 1) break; // reached top
-        _scrollController.jumpTo(newOffset);
-        // Let the list build newly visible children
-        await WidgetsBinding.instance.endOfFrame;
-      }
-      // Final fallback: go to top if still not found
-      _scrollController.jumpTo(0.0);
-      _lastJumpUserMessageId = null;
-    } catch (_) {}
   }
 
   // Edit message and optionally resend immediately
@@ -2382,7 +2124,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               icon: Lucide.ChevronDown,
               onTap: _forceScrollToBottom,
               bottomOffset: _inputBarHeight + 12,
-              visible: _showJumpToBottom,
+              visible: _scrollCtrl.showJumpToBottom,
             );
           }),
 
@@ -2394,7 +2136,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               icon: Lucide.ChevronUp,
               onTap: _jumpToPreviousQuestion,
               bottomOffset: _inputBarHeight + 12 + 52, // place above the bottom button with gap
-              visible: _showJumpToBottom,
+              visible: _scrollCtrl.showJumpToBottom,
             );
           }),
         ],
@@ -3128,7 +2870,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     icon: Lucide.ChevronDown,
                     onTap: _forceScrollToBottom,
                     bottomOffset: _inputBarHeight + 12,
-                    visible: _showJumpToBottom,
+                    visible: _scrollCtrl.showJumpToBottom,
                   );
                 }),
 
@@ -3140,7 +2882,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     icon: Lucide.ChevronUp,
                     onTap: _jumpToPreviousQuestion,
                     bottomOffset: _inputBarHeight + 12 + 52,
-                    visible: _showJumpToBottom,
+                    visible: _scrollCtrl.showJumpToBottom,
                   );
                 }),
               ],
@@ -3166,14 +2908,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _drawerController.removeListener(_onDrawerValueChanged);
     _inputFocus.dispose();
     _inputController.dispose();
-    _scrollController.removeListener(_onScrollControllerChanged);
+    // Dispose ChatScrollController (handles scroll listener and user scroll timer cleanup)
+    _scrollCtrl.dispose();
     _scrollController.dispose();
     try { _chatActionSub?.cancel(); } catch (_) {}
     // Dispose ChatController (handles stream cleanup)
     _chatController.dispose();
     // Dispose StreamController (handles throttle timers cleanup)
     _streamController.dispose();
-    _userScrollTimer?.cancel();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
@@ -3499,7 +3241,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _toolParts[messageId] = _dedupeToolPartsList(parts);
       });
     }
-    if (!_isUserScrolling) {
+    if (!_scrollCtrl.isUserScrolling) {
       _scrollToBottomSoon();
     }
   }
