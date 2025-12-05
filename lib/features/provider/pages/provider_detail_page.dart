@@ -1865,59 +1865,43 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                             filled: true,
                             fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
                             prefixIcon: Icon(Lucide.Search, size: 20, color: cs.onSurface.withOpacity(0.7)),
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Animated toggle: Select All / Deselect All (based on current filtered state)
-                                Tooltip(
-                                  message: () {
-                                    // Determine if all filtered are currently selected
-                                    final allSelected = filtered.isNotEmpty && filtered.every((m) => selected.contains(m.id));
-                                    return allSelected ? l10n.mcpAssistantSheetClearAll : l10n.mcpAssistantSheetSelectAll;
-                                  }(),
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 180),
-                                    switchInCurve: Curves.easeOutCubic,
-                                    switchOutCurve: Curves.easeInCubic,
-                                    transitionBuilder: (child, anim) => FadeTransition(
-                                      opacity: anim,
-                                      child: ScaleTransition(scale: Tween<double>(begin: 0.92, end: 1).animate(anim), child: child),
-                                    ),
-                                    child: Builder(
-                                      builder: (_) {
-                                        final allSelected = filtered.isNotEmpty && filtered.every((m) => selected.contains(m.id));
-                                        return IconButton(
-                                          key: ValueKey(allSelected ? 'deselect-all-mobile' : 'select-all-mobile'),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-                                          icon: Icon(allSelected ? Lucide.Square : Lucide.CheckSquare, size: 22, color: cs.onSurface.withOpacity(0.7)),
-                                          onPressed: () async {
-                                            final old = settings.getProviderConfig(widget.keyName, defaultName: widget.displayName);
-                                            if (filtered.isEmpty) return;
-                                            if (allSelected) {
-                                              // Deselect all filtered
-                                              final toRemove = filtered.map((m) => m.id).toSet();
-                                              final next = old.models.where((id) => !toRemove.contains(id)).toList();
-                                              await settings.setProviderConfig(widget.keyName, old.copyWith(models: next));
-                                            } else {
-                                              // Select all filtered
-                                              final setIds = old.models.toSet();
-                                              setIds.addAll(filtered.map((m) => m.id));
-                                              await settings.setProviderConfig(widget.keyName, old.copyWith(models: setIds.toList()));
-                                            }
-                                            setLocal(() {});
-                                          },
-                                        );
-                                      },
-                                    ),
+                            suffixIcon: ExcludeSemantics(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Animated toggle: Select All / Deselect All (based on current filtered state)
+                                  Builder(
+                                    builder: (_) {
+                                      final allSelected = filtered.isNotEmpty && filtered.every((m) => selected.contains(m.id));
+                                      return IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                                        icon: Icon(allSelected ? Lucide.Square : Lucide.CheckSquare, size: 22, color: cs.onSurface.withOpacity(0.7)),
+                                        tooltip: allSelected ? l10n.mcpAssistantSheetClearAll : l10n.mcpAssistantSheetSelectAll,
+                                        onPressed: () async {
+                                          final old = settings.getProviderConfig(widget.keyName, defaultName: widget.displayName);
+                                          if (filtered.isEmpty) return;
+                                          if (allSelected) {
+                                            // Deselect all filtered
+                                            final toRemove = filtered.map((m) => m.id).toSet();
+                                            final next = old.models.where((id) => !toRemove.contains(id)).toList();
+                                            await settings.setProviderConfig(widget.keyName, old.copyWith(models: next));
+                                          } else {
+                                            // Select all filtered
+                                            final setIds = old.models.toSet();
+                                            setIds.addAll(filtered.map((m) => m.id));
+                                            await settings.setProviderConfig(widget.keyName, old.copyWith(models: setIds.toList()));
+                                          }
+                                          setLocal(() {});
+                                        },
+                                      );
+                                    },
                                   ),
-                                ),
-                                Tooltip(
-                                  message: l10n.modelFetchInvertTooltip,
-                                  child: IconButton(
+                                  IconButton(
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
                                     icon: Icon(Lucide.Repeat, size: 22, color: cs.onSurface.withOpacity(0.7)),
+                                    tooltip: l10n.modelFetchInvertTooltip,
                                     onPressed: () async {
                                       final old = settings.getProviderConfig(widget.keyName, defaultName: widget.displayName);
                                       final q = controller.text.trim().toLowerCase();
@@ -1938,8 +1922,8 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                                       setLocal(() {});
                                     },
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),

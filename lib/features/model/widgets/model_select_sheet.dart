@@ -556,11 +556,10 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
                             prefixIcon: Icon(Lucide.Search, size: 18, color: cs.onSurface.withOpacity(_isLoading ? 0.35 : 0.6)),
                             // Use IconButton for reliable alignment at the far right
                             suffixIcon: (widget.limitProviderKey == null && context.watch<SettingsProvider>().pinnedModels.isNotEmpty)
-                                ? Tooltip(
-                                    message: l10n.modelSelectSheetFavoritesSection,
+                                ? ExcludeSemantics(
                                     child: IconButton(
                                       icon: Icon(Lucide.Bookmark, size: 18, color: cs.onSurface.withOpacity(_isLoading ? 0.35 : 0.7)),
-                                      onPressed: _jumpToFavorites,
+                                      onPressed: _isLoading ? null : _jumpToFavorites,
                                       splashColor: Colors.transparent,
                                       highlightColor: Colors.transparent,
                                       hoverColor: Colors.transparent,
