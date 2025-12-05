@@ -1,27 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import 'dart:async';
-import 'dart:convert';
 import '../../../shared/widgets/interactive_drawer.dart';
 import '../../../shared/responsive/breakpoints.dart';
 import '../widgets/chat_input_bar.dart';
 import '../../../core/models/chat_input_data.dart';
 import '../../chat/widgets/bottom_tools_sheet.dart';
-import '../widgets/side_drawer.dart';
 import '../../chat/widgets/chat_message_widget.dart';
 import '../../../theme/design_tokens.dart';
 import '../../../icons/lucide_adapter.dart';
 import 'package:provider/provider.dart';
 import '../../../main.dart';
-import '../../../core/providers/user_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
-import '../../../core/providers/memory_provider.dart';
-import '../../../core/services/chat/prompt_transformer.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/api/chat_api_service.dart';
-import '../../../core/services/chat/document_text_extractor.dart';
-import '../../../core/services/mcp/mcp_tool_service.dart';
 import '../../../core/models/token_usage.dart';
 import '../../../core/providers/model_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
@@ -37,10 +30,8 @@ import '../services/ocr_service.dart';
 import '../services/translation_service.dart';
 import '../services/file_upload_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
-import '../../settings/widgets/language_select_sheet.dart';
 import '../../chat/widgets/message_more_sheet.dart';
 import '../../chat/models/message_edit_result.dart';
-// import '../../chat/pages/message_edit_page.dart';
 import '../../chat/widgets/message_edit_sheet.dart';
 import '../../../desktop/message_edit_dialog.dart';
 import '../../chat/widgets/message_export_sheet.dart';
@@ -59,20 +50,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../utils/brand_assets.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'dart:ui' as ui;
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
-import '../../../core/services/search/search_tool_service.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
-import '../../../core/services/instruction_injection_store.dart';
 import '../../../utils/sandbox_path_resolver.dart';
-import '../../../shared/animations/widgets.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
-import 'dart:io' show Platform;
+import 'dart:io' show File;
 import '../../../core/services/notification_service.dart';
 import '../../../utils/platform_utils.dart';
 import '../../../desktop/hotkeys/chat_action_bus.dart';
@@ -87,9 +74,9 @@ import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
-import '../../../core/models/instruction_injection.dart';
 import 'home_mobile_layout.dart';
 import 'home_desktop_layout.dart';
+import '../utils/model_display_helper.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -103,9 +90,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool get _isDesktopPlatform => PlatformUtils.isDesktopTarget;
   // Desktop drag-and-drop state
   bool _isDragHovering = false;
-  // Inline bottom tools panel removed; using modal bottom sheet instead
   // Animation tuning
-  static const Duration _scrollAnimateDuration = Duration(milliseconds: 300);
   static const Duration _postSwitchScrollDelay = Duration(milliseconds: 220);
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final InteractiveDrawerController _drawerController = InteractiveDrawerController();
@@ -146,7 +131,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
   GlobalKey _keyForMessage(String id) => _messageKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg:$id'));
   McpProvider? _mcpProvider;
-  Set<String> _connectedMcpIds = <String>{};
   bool _showJumpToBottom = false;
   bool _isUserScrolling = false;
   Timer? _userScrollTimer;
@@ -162,8 +146,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _tabletSidebarOpen = true;
   // Desktop: whether the right embedded topics sidebar is visible
   bool _rightSidebarOpen = true;
-  static const Duration _sidebarAnimDuration = Duration(milliseconds: 260);
-  static const Curve _sidebarAnimCurve = Curves.easeOutCubic;
   // Desktop: resizable embedded sidebar width
   double _embeddedSidebarWidth = 300;
   static const double _sidebarMinWidth = 200;
@@ -515,10 +497,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return _streamController.serializeReasoningSegments(segments);
   }
 
-  List<stream_ctrl.ReasoningSegmentData> _deserializeReasoningSegments(String? json) {
-    return _streamController.deserializeReasoningSegments(json);
-  }
-
   bool _isReasoningModel(String providerKey, String modelId) {
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
@@ -584,37 +562,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
       _setConversationLoading(cid, false);
 
-      final r = _reasoning[streaming.id];
-      if (r != null) {
-        if (r.finishedAt == null) {
-          r.finishedAt = DateTime.now();
+      // Use unified reasoning completion method
+      await _streamController.finishReasoningAndPersist(
+        streaming.id,
+        updateReasoningInDb: (
+          String messageId, {
+          String? reasoningText,
+          DateTime? reasoningFinishedAt,
+          String? reasoningSegmentsJson,
+        }) async {
           await _chatService.updateMessage(
-            streaming.id,
-            reasoningText: r.text,
-            reasoningFinishedAt: r.finishedAt,
+            messageId,
+            reasoningText: reasoningText,
+            reasoningFinishedAt: reasoningFinishedAt,
+            reasoningSegmentsJson: reasoningSegmentsJson,
           );
-        }
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          r.expanded = false;
-        }
-        _reasoning[streaming.id] = r;
-        if (mounted) setState(() {});
-      }
-
-      final segs = _reasoningSegments[streaming.id];
-      if (segs != null && segs.isNotEmpty && segs.last.finishedAt == null) {
-        segs.last.finishedAt = DateTime.now();
-        final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-        if (autoCollapse) {
-          segs.last.expanded = false;
-        }
-        _reasoningSegments[streaming.id] = segs;
-        await _chatService.updateMessage(
-          streaming.id,
-          reasoningSegmentsJson: _serializeReasoningSegments(segs),
-        );
-      }
+        },
+      );
 
       // If streaming output included inline base64 images, sanitize them even on manual cancel
       _scheduleInlineImageSanitize(streaming.id, latestContent: streaming.content, immediate: true);
@@ -655,30 +619,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         });
       },
     );
-  }
-
-  Future<void> _forceInlineImageSanitize(String messageId) async {
-    try {
-      String current = '';
-      final idx = _messages.indexWhere((m) => m.id == messageId);
-      if (idx != -1) current = _messages[idx].content;
-      if (current.isEmpty || !current.contains('data:image') || !current.contains('base64,')) {
-        return;
-      }
-      final sanitized = await MarkdownMediaSanitizer.replaceInlineBase64Images(current);
-      if (sanitized == current) return;
-      await _chatService.updateMessage(messageId, content: sanitized);
-      if (mounted) {
-        setState(() {
-          final i = _messages.indexWhere((m) => m.id == messageId);
-          if (i != -1) {
-            _messages[i] = _messages[i].copyWith(content: sanitized);
-          }
-        });
-      }
-    } catch (e) {
-      // ignore
-    }
   }
 
   // Delegate to StreamController for Gemini thought signature handling
@@ -855,20 +795,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return inferred.abilities.contains(ModelAbility.tool);
   }
 
-  bool _isImageInputModel(String providerKey, String modelId) {
-    final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(providerKey);
-    final ov = cfg.modelOverrides[modelId] as Map?;
-    if (ov != null && ov['input'] is List) {
-      final modes = (ov['input'] as List)
-          .map((e) => e.toString().toLowerCase())
-          .toList();
-      if (modes.contains('image')) return true;
-    }
-    final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
-    return inferred.input.contains(Modality.image);
-  }
-
   // More page entry is temporarily removed.
   // void _openMorePage() {
   //   _dismissKeyboard();
@@ -953,10 +879,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       } catch (_) {}
     });
 
-    // Attach MCP provider listener to auto-join new connected servers
+    // Attach MCP provider listener (kept for potential future use)
     try {
       _mcpProvider = context.read<McpProvider>();
-      _connectedMcpIds = _mcpProvider!.connectedServers.map((s) => s.id).toSet();
       _mcpProvider!.addListener(_onMcpChanged);
     } catch (_) {}
 
@@ -1211,13 +1136,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // _onMcpChanged defined below; remove listener in the main dispose at bottom
 
   Future<void> _onMcpChanged() async {
-    if (!mounted) return;
-    final prov = _mcpProvider;
-    if (prov == null) return;
-    final now = prov.connectedServers.map((s) => s.id).toSet();
-    final added = now.difference(_connectedMcpIds);
-    _connectedMcpIds = now;
     // Assistant-level MCP selection is managed in Assistant settings; no per-conversation merge.
+    // This callback is kept for potential future use but currently does nothing.
   }
 
   // File upload methods delegated to FileUploadService
@@ -1276,7 +1196,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Flush any ongoing generation progress for the current conversation
     try { await _flushCurrentConversationProgress(); } catch (_) {}
     final ap = context.read<AssistantProvider>();
-    final settings = context.read<SettingsProvider>();
     final assistantId = ap.currentAssistantId;
     // Don't change global default model - just use assistant's model if set
     final a = ap.currentAssistant;
@@ -1297,7 +1216,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           final role = (pm['role'] == 'assistant') ? 'assistant' : 'user';
           final content = (pm['content'] ?? '').trim();
           if (content.isEmpty) continue;
-          final m = await _chatService.addMessage(
+          await _chatService.addMessage(
             conversationId: _currentConversation!.id,
             role: role,
             content: content,
@@ -1713,47 +1632,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
 
     await _executeGeneration(ctx);
-  }
-
-  ChatInputData _parseInputFromRaw(String raw) {
-    final imgRe = RegExp(r"\[image:(.+?)\]");
-    final fileRe = RegExp(r"\[file:(.+?)\|(.+?)\|(.+?)\]");
-    final images = <String>[];
-    final docs = <DocumentAttachment>[];
-    final buffer = StringBuffer();
-    int idx = 0;
-    while (idx < raw.length) {
-      final imgMatch = imgRe.matchAsPrefix(raw, idx);
-      final fileMatch = fileRe.matchAsPrefix(raw, idx);
-      if (imgMatch != null) {
-        final p = imgMatch.group(1)?.trim();
-        if (p != null && p.isNotEmpty) images.add(p);
-        idx = imgMatch.end;
-        continue;
-      }
-      if (fileMatch != null) {
-        final path = fileMatch.group(1)?.trim() ?? '';
-        final name = fileMatch.group(2)?.trim() ?? 'file';
-        final mime = fileMatch.group(3)?.trim() ?? 'text/plain';
-        final doc = DocumentAttachment(path: path, fileName: name, mime: mime);
-        docs.add(doc);
-        // Treat video attachments as image-style attachments for downstream APIs (e.g., Qwen video_url).
-        if (mime.toLowerCase().startsWith('video/') && path.isNotEmpty) {
-          images.add(path);
-        }
-        idx = fileMatch.end;
-        continue;
-      }
-      buffer.write(raw[idx]);
-      idx++;
-    }
-    return ChatInputData(text: buffer.toString().trim(), imagePaths: images, documents: docs);
-  }
-
-  Future<void> _maybeGenerateTitle({bool force = false}) async {
-    final convo = _currentConversation;
-    if (convo == null) return;
-    await _maybeGenerateTitleFor(convo.id, force: force);
   }
 
   Future<void> _maybeGenerateTitleFor(String conversationId, {bool force = false}) async {
@@ -2292,63 +2170,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     // Tablet and larger: fixed side panel + constrained content
     final width = MediaQuery.sizeOf(context).width;
-    if (width >= AppBreakpoints.tablet) {
-      final title = ((_currentConversation?.title ?? '').trim().isNotEmpty)
-          ? _currentConversation!.title
-          : _titleForLocale(context);
-      final cs = Theme.of(context).colorScheme;
-      final settings = context.watch<SettingsProvider>();
-      final assistant = context.watch<AssistantProvider>().currentAssistant;
-      final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
-      final modelId = assistant?.chatModelId ?? settings.currentModelId;
-      String? providerName;
-      String? modelDisplay;
-      if (providerKey != null && modelId != null) {
-        final cfg = settings.getProviderConfig(providerKey);
-        providerName = cfg.name.isNotEmpty ? cfg.name : providerKey;
-        final ov = cfg.modelOverrides[modelId] as Map?;
-        if (ov != null) {
-          final overrideName = (ov['name'] as String?)?.trim();
-          if (overrideName != null && overrideName.isNotEmpty) {
-            modelDisplay = overrideName;
-          } else {
-            final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
-            modelDisplay = (apiId != null && apiId.isNotEmpty) ? apiId : modelId;
-          }
-        } else {
-          modelDisplay = modelId;
-        }
-      }
-      return _buildTabletLayout(context, title: title, providerName: providerName, modelDisplay: modelDisplay, cs: cs);
-    }
+    final cs = Theme.of(context).colorScheme;
+    final settings = context.watch<SettingsProvider>();
+    final assistant = context.watch<AssistantProvider>().currentAssistant;
+
+    // Use unified helper to get model display info
+    final modelInfo = getModelDisplayInfo(settings, assistant: assistant);
 
     final title = ((_currentConversation?.title ?? '').trim().isNotEmpty)
         ? _currentConversation!.title
         : _titleForLocale(context);
-    final cs = Theme.of(context).colorScheme;
-    final settings = context.watch<SettingsProvider>();
-    final assistant = context.watch<AssistantProvider>().currentAssistant;
-    
-    // Use assistant's model if set, otherwise fall back to global default
-    final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final modelId = assistant?.chatModelId ?? settings.currentModelId;
-    String? providerName;
-    String? modelDisplay;
-    if (providerKey != null && modelId != null) {
-      final cfg = settings.getProviderConfig(providerKey);
-      providerName = cfg.name.isNotEmpty ? cfg.name : providerKey;
-      final ov = cfg.modelOverrides[modelId] as Map?;
-      if (ov != null) {
-        final overrideName = (ov['name'] as String?)?.trim();
-        if (overrideName != null && overrideName.isNotEmpty) {
-          modelDisplay = overrideName;
-        } else {
-          final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
-          modelDisplay = (apiId != null && apiId.isNotEmpty) ? apiId : modelId;
-        }
-      } else {
-        modelDisplay = modelId;
-      }
+
+    if (width >= AppBreakpoints.tablet) {
+      return _buildTabletLayout(
+        context,
+        title: title,
+        providerName: modelInfo.providerName,
+        modelDisplay: modelInfo.modelDisplay,
+        cs: cs,
+      );
     }
 
     // Use mobile layout scaffold
@@ -2358,8 +2198,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       assistantPickerCloseTick: _assistantPickerCloseTick,
       loadingConversationIds: _loadingConversationIds,
       title: title,
-      providerName: providerName,
-      modelDisplay: modelDisplay,
+      providerName: modelInfo.providerName,
+      modelDisplay: modelInfo.modelDisplay,
       onToggleDrawer: () => _drawerController.toggle(),
       onDismissKeyboard: _dismissKeyboard,
       onSelectConversation: (id) {
@@ -2940,8 +2780,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final ap = context.watch<AssistantProvider>();
     final a = ap.currentAssistant;
     final assistantId = a?.id;
-    final pk = a?.chatModelProvider ?? settings.currentModelProvider;
-    final mid = a?.chatModelId ?? settings.currentModelId;
+
+    // Use unified helper to get model identifiers
+    final modelIds = getActiveModelIds(settings, assistant: a);
+    final pk = modelIds.providerKey;
+    final mid = modelIds.modelId;
 
     // Enforce model capabilities: disable MCP selection if model doesn't support tools
     if (pk != null && mid != null) {
@@ -2969,17 +2812,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
 
     // Compute whether built-in search (Gemini incl. Vertex or Claude) is active to highlight the search button
-    final currentProvider = a?.chatModelProvider ?? settings.currentModelProvider;
-    final currentModelId = a?.chatModelId ?? settings.currentModelId;
-    final cfg = (currentProvider != null) ? settings.getProviderConfig(currentProvider) : null;
+    final cfg = getActiveProviderConfig(settings, assistant: a);
     bool builtinSearchActive = false;
-    if (cfg != null && currentModelId != null) {
-      final mid2 = currentModelId;
+    if (cfg != null && mid != null) {
       final isGemini = cfg.providerType == ProviderKind.google;
       final isClaude = cfg.providerType == ProviderKind.claude;
       final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
       if (isGemini || isClaude || isOpenAIResponses) {
-        final ov = cfg.modelOverrides[mid2] as Map?;
+        final ov = cfg.modelOverrides[mid] as Map?;
         final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
         builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
       }
@@ -3016,10 +2856,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         );
       },
       onStop: _cancelStreaming,
-      modelIcon: (settings.showModelIcon && ((a?.chatModelProvider ?? settings.currentModelProvider) != null) && ((a?.chatModelId ?? settings.currentModelId) != null))
+      modelIcon: (settings.showModelIcon && pk != null && mid != null)
           ? _CurrentModelIcon(
-              providerKey: a?.chatModelProvider ?? settings.currentModelProvider,
-              modelId: a?.chatModelId ?? settings.currentModelId,
+              providerKey: pk,
+              modelId: mid,
               size: 40,
               withBackground: true,
               backgroundColor: Colors.transparent,
@@ -3736,38 +3576,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   /// Finish reasoning segment when content starts arriving.
   Future<void> _finishReasoningOnContent(stream_ctrl.StreamingState state) async {
-    final messageId = state.messageId;
-
-    final r = _reasoning[messageId];
-    if (r != null && r.startAt != null && r.finishedAt == null) {
-      r.finishedAt = DateTime.now();
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        r.expanded = false;
-      }
-      _reasoning[messageId] = r;
-      await _chatService.updateMessage(
-        messageId,
-        reasoningText: r.text,
-        reasoningFinishedAt: r.finishedAt,
-      );
-      if (mounted) setState(() {});
-    }
-
-    final segments = _reasoningSegments[messageId];
-    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-      segments.last.finishedAt = DateTime.now();
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        segments.last.expanded = false;
-      }
-      _reasoningSegments[messageId] = segments;
-      if (mounted) setState(() {});
-      await _chatService.updateMessage(
-        messageId,
-        reasoningSegmentsJson: _serializeReasoningSegments(segments),
-      );
-    }
+    // Use unified reasoning completion method from StreamController
+    await _streamController.finishReasoningAndPersist(
+      state.messageId,
+      updateReasoningInDb: (
+        String messageId, {
+        String? reasoningText,
+        DateTime? reasoningFinishedAt,
+        String? reasoningSegmentsJson,
+      }) async {
+        await _chatService.updateMessage(
+          messageId,
+          reasoningText: reasoningText,
+          reasoningFinishedAt: reasoningFinishedAt,
+          reasoningSegmentsJson: reasoningSegmentsJson,
+        );
+      },
+    );
   }
 
   /// Handle stream finish (isDone == true).
@@ -3882,39 +3707,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     });
     _setConversationLoading(conversationId, false);
 
-    // Finish reasoning data
-    final r = _reasoning[messageId];
-    if (r != null) {
-      if (r.finishedAt == null) {
-        r.finishedAt = DateTime.now();
-      }
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        r.expanded = false;
-      }
-      _reasoning[messageId] = r;
-      if (mounted) setState(() {});
-    }
+    // Use unified reasoning completion method
+    await _streamController.finishReasoningAndPersist(
+      messageId,
+      updateReasoningInDb: (
+        String messageId, {
+        String? reasoningText,
+        DateTime? reasoningFinishedAt,
+        String? reasoningSegmentsJson,
+      }) async {
+        await _chatService.updateMessage(
+          messageId,
+          reasoningText: reasoningText,
+          reasoningFinishedAt: reasoningFinishedAt,
+          reasoningSegmentsJson: reasoningSegmentsJson,
+        );
+      },
+    );
 
-    // Also finish any unfinished reasoning segments
-    final segments = _reasoningSegments[messageId];
-    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-      segments.last.finishedAt = DateTime.now();
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        segments.last.expanded = false;
-      }
-      _reasoningSegments[messageId] = segments;
-      if (mounted) setState(() {});
-    }
-
-    // Save reasoning segments to database
-    if (segments != null && segments.isNotEmpty) {
-      await _chatService.updateMessage(
-        messageId,
-        reasoningSegmentsJson: _serializeReasoningSegments(segments),
-      );
-    }
     if (shouldGenerateTitle) {
       _maybeGenerateTitleFor(conversationId);
     }
@@ -3950,40 +3760,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     _setConversationLoading(conversationId, false);
 
-    // End reasoning on error
-    final r = _reasoning[messageId];
-    if (r != null) {
-      if (r.finishedAt == null) {
-        r.finishedAt = DateTime.now();
+    // Use unified reasoning completion method on error
+    await _streamController.finishReasoningAndPersist(
+      messageId,
+      updateReasoningInDb: (
+        String messageId, {
+        String? reasoningText,
+        DateTime? reasoningFinishedAt,
+        String? reasoningSegmentsJson,
+      }) async {
         await _chatService.updateMessage(
           messageId,
-          reasoningText: r.text,
-          reasoningFinishedAt: r.finishedAt,
+          reasoningText: reasoningText,
+          reasoningFinishedAt: reasoningFinishedAt,
+          reasoningSegmentsJson: reasoningSegmentsJson,
         );
-      }
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        r.expanded = false;
-      }
-      _reasoning[messageId] = r;
-    }
-
-    // Also finish any unfinished reasoning segments on error
-    final segments = _reasoningSegments[messageId];
-    if (segments != null && segments.isNotEmpty && segments.last.finishedAt == null) {
-      segments.last.finishedAt = DateTime.now();
-      final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
-      if (autoCollapse) {
-        segments.last.expanded = false;
-      }
-      _reasoningSegments[messageId] = segments;
-      try {
-        await _chatService.updateMessage(
-          messageId,
-          reasoningSegmentsJson: _serializeReasoningSegments(segments),
-        );
-      } catch (_) {}
-    }
+      },
+    );
 
     await _conversationStreams.remove(conversationId)?.cancel();
     showAppSnackBar(

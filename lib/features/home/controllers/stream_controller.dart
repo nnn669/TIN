@@ -664,6 +664,103 @@ class StreamController {
   }
 
   // ============================================================================
+  // Unified Reasoning Completion
+  // ============================================================================
+
+  /// Finishes reasoning for a message if not already finished.
+  ///
+  /// This is the unified method to handle reasoning completion logic that was
+  /// previously duplicated across multiple places in home_page.dart:
+  /// - _cancelStreaming (line 597-617)
+  /// - _finishReasoningOnContent (line 3738-3770)
+  /// - _finishStreaming (line 3886-3917)
+  /// - _handleStreamError (line 3954-3970)
+  ///
+  /// Returns true if any state was actually changed.
+  bool finishReasoningIfNeeded(
+    String messageId, {
+    bool forceCollapse = false,
+  }) {
+    bool changed = false;
+    final autoCollapse = forceCollapse || getSettingsProvider().autoCollapseThinking;
+
+    // Finish main reasoning data
+    final r = _reasoning[messageId];
+    if (r != null && r.finishedAt == null) {
+      r.finishedAt = DateTime.now();
+      if (autoCollapse) {
+        r.expanded = false;
+      }
+      _reasoning[messageId] = r;
+      changed = true;
+    } else if (r != null && autoCollapse && r.expanded) {
+      r.expanded = false;
+      _reasoning[messageId] = r;
+      changed = true;
+    }
+
+    // Finish last reasoning segment
+    final segments = _reasoningSegments[messageId];
+    if (segments != null && segments.isNotEmpty) {
+      final lastSegment = segments.last;
+      if (lastSegment.finishedAt == null) {
+        lastSegment.finishedAt = DateTime.now();
+        if (autoCollapse) {
+          lastSegment.expanded = false;
+        }
+        _reasoningSegments[messageId] = segments;
+        changed = true;
+      } else if (autoCollapse && lastSegment.expanded) {
+        lastSegment.expanded = false;
+        _reasoningSegments[messageId] = segments;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      onStateChanged();
+    }
+    return changed;
+  }
+
+  /// Finishes reasoning and persists to database.
+  ///
+  /// This is a convenience method that combines finishing reasoning state
+  /// and persisting it to the database in one call.
+  Future<void> finishReasoningAndPersist(
+    String messageId, {
+    bool forceCollapse = false,
+    required Future<void> Function(
+      String messageId, {
+      String? reasoningText,
+      DateTime? reasoningFinishedAt,
+      String? reasoningSegmentsJson,
+    }) updateReasoningInDb,
+  }) async {
+    final changed = finishReasoningIfNeeded(messageId, forceCollapse: forceCollapse);
+    if (!changed) return;
+
+    // Persist reasoning data
+    final r = _reasoning[messageId];
+    if (r != null) {
+      await updateReasoningInDb(
+        messageId,
+        reasoningText: r.text,
+        reasoningFinishedAt: r.finishedAt,
+      );
+    }
+
+    // Persist reasoning segments
+    final segments = _reasoningSegments[messageId];
+    if (segments != null && segments.isNotEmpty) {
+      await updateReasoningInDb(
+        messageId,
+        reasoningSegmentsJson: serializeReasoningSegments(segments),
+      );
+    }
+  }
+
+  // ============================================================================
   // Restoration from Database
   // ============================================================================
 
