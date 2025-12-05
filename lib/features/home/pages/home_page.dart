@@ -21,7 +21,6 @@ import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
-import '../../../core/models/assistant.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
@@ -31,7 +30,6 @@ import '../services/ocr_service.dart';
 import '../services/translation_service.dart';
 import '../services/file_upload_service.dart';
 import '../../model/widgets/model_select_sheet.dart';
-import '../../chat/widgets/message_more_sheet.dart';
 import '../../chat/models/message_edit_result.dart';
 import '../../chat/widgets/message_edit_sheet.dart';
 import '../../../desktop/message_edit_dialog.dart';
@@ -68,7 +66,6 @@ import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
 import '../../quick_phrase/widgets/quick_phrase_menu.dart';
 import '../../quick_phrase/pages/quick_phrases_page.dart';
-import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
 import 'home_mobile_layout.dart';
@@ -76,7 +73,8 @@ import 'home_desktop_layout.dart';
 import '../utils/model_display_helper.dart';
 import '../widgets/scroll_nav_buttons.dart';
 import '../widgets/selection_toolbar.dart';
-import '../widgets/model_icon.dart';
+import '../widgets/message_list_view.dart';
+import '../widgets/chat_input_section.dart';
 import '../services/message_generation_service.dart';
 
 
@@ -131,7 +129,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _appInForeground = true; // used to gate notifications only when app is background
   // Message widget keys for navigation to previous question
   final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
-  GlobalKey _keyForMessage(String id) => _messageKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg:$id'));
   McpProvider? _mcpProvider;
   late scroll_ctrl.ChatScrollController _scrollCtrl;
 
@@ -1967,23 +1964,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  /// Builds the context divider widget shown at truncate position.
-  Widget _buildContextDivider(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final label = l10n.homePageClearContext;
-    return Row(
-      children: [
-        Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
-        ),
-        Expanded(child: Divider(color: cs.outlineVariant.withOpacity(0.6), height: 1, thickness: 1)),
-      ],
-    );
-  }
-
   /// Handles message deletion with confirmation dialog and version selection adjustment.
   Future<void> _handleDeleteMessage(
     BuildContext context,
@@ -2134,6 +2114,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
+  /// Converts internal translation data to UI state for MessageListView.
+  Map<String, TranslationUiState> _buildTranslationUiStates() {
+    final result = <String, TranslationUiState>{};
+    for (final entry in _translations.entries) {
+      result[entry.key] = TranslationUiState(
+        expanded: entry.value.expanded,
+        onToggle: () {
+          setState(() {
+            entry.value.expanded = !entry.value.expanded;
+          });
+        },
+      );
+    }
+    return result;
+  }
+
   /// Builds the message list view shared by both mobile and tablet layouts.
   ///
   /// This method extracts the common ListView.builder logic to reduce code duplication.
@@ -2142,198 +2138,71 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     BuildContext context, {
     required EdgeInsetsGeometry dividerPadding,
   }) {
-    // Stable snapshot for this build (collapse versions)
-    final messages = _collapseVersions(_messages);
-    final Map<String, List<ChatMessage>> byGroup = <String, List<ChatMessage>>{};
-    for (final m in _messages) {
-      final gid = (m.groupId ?? m.id);
-      byGroup.putIfAbsent(gid, () => <ChatMessage>[]).add(m);
-    }
-    // Map persisted truncateIndex (raw message count) to collapsed index
-    final int truncRaw = _currentConversation?.truncateIndex ?? -1;
-    int truncCollapsed = -1;
-    if (truncRaw > 0) {
-      final seen = <String>{};
-      final int limit = truncRaw < _messages.length ? truncRaw : _messages.length;
-      int count = 0;
-      for (int i = 0; i < limit; i++) {
-        final gid0 = (_messages[i].groupId ?? _messages[i].id);
-        if (seen.add(gid0)) count++;
-      }
-      truncCollapsed = count - 1;
-    }
     final pinnedId = _currentStreamingMessageId();
     final pinActive = _shouldPinStreamingIndicator(pinnedId);
-    final list = ListView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.only(bottom: pinActive ? 28 : 16, top: 8),
-      itemCount: messages.length,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      itemBuilder: (context, index) {
-        if (index < 0 || index >= messages.length) {
-          return const SizedBox.shrink();
-        }
-        final message = messages[index];
-        final r = _reasoning[message.id];
-        final t = _translations[message.id];
-        final chatScale = context.watch<SettingsProvider>().chatFontScale;
-        final assistant = context.watch<AssistantProvider>().currentAssistant;
-        final useAssist = assistant?.useAssistantAvatar == true;
-        final showDivider = truncCollapsed >= 0 && index == truncCollapsed;
-        final gid = (message.groupId ?? message.id);
-        final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()..sort((a,b)=>a.version.compareTo(b.version));
-        int selectedIdx = _versionSelections[gid] ?? (vers.isNotEmpty ? vers.length - 1 : 0);
-        final total = vers.length;
-        if (selectedIdx < 0) selectedIdx = 0;
-        if (total > 0 && selectedIdx > total - 1) selectedIdx = total - 1;
-        final showMsgNav = context.watch<SettingsProvider>().showMessageNavButtons;
-        final effectiveTotal = showMsgNav ? total : 1;
-        final effectiveIndex = showMsgNav ? selectedIdx : 0;
 
-        return Column(
-          key: _keyForMessage(message.id),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_selecting && (message.role == 'user' || message.role == 'assistant'))
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10, right: 6),
-                    child: IosCheckbox(
-                      value: _selectedItems.contains(message.id),
-                      onChanged: (v) {
-                        setState(() {
-                          if (v) {
-                            _selectedItems.add(message.id);
-                          } else {
-                            _selectedItems.remove(message.id);
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                Expanded(
-                  child: MediaQuery(
-                    data: MediaQuery.of(context).copyWith(
-                      textScaleFactor: MediaQuery.of(context).textScaleFactor * chatScale,
-                    ),
-                    child: ChatMessageWidget(
-                      message: message,
-                      versionIndex: effectiveIndex,
-                      versionCount: effectiveTotal,
-                      onPrevVersion: (showMsgNav && selectedIdx > 0) ? () async {
-                        final next = selectedIdx - 1;
-                        _versionSelections[gid] = next;
-                        await _chatService.setSelectedVersion(_currentConversation!.id, gid, next);
-                        if (mounted) setState(() {});
-                      } : null,
-                      onNextVersion: (showMsgNav && selectedIdx < total - 1) ? () async {
-                        final next = selectedIdx + 1;
-                        _versionSelections[gid] = next;
-                        await _chatService.setSelectedVersion(_currentConversation!.id, gid, next);
-                        if (mounted) setState(() {});
-                      } : null,
-                      modelIcon: (!useAssist && message.role == 'assistant' && message.providerId != null && message.modelId != null)
-                          ? CurrentModelIcon(providerKey: message.providerId, modelId: message.modelId, size: 30)
-                          : null,
-                      showModelIcon: useAssist ? false : context.watch<SettingsProvider>().showModelIcon,
-                      useAssistantAvatar: useAssist && message.role == 'assistant',
-                      assistantName: useAssist ? (assistant?.name ?? 'Assistant') : null,
-                      assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
-                      showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
-                      showTokenStats: context.watch<SettingsProvider>().showTokenStats,
-                      hideStreamingIndicator: pinActive && (message.id == pinnedId),
-                      reasoningText: (message.role == 'assistant') ? (r?.text ?? '') : null,
-                      reasoningExpanded: (message.role == 'assistant') ? (r?.expanded ?? false) : false,
-                      reasoningLoading: (message.role == 'assistant') ? (r?.finishedAt == null && (r?.text.isNotEmpty == true)) : false,
-                      reasoningStartAt: (message.role == 'assistant') ? r?.startAt : null,
-                      reasoningFinishedAt: (message.role == 'assistant') ? r?.finishedAt : null,
-                      onToggleReasoning: (message.role == 'assistant' && r != null)
-                          ? () {
-                              setState(() {
-                                r.expanded = !r.expanded;
-                              });
-                            }
-                          : null,
-                      translationExpanded: t?.expanded ?? true,
-                      onToggleTranslation: (message.translation != null && message.translation!.isNotEmpty && t != null)
-                          ? () {
-                              setState(() {
-                                t.expanded = !t.expanded;
-                              });
-                            }
-                          : null,
-                      onRegenerate: message.role == 'assistant' ? () { _regenerateAtMessage(message); } : null,
-                      onResend: message.role == 'user' ? () { _regenerateAtMessage(message); } : null,
-                      onTranslate: message.role == 'assistant'
-                          ? () {
-                              _translateMessage(message);
-                            }
-                          : null,
-                      onSpeak: message.role == 'assistant'
-                          ? () => _handleSpeak(context, message)
-                          : null,
-                      onEdit: (message.role == 'user' || message.role == 'assistant')
-                          ? () { _onEditMessage(message); }
-                          : null,
-                      onDelete: message.role == 'user'
-                          ? () => _handleDeleteMessage(context, message, byGroup)
-                          : null,
-                      onMore: () async {
-                        final action = await showMessageMoreSheet(context, message);
-                        if (!mounted) return;
-                        if (action == MessageMoreAction.delete) {
-                          await _handleDeleteMessage(context, message, byGroup);
-                        } else if (action == MessageMoreAction.edit) {
-                          await _onEditMessage(message);
-                        } else if (action == MessageMoreAction.fork) {
-                          await _handleForkConversation(context, message);
-                        } else if (action == MessageMoreAction.share) {
-                          _handleShareMessage(index, messages);
-                        }
-                      },
-                      toolParts: message.role == 'assistant' ? _toolParts[message.id] : null,
-                      reasoningSegments: message.role == 'assistant'
-                          ? (() {
-                              final segments = _reasoningSegments[message.id];
-                              if (segments == null || segments.isEmpty) return null;
-                              return segments
-                                  .map((s) => ReasoningSegment(
-                                        text: s.text,
-                                        expanded: s.expanded,
-                                        loading: s.finishedAt == null && s.text.isNotEmpty,
-                                        startAt: s.startAt,
-                                        finishedAt: s.finishedAt,
-                                        onToggle: () {
-                                          setState(() {
-                                            s.expanded = !s.expanded;
-                                          });
-                                        },
-                                        toolStartIndex: s.toolStartIndex,
-                                      ))
-                                  .toList();
-                            })()
-                          : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (showDivider)
-              Padding(
-                padding: dividerPadding,
-                child: _buildContextDivider(context),
-              ),
-          ],
-        );
+    return MessageListView(
+      scrollController: _scrollController,
+      messages: _messages,
+      versionSelections: _versionSelections,
+      currentConversation: _currentConversation,
+      messageKeys: _messageKeys,
+      reasoning: _reasoning,
+      reasoningSegments: _reasoningSegments,
+      toolParts: _toolParts,
+      translations: _buildTranslationUiStates(),
+      selecting: _selecting,
+      selectedItems: _selectedItems,
+      dividerPadding: dividerPadding,
+      pinnedStreamingMessageId: pinnedId,
+      isPinnedIndicatorActive: pinActive,
+      onVersionChange: (groupId, version) async {
+        _versionSelections[groupId] = version;
+        await _chatService.setSelectedVersion(_currentConversation!.id, groupId, version);
+        if (mounted) setState(() {});
       },
-    );
-    return Stack(
-      children: [
-        list,
-        if (pinActive) _buildPinnedStreamingIndicator(),
-      ],
+      onRegenerateMessage: (message) => _regenerateAtMessage(message),
+      onResendMessage: (message) => _regenerateAtMessage(message),
+      onTranslateMessage: (message) => _translateMessage(message),
+      onEditMessage: (message) => _onEditMessage(message),
+      onDeleteMessage: (message, byGroup) => _handleDeleteMessage(context, message, byGroup),
+      onForkConversation: (message) => _handleForkConversation(context, message),
+      onShareMessage: (index, messages) => _handleShareMessage(index, messages),
+      onSpeakMessage: (message) => _handleSpeak(context, message),
+      onToggleSelection: (messageId, selected) {
+        setState(() {
+          if (selected) {
+            _selectedItems.add(messageId);
+          } else {
+            _selectedItems.remove(messageId);
+          }
+        });
+      },
+      onToggleReasoning: (messageId) {
+        final r = _reasoning[messageId];
+        if (r != null) {
+          setState(() {
+            r.expanded = !r.expanded;
+          });
+        }
+      },
+      onToggleTranslation: (messageId) {
+        final t = _translations[messageId];
+        if (t != null) {
+          setState(() {
+            t.expanded = !t.expanded;
+          });
+        }
+      },
+      onToggleReasoningSegment: (messageId, segmentIndex) {
+        final segments = _reasoningSegments[messageId];
+        if (segments != null && segmentIndex < segments.length) {
+          setState(() {
+            segments[segmentIndex].expanded = !segments[segmentIndex].expanded;
+          });
+        }
+      },
+      buildPinnedStreamingIndicator: () => _buildPinnedStreamingIndicator(),
     );
   }
 
@@ -2341,64 +2210,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   /// [isTablet] determines whether to include tablet-specific features like
   /// mini map, learning mode, camera/photos pickers, and file upload.
   Widget _buildChatInputBar(BuildContext context, {required bool isTablet}) {
-    final settings = context.watch<SettingsProvider>();
-    final ap = context.watch<AssistantProvider>();
-    final a = ap.currentAssistant;
-    final assistantId = a?.id;
-
-    // Use unified helper to get model identifiers
-    final modelIds = getActiveModelIds(settings, assistant: a);
-    final pk = modelIds.providerKey;
-    final mid = modelIds.modelId;
-
-    // Enforce model capabilities: disable MCP selection if model doesn't support tools
-    if (pk != null && mid != null) {
-      final supportsTools = _isToolModel(pk, mid);
-      if (!supportsTools && (a?.mcpServerIds.isNotEmpty ?? false)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final aa = ap.currentAssistant;
-          if (aa != null && aa.mcpServerIds.isNotEmpty) {
-            ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
-          }
-        });
-      }
-      final supportsReasoning = _isReasoningModel(pk, mid);
-      if (!supportsReasoning && a != null) {
-        final enabledNow = _isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
-        if (enabledNow) {
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            final aa = ap.currentAssistant;
-            if (aa != null) {
-              await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
-            }
-          });
-        }
-      }
-    }
-
-    // Compute whether built-in search (Gemini incl. Vertex or Claude) is active to highlight the search button
-    final cfg = getActiveProviderConfig(settings, assistant: a);
-    bool builtinSearchActive = false;
-    if (cfg != null && mid != null) {
-      final isGemini = cfg.providerType == ProviderKind.google;
-      final isClaude = cfg.providerType == ProviderKind.claude;
-      final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-      if (isGemini || isClaude || isOpenAIResponses) {
-        final ov = cfg.modelOverrides[mid] as Map?;
-        final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-        builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-      }
-    }
-
-    final isDesktop = PlatformUtils.isDesktopTarget;
-
-    return ChatInputBar(
-      key: _inputBarKey,
+    return ChatInputSection(
+      inputBarKey: _inputBarKey,
+      inputFocus: _inputFocus,
+      inputController: _inputController,
+      mediaController: _mediaController,
+      isTablet: isTablet,
+      isLoading: _isCurrentConversationLoading,
+      isToolModel: _isToolModel,
+      isReasoningModel: _isReasoningModel,
+      isReasoningEnabled: _isReasoningEnabled,
       onMore: _toggleTools,
-      searchEnabled: context.watch<SettingsProvider>().searchEnabled || builtinSearchActive,
-      onToggleSearch: (enabled) {
-        context.read<SettingsProvider>().setSearchEnabled(enabled);
-      },
       onSelectModel: () => showModelSelectSheet(context),
       onLongPressSelectModel: () {
         Navigator.of(context).push(
@@ -2420,19 +2242,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           MaterialPageRoute(builder: (_) => const McpPage()),
         );
       },
-      onStop: _cancelStreaming,
-      modelIcon: (settings.showModelIcon && pk != null && mid != null)
-          ? CurrentModelIcon(
-              providerKey: pk,
-              modelId: mid,
-              size: 40,
-              withBackground: true,
-              backgroundColor: Colors.transparent,
-            )
-          : null,
-      focusNode: _inputFocus,
-      controller: _inputController,
-      mediaController: _mediaController,
+      onOpenSearch: _openSearchSettings,
       onConfigureReasoning: () async {
         final assistant = context.read<AssistantProvider>().currentAssistant;
         if (assistant != null) {
@@ -2446,9 +2256,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           );
         }
       },
-      reasoningActive: _isReasoningEnabled((context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ?? settings.thinkingBudget),
-      supportsReasoning: (pk != null && mid != null) ? _isReasoningModel(pk, mid) : false,
-      onOpenSearch: _openSearchSettings,
       onSend: (text) {
         _sendMessage(text);
         _inputController.clear();
@@ -2459,48 +2266,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           _inputFocus.requestFocus();
         }
       },
-      loading: _isCurrentConversationLoading,
-      showMcpButton: (() {
-        final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
-        final mid3 = a?.chatModelId ?? settings.currentModelId;
-        if (pk2 == null || mid3 == null) return false;
-        final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
-        return _isToolModel(pk2, mid3) && hasEnabledMcp;
-      })(),
-      mcpActive: (() {
-        final a = context.watch<AssistantProvider>().currentAssistant;
-        final connected = context.watch<McpProvider>().connectedServers;
-        final selected = a?.mcpServerIds ?? const <String>[];
-        if (selected.isEmpty || connected.isEmpty) return false;
-        return connected.any((s) => selected.contains(s.id));
-      })(),
-      showQuickPhraseButton: (() {
-        final assistant = context.watch<AssistantProvider>().currentAssistant;
-        final quickPhraseProvider = context.watch<QuickPhraseProvider>();
-        final globalCount = quickPhraseProvider.globalPhrases.length;
-        final assistantCount = assistant != null
-            ? quickPhraseProvider.getForAssistant(assistant.id).length
-            : 0;
-        return (globalCount + assistantCount) > 0;
-      })(),
+      onStop: _cancelStreaming,
       onQuickPhrase: _showQuickPhraseMenu,
       onLongPressQuickPhrase: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
         );
       },
-      // OCR button: show on desktop for mobile layout, always check settings for tablet layout
-      showOcrButton: isTablet
-          ? (settings.ocrModelProvider != null && settings.ocrModelId != null)
-          : (isDesktop && settings.ocrModelProvider != null && settings.ocrModelId != null),
-      ocrActive: settings.ocrEnabled,
       onToggleOcr: () async {
         final sp = context.read<SettingsProvider>();
         await sp.setOcrEnabled(!sp.ocrEnabled);
       },
-      // Tablet-specific parameters
-      showMiniMapButton: isTablet,
-      onOpenMiniMap: isTablet ? () async {
+      onOpenMiniMap: () async {
         final collapsed = _collapseVersions(_messages);
         String? selectedId;
         if (PlatformUtils.isDesktop) {
@@ -2511,17 +2288,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         if (selectedId != null && selectedId.isNotEmpty) {
           await _scrollToMessageId(selectedId);
         }
-      } : null,
-      onPickCamera: isTablet ? (isDesktop ? null : _onPickCamera) : null,
-      onPickPhotos: isTablet ? (isDesktop ? null : _onPickPhotos) : null,
-      onUploadFiles: isTablet ? _onPickFiles : null,
-      onToggleLearningMode: isTablet ? _openInstructionInjectionPopover : null,
-      onLongPressLearning: isTablet ? _showLearningPromptSheet : null,
-      learningModeActive: isTablet
-          ? context.watch<InstructionInjectionProvider>().activeIdsFor(assistantId).isNotEmpty
-          : false,
-      showMoreButton: !isTablet,
-      onClearContext: isTablet ? _onClearContext : null,
+      },
+      onPickCamera: _onPickCamera,
+      onPickPhotos: _onPickPhotos,
+      onUploadFiles: _onPickFiles,
+      onToggleLearningMode: _openInstructionInjectionPopover,
+      onLongPressLearning: _showLearningPromptSheet,
+      onClearContext: _onClearContext,
     );
   }
 
