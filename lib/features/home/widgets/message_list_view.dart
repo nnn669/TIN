@@ -362,14 +362,27 @@ class MessageListView extends StatelessWidget {
           totalTokens: displayTokens,
         );
 
-        // Use streaming reasoning data if available, otherwise fall back to r
+        // Update reasoning text from streaming data while preserving expanded state from r
+        // This allows user to toggle expanded state during streaming without it being reset
         stream_ctrl.ReasoningData? streamingReasoning = r;
         if (data.reasoningText != null && data.reasoningText!.isNotEmpty) {
-          streamingReasoning = stream_ctrl.ReasoningData()
-            ..text = data.reasoningText!
-            ..startAt = data.reasoningStartAt
-            ..finishedAt = data.reasoningFinishedAt
-            ..expanded = r?.expanded ?? false;
+          if (r != null) {
+            // Update the existing ReasoningData object's text fields
+            // but preserve the expanded state that user may have toggled
+            r.text = data.reasoningText!;
+            r.startAt = data.reasoningStartAt;
+            if (data.reasoningFinishedAt != null) {
+              r.finishedAt = data.reasoningFinishedAt;
+            }
+            streamingReasoning = r;
+          } else {
+            // No existing reasoning data, create new one
+            streamingReasoning = stream_ctrl.ReasoningData()
+              ..text = data.reasoningText!
+              ..startAt = data.reasoningStartAt
+              ..finishedAt = data.reasoningFinishedAt
+              ..expanded = false;
+          }
         }
 
         // Wrap in RepaintBoundary to isolate repaints from affecting other widgets

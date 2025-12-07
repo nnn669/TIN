@@ -735,7 +735,13 @@ class HomePageController extends ChangeNotifier {
     final r = reasoning[messageId];
     if (r != null) {
       r.expanded = !r.expanded;
-      notifyListeners();
+      // If this is a streaming message, trigger rebuild via notifier
+      // to avoid full page rebuild while still updating the UI
+      if (streamingContentNotifier.hasNotifier(messageId)) {
+        streamingContentNotifier.forceRebuild(messageId);
+      } else {
+        notifyListeners();
+      }
     }
   }
 
@@ -751,7 +757,13 @@ class HomePageController extends ChangeNotifier {
     final segments = reasoningSegments[messageId];
     if (segments != null && segmentIndex < segments.length) {
       segments[segmentIndex].expanded = !segments[segmentIndex].expanded;
-      notifyListeners();
+      // If this is a streaming message, trigger rebuild via notifier
+      // to avoid full page rebuild while still updating the UI
+      if (streamingContentNotifier.hasNotifier(messageId)) {
+        streamingContentNotifier.forceRebuild(messageId);
+      } else {
+        notifyListeners();
+      }
     }
   }
 

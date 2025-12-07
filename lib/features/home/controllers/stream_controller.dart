@@ -458,7 +458,7 @@ class StreamController {
       final r = _reasoning[messageId] ?? ReasoningData();
       r.text += chunk.reasoning!;
       r.startAt ??= DateTime.now();
-      r.expanded = false;
+      // NOTE: Do not reset r.expanded here - preserve user's toggle state during streaming
       _reasoning[messageId] = r;
 
       // Add to reasoning segments for mixed display
@@ -750,7 +750,7 @@ class StreamController {
     bool changed = false;
     final autoCollapse = forceCollapse || getSettingsProvider().autoCollapseThinking;
 
-    // Finish main reasoning data
+    // Finish main reasoning data (only when it first finishes, not on subsequent calls)
     final r = _reasoning[messageId];
     if (r != null && r.finishedAt == null) {
       r.finishedAt = DateTime.now();
@@ -759,13 +759,12 @@ class StreamController {
       }
       _reasoning[messageId] = r;
       changed = true;
-    } else if (r != null && autoCollapse && r.expanded) {
-      r.expanded = false;
-      _reasoning[messageId] = r;
-      changed = true;
     }
+    // NOTE: Removed the "else if" branch that would force collapse on every call.
+    // This allows users to expand reasoning during content streaming without it
+    // being immediately collapsed again.
 
-    // Finish last reasoning segment
+    // Finish last reasoning segment (only when it first finishes)
     final segments = _reasoningSegments[messageId];
     if (segments != null && segments.isNotEmpty) {
       final lastSegment = segments.last;
@@ -776,11 +775,8 @@ class StreamController {
         }
         _reasoningSegments[messageId] = segments;
         changed = true;
-      } else if (autoCollapse && lastSegment.expanded) {
-        lastSegment.expanded = false;
-        _reasoningSegments[messageId] = segments;
-        changed = true;
       }
+      // NOTE: Removed the "else if" branch that would force collapse on every call.
     }
 
     if (changed) {

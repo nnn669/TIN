@@ -43,6 +43,7 @@ class StreamingContentNotifier {
         reasoningStartAt: current.reasoningStartAt,
         reasoningFinishedAt: current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion,
+        uiVersion: current.uiVersion,
       );
     }
   }
@@ -63,6 +64,7 @@ class StreamingContentNotifier {
         reasoningStartAt: reasoningStartAt ?? current.reasoningStartAt,
         reasoningFinishedAt: reasoningFinishedAt ?? current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion,
+        uiVersion: current.uiVersion,
       );
     }
   }
@@ -80,6 +82,25 @@ class StreamingContentNotifier {
         reasoningStartAt: current.reasoningStartAt,
         reasoningFinishedAt: current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion + 1,
+        uiVersion: current.uiVersion,
+      );
+    }
+  }
+
+  /// Force a rebuild of the streaming message widget.
+  /// Used when external state like reasoning expanded changes.
+  void forceRebuild(String messageId) {
+    final notifier = _notifiers[messageId];
+    if (notifier != null) {
+      final current = notifier.value;
+      notifier.value = StreamingContentData(
+        content: current.content,
+        totalTokens: current.totalTokens,
+        reasoningText: current.reasoningText,
+        reasoningStartAt: current.reasoningStartAt,
+        reasoningFinishedAt: current.reasoningFinishedAt,
+        toolPartsVersion: current.toolPartsVersion,
+        uiVersion: current.uiVersion + 1,
       );
     }
   }
@@ -114,6 +135,7 @@ class StreamingContentData {
     this.reasoningStartAt,
     this.reasoningFinishedAt,
     this.toolPartsVersion = 0,
+    this.uiVersion = 0,
   });
 
   final String content;
@@ -123,6 +145,8 @@ class StreamingContentData {
   final DateTime? reasoningFinishedAt;
   /// Version counter for tool parts updates. Incrementing this triggers rebuild.
   final int toolPartsVersion;
+  /// Version counter for UI state changes (e.g., reasoning expanded toggle).
+  final int uiVersion;
 
   @override
   bool operator ==(Object other) =>
@@ -134,7 +158,8 @@ class StreamingContentData {
           reasoningText == other.reasoningText &&
           reasoningStartAt == other.reasoningStartAt &&
           reasoningFinishedAt == other.reasoningFinishedAt &&
-          toolPartsVersion == other.toolPartsVersion;
+          toolPartsVersion == other.toolPartsVersion &&
+          uiVersion == other.uiVersion;
 
   @override
   int get hashCode =>
@@ -143,5 +168,6 @@ class StreamingContentData {
       reasoningText.hashCode ^
       reasoningStartAt.hashCode ^
       reasoningFinishedAt.hashCode ^
-      toolPartsVersion.hashCode;
+      toolPartsVersion.hashCode ^
+      uiVersion.hashCode;
 }
