@@ -10,6 +10,7 @@ import '../../../shared/widgets/ios_checkbox.dart';
 import '../../chat/widgets/chat_message_widget.dart';
 import '../../chat/widgets/message_more_sheet.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
+import '../controllers/streaming_content_notifier.dart';
 import 'model_icon.dart';
 
 /// Callback types for message list view actions
@@ -74,6 +75,7 @@ class MessageListView extends StatelessWidget {
     required this.dividerPadding,
     this.pinnedStreamingMessageId,
     this.isPinnedIndicatorActive = false,
+    this.streamingContentNotifier,
     this.onVersionChange,
     this.onRegenerateMessage,
     this.onResendMessage,
@@ -104,6 +106,11 @@ class MessageListView extends StatelessWidget {
   final EdgeInsetsGeometry dividerPadding;
   final String? pinnedStreamingMessageId;
   final bool isPinnedIndicatorActive;
+
+  /// Lightweight notifier for streaming content updates.
+  /// When provided, streaming messages will use ValueListenableBuilder
+  /// to avoid full page rebuilds.
+  final StreamingContentNotifier? streamingContentNotifier;
 
   // Callbacks
   final OnVersionChange? onVersionChange;
@@ -247,6 +254,12 @@ class MessageListView extends StatelessWidget {
     final effectiveTotal = showMsgNav ? total : 1;
     final effectiveIndex = showMsgNav ? selectedIdx : 0;
 
+    // Check if this is a streaming message that should use ValueListenableBuilder
+    final isStreaming = message.isStreaming &&
+        message.role == 'assistant' &&
+        streamingContentNotifier != null &&
+        streamingContentNotifier!.hasNotifier(message.id);
+
     return Column(
       key: _keyForMessage(message.id),
       mainAxisSize: MainAxisSize.min,
@@ -269,81 +282,41 @@ class MessageListView extends StatelessWidget {
                 data: MediaQuery.of(context).copyWith(
                   textScaleFactor: MediaQuery.of(context).textScaleFactor * chatScale,
                 ),
-                child: ChatMessageWidget(
-                  message: message,
-                  versionIndex: effectiveIndex,
-                  versionCount: effectiveTotal,
-                  onPrevVersion: (showMsgNav && selectedIdx > 0)
-                      ? () => onVersionChange?.call(gid, selectedIdx - 1)
-                      : null,
-                  onNextVersion: (showMsgNav && selectedIdx < total - 1)
-                      ? () => onVersionChange?.call(gid, selectedIdx + 1)
-                      : null,
-                  modelIcon: (!useAssist && message.role == 'assistant' && message.providerId != null && message.modelId != null)
-                      ? CurrentModelIcon(providerKey: message.providerId, modelId: message.modelId, size: 30)
-                      : null,
-                  showModelIcon: useAssist ? false : context.watch<SettingsProvider>().showModelIcon,
-                  useAssistantAvatar: useAssist && message.role == 'assistant',
-                  assistantName: useAssist ? (assistant?.name ?? 'Assistant') : null,
-                  assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
-                  showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
-                  showTokenStats: context.watch<SettingsProvider>().showTokenStats,
-                  hideStreamingIndicator: isPinnedIndicatorActive && (message.id == pinnedStreamingMessageId),
-                  reasoningText: (message.role == 'assistant') ? (r?.text ?? '') : null,
-                  reasoningExpanded: (message.role == 'assistant') ? (r?.expanded ?? false) : false,
-                  reasoningLoading: (message.role == 'assistant') ? (r?.finishedAt == null && (r?.text.isNotEmpty == true)) : false,
-                  reasoningStartAt: (message.role == 'assistant') ? r?.startAt : null,
-                  reasoningFinishedAt: (message.role == 'assistant') ? r?.finishedAt : null,
-                  onToggleReasoning: (message.role == 'assistant' && r != null)
-                      ? () => onToggleReasoning?.call(message.id)
-                      : null,
-                  translationExpanded: t?.expanded ?? true,
-                  onToggleTranslation: (message.translation != null && message.translation!.isNotEmpty && t != null)
-                      ? () => onToggleTranslation?.call(message.id)
-                      : null,
-                  onRegenerate: message.role == 'assistant' ? () => onRegenerateMessage?.call(message) : null,
-                  onResend: message.role == 'user' ? () => onResendMessage?.call(message) : null,
-                  onTranslate: message.role == 'assistant' ? () => onTranslateMessage?.call(message) : null,
-                  onSpeak: message.role == 'assistant' ? () => onSpeakMessage?.call(message) : null,
-                  onEdit: (message.role == 'user' || message.role == 'assistant')
-                      ? () => onEditMessage?.call(message)
-                      : null,
-                  onDelete: message.role == 'user'
-                      ? () => onDeleteMessage?.call(message, byGroup)
-                      : null,
-                  onMore: () async {
-                    final action = await showMessageMoreSheet(context, message);
-                    if (action == MessageMoreAction.delete) {
-                      await onDeleteMessage?.call(message, byGroup);
-                    } else if (action == MessageMoreAction.edit) {
-                      onEditMessage?.call(message);
-                    } else if (action == MessageMoreAction.fork) {
-                      await onForkConversation?.call(message);
-                    } else if (action == MessageMoreAction.share) {
-                      onShareMessage?.call(index, messages);
-                    }
-                  },
-                  toolParts: message.role == 'assistant' ? toolParts[message.id] : null,
-                  reasoningSegments: message.role == 'assistant'
-                      ? (() {
-                          final segments = reasoningSegments[message.id];
-                          if (segments == null || segments.isEmpty) return null;
-                          return segments
-                              .asMap()
-                              .entries
-                              .map((entry) => ReasoningSegment(
-                                    text: entry.value.text,
-                                    expanded: entry.value.expanded,
-                                    loading: entry.value.finishedAt == null && entry.value.text.isNotEmpty,
-                                    startAt: entry.value.startAt,
-                                    finishedAt: entry.value.finishedAt,
-                                    onToggle: () => onToggleReasoningSegment?.call(message.id, entry.key),
-                                    toolStartIndex: entry.value.toolStartIndex,
-                                  ))
-                              .toList();
-                        })()
-                      : null,
-                ),
+                child: isStreaming
+                    ? _buildStreamingMessageWidget(
+                        context,
+                        message: message,
+                        index: index,
+                        messages: messages,
+                        byGroup: byGroup,
+                        r: r,
+                        t: t,
+                        useAssist: useAssist,
+                        assistant: assistant,
+                        showMsgNav: showMsgNav,
+                        gid: gid,
+                        selectedIdx: selectedIdx,
+                        total: total,
+                        effectiveIndex: effectiveIndex,
+                        effectiveTotal: effectiveTotal,
+                      )
+                    : _buildChatMessageWidget(
+                        context,
+                        message: message,
+                        index: index,
+                        messages: messages,
+                        byGroup: byGroup,
+                        r: r,
+                        t: t,
+                        useAssist: useAssist,
+                        assistant: assistant,
+                        showMsgNav: showMsgNav,
+                        gid: gid,
+                        selectedIdx: selectedIdx,
+                        total: total,
+                        effectiveIndex: effectiveIndex,
+                        effectiveTotal: effectiveTotal,
+                      ),
               ),
             ),
           ],
@@ -354,6 +327,167 @@ class MessageListView extends StatelessWidget {
             child: _buildContextDivider(context),
           ),
       ],
+    );
+  }
+
+  /// Build a streaming message widget that uses ValueListenableBuilder
+  /// to avoid full page rebuilds during streaming.
+  Widget _buildStreamingMessageWidget(
+    BuildContext context, {
+    required ChatMessage message,
+    required int index,
+    required List<ChatMessage> messages,
+    required Map<String, List<ChatMessage>> byGroup,
+    required stream_ctrl.ReasoningData? r,
+    required TranslationUiState? t,
+    required bool useAssist,
+    required dynamic assistant,
+    required bool showMsgNav,
+    required String gid,
+    required int selectedIdx,
+    required int total,
+    required int effectiveIndex,
+    required int effectiveTotal,
+  }) {
+    return ValueListenableBuilder<StreamingContentData>(
+      valueListenable: streamingContentNotifier!.getNotifier(message.id),
+      builder: (context, data, child) {
+        // Use streaming content if available, otherwise fall back to message content
+        final displayContent = data.content.isNotEmpty ? data.content : message.content;
+        final displayTokens = data.totalTokens > 0 ? data.totalTokens : message.totalTokens;
+
+        // Create a modified message with streaming content
+        final streamingMessage = message.copyWith(
+          content: displayContent,
+          totalTokens: displayTokens,
+        );
+
+        // Use streaming reasoning data if available, otherwise fall back to r
+        stream_ctrl.ReasoningData? streamingReasoning = r;
+        if (data.reasoningText != null && data.reasoningText!.isNotEmpty) {
+          streamingReasoning = stream_ctrl.ReasoningData()
+            ..text = data.reasoningText!
+            ..startAt = data.reasoningStartAt
+            ..finishedAt = data.reasoningFinishedAt
+            ..expanded = r?.expanded ?? false;
+        }
+
+        // Wrap in RepaintBoundary to isolate repaints from affecting other widgets
+        return RepaintBoundary(
+          child: _buildChatMessageWidget(
+            context,
+            message: streamingMessage,
+            index: index,
+            messages: messages,
+            byGroup: byGroup,
+            r: streamingReasoning,
+            t: t,
+            useAssist: useAssist,
+            assistant: assistant,
+            showMsgNav: showMsgNav,
+            gid: gid,
+            selectedIdx: selectedIdx,
+            total: total,
+            effectiveIndex: effectiveIndex,
+            effectiveTotal: effectiveTotal,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build the actual ChatMessageWidget with all its properties.
+  Widget _buildChatMessageWidget(
+    BuildContext context, {
+    required ChatMessage message,
+    required int index,
+    required List<ChatMessage> messages,
+    required Map<String, List<ChatMessage>> byGroup,
+    required stream_ctrl.ReasoningData? r,
+    required TranslationUiState? t,
+    required bool useAssist,
+    required dynamic assistant,
+    required bool showMsgNav,
+    required String gid,
+    required int selectedIdx,
+    required int total,
+    required int effectiveIndex,
+    required int effectiveTotal,
+  }) {
+    return ChatMessageWidget(
+      message: message,
+      versionIndex: effectiveIndex,
+      versionCount: effectiveTotal,
+      onPrevVersion: (showMsgNav && selectedIdx > 0)
+          ? () => onVersionChange?.call(gid, selectedIdx - 1)
+          : null,
+      onNextVersion: (showMsgNav && selectedIdx < total - 1)
+          ? () => onVersionChange?.call(gid, selectedIdx + 1)
+          : null,
+      modelIcon: (!useAssist && message.role == 'assistant' && message.providerId != null && message.modelId != null)
+          ? CurrentModelIcon(providerKey: message.providerId, modelId: message.modelId, size: 30)
+          : null,
+      showModelIcon: useAssist ? false : context.watch<SettingsProvider>().showModelIcon,
+      useAssistantAvatar: useAssist && message.role == 'assistant',
+      assistantName: useAssist ? (assistant?.name ?? 'Assistant') : null,
+      assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
+      showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
+      showTokenStats: context.watch<SettingsProvider>().showTokenStats,
+      hideStreamingIndicator: isPinnedIndicatorActive && (message.id == pinnedStreamingMessageId),
+      reasoningText: (message.role == 'assistant') ? (r?.text ?? '') : null,
+      reasoningExpanded: (message.role == 'assistant') ? (r?.expanded ?? false) : false,
+      reasoningLoading: (message.role == 'assistant') ? (r?.finishedAt == null && (r?.text.isNotEmpty == true)) : false,
+      reasoningStartAt: (message.role == 'assistant') ? r?.startAt : null,
+      reasoningFinishedAt: (message.role == 'assistant') ? r?.finishedAt : null,
+      onToggleReasoning: (message.role == 'assistant' && r != null)
+          ? () => onToggleReasoning?.call(message.id)
+          : null,
+      translationExpanded: t?.expanded ?? true,
+      onToggleTranslation: (message.translation != null && message.translation!.isNotEmpty && t != null)
+          ? () => onToggleTranslation?.call(message.id)
+          : null,
+      onRegenerate: message.role == 'assistant' ? () => onRegenerateMessage?.call(message) : null,
+      onResend: message.role == 'user' ? () => onResendMessage?.call(message) : null,
+      onTranslate: message.role == 'assistant' ? () => onTranslateMessage?.call(message) : null,
+      onSpeak: message.role == 'assistant' ? () => onSpeakMessage?.call(message) : null,
+      onEdit: (message.role == 'user' || message.role == 'assistant')
+          ? () => onEditMessage?.call(message)
+          : null,
+      onDelete: message.role == 'user'
+          ? () => onDeleteMessage?.call(message, byGroup)
+          : null,
+      onMore: () async {
+        final action = await showMessageMoreSheet(context, message);
+        if (action == MessageMoreAction.delete) {
+          await onDeleteMessage?.call(message, byGroup);
+        } else if (action == MessageMoreAction.edit) {
+          onEditMessage?.call(message);
+        } else if (action == MessageMoreAction.fork) {
+          await onForkConversation?.call(message);
+        } else if (action == MessageMoreAction.share) {
+          onShareMessage?.call(index, messages);
+        }
+      },
+      toolParts: message.role == 'assistant' ? toolParts[message.id] : null,
+      reasoningSegments: message.role == 'assistant'
+          ? (() {
+              final segments = reasoningSegments[message.id];
+              if (segments == null || segments.isEmpty) return null;
+              return segments
+                  .asMap()
+                  .entries
+                  .map((entry) => ReasoningSegment(
+                        text: entry.value.text,
+                        expanded: entry.value.expanded,
+                        loading: entry.value.finishedAt == null && entry.value.text.isNotEmpty,
+                        startAt: entry.value.startAt,
+                        finishedAt: entry.value.finishedAt,
+                        onToggle: () => onToggleReasoningSegment?.call(message.id, entry.key),
+                        toolStartIndex: entry.value.toolStartIndex,
+                      ))
+                  .toList();
+            })()
+          : null,
     );
   }
 }

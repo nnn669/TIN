@@ -514,6 +514,49 @@ class ChatService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update message content during streaming without triggering notifyListeners.
+  /// This is used for streaming updates to avoid unnecessary rebuilds of
+  /// widgets watching ChatService (e.g., side_drawer).
+  Future<void> updateMessageSilent(String messageId, {
+    String? content,
+    int? totalTokens,
+    bool? isStreaming,
+    String? reasoningText,
+    DateTime? reasoningStartAt,
+    DateTime? reasoningFinishedAt,
+    String? translation,
+    String? reasoningSegmentsJson,
+  }) async {
+    if (!_initialized) return;
+
+    final message = _messagesBox.get(messageId);
+    if (message == null) return;
+
+    final updatedMessage = message.copyWith(
+      content: content ?? message.content,
+      totalTokens: totalTokens ?? message.totalTokens,
+      isStreaming: isStreaming ?? message.isStreaming,
+      reasoningText: reasoningText ?? message.reasoningText,
+      reasoningStartAt: reasoningStartAt ?? message.reasoningStartAt,
+      reasoningFinishedAt: reasoningFinishedAt ?? message.reasoningFinishedAt,
+      translation: translation,
+      reasoningSegmentsJson: reasoningSegmentsJson ?? message.reasoningSegmentsJson,
+    );
+
+    await _messagesBox.put(messageId, updatedMessage);
+
+    // Update cache
+    final conversationId = message.conversationId;
+    if (_messagesCache.containsKey(conversationId)) {
+      final messages = _messagesCache[conversationId]!;
+      final index = messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) {
+        messages[index] = updatedMessage;
+      }
+    }
+    // NOTE: Do NOT call notifyListeners() here to avoid UI rebuilds during streaming
+  }
+
   // Tool events persistence (per assistant message)
   List<Map<String, dynamic>> getToolEvents(String assistantMessageId) {
     if (!_initialized) return const <Map<String, dynamic>>[];

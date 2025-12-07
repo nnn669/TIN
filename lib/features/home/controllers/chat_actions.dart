@@ -184,6 +184,11 @@ class ChatActions {
       modelId: modelId,
       providerKey: providerKey,
     );
+
+    // Pre-create streaming notifier BEFORE adding message to list
+    // so that MessageListView can detect it's streaming on first render
+    streamController.markStreamingStarted(assistantMessage.id);
+
     _messages.add(assistantMessage);
     onMessagesChanged?.call();
 
@@ -301,6 +306,10 @@ class ChatActions {
       version: versioning.nextVersion,
     );
 
+    // Pre-create streaming notifier BEFORE adding message to list
+    // so that MessageListView can detect it's streaming on first render
+    streamController.markStreamingStarted(assistantMessage.id);
+
     // Persist version selection
     final gid = assistantMessage.groupId ?? assistantMessage.id;
     _versionSelections[gid] = assistantMessage.version;
@@ -380,6 +389,9 @@ class ChatActions {
       }
     }
     if (streaming != null) {
+      // Mark streaming as ended to allow UI rebuilds again
+      streamController.markStreamingEnded(streaming.id);
+
       await chatService.updateMessage(
         streaming.id,
         content: streaming.content,
@@ -429,6 +441,9 @@ class ChatActions {
     final state = stream_ctrl.StreamingState(ctx);
     final assistant = ctx.assistant;
     final conversationId = state.conversationId;
+
+    // Mark this message as actively streaming to suppress UI rebuilds
+    streamController.markStreamingStarted(state.messageId);
 
     try {
       final stream = ChatApiService.sendMessageStream(
@@ -507,7 +522,8 @@ class ChatActions {
         DateTime? reasoningStartAt,
         String? reasoningSegmentsJson,
       }) async {
-        await chatService.updateMessage(
+        // Use silent update during streaming to avoid UI rebuilds
+        await chatService.updateMessageSilent(
           messageId,
           reasoningText: reasoningText,
           reasoningStartAt: reasoningStartAt,
@@ -524,7 +540,8 @@ class ChatActions {
       chunk,
       state,
       updateReasoningSegmentsInDb: (String messageId, String json) async {
-        await chatService.updateMessage(messageId, reasoningSegmentsJson: json);
+        // Use silent update during streaming to avoid UI rebuilds
+        await chatService.updateMessageSilent(messageId, reasoningSegmentsJson: json);
       },
       setToolEventsInDb:
           (String messageId, List<Map<String, dynamic>> events) async {
@@ -590,7 +607,9 @@ class ChatActions {
     }
     onScheduleImageSanitize?.call(messageId, streamingProcessed,
         immediate: true);
-    await chatService.updateMessage(
+    // Use silent update to avoid triggering ChatService.notifyListeners()
+    // which would cause side_drawer and other widgets to rebuild
+    await chatService.updateMessageSilent(
       messageId,
       content: streamingProcessed,
       totalTokens: state.totalTokens,
@@ -604,7 +623,10 @@ class ChatActions {
           content: streamingProcessed,
           totalTokens: state.totalTokens,
         );
-        onMessagesChanged?.call();
+        // NOTE: Do NOT call onMessagesChanged here!
+        // Streaming content updates are handled by StreamingContentNotifier
+        // via ValueListenableBuilder, which only rebuilds the streaming message widget.
+        // Calling onMessagesChanged would trigger a full page rebuild and cause lag.
       }
     }
 
@@ -638,7 +660,8 @@ class ChatActions {
         DateTime? reasoningFinishedAt,
         String? reasoningSegmentsJson,
       }) async {
-        await chatService.updateMessage(
+        // Use silent update during streaming to avoid UI rebuilds
+        await chatService.updateMessageSilent(
           messageId,
           reasoningText: reasoningText,
           reasoningFinishedAt: reasoningFinishedAt,
@@ -717,6 +740,9 @@ class ChatActions {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
+    // Mark streaming as ended to allow UI rebuilds again
+    streamController.markStreamingEnded(messageId);
+
     // Clean up stream throttle timer and flush final content
     streamController.cleanupTimers(messageId);
 
@@ -785,6 +811,9 @@ class ChatActions {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
+    // Mark streaming as ended to allow UI rebuilds again
+    streamController.markStreamingEnded(messageId);
+
     streamController.cleanupTimers(messageId);
     final processed = _transformAssistantContent(state);
     // Let UI provide the localized error message
@@ -832,6 +861,9 @@ class ChatActions {
   /// Handle stream done callback.
   Future<void> _handleStreamDone(stream_ctrl.StreamingState state) async {
     final conversationId = state.conversationId;
+
+    // Ensure streaming is marked as ended
+    streamController.markStreamingEnded(state.messageId);
 
     streamController.cleanupTimers(state.messageId);
     if (_loadingConversationIds.contains(conversationId)) {

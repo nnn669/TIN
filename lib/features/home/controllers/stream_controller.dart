@@ -7,6 +7,9 @@ import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../chat/widgets/chat_message_widget.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
+import 'streaming_content_notifier.dart';
+
+export 'streaming_content_notifier.dart';
 
 /// Controller for managing streaming message generation.
 ///
@@ -30,7 +33,42 @@ class StreamController {
   final ChatService _chatService;
 
   /// Callback when state changes (trigger setState in the widget).
+  /// NOTE: This should only be used for non-streaming state changes.
+  /// For streaming content updates, use streamingContentNotifier instead.
   final VoidCallback onStateChanged;
+
+  /// Lightweight notifier for streaming content updates.
+  /// This avoids triggering full page rebuilds during streaming.
+  final StreamingContentNotifier streamingContentNotifier = StreamingContentNotifier();
+
+  /// Set of message IDs currently being streamed.
+  /// Used to suppress onStateChanged calls during streaming.
+  final Set<String> _activeStreamingIds = <String>{};
+
+  /// Check if any message is currently streaming.
+  bool get isAnyMessageStreaming => _activeStreamingIds.isNotEmpty;
+
+  /// Mark a message as actively streaming.
+  /// Also creates the StreamingContentNotifier for this message so that
+  /// MessageListView can detect it and use ValueListenableBuilder.
+  void markStreamingStarted(String messageId) {
+    _activeStreamingIds.add(messageId);
+    // Pre-create notifier so MessageListView can detect streaming state
+    streamingContentNotifier.getNotifier(messageId);
+  }
+
+  /// Mark a message as no longer streaming.
+  void markStreamingEnded(String messageId) {
+    _activeStreamingIds.remove(messageId);
+  }
+
+  /// Call onStateChanged only if no messages are actively streaming.
+  /// During streaming, UI updates are handled by ValueListenableBuilder.
+  void _safeNotifyStateChanged() {
+    if (_activeStreamingIds.isEmpty) {
+      onStateChanged();
+    }
+  }
 
   /// Get current settings provider (for auto-collapse setting, etc.).
   final SettingsProvider Function() getSettingsProvider;
@@ -147,6 +185,7 @@ class StreamController {
     _toolParts.clear();
     _geminiThoughtSigs.clear();
     _cancelAllTimers();
+    streamingContentNotifier.clear();
   }
 
   // ============================================================================
@@ -277,6 +316,9 @@ class StreamController {
   // ============================================================================
 
   /// Schedule a throttled UI update for streaming content.
+  ///
+  /// This method uses StreamingContentNotifier to update only the streaming
+  /// message widget, avoiding full page rebuilds that cause lag.
   void scheduleThrottledUpdate(
     String messageId,
     String conversationId,
@@ -285,12 +327,18 @@ class StreamController {
     required int totalTokens,
   }) {
     _pendingStreamContent[messageId] = content;
+
+    // Ensure notifier exists for this message
+    streamingContentNotifier.getNotifier(messageId);
+
     _streamThrottleTimers[messageId] ??=
         Timer.periodic(_streamThrottleInterval, (_) {
       final pending = _pendingStreamContent[messageId];
       if (pending != null && getCurrentConversationId() == conversationId) {
+        // Use lightweight notifier instead of full page rebuild
+        streamingContentNotifier.updateContent(messageId, pending, totalTokens);
+        // Also update the message list data (without triggering rebuild)
         updateMessageInList(messageId, pending, totalTokens);
-        onStateChanged();
       }
     });
   }
@@ -312,6 +360,7 @@ class StreamController {
     _inlineImageSanitizeTimers[messageId]?.cancel();
     _inlineImageSanitizeTimers.remove(messageId);
     _inlineImageSanitizing.remove(messageId);
+    streamingContentNotifier.removeNotifier(messageId);
   }
 
   /// Clean up timers for a message (public API).
@@ -439,9 +488,13 @@ class StreamController {
         reasoningSegmentsJson: serializeReasoningSegments(segments),
       );
 
-      if (getCurrentConversationId() == conversationId) {
-        onStateChanged();
-      }
+      // Update reasoning via StreamingContentNotifier for real-time UI updates
+      // without triggering full page rebuild
+      streamingContentNotifier.updateReasoning(
+        messageId,
+        reasoningText: r.text,
+        reasoningStartAt: r.startAt,
+      );
 
       await updateReasoningInDb(
         messageId,
@@ -501,7 +554,8 @@ class StreamController {
     }
     if (getCurrentConversationId() == conversationId) {
       _toolParts[messageId] = dedupeToolPartsList(existing);
-      onStateChanged();
+      // Notify via StreamingContentNotifier for real-time UI updates
+      streamingContentNotifier.notifyToolPartsUpdated(messageId);
     }
 
     // Persist tool events
@@ -572,7 +626,8 @@ class StreamController {
     }
     if (getCurrentConversationId() == conversationId) {
       _toolParts[messageId] = dedupeToolPartsList(parts);
-      onStateChanged();
+      // Notify via StreamingContentNotifier for real-time UI updates
+      streamingContentNotifier.notifyToolPartsUpdated(messageId);
     }
   }
 
@@ -596,7 +651,7 @@ class StreamController {
         reasoningText: r.text,
         reasoningFinishedAt: r.finishedAt,
       );
-      onStateChanged();
+      _safeNotifyStateChanged();
     }
 
     final segments = _reasoningSegments[messageId];
@@ -609,7 +664,7 @@ class StreamController {
         segments.last.expanded = false;
       }
       _reasoningSegments[messageId] = segments;
-      onStateChanged();
+      _safeNotifyStateChanged();
       await updateReasoningInDb(
         messageId,
         reasoningSegmentsJson: serializeReasoningSegments(segments),
@@ -635,7 +690,7 @@ class StreamController {
         r.expanded = false;
       }
       _reasoning[messageId] = r;
-      onStateChanged();
+      _safeNotifyStateChanged();
     }
 
     // Also finish any unfinished reasoning segments
@@ -649,7 +704,7 @@ class StreamController {
         segments.last.expanded = false;
       }
       _reasoningSegments[messageId] = segments;
-      onStateChanged();
+      _safeNotifyStateChanged();
     }
 
     // Save reasoning segments to database
@@ -721,7 +776,7 @@ class StreamController {
     }
 
     if (changed) {
-      onStateChanged();
+      _safeNotifyStateChanged();
     }
     return changed;
   }
@@ -829,6 +884,7 @@ class StreamController {
   /// Dispose of all resources.
   void dispose() {
     _cancelAllTimers();
+    streamingContentNotifier.dispose();
   }
 }
 

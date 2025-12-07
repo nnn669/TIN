@@ -195,6 +195,11 @@ class HomePageController extends ChangeNotifier {
   Map<String, List<stream_ctrl.ReasoningSegmentData>> get reasoningSegments => _streamController.reasoningSegments;
   Map<String, List<ToolUIPart>> get toolParts => _streamController.toolParts;
 
+  /// Lightweight notifier for streaming content updates.
+  /// Use this with ValueListenableBuilder in MessageListView to avoid full page rebuilds.
+  stream_ctrl.StreamingContentNotifier get streamingContentNotifier =>
+      _streamController.streamingContentNotifier;
+
   // Delegate to scroll controller
   scroll_ctrl.ChatScrollController get scrollCtrl => _scrollCtrl;
 
@@ -311,6 +316,10 @@ class HomePageController extends ChangeNotifier {
     _viewModel.onConversationSwitched = () {
       _restoreMessageUiState();
       _scrollToBottom(animate: false);
+    };
+    _viewModel.onStreamFinished = () {
+      // Trigger UI update when streaming finishes
+      notifyListeners();
     };
   }
 
@@ -432,12 +441,9 @@ class HomePageController extends ChangeNotifier {
     if (content.isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty) return;
     if (currentConversation == null) await _createNewConversation();
 
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-
     final success = await _viewModel.sendMessage(input);
     if (success) {
       notifyListeners();
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     }
   }
 

@@ -514,6 +514,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       dividerPadding: dividerPadding,
       pinnedStreamingMessageId: pinnedId,
       isPinnedIndicatorActive: pinActive,
+      streamingContentNotifier: _controller.streamingContentNotifier,
       onVersionChange: (groupId, version) async {
         await _controller.setSelectedVersion(groupId, version);
       },

@@ -150,7 +150,10 @@ class HomeViewModel extends ChangeNotifier {
         content: content,
         totalTokens: totalTokens,
       );
-      notifyListeners();
+      // NOTE: Do NOT call notifyListeners() here!
+      // Streaming content updates are now handled by StreamingContentNotifier
+      // via ValueListenableBuilder, which only rebuilds the streaming message widget.
+      // Calling notifyListeners() here would trigger a full page rebuild and cause lag.
     }
   }
 
