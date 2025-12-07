@@ -82,7 +82,7 @@ class AssistantProvider extends ChangeNotifier {
         deletable: false,
         thinkingBudget: null,
         temperature: 0.6,
-        topP: 1.0,
+        topP: null,
       );
 
   // Ensure localized default assistants exist; call this after localization is ready.
@@ -105,7 +105,7 @@ class AssistantProvider extends ChangeNotifier {
       ),
       deletable: false,
       temperature: 0.6,
-      topP: 1.0,
+      topP: null,
     ));
     await _persist();
     // Set current assistant if not set
@@ -208,7 +208,7 @@ class AssistantProvider extends ChangeNotifier {
           ? AppLocalizations.of(context)!.assistantProviderNewAssistantName
           : 'New Assistant')),
       temperature: 0.6,
-      topP: 1.0,
+      topP: null,
     );
     _assistants.add(a);
     await _persist();
