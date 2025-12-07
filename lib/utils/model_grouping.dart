@@ -26,9 +26,9 @@ class ModelGrouping {
     if (RegExp(r'doubao|ark|volc').hasMatch(id)) return 'Doubao';
     if (id.contains('glm') || id.contains('zhipu')) return 'GLM';
     if (id.contains('mistral')) return 'Mistral';
+    if (id.contains('minimax')) return 'MiniMax';
     if (id.contains('grok') || id.contains('xai')) return 'Grok';
     if (id.contains('kat')) return 'KAT';
-    if (id.contains('minimax')) return 'MiniMax';
     return otherLabel;
   }
 }

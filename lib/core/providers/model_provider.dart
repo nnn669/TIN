@@ -58,7 +58,8 @@ class ModelRegistry {
               r'gemini|claude|'
               r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
               r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
-              r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2)'
+              r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2)|'
+              r'deepseek-reasoner'
               r')'
           )
           .replaceAll(' ', ''),
@@ -71,7 +72,8 @@ class ModelRegistry {
               r'claude|'
               r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
               r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
-              r'deepseek-(?:r1|v3\.1|v3\.2)'
+              r'deepseek-(?:r1|v3\.1|v3\.2)|'
+              r'deepseek-reasoner'
               r')'
           )
           .replaceAll(' ', ''),
