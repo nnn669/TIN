@@ -122,7 +122,7 @@ class ChatInputBar extends StatefulWidget {
   State<ChatInputBar> createState() => _ChatInputBarState();
 }
 
-class _ChatInputBarState extends State<ChatInputBar> {
+class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver {
   late TextEditingController _controller;
   bool _searchEnabled = false;
   bool _isExpanded = false; // Track expand/collapse state for input field
@@ -133,6 +133,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
   static const Duration _repeatPeriod = Duration(milliseconds: 35);
   // Anchor for the responsive overflow menu on the left action bar
   final GlobalKey _leftOverflowAnchorKey = GlobalKey(debugLabel: 'left-overflow-anchor');
+  // Suppress context menu briefly after app resume to avoid flickering
+  bool _suppressContextMenu = false;
+
+  // Instance method for onChanged to avoid recreating the callback on every build
+  void _onTextChanged(String _) => setState(() {});
 
   void _addImages(List<String> paths) {
     if (paths.isEmpty) return;
@@ -165,10 +170,33 @@ class _ChatInputBarState extends State<ChatInputBar> {
     _controller = widget.controller ?? TextEditingController();
     widget.mediaController?._bind(this);
     _searchEnabled = widget.searchEnabled;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // When app resumes from background, suppress context menu briefly to avoid flickering
+    if (state == AppLifecycleState.resumed) {
+      _suppressContextMenu = true;
+      // Also unfocus to reset any stuck toolbar state
+      widget.focusNode?.unfocus();
+      // Re-enable context menu after a short delay
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() => _suppressContextMenu = false);
+        }
+      });
+    } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      // When going to background, hide any open toolbar
+      _suppressContextMenu = true;
+      widget.focusNode?.unfocus();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _repeatTimers.values.forEach((t) { try { t?.cancel(); } catch (_) {} });
     _repeatTimers.clear();
     widget.mediaController?._unbind(this);
@@ -255,6 +283,120 @@ class _ChatInputBarState extends State<ChatInputBar> {
         } catch (_) {}
       });
     } catch (_) {}
+  }
+
+  // Instance method for contextMenuBuilder to avoid flickering caused by recreating
+  // the callback on every build. See: https://github.com/flutter/flutter/issues/150551
+  Widget _buildContextMenu(BuildContext context, EditableTextState state) {
+    // Suppress context menu during app lifecycle transitions to avoid flickering
+    if (_suppressContextMenu) {
+      return const SizedBox.shrink();
+    }
+    if (Platform.isIOS) {
+      final items = <ContextMenuButtonItem>[];
+      try {
+        final appL10n = AppLocalizations.of(context)!;
+        final materialL10n = MaterialLocalizations.of(context);
+        final value = _controller.value;
+        final selection = value.selection;
+        final hasSelection = selection.isValid && !selection.isCollapsed;
+        final hasText = value.text.isNotEmpty;
+
+        // Cut
+        if (hasSelection) {
+          items.add(
+            ContextMenuButtonItem(
+              onPressed: () async {
+                try {
+                  final start = selection.start;
+                  final end = selection.end;
+                  final text = value.text.substring(start, end);
+                  await Clipboard.setData(ClipboardData(text: text));
+                  final newText = value.text.replaceRange(start, end, '');
+                  _controller.value = value.copyWith(
+                    text: newText,
+                    selection: TextSelection.collapsed(offset: start),
+                  );
+                } catch (_) {}
+                state.hideToolbar();
+              },
+              label: materialL10n.cutButtonLabel,
+            ),
+          );
+        }
+
+        // Copy
+        if (hasSelection) {
+          items.add(
+            ContextMenuButtonItem(
+              onPressed: () async {
+                try {
+                  final start = selection.start;
+                  final end = selection.end;
+                  final text = value.text.substring(start, end);
+                  await Clipboard.setData(ClipboardData(text: text));
+                } catch (_) {}
+                state.hideToolbar();
+              },
+              label: materialL10n.copyButtonLabel,
+            ),
+          );
+        }
+
+        // Paste (text or image via _handlePasteFromClipboard)
+        items.add(
+          ContextMenuButtonItem(
+            onPressed: () {
+              _handlePasteFromClipboard();
+              state.hideToolbar();
+            },
+            label: materialL10n.pasteButtonLabel,
+          ),
+        );
+
+        // Insert newline
+        items.add(
+          ContextMenuButtonItem(
+            onPressed: () {
+              _insertNewlineAtCursor();
+              state.hideToolbar();
+            },
+            label: appL10n.chatInputBarInsertNewline,
+          ),
+        );
+
+        // Select all
+        if (hasText) {
+          items.add(
+            ContextMenuButtonItem(
+              onPressed: () {
+                try {
+                  _controller.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: value.text.length,
+                  );
+                } catch (_) {}
+                state.hideToolbar();
+              },
+              label: materialL10n.selectAllButtonLabel,
+            ),
+          );
+        }
+      } catch (_) {}
+      return AdaptiveTextSelectionToolbar.buttonItems(
+        anchors: state.contextMenuAnchors,
+        buttonItems: items,
+      );
+    }
+
+    // Other platforms: keep default behavior.
+    final items = <ContextMenuButtonItem>[
+      ...state.contextMenuButtonItems,
+    ];
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: state.contextMenuAnchors,
+      buttonItems: items,
+    );
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, RawKeyEvent event) {
@@ -1221,7 +1363,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                             child: TextField(
                               controller: _controller,
                               focusNode: widget.focusNode,
-                              onChanged: (_) => setState(() {}),
+                              onChanged: _onTextChanged,
                               minLines: 1,
                               maxLines: _isExpanded ? 25 : 5,
                               // On iOS, show "Send" on the return key and submit on tap.
@@ -1229,115 +1371,10 @@ class _ChatInputBarState extends State<ChatInputBar> {
                               keyboardType: TextInputType.multiline,
                               textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
                               onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
-                              // Custom context menu: on iOS we build our own toolbar
-                              // so there is exactly one "Paste" entry that also supports images.
-                              contextMenuBuilder: (BuildContext context, EditableTextState state) {
-                                if (Platform.isIOS) {
-                                  final items = <ContextMenuButtonItem>[];
-                                  try {
-                                    final appL10n = AppLocalizations.of(context)!;
-                                    final materialL10n = MaterialLocalizations.of(context);
-                                    final value = _controller.value;
-                                    final selection = value.selection;
-                                    final hasSelection = selection.isValid && !selection.isCollapsed;
-                                    final hasText = value.text.isNotEmpty;
-
-                                    // Cut
-                                    if (hasSelection) {
-                                      items.add(
-                                        ContextMenuButtonItem(
-                                          onPressed: () async {
-                                            try {
-                                              final start = selection.start;
-                                              final end = selection.end;
-                                              final text = value.text.substring(start, end);
-                                              await Clipboard.setData(ClipboardData(text: text));
-                                              final newText = value.text.replaceRange(start, end, '');
-                                              _controller.value = value.copyWith(
-                                                text: newText,
-                                                selection: TextSelection.collapsed(offset: start),
-                                              );
-                                            } catch (_) {}
-                                            state.hideToolbar();
-                                          },
-                                          label: materialL10n.cutButtonLabel,
-                                        ),
-                                      );
-                                    }
-
-                                    // Copy
-                                    if (hasSelection) {
-                                      items.add(
-                                        ContextMenuButtonItem(
-                                          onPressed: () async {
-                                            try {
-                                              final start = selection.start;
-                                              final end = selection.end;
-                                              final text = value.text.substring(start, end);
-                                              await Clipboard.setData(ClipboardData(text: text));
-                                            } catch (_) {}
-                                            state.hideToolbar();
-                                          },
-                                          label: materialL10n.copyButtonLabel,
-                                        ),
-                                      );
-                                    }
-
-                                    // Paste (text or image via _handlePasteFromClipboard)
-                                    items.add(
-                                      ContextMenuButtonItem(
-                                        onPressed: () {
-                                          _handlePasteFromClipboard();
-                                          state.hideToolbar();
-                                        },
-                                        label: materialL10n.pasteButtonLabel,
-                                      ),
-                                    );
-
-                                    // Insert newline
-                                    items.add(
-                                      ContextMenuButtonItem(
-                                        onPressed: () {
-                                          _insertNewlineAtCursor();
-                                          state.hideToolbar();
-                                        },
-                                        label: appL10n.chatInputBarInsertNewline,
-                                      ),
-                                    );
-
-                                    // Select all
-                                    if (hasText) {
-                                      items.add(
-                                        ContextMenuButtonItem(
-                                          onPressed: () {
-                                            try {
-                                              _controller.selection = TextSelection(
-                                                baseOffset: 0,
-                                                extentOffset: value.text.length,
-                                              );
-                                            } catch (_) {}
-                                            state.hideToolbar();
-                                          },
-                                          label: materialL10n.selectAllButtonLabel,
-                                        ),
-                                      );
-                                    }
-                                  } catch (_) {}
-                                  return AdaptiveTextSelectionToolbar.buttonItems(
-                                    anchors: state.contextMenuAnchors,
-                                    buttonItems: items,
-                                  );
-                                }
-
-                                // Other platforms: keep default behavior.
-                                final items = <ContextMenuButtonItem>[
-                                  ...state.contextMenuButtonItems,
-                                ];
-                                return AdaptiveTextSelectionToolbar.buttonItems(
-                                  anchors: state.contextMenuAnchors,
-                                  buttonItems: items,
-                                );
-                              },
+                              // Custom context menu: use instance method to avoid flickering
+                              // caused by recreating the callback on every build.
+                              // See: https://github.com/flutter/flutter/issues/150551
+                              contextMenuBuilder: _buildContextMenu,
                               autofocus: false,
                               decoration: InputDecoration(
                                 hintText: _hint(context),
