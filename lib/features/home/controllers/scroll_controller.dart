@@ -214,8 +214,8 @@ class ChatScrollController {
         if (!_autoStickToBottom && !isNearBottom()) return;
       }
 
-      // Forced scrolls should jump immediately (no animation) to avoid visible slide when switching topics
-      final bool doAnimate = (!force) && animate;
+      // Allow forced scrolls to animate when requested for a smoother experience
+      final bool doAnimate = animate;
       // Prevent using controller while it is still attached to old/new list simultaneously
       if (_scrollController.positions.length != 1) {
         // Try again after microtask when the previous list detaches

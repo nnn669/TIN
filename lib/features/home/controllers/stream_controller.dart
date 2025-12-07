@@ -28,6 +28,7 @@ class StreamController {
     required this.onStateChanged,
     required this.getSettingsProvider,
     required this.getCurrentConversationId,
+    this.onStreamTick,
   }) : _chatService = chatService;
 
   final ChatService _chatService;
@@ -36,6 +37,9 @@ class StreamController {
   /// NOTE: This should only be used for non-streaming state changes.
   /// For streaming content updates, use streamingContentNotifier instead.
   final VoidCallback onStateChanged;
+
+  /// Optional callback fired during streaming updates (e.g., auto-scroll).
+  final VoidCallback? onStreamTick;
 
   /// Lightweight notifier for streaming content updates.
   /// This avoids triggering full page rebuilds during streaming.
@@ -339,6 +343,7 @@ class StreamController {
         streamingContentNotifier.updateContent(messageId, pending, totalTokens);
         // Also update the message list data (without triggering rebuild)
         updateMessageInList(messageId, pending, totalTokens);
+        onStreamTick?.call();
       }
     });
   }
@@ -489,12 +494,15 @@ class StreamController {
       );
 
       // Update reasoning via StreamingContentNotifier for real-time UI updates
-      // without triggering full page rebuild
-      streamingContentNotifier.updateReasoning(
-        messageId,
-        reasoningText: r.text,
-        reasoningStartAt: r.startAt,
-      );
+      // without triggering full page rebuild (only when viewing this conversation)
+      if (getCurrentConversationId() == conversationId) {
+        streamingContentNotifier.updateReasoning(
+          messageId,
+          reasoningText: r.text,
+          reasoningStartAt: r.startAt,
+        );
+        onStreamTick?.call();
+      }
 
       await updateReasoningInDb(
         messageId,

@@ -25,7 +25,6 @@ import '../../../desktop/mini_map_popover.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
 import '../../chat/widgets/bottom_tools_sheet.dart';
-import '../../chat/widgets/chat_message_widget.dart';
 import '../../chat/widgets/reasoning_budget_sheet.dart';
 import '../../search/widgets/search_settings_sheet.dart';
 import '../../model/widgets/model_select_sheet.dart';
@@ -496,9 +495,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     BuildContext context, {
     required EdgeInsetsGeometry dividerPadding,
   }) {
-    final pinnedId = _controller.currentStreamingMessageId();
-    final pinActive = _controller.shouldPinStreamingIndicator(pinnedId);
-
     return MessageListView(
       scrollController: _scrollController,
       messages: _controller.messages,
@@ -512,8 +508,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       selecting: _controller.selecting,
       selectedItems: _controller.selectedItems,
       dividerPadding: dividerPadding,
-      pinnedStreamingMessageId: pinnedId,
-      isPinnedIndicatorActive: pinActive,
       streamingContentNotifier: _controller.streamingContentNotifier,
       onVersionChange: (groupId, version) async {
         await _controller.setSelectedVersion(groupId, version);
@@ -538,7 +532,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onToggleReasoningSegment: (messageId, segmentIndex) {
         _controller.toggleReasoningSegment(messageId, segmentIndex);
       },
-      buildPinnedStreamingIndicator: () => _buildPinnedStreamingIndicator(),
     );
   }
 
@@ -670,21 +663,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ],
       );
     });
-  }
-
-  Widget _buildPinnedStreamingIndicator() {
-    final mid = _controller.currentStreamingMessageId();
-    final show = _controller.shouldPinStreamingIndicator(mid);
-    if (!show) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          child: const LoadingIndicator(),
-        ),
-      ),
-    );
   }
 
   Widget _wrapWithDropTarget(Widget child) {

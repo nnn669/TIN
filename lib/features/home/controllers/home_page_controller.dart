@@ -217,11 +217,11 @@ class HomePageController extends ChangeNotifier {
 
   void _initialize() {
     _initializeAnimations();
+    _initializeScrollController();
     _initializeControllers();
     _initializeServices();
     _initializeViewModel();
     _wireViewModelCallbacks();
-    _initializeScrollController();
     _initializeProviders();
     _setupKeyboardListeners();
     _setupDesktopFeatures();
@@ -241,6 +241,7 @@ class HomePageController extends ChangeNotifier {
       onStateChanged: () => notifyListeners(),
       getSettingsProvider: () => _context.read<SettingsProvider>(),
       getCurrentConversationId: () => currentConversation?.id,
+      onStreamTick: () => _scrollCtrl.autoScrollToBottomIfNeeded(),
     );
   }
 
