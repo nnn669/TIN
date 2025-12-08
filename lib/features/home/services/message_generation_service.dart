@@ -1,17 +1,13 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
-import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
-import '../../../utils/markdown_media_sanitizer.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
 import 'message_builder_service.dart';
