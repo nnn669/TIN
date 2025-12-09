@@ -699,13 +699,6 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Normalize newlines to simplify regex handling
     var out = input.replaceAll('\r\n', '\n');
 
-    // Remove ```markdown/```md fences so inner math can render instead of being treated as code.
-    final markdownFence = RegExp(r"```(?:markdown|md)\s*\n([\s\S]*?)\n```");
-    out = out.replaceAllMapped(markdownFence, (m) {
-      final body = (m.group(1) ?? '').trimRight();
-      return '\n$body\n';
-    });
-
     // 2025-10-23 Fix: Remove title attributes from markdown links to work around gpt_markdown's
     // link regex limitation. The package's regex `[^\s]*` stops at spaces, so
     // [text](url "title") breaks. Strip titles while preserving the URL.
