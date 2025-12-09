@@ -3161,6 +3161,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpJsonEditSavedApplied => 'Saved and applied';
 
   @override
+  String get mcpTimeoutSettingsTooltip => 'Set tool call timeout';
+
+  @override
+  String get mcpTimeoutDialogTitle => 'Tool call timeout';
+
+  @override
+  String get mcpTimeoutSecondsLabel => 'Tool call timeout (seconds)';
+
+  @override
+  String get mcpTimeoutInvalid => 'Enter a positive number of seconds';
+
+  @override
   String get quickPhraseEditButton => 'Edit';
 
   @override

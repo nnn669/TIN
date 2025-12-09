@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../theme/design_tokens.dart';
 import '../widgets/mcp_server_edit_sheet.dart';
 import '../widgets/mcp_json_edit_sheet.dart';
+import '../widgets/mcp_timeout_sheet.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
@@ -136,6 +136,16 @@ class McpPage extends StatelessWidget {
         ),
         title: const Text('MCP'),
         actions: [
+          Tooltip(
+            message: l10n.mcpTimeoutSettingsTooltip,
+            child: _TactileIconButton(
+              icon: Lucide.Timer,
+              color: cs.onSurface,
+              size: 22,
+              onTap: () async { await showMcpTimeoutSheet(context); },
+            ),
+          ),
+          const SizedBox(width: 12),
           Tooltip(
             message: AppLocalizations.of(context)!.mcpJsonEditButtonTooltip,
             child: _TactileIconButton(

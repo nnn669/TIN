@@ -5975,6 +5975,30 @@ abstract class AppLocalizations {
   /// **'Saved and applied'**
   String get mcpJsonEditSavedApplied;
 
+  /// No description provided for @mcpTimeoutSettingsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Set tool call timeout'**
+  String get mcpTimeoutSettingsTooltip;
+
+  /// No description provided for @mcpTimeoutDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool call timeout'**
+  String get mcpTimeoutDialogTitle;
+
+  /// No description provided for @mcpTimeoutSecondsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool call timeout (seconds)'**
+  String get mcpTimeoutSecondsLabel;
+
+  /// No description provided for @mcpTimeoutInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a positive number of seconds'**
+  String get mcpTimeoutInvalid;
+
   /// No description provided for @quickPhraseEditButton.
   ///
   /// In en, this message translates to:

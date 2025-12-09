@@ -206,6 +206,7 @@ class McpServerConfig {
 
 class McpProvider extends ChangeNotifier {
   static const String _prefsKey = 'mcp_servers_v1';
+  static const String _prefsTimeoutKey = 'mcp_request_timeout_ms_v1';
 
   final Map<String, mcp.Client> _clients = {};
   final Map<String, McpStatus> _status = {}; // id -> status
@@ -215,6 +216,7 @@ class McpProvider extends ChangeNotifier {
   final Set<String> _reconnecting = <String>{};
   // Heartbeat timers for live-connection health checks
   final Map<String, Timer> _heartbeats = <String, Timer>{};
+  Duration _requestTimeout = const Duration(seconds: 30);
 
   McpProvider() {
     _load();
@@ -227,9 +229,15 @@ class McpProvider extends ChangeNotifier {
   bool isConnected(String id) => _clients.containsKey(id) && statusFor(id) == McpStatus.connected;
   List<McpServerConfig> get connectedServers =>
       _servers.where((s) => statusFor(s.id) == McpStatus.connected).toList(growable: false);
+  Duration get requestTimeout => _requestTimeout;
+  int get requestTimeoutSeconds => _requestTimeout.inSeconds;
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    final timeoutMs = prefs.getInt(_prefsTimeoutKey);
+    if (timeoutMs != null && timeoutMs > 0) {
+      _requestTimeout = Duration(milliseconds: timeoutMs);
+    }
     final raw = prefs.getString(_prefsKey);
     if (raw != null && raw.isNotEmpty) {
       try {
@@ -271,6 +279,12 @@ class McpProvider extends ChangeNotifier {
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, jsonEncode(_servers.map((e) => e.toJson()).toList()));
+    await prefs.setInt(_prefsTimeoutKey, _requestTimeout.inMilliseconds);
+  }
+
+  Future<void> _persistTimeout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefsTimeoutKey, _requestTimeout.inMilliseconds);
   }
 
   /// Export current MCP servers as a user-friendly JSON structure.
@@ -617,6 +631,7 @@ class McpProvider extends ChangeNotifier {
         version: '1.0.0',
         // Turn on library-internal verbose logs
         enableDebugLogging: false,
+        requestTimeout: _requestTimeout,
       );
 
       // In-memory builtin server path
@@ -645,6 +660,7 @@ class McpProvider extends ChangeNotifier {
           return mcp.TransportConfig.streamableHttp(
             baseUrl: server.url,
             headers: mergedHeaders.isEmpty ? null : mergedHeaders,
+            timeout: _requestTimeout,
           );
         } else {
           // STDIO; only supported on desktop
@@ -690,6 +706,21 @@ class McpProvider extends ChangeNotifier {
       _status[id] = McpStatus.error;
       _errors[id] = e.toString();
       notifyListeners();
+    }
+  }
+
+  Future<void> updateRequestTimeout(Duration duration, {bool reconnectActive = true}) async {
+    if (duration.inMilliseconds <= 0) return;
+    if (duration == _requestTimeout) return;
+    _requestTimeout = duration;
+    await _persistTimeout();
+    notifyListeners();
+    if (reconnectActive) {
+      for (final id in _clients.keys.toList()) {
+        if (_servers.any((s) => s.id == id && s.enabled)) {
+          unawaited(reconnect(id));
+        }
+      }
     }
   }
 

@@ -3043,6 +3043,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpJsonEditSavedApplied => '已保存并应用';
 
   @override
+  String get mcpTimeoutSettingsTooltip => '设置工具调用超时';
+
+  @override
+  String get mcpTimeoutDialogTitle => '工具调用超时';
+
+  @override
+  String get mcpTimeoutSecondsLabel => '工具调用超时（秒）';
+
+  @override
+  String get mcpTimeoutInvalid => '请输入大于 0 的秒数';
+
+  @override
   String get quickPhraseEditButton => '编辑';
 
   @override
@@ -6336,6 +6348,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get mcpJsonEditSavedApplied => '已保存并应用';
 
   @override
+  String get mcpTimeoutSettingsTooltip => '设置工具调用超时';
+
+  @override
+  String get mcpTimeoutDialogTitle => '工具调用超时';
+
+  @override
+  String get mcpTimeoutSecondsLabel => '工具调用超时（秒）';
+
+  @override
+  String get mcpTimeoutInvalid => '请输入大于 0 的秒数';
+
+  @override
   String get quickPhraseEditButton => '编辑';
 
   @override
@@ -9626,6 +9650,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get mcpJsonEditSavedApplied => '已儲存並套用';
+
+  @override
+  String get mcpTimeoutSettingsTooltip => '設定工具呼叫逾時';
+
+  @override
+  String get mcpTimeoutDialogTitle => '工具呼叫逾時';
+
+  @override
+  String get mcpTimeoutSecondsLabel => '工具呼叫逾時（秒）';
+
+  @override
+  String get mcpTimeoutInvalid => '請輸入大於 0 的秒數';
 
   @override
   String get quickPhraseEditButton => '編輯';

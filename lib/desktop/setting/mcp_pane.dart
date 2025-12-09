@@ -7,6 +7,7 @@ import '../../core/providers/mcp_provider.dart';
 import '../../shared/widgets/snackbar.dart';
 import 'mcp_edit_dialog.dart' show showDesktopMcpEditDialog;
 import 'mcp_json_edit_dialog.dart' show showDesktopMcpJsonEditDialog;
+import 'mcp_timeout_dialog.dart' show showDesktopMcpTimeoutDialog;
 
 class DesktopMcpPane extends StatelessWidget {
   const DesktopMcpPane({super.key});
@@ -34,17 +35,27 @@ class DesktopMcpPane extends StatelessWidget {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            l10n.mcpAssistantSheetTitle,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
-                          ),
-                        ),
+                      child: Text(
+                        l10n.mcpAssistantSheetTitle,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
                       ),
-                      _SmallIconBtn(
-                        icon: lucide.Lucide.Edit,
-                        onTap: () async {
-                          await showDesktopMcpJsonEditDialog(context);
-                        },
+                    ),
+                  ),
+                  Tooltip(
+                    message: l10n.mcpTimeoutSettingsTooltip,
+                    child: _SmallIconBtn(
+                      icon: lucide.Lucide.Timer,
+                      onTap: () async {
+                        await showDesktopMcpTimeoutDialog(context);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  _SmallIconBtn(
+                    icon: lucide.Lucide.Edit,
+                    onTap: () async {
+                      await showDesktopMcpJsonEditDialog(context);
+                    },
                       ),
                       const SizedBox(width: 6),
                       _SmallIconBtn(
@@ -364,7 +375,7 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
         child: Container(
           width: 28,
           height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: cs.onSurface),
         ),

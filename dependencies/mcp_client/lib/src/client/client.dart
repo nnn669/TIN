@@ -19,6 +19,9 @@ class Client {
   /// Client capabilities configuration
   final ClientCapabilities capabilities;
 
+  /// Timeout for individual requests
+  final Duration requestTimeout;
+
   /// Protocol version this client implements
   final String protocolVersion = McpProtocol.defaultVersion;
 
@@ -83,6 +86,7 @@ class Client {
     required this.name,
     required this.version,
     this.capabilities = const ClientCapabilities(),
+    this.requestTimeout = const Duration(seconds: 30),
   });
 
   /// Connect the client to a transport
@@ -901,7 +905,7 @@ class Client {
     try {
       // Add timeout for requests
       final result = await completer.future.timeout(
-        const Duration(seconds: 30),
+        requestTimeout,
         onTimeout: () {
           _requestCompleters.remove(id);
           final error = McpError('Request timed out: $method');

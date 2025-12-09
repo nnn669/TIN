@@ -250,6 +250,7 @@ class McpClient {
       name: config.name,
       version: config.version,
       capabilities: config.capabilities,
+      requestTimeout: config.requestTimeout,
     );
   }
 
@@ -429,11 +430,13 @@ class McpClient {
     required String name,
     required String version,
     bool enableDebugLogging = false,
+    Duration? requestTimeout,
   }) {
     return McpClientConfig(
       name: name,
       version: version,
       enableDebugLogging: enableDebugLogging,
+      requestTimeout: requestTimeout ?? const Duration(seconds: 30),
     );
   }
 
