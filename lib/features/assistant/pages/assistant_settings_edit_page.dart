@@ -1346,6 +1346,20 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                       ),
                     ),
+                    if (a.chatModelProvider != null && a.chatModelId != null)
+                      Tooltip(
+                        message: l10n.defaultModelPageResetDefault,
+                        child: _TactileIconButton(
+                          icon: Lucide.RotateCcw,
+                          color: cs.onSurface,
+                          size: 20,
+                          onTap: () async {
+                            await context.read<AssistantProvider>().updateAssistant(
+                              a.copyWith(clearChatModel: true),
+                            );
+                          },
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -5974,7 +5988,30 @@ class _DesktopAssistantBasicPaneState extends State<_DesktopAssistantBasicPane> 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.assistantEditChatModelTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.assistantEditChatModelTitle,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (a.chatModelProvider != null && a.chatModelId != null)
+                        Tooltip(
+                          message: l10n.defaultModelPageResetDefault,
+                          child: _TactileIconButton(
+                            icon: Lucide.RotateCcw,
+                            color: cs.onSurface,
+                            size: 20,
+                            onTap: () async {
+                              await context.read<AssistantProvider>().updateAssistant(
+                                    a.copyWith(clearChatModel: true),
+                                  );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   MouseRegion(
                     onEnter: (_) => setState(() => _hoverChatModel = true),
