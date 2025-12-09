@@ -119,6 +119,7 @@
   "desktopNavThemeToggleTooltip": "主題切換",
   "desktopNavSettingsTooltip": "設定",
   "hotkeyToggleAppVisibility": "顯示/隱藏應用",
+  "hotkeyCloseWindow": "關閉視窗",
   "hotkeyOpenSettings": "打開設定",
   "hotkeyNewTopic": "新建話題",
   "hotkeyToggleAssistantPanel": "切換助理顯示",

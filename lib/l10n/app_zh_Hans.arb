@@ -259,6 +259,7 @@
   "desktopTrayMenuShowWindow": "显示窗口",
   "desktopTrayMenuExit": "退出",
   "hotkeyToggleAppVisibility": "显示/隐藏应用",
+  "hotkeyCloseWindow": "关闭窗口",
   "hotkeyOpenSettings": "打开设置",
   "hotkeyNewTopic": "新建话题",
   "hotkeyToggleAssistantPanel": "切换助手显示",

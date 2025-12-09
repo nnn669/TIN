@@ -907,6 +907,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hotkeyToggleAppVisibility => '显示/隐藏应用';
 
   @override
+  String get hotkeyCloseWindow => '关闭窗口';
+
+  @override
   String get hotkeyOpenSettings => '打开设置';
 
   @override
@@ -4212,6 +4215,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get hotkeyToggleAppVisibility => '显示/隐藏应用';
 
   @override
+  String get hotkeyCloseWindow => '关闭窗口';
+
+  @override
   String get hotkeyOpenSettings => '打开设置';
 
   @override
@@ -7515,6 +7521,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get hotkeyToggleAppVisibility => '顯示/隱藏應用';
+
+  @override
+  String get hotkeyCloseWindow => '關閉視窗';
 
   @override
   String get hotkeyOpenSettings => '打開設定';

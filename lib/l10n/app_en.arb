@@ -357,6 +357,7 @@
   "desktopTrayMenuShowWindow": "Show Window",
   "desktopTrayMenuExit": "Exit",
   "hotkeyToggleAppVisibility": "Show/Hide App",
+  "hotkeyCloseWindow": "Close Window",
   "hotkeyOpenSettings": "Open Settings",
   "hotkeyNewTopic": "New Topic",
   "hotkeyToggleAssistantPanel": "Toggle Assistants",

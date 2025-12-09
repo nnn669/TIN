@@ -3,6 +3,7 @@ import 'dart:async';
 /// App-wide hotkey actions broadcast bus.
 enum HotkeyAction {
   toggleAppVisibility,
+  closeWindow,
   openSettings,
   newTopic,
   toggleLeftPanelAssistants,
@@ -26,4 +27,3 @@ class HotkeyEventBus {
     _controller.close();
   }
 }
-

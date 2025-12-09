@@ -42,6 +42,14 @@ class HotkeyProvider extends ChangeNotifier {
       defaultMac: '',
       enabledByDefault: true,
     ),
+    // Close window (in-app scope)
+    'close_window': AppHotkey(
+      id: 'close_window',
+      l10nLabelKey: 'hotkeyCloseWindow',
+      defaultWinLinux: 'ctrl+w',
+      defaultMac: 'cmd+w',
+      enabledByDefault: true,
+    ),
     // Open settings
     'open_settings': AppHotkey(
       id: 'open_settings',
@@ -206,6 +214,9 @@ class HotkeyProvider extends ChangeNotifier {
     switch (id) {
       case 'toggle_app_visibility':
         HotkeyEventBus.instance.fire(HotkeyAction.toggleAppVisibility);
+        break;
+      case 'close_window':
+        HotkeyEventBus.instance.fire(HotkeyAction.closeWindow);
         break;
       case 'open_settings':
         HotkeyEventBus.instance.fire(HotkeyAction.openSettings);

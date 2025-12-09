@@ -50,6 +50,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         case HotkeyAction.openSettings:
           if (mounted) setState(() => _tabIndex = 2);
           break;
+        case HotkeyAction.closeWindow:
+          try { await windowManager.close(); } catch (_) {}
+          break;
         case HotkeyAction.toggleAppVisibility:
           try {
             final visible = await windowManager.isVisible();

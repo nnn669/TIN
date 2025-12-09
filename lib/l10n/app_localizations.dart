@@ -1859,6 +1859,12 @@ abstract class AppLocalizations {
   /// **'Show/Hide App'**
   String get hotkeyToggleAppVisibility;
 
+  /// No description provided for @hotkeyCloseWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Window'**
+  String get hotkeyCloseWindow;
+
   /// No description provided for @hotkeyOpenSettings.
   ///
   /// In en, this message translates to:

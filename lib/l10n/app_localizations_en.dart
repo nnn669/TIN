@@ -933,6 +933,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotkeyToggleAppVisibility => 'Show/Hide App';
 
   @override
+  String get hotkeyCloseWindow => 'Close Window';
+
+  @override
   String get hotkeyOpenSettings => 'Open Settings';
 
   @override
