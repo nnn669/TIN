@@ -1077,6 +1077,7 @@
   "displaySettingsPageHapticsOnGenerateTitle": "Haptics on Generate",
   "displaySettingsPageHapticsOnGenerateSubtitle": "Enable haptic feedback during generation",
   "displaySettingsPageNewChatAfterDeleteTitle": "New chat after deleting topic",
+  "displaySettingsPageNewChatOnAssistantSwitchTitle": "New chat when switching assistants",
   "displaySettingsPageNewChatOnLaunchTitle": "New Chat on Launch",
   "displaySettingsPageAutoSwitchTopicsTitle": "Auto switch to Topics",
   "desktopDisplaySettingsTopicPositionTitle": "Topic position",

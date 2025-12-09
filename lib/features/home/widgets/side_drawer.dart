@@ -1237,33 +1237,38 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
   Future<void> _handleSelectAssistant(Assistant assistant) async {
     _closeAssistantPicker();
     final ap = context.read<AssistantProvider>();
+    final sp = context.read<SettingsProvider>();
     await ap.setCurrentAssistant(assistant.id);
     // Desktop: optionally switch to Topics tab per user preference
     try {
-      final sp = context.read<SettingsProvider>();
       if (_isDesktop && widget.embedded && widget.useDesktopTabs && sp.desktopAutoSwitchTopics) {
         _tabController?.animateTo(1, duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic);
       }
     } catch (_) {}
     if (!mounted) return;
-    // Jump to the most recent conversation for this assistant if any,
-    // otherwise create a new conversation.
-    try {
-      final chatService = context.read<ChatService>();
-      final all = chatService.getAllConversations();
-      // Filter conversations owned by this assistant and pick the newest
-      final recent = all
-          .where((c) => c.assistantId == assistant.id)
-          .toList();
-      if (recent.isNotEmpty) {
-        // getAllConversations is already sorted by updatedAt desc
-        widget.onSelectConversation?.call(recent.first.id);
-      } else {
+    final forceNewChat = sp.newChatOnAssistantSwitch && widget.onNewConversation != null;
+    if (forceNewChat) {
+      widget.onNewConversation?.call();
+    } else {
+      // Jump to the most recent conversation for this assistant if any,
+      // otherwise create a new conversation.
+      try {
+        final chatService = context.read<ChatService>();
+        final all = chatService.getAllConversations();
+        // Filter conversations owned by this assistant and pick the newest
+        final recent = all
+            .where((c) => c.assistantId == assistant.id)
+            .toList();
+        if (recent.isNotEmpty) {
+          // getAllConversations is already sorted by updatedAt desc
+          widget.onSelectConversation?.call(recent.first.id);
+        } else {
+          widget.onNewConversation?.call();
+        }
+      } catch (_) {
+        // Fallback: new conversation on any error
         widget.onNewConversation?.call();
       }
-    } catch (_) {
-      // Fallback: new conversation on any error
-      widget.onNewConversation?.call();
     }
     Navigator.of(context).maybePop();
   }

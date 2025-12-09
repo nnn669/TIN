@@ -47,6 +47,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayHapticsOnListItemTapKey = 'display_haptics_on_list_item_tap_v1';
   static const String _displayHapticsOnCardTapKey = 'display_haptics_on_card_tap_v1';
   static const String _displayShowAppUpdatesKey = 'display_show_app_updates_v1';
+  static const String _displayNewChatOnAssistantSwitchKey = 'display_new_chat_on_assistant_switch_v1';
   static const String _displayNewChatOnLaunchKey = 'display_new_chat_on_launch_v1';
   static const String _displayNewChatAfterDeleteKey = 'display_new_chat_after_delete_v1';
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
@@ -314,6 +315,7 @@ class SettingsProvider extends ChangeNotifier {
     Haptics.setEnabled(_hapticsGlobalEnabled);
     _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
     _newChatOnLaunch = prefs.getBool(_displayNewChatOnLaunchKey) ?? true;
+    _newChatOnAssistantSwitch = prefs.getBool(_displayNewChatOnAssistantSwitchKey) ?? false;
     _newChatAfterDelete = prefs.getBool(_displayNewChatAfterDeleteKey) ?? false;
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
@@ -1518,6 +1520,17 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayNewChatOnLaunchKey, v);
   }
 
+  // Display: create a new chat when switching assistants
+  bool _newChatOnAssistantSwitch = false;
+  bool get newChatOnAssistantSwitch => _newChatOnAssistantSwitch;
+  Future<void> setNewChatOnAssistantSwitch(bool v) async {
+    if (_newChatOnAssistantSwitch == v) return;
+    _newChatOnAssistantSwitch = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayNewChatOnAssistantSwitchKey, v);
+  }
+
   // Display: create a new chat after deleting one
   bool _newChatAfterDelete = false;
   bool get newChatAfterDelete => _newChatAfterDelete;
@@ -1867,6 +1880,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._hapticsOnCardTap = _hapticsOnCardTap;
     copy._showAppUpdates = _showAppUpdates;
     copy._newChatOnLaunch = _newChatOnLaunch;
+    copy._newChatOnAssistantSwitch = _newChatOnAssistantSwitch;
     copy._newChatAfterDelete = _newChatAfterDelete;
     copy._chatFontScale = _chatFontScale;
     copy._autoScrollEnabled = _autoScrollEnabled;

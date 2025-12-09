@@ -5123,6 +5123,12 @@ abstract class AppLocalizations {
   /// **'New chat after deleting topic'**
   String get displaySettingsPageNewChatAfterDeleteTitle;
 
+  /// No description provided for @displaySettingsPageNewChatOnAssistantSwitchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat when switching assistants'**
+  String get displaySettingsPageNewChatOnAssistantSwitchTitle;
+
   /// No description provided for @displaySettingsPageNewChatOnLaunchTitle.
   ///
   /// In en, this message translates to:

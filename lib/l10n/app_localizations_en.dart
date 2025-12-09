@@ -2697,6 +2697,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'New chat after deleting topic';
 
   @override
+  String get displaySettingsPageNewChatOnAssistantSwitchTitle =>
+      'New chat when switching assistants';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchTitle => 'New Chat on Launch';
 
   @override
