@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import '../../../theme/design_tokens.dart';
 import '../../../icons/lucide_adapter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -1151,6 +1152,27 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
     final hasText = _controller.text.trim().isNotEmpty;
     final hasImages = _images.isNotEmpty;
     final hasDocs = _docs.isNotEmpty;
+    final mq = MediaQuery.of(context);
+    final bool isMobileLayout = mq.size.width < AppBreakpoints.tablet;
+    final double visibleHeight = mq.size.height - mq.viewInsets.bottom;
+    final double attachmentsHeight =
+        (hasDocs ? 48 + AppSpacing.xs : 0) + (hasImages ? 64 + AppSpacing.xs : 0);
+    const double baseChromeHeight = 120; // padding + action row + chrome buffer
+    double maxInputHeight = double.infinity;
+    if (isMobileLayout) {
+      final double available = visibleHeight - attachmentsHeight - baseChromeHeight;
+      final double softCap = visibleHeight * 0.45;
+      if (available > 0) {
+        maxInputHeight = math.min(softCap, available);
+        maxInputHeight = math.min(available, math.max(80.0, maxInputHeight));
+      } else {
+        maxInputHeight = math.max(80.0, softCap);
+      }
+    }
+    // Cap text field height on mobile so expanded input stays above the keyboard.
+    final BoxConstraints textFieldConstraints = (isMobileLayout && maxInputHeight.isFinite && maxInputHeight > 0)
+        ? BoxConstraints(maxHeight: maxInputHeight)
+        : const BoxConstraints();
 
     return SafeArea(
       top: false,
@@ -1285,10 +1307,12 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xxs, AppSpacing.md, AppSpacing.xs),
-                        child: Focus(
-                          onKey: (node, event) => _handleKeyEvent(node, event),
-                          child: Builder(
-                            builder: (ctx) {
+                        child: ConstrainedBox(
+                          constraints: textFieldConstraints,
+                          child: Focus(
+                            onKey: (node, event) => _handleKeyEvent(node, event),
+                            child: Builder(
+                              builder: (ctx) {
                           // Desktop: show a right-click context menu with paste/cut/copy/select all
                           // Future<void> _showDesktopContextMenu(Offset globalPos) async {
                           //   bool isDesktop = false;
@@ -1355,41 +1379,42 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
                           //   );
                           // }
 
-                          return GestureDetector(
-                            behavior: HitTestBehavior.deferToChild,
-                            // onSecondaryTapDown: (details) {
-                            //   // _showDesktopContextMenu(details.globalPosition);
-                            // },
-                            child: TextField(
-                              controller: _controller,
-                              focusNode: widget.focusNode,
-                              onChanged: _onTextChanged,
-                              minLines: 1,
-                              maxLines: _isExpanded ? 25 : 5,
-                              // On iOS, show "Send" on the return key and submit on tap.
-                              // Still keep multiline so pasted text preserves line breaks.
-                              keyboardType: TextInputType.multiline,
-                              textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
-                              onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
-                              // Custom context menu: use instance method to avoid flickering
-                              // caused by recreating the callback on every build.
-                              // See: https://github.com/flutter/flutter/issues/150551
-                              contextMenuBuilder: _buildContextMenu,
-                              autofocus: false,
-                              decoration: InputDecoration(
-                                hintText: _hint(context),
-                                hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.45)),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                            return GestureDetector(
+                              behavior: HitTestBehavior.deferToChild,
+                              // onSecondaryTapDown: (details) {
+                              //   // _showDesktopContextMenu(details.globalPosition);
+                              // },
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: widget.focusNode,
+                                onChanged: _onTextChanged,
+                                minLines: 1,
+                                maxLines: _isExpanded ? 25 : 5,
+                                // On iOS, show "Send" on the return key and submit on tap.
+                                // Still keep multiline so pasted text preserves line breaks.
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
+                                onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
+                                // Custom context menu: use instance method to avoid flickering
+                                // caused by recreating the callback on every build.
+                                // See: https://github.com/flutter/flutter/issues/150551
+                                contextMenuBuilder: _buildContextMenu,
+                                autofocus: false,
+                                decoration: InputDecoration(
+                                  hintText: _hint(context),
+                                  hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.45)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                                ),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ? 14 : 15,
+                                ),
+                                cursorColor: theme.colorScheme.primary,
                               ),
-                              style: TextStyle(
-                                color: theme.colorScheme.onSurface,
-                                fontSize: (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ? 14 : 15,
-                              ),
-                              cursorColor: theme.colorScheme.primary,
+                            );
+                              },
                             ),
-                          );
-                            },
                           ),
                         ),
                       ),
@@ -1399,7 +1424,10 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
                           top: 10,
                           right: 12,
                           child: GestureDetector(
-                            onTap: () => setState(() => _isExpanded = !_isExpanded),
+                            onTap: () {
+                              setState(() => _isExpanded = !_isExpanded);
+                              _ensureCaretVisible();
+                            },
                             child: Icon(
                               _isExpanded ? Lucide.ChevronsDownUp : Lucide.ChevronsUpDown,
                               size: 16,
