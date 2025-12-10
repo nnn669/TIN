@@ -4061,6 +4061,18 @@ abstract class AppLocalizations {
   /// **'Response API (/responses)'**
   String get providerDetailPageResponseApiTitle;
 
+  /// No description provided for @providerDetailPageAihubmixAppCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'APP-Code (10% off)'**
+  String get providerDetailPageAihubmixAppCodeLabel;
+
+  /// No description provided for @providerDetailPageAihubmixAppCodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.'**
+  String get providerDetailPageAihubmixAppCodeHelp;
+
   /// No description provided for @providerDetailPageVertexAiTitle.
   ///
   /// In en, this message translates to:

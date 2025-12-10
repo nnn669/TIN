@@ -2058,6 +2058,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerDetailPageResponseApiTitle => 'Response API (/responses)';
 
   @override
+  String get providerDetailPageAihubmixAppCodeLabel => '应用 Code（享 10% 优惠）';
+
+  @override
+  String get providerDetailPageAihubmixAppCodeHelp =>
+      '为请求附加 APP-Code，可享 10% 优惠，仅对 AIhubmix 生效。';
+
+  @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';
 
   @override
@@ -5369,6 +5376,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get providerDetailPageResponseApiTitle => 'Response API (/responses)';
 
   @override
+  String get providerDetailPageAihubmixAppCodeLabel => '应用 Code（享 10% 优惠）';
+
+  @override
+  String get providerDetailPageAihubmixAppCodeHelp =>
+      '为请求附加 APP-Code，可享 10% 优惠，仅对 AIhubmix 生效。';
+
+  @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';
 
   @override
@@ -8677,6 +8691,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get providerDetailPageResponseApiTitle => 'Response API (/responses)';
+
+  @override
+  String get providerDetailPageAihubmixAppCodeLabel => '應用 Code（享 10% 優惠）';
+
+  @override
+  String get providerDetailPageAihubmixAppCodeHelp =>
+      '為請求附加 APP-Code，可享 10% 優惠，僅對 AIhubmix 生效。';
 
   @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';

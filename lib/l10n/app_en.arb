@@ -886,6 +886,8 @@
   "providerDetailPageShowTooltip": "Show",
   "providerDetailPageApiPathLabel": "API Path",
   "providerDetailPageResponseApiTitle": "Response API (/responses)",
+  "providerDetailPageAihubmixAppCodeLabel": "APP-Code (10% off)",
+  "providerDetailPageAihubmixAppCodeHelp": "Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.",
   "providerDetailPageVertexAiTitle": "Vertex AI",
   "providerDetailPageLocationLabel": "Location",
   "providerDetailPageProjectIdLabel": "Project ID",
