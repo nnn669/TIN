@@ -96,8 +96,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
     _proxyUserCtrl.text = _cfg.proxyUsername ?? '';
     _proxyPassCtrl.text = _cfg.proxyPassword ?? '';
     _multiKeyEnabled = _cfg.multiKeyEnabled ?? false;
-    final bool keySuggestsAihubmix = widget.keyName.toLowerCase().contains('aihubmix') || (_cfg.baseUrl.toLowerCase().contains('aihubmix.com'));
-    _aihubmixAppCodeEnabled = _cfg.aihubmixAppCodeEnabled ?? keySuggestsAihubmix;
+    _aihubmixAppCodeEnabled = _cfg.aihubmixAppCodeEnabled ?? false;
   }
 
   @override

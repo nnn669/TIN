@@ -2062,7 +2062,7 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
               final respNow = cfgNow.useResponseApi ?? false;
               final vertexNow = cfgNow.vertexAI ?? false;
               final proxyEnabledNow = cfgNow.proxyEnabled ?? false;
-              final aihubmixAppCodeEnabled = cfgNow.aihubmixAppCodeEnabled ?? _isAihubmix(cfgNow);
+              final aihubmixAppCodeEnabled = cfgNow.aihubmixAppCodeEnabled ?? false;
               Widget row(String label, Widget trailing) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(children: [
