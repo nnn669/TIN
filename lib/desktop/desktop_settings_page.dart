@@ -1044,6 +1044,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
           (name: 'KelivoIN', key: 'KelivoIN'),
           (name: 'Tensdaq', key: 'Tensdaq'),
           (name: 'DeepSeek', key: 'DeepSeek'),
+          (name: 'AIhubmix', key: 'AIhubmix'),
           (name: l10n.providersPageAliyunName, key: 'Aliyun'),
           (name: l10n.providersPageZhipuName, key: 'Zhipu AI'),
           (name: 'Claude', key: 'Claude'),

@@ -121,7 +121,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
     bool _isUserAdded(String key) {
       const fixed = {
         'KelivoIN', 'OpenAI', 'Gemini', 'SiliconFlow', 'OpenRouter',
-        'DeepSeek', 'Tensdaq', 'Aliyun', 'Zhipu AI', 'Claude', 'Grok', 'ByteDance',
+        'DeepSeek', 'Tensdaq', 'AIhubmix', 'Aliyun', 'Zhipu AI', 'Claude', 'Grok', 'ByteDance',
       };
       return !fixed.contains(key);
     }
