@@ -21,6 +21,9 @@ class ModelSelection {
   ModelSelection(this.providerKey, this.modelId);
 }
 
+// Prevent re-entrant model selector dialogs
+bool _modelSelectorOpen = false;
+
 // Data class for compute function
 class _ModelProcessingData {
   final Map<String, dynamic> providerConfigs;
@@ -179,13 +182,16 @@ _ModelProcessingResult _processModelsInBackground(_ModelProcessingData data) {
 }
 
 Future<ModelSelection?> showModelSelector(BuildContext context, {String? limitProviderKey}) async {
+  if (_modelSelectorOpen) return null;
+  _modelSelectorOpen = true;
+  try {
   // Desktop platforms use a custom dialog, mobile keeps the bottom sheet UX.
   final platform = defaultTargetPlatform;
   if (platform == TargetPlatform.macOS || platform == TargetPlatform.windows || platform == TargetPlatform.linux) {
-    return _showDesktopModelSelector(context, limitProviderKey: limitProviderKey);
+    return await _showDesktopModelSelector(context, limitProviderKey: limitProviderKey);
   }
   final cs = Theme.of(context).colorScheme;
-  return showModalBottomSheet<ModelSelection>(
+  return await showModalBottomSheet<ModelSelection>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
@@ -194,6 +200,9 @@ Future<ModelSelection?> showModelSelector(BuildContext context, {String? limitPr
     ),
     builder: (ctx) => _ModelSelectSheet(limitProviderKey: limitProviderKey),
   );
+  } finally {
+    _modelSelectorOpen = false;
+  }
 }
 
 Future<void> showModelSelectSheet(BuildContext context, {bool updateAssistant = true}) async {

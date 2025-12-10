@@ -1877,6 +1877,12 @@ abstract class AppLocalizations {
   /// **'New Topic'**
   String get hotkeyNewTopic;
 
+  /// No description provided for @hotkeySwitchModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Model'**
+  String get hotkeySwitchModel;
+
   /// No description provided for @hotkeyToggleAssistantPanel.
   ///
   /// In en, this message translates to:

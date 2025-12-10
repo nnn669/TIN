@@ -916,6 +916,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hotkeyNewTopic => '新建话题';
 
   @override
+  String get hotkeySwitchModel => '切换模型';
+
+  @override
   String get hotkeyToggleAssistantPanel => '切换助手显示';
 
   @override
@@ -4224,6 +4227,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get hotkeyNewTopic => '新建话题';
 
   @override
+  String get hotkeySwitchModel => '切换模型';
+
+  @override
   String get hotkeyToggleAssistantPanel => '切换助手显示';
 
   @override
@@ -7530,6 +7536,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get hotkeyNewTopic => '新建話題';
+
+  @override
+  String get hotkeySwitchModel => '切換模型';
 
   @override
   String get hotkeyToggleAssistantPanel => '切換助理顯示';

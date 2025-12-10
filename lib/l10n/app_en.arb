@@ -360,6 +360,7 @@
   "hotkeyCloseWindow": "Close Window",
   "hotkeyOpenSettings": "Open Settings",
   "hotkeyNewTopic": "New Topic",
+  "hotkeySwitchModel": "Switch Model",
   "hotkeyToggleAssistantPanel": "Toggle Assistants",
   "hotkeyToggleTopicPanel": "Toggle Topics",
   "hotkeysPressShortcut": "Press a shortcut",

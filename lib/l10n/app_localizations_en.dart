@@ -942,6 +942,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotkeyNewTopic => 'New Topic';
 
   @override
+  String get hotkeySwitchModel => 'Switch Model';
+
+  @override
   String get hotkeyToggleAssistantPanel => 'Toggle Assistants';
 
   @override

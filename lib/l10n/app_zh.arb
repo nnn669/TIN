@@ -257,6 +257,7 @@
   "hotkeyCloseWindow": "关闭窗口",
   "hotkeyOpenSettings": "打开设置",
   "hotkeyNewTopic": "新建话题",
+  "hotkeySwitchModel": "切换模型",
   "hotkeyToggleAssistantPanel": "切换助手显示",
   "hotkeyToggleTopicPanel": "切换话题显示",
   "hotkeysPressShortcut": "按下快捷键",
