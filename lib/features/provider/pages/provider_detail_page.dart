@@ -871,6 +871,18 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                             final newList = prevList.where((e) => e != id).toList();
                             final newOverrides = Map<String, dynamic>.from(prevOverrides)..remove(id);
                             await settings.setProviderConfig(widget.keyName, old.copyWith(models: newList, modelOverrides: newOverrides));
+
+                            // Clear global and assistant-level model selections that reference the deleted model
+                            await settings.clearSelectionsForModel(widget.keyName, id);
+                            try {
+                              final ap = context.read<AssistantProvider>();
+                              for (final a in ap.assistants) {
+                                if (a.chatModelProvider == widget.keyName && a.chatModelId == id) {
+                                  await ap.updateAssistant(a.copyWith(clearChatModel: true));
+                                }
+                              }
+                            } catch (_) {}
+
                             if (!mounted) return;
                             showAppSnackBar(
                               context,
@@ -1453,6 +1465,21 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
       // preserve models and modelOverrides and proxy fields implicitly via copyWith
     );
     await settings.setProviderConfig(widget.keyName, updated);
+
+    // If provider is now disabled but was previously enabled, clear model selections
+    if (!_enabled && old.enabled) {
+      await settings.clearSelectionsForProvider(widget.keyName);
+      // Also clear assistant-level model selections referencing this provider
+      try {
+        final ap = context.read<AssistantProvider>();
+        for (final a in ap.assistants) {
+          if (a.chatModelProvider == widget.keyName) {
+            await ap.updateAssistant(a.copyWith(clearChatModel: true));
+          }
+        }
+      } catch (_) {}
+    }
+
     if (!mounted) return;
     // Silent auto-save (no snackbar) for immediate-save UX
   }

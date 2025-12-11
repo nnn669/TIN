@@ -1157,6 +1157,15 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                                       ),
                                     );
                                     if (ok == true) {
+                                      // Clear assistant-level model selections referencing this provider
+                                      try {
+                                        final ap = context.read<AssistantProvider>();
+                                        for (final a in ap.assistants) {
+                                          if (a.chatModelProvider == item.key) {
+                                            await ap.updateAssistant(a.copyWith(clearChatModel: true));
+                                          }
+                                        }
+                                      } catch (_) {}
                                       await settings.removeProviderConfig(item.key);
                                       if (mounted) setState(() {
                                         if (_selectedKey == item.key) {
@@ -1367,6 +1376,18 @@ class _DesktopProviderDetailPaneState extends State<_DesktopProviderDetailPane> 
                   onChanged: (v) async {
                     final old = sp.getProviderConfig(widget.providerKey, defaultName: widget.displayName);
                     await sp.setProviderConfig(widget.providerKey, old.copyWith(enabled: v));
+                    // If provider is now disabled, clear model selections referencing it
+                    if (!v && old.enabled) {
+                      await sp.clearSelectionsForProvider(widget.providerKey);
+                      try {
+                        final ap = context.read<AssistantProvider>();
+                        for (final a in ap.assistants) {
+                          if (a.chatModelProvider == widget.providerKey) {
+                            await ap.updateAssistant(a.copyWith(clearChatModel: true));
+                          }
+                        }
+                      } catch (_) {}
+                    }
                   },
                 ),
               ],
@@ -4395,9 +4416,20 @@ class _ModelRow extends StatelessWidget {
               _IconBtn(icon: lucide.Lucide.Settings2, onTap: () async { await showDesktopModelEditDialog(context, providerKey: providerKey, modelId: modelId); }),
               const SizedBox(width: 4),
               _IconBtn(icon: lucide.Lucide.Minus, onTap: () async {
-                final old = context.read<SettingsProvider>().getProviderConfig(providerKey);
+                final sp = context.read<SettingsProvider>();
+                final old = sp.getProviderConfig(providerKey);
                 final list = List<String>.from(old.models)..removeWhere((e) => e == modelId);
-                await context.read<SettingsProvider>().setProviderConfig(providerKey, old.copyWith(models: list));
+                await sp.setProviderConfig(providerKey, old.copyWith(models: list));
+                // Clear global and assistant-level model selections that reference the deleted model
+                await sp.clearSelectionsForModel(providerKey, modelId);
+                try {
+                  final ap = context.read<AssistantProvider>();
+                  for (final a in ap.assistants) {
+                    if (a.chatModelProvider == providerKey && a.chatModelId == modelId) {
+                      await ap.updateAssistant(a.copyWith(clearChatModel: true));
+                    }
+                  }
+                } catch (_) {}
               }),
             ],
           ],

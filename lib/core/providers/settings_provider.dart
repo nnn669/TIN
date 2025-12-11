@@ -1084,6 +1084,81 @@ class SettingsProvider extends ChangeNotifier {
     await setProviderConfig(key, old.copyWith(avatarType: null, avatarValue: null));
   }
 
+  /// Clears all global model selections (current, title, translate, OCR) that reference the given provider.
+  /// Used when a provider is disabled or deleted.
+  Future<void> clearSelectionsForProvider(String providerKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool changed = false;
+    if (_currentModelProvider == providerKey) {
+      _currentModelProvider = null;
+      _currentModelId = null;
+      await prefs.remove(_selectedModelKey);
+      changed = true;
+    }
+    if (_titleModelProvider == providerKey) {
+      _titleModelProvider = null;
+      _titleModelId = null;
+      await prefs.remove(_titleModelKey);
+      changed = true;
+    }
+    if (_translateModelProvider == providerKey) {
+      _translateModelProvider = null;
+      _translateModelId = null;
+      await prefs.remove(_translateModelKey);
+      changed = true;
+    }
+    if (_ocrModelProvider == providerKey) {
+      _ocrModelProvider = null;
+      _ocrModelId = null;
+      _ocrEnabled = false;
+      await prefs.remove(_ocrModelKey);
+      await prefs.setBool(_ocrEnabledKey, false);
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
+  /// Clears global model selections that reference a specific model.
+  /// Used when a model is deleted from a provider.
+  Future<void> clearSelectionsForModel(String providerKey, String modelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool changed = false;
+    if (_currentModelProvider == providerKey && _currentModelId == modelId) {
+      _currentModelProvider = null;
+      _currentModelId = null;
+      await prefs.remove(_selectedModelKey);
+      changed = true;
+    }
+    if (_titleModelProvider == providerKey && _titleModelId == modelId) {
+      _titleModelProvider = null;
+      _titleModelId = null;
+      await prefs.remove(_titleModelKey);
+      changed = true;
+    }
+    if (_translateModelProvider == providerKey && _translateModelId == modelId) {
+      _translateModelProvider = null;
+      _translateModelId = null;
+      await prefs.remove(_translateModelKey);
+      changed = true;
+    }
+    if (_ocrModelProvider == providerKey && _ocrModelId == modelId) {
+      _ocrModelProvider = null;
+      _ocrModelId = null;
+      _ocrEnabled = false;
+      await prefs.remove(_ocrModelKey);
+      await prefs.setBool(_ocrEnabledKey, false);
+      changed = true;
+    }
+    // Also remove from pinned if applicable
+    final pinKey = '$providerKey::$modelId';
+    if (_pinnedModels.contains(pinKey)) {
+      _pinnedModels.remove(pinKey);
+      await prefs.setStringList(_pinnedModelsKey, _pinnedModels.toList());
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
   Future<void> removeProviderConfig(String key) async {
     if (!_providerConfigs.containsKey(key)) return;
     _providerConfigs.remove(key);
@@ -1106,6 +1181,13 @@ class SettingsProvider extends ChangeNotifier {
       _translateModelProvider = null;
       _translateModelId = null;
       await prefs.remove(_translateModelKey);
+    }
+    if (_ocrModelProvider == key) {
+      _ocrModelProvider = null;
+      _ocrModelId = null;
+      _ocrEnabled = false;
+      await prefs.remove(_ocrModelKey);
+      await prefs.setBool(_ocrEnabledKey, false);
     }
 
     // Remove pinned models for this provider
