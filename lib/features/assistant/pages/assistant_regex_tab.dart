@@ -705,7 +705,11 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                             const SizedBox(height: 12),
                             _RegexTextField(controller: patternCtrl, label: l10n.assistantRegexPatternLabel),
                             const SizedBox(height: 12),
-                            _RegexTextField(controller: replacementCtrl, label: l10n.assistantRegexReplacementLabel),
+                            _RegexTextField(
+                              controller: replacementCtrl,
+                              label: l10n.assistantRegexReplacementLabel,
+                              multiline: true,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               l10n.assistantRegexScopeLabel,
@@ -847,7 +851,11 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                             const SizedBox(height: 12),
                             _RegexTextField(controller: patternCtrl, label: l10n.assistantRegexPatternLabel),
                             const SizedBox(height: 12),
-                            _RegexTextField(controller: replacementCtrl, label: l10n.assistantRegexReplacementLabel),
+                            _RegexTextField(
+                              controller: replacementCtrl,
+                              label: l10n.assistantRegexReplacementLabel,
+                              multiline: true,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               l10n.assistantRegexScopeLabel,
@@ -950,11 +958,13 @@ class _RegexTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.autofocus = false,
+    this.multiline = false,
   });
 
   final TextEditingController controller;
   final String label;
   final bool autofocus;
+  final bool multiline;
 
   @override
   Widget build(BuildContext context) {
@@ -963,6 +973,10 @@ class _RegexTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       autofocus: autofocus,
+      minLines: multiline ? 1 : 1,
+      maxLines: multiline ? null : 1,
+      keyboardType: multiline ? TextInputType.multiline : TextInputType.text,
+      textInputAction: multiline ? TextInputAction.newline : TextInputAction.done,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
