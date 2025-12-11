@@ -5965,7 +5965,7 @@ class _ChatFontSizeRowState extends State<_ChatFontSizeRow> {
     final v = text.trim();
     final n = double.tryParse(v);
     if (n == null) return;
-    final clamped = (n / 100.0).clamp(0.8, 1.5);
+    final clamped = (n / 100.0).clamp(0.5, 1.5);
     context.read<SettingsProvider>().setChatFontScale(clamped);
     _controller.text = '${(clamped * 100).round()}';
   }

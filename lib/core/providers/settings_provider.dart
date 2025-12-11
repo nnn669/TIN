@@ -1543,11 +1543,11 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayNewChatAfterDeleteKey, v);
   }
 
-  // Display: chat font scale (0.8 - 1.5, default 1.0)
+  // Display: chat font scale (0.5 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
   Future<void> setChatFontScale(double scale) async {
-    final s = scale.clamp(0.8, 1.5);
+    final s = scale.clamp(0.5, 1.5);
     if (_chatFontScale == s) return;
     _chatFontScale = s;
     notifyListeners();

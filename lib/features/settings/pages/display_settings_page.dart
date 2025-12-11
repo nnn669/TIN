@@ -493,7 +493,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text('80%', style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 12)),
+                    Text('50%', style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 12)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: SfSliderTheme(
@@ -512,7 +512,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         ),
                         child: SfSlider(
                           value: scale,
-                          min: 0.8,
+                          min: 0.5,
                           max: 1.50001,
                           stepSize: 0.05,
                           showTicks: true,
@@ -534,7 +534,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                               ],
                             ),
                           ),
-                          onChanged: (v) => context.read<SettingsProvider>().setChatFontScale((v as double).clamp(0.8, 1.5)),
+                          onChanged: (v) => context.read<SettingsProvider>().setChatFontScale((v as double).clamp(0.5, 1.5)),
                         ),
                       ),
                     ),
