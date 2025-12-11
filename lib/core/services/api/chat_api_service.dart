@@ -1050,11 +1050,29 @@ class ChatApiService {
             keepRemoteMarkdownText: true,
           );
           final parts = <Map<String, dynamic>>[];
+          final seenImageSources = <String>{};
+          final seenImageUrls = <String>{};
+          String normalizeSrc(String src) {
+            if (src.startsWith('http') || src.startsWith('data:')) return src;
+            try {
+              return SandboxPathResolver.fix(src);
+            } catch (_) {
+              return src;
+            }
+          }
+          void addImage(String url) {
+            if (url.isEmpty) return;
+            if (seenImageUrls.add(url)) {
+              parts.add({'type': 'input_image', 'image_url': url});
+            }
+          }
           if (parsed.text.isNotEmpty) {
             parts.add({'type': 'input_text', 'text': parsed.text});
           }
           // Images extracted from this message's text
           for (final ref in parsed.images) {
+            final normalized = normalizeSrc(ref.src);
+            if (!seenImageSources.add(normalized)) continue;
             String url;
             if (ref.kind == 'data') {
               url = ref.src;
@@ -1063,13 +1081,15 @@ class ChatApiService {
             } else {
               url = ref.src; // http(s)
             }
-            parts.add({'type': 'input_image', 'image_url': url});
+            addImage(url);
           }
           // Additional images explicitly attached to the last user message
           if (hasAttachedImages) {
             for (final p in userImagePaths!) {
+              final normalized = normalizeSrc(p);
+              if (!seenImageSources.add(normalized)) continue;
               final dataUrl = (p.startsWith('http') || p.startsWith('data:')) ? p : await _encodeBase64File(p, withPrefix: true);
-              parts.add({'type': 'input_image', 'image_url': dataUrl});
+              addImage(dataUrl);
             }
           }
           input.add({'role': roleRaw, 'content': parts});
@@ -1152,10 +1172,35 @@ class ChatApiService {
             keepRemoteMarkdownText: true,
           );
           final parts = <Map<String, dynamic>>[];
+          final seenSources = <String>{};
+          final seenImageUrls = <String>{};
+          final seenVideoUrls = <String>{};
+          String normalizeSrc(String src) {
+            if (src.startsWith('http') || src.startsWith('data:')) return src;
+            try {
+              return SandboxPathResolver.fix(src);
+            } catch (_) {
+              return src;
+            }
+          }
+          void addImageUrl(String url) {
+            if (url.isEmpty) return;
+            if (seenImageUrls.add(url)) {
+              parts.add({'type': 'image_url', 'image_url': {'url': url}});
+            }
+          }
+          void addVideoUrl(String url) {
+            if (url.isEmpty) return;
+            if (seenVideoUrls.add(url)) {
+              parts.add({'type': 'video_url', 'video_url': {'url': url}});
+            }
+          }
           if (parsed.text.isNotEmpty) {
             parts.add({'type': 'text', 'text': parsed.text});
           }
           for (final ref in parsed.images) {
+            final normalized = normalizeSrc(ref.src);
+            if (!seenSources.add(normalized)) continue;
             String url;
             if (ref.kind == 'data') {
               url = ref.src;
@@ -1164,18 +1209,20 @@ class ChatApiService {
             } else {
               url = ref.src;
             }
-            parts.add({'type': 'image_url', 'image_url': {'url': url}});
+            addImageUrl(url);
           }
           if (hasAttachedImages) {
             for (final p in userImagePaths!) {
+              final normalized = normalizeSrc(p);
+              if (!seenSources.add(normalized)) continue;
               final bool isInlineUrl = p.startsWith('http') || p.startsWith('data:');
               final String mime = isInlineUrl ? _mimeFromDataUrl(p) : _mimeFromPath(p);
               final bool isVideo = mime.toLowerCase().startsWith('video/');
               final String dataUrl = isInlineUrl ? p : await _encodeBase64File(p, withPrefix: true);
               if (isVideo) {
-                parts.add({'type': 'video_url', 'video_url': {'url': dataUrl}});
+                addVideoUrl(dataUrl);
               } else {
-                parts.add({'type': 'image_url', 'image_url': {'url': dataUrl}});
+                addImageUrl(dataUrl);
               }
             }
           }
@@ -3917,6 +3964,15 @@ class ChatApiService {
         final parts = <Map<String, dynamic>>[];
         final meta = _extractGeminiThoughtMeta((msg['content'] ?? '').toString());
         final raw = meta.cleanedText;
+        final seenSources = <String>{};
+        String normalizeSrc(String src) {
+          if (src.startsWith('http') || src.startsWith('data:')) return src;
+          try {
+            return SandboxPathResolver.fix(src);
+          } catch (_) {
+            return src;
+          }
+        }
         final hasMarkdownImages = raw.contains('![') && raw.contains('](');
         final hasCustomImages = raw.contains('[image:');
         final hasAttachedImages = isLast && role == 'user' && (userImagePaths?.isNotEmpty == true);
@@ -3930,6 +3986,8 @@ class ChatApiService {
           );
           if (parsed.text.isNotEmpty) parts.add({'text': parsed.text});
           for (final ref in parsed.images) {
+            final normalized = normalizeSrc(ref.src);
+            if (!seenSources.add(normalized)) continue;
             if (ref.kind == 'data') {
               final mime = _mimeFromDataUrl(ref.src);
               final idx = ref.src.indexOf('base64,');
@@ -3949,6 +4007,8 @@ class ChatApiService {
           }
           if (hasAttachedImages) {
             for (final p in userImagePaths!) {
+              final normalized = normalizeSrc(p);
+              if (!seenSources.add(normalized)) continue;
               if (p.startsWith('data:')) {
                 final mime = _mimeFromDataUrl(p);
                 final idx = p.indexOf('base64,');
@@ -4110,6 +4170,15 @@ class ChatApiService {
       final parts = <Map<String, dynamic>>[];
       final meta = _extractGeminiThoughtMeta((msg['content'] ?? '').toString());
       final raw = meta.cleanedText;
+      final seenSources = <String>{};
+      String normalizeSrc(String src) {
+        if (src.startsWith('http') || src.startsWith('data:')) return src;
+        try {
+          return SandboxPathResolver.fix(src);
+        } catch (_) {
+          return src;
+        }
+      }
 
       // Only parse images if there are images to process
       final hasMarkdownImages = raw.contains('![') && raw.contains('](');
@@ -4127,6 +4196,8 @@ class ChatApiService {
         if (parsed.text.isNotEmpty) parts.add({'text': parsed.text});
         // Images extracted from this message's text
         for (final ref in parsed.images) {
+          final normalized = normalizeSrc(ref.src);
+          if (!seenSources.add(normalized)) continue;
           if (ref.kind == 'data') {
             final mime = _mimeFromDataUrl(ref.src);
             final idx = ref.src.indexOf('base64,');
@@ -4148,6 +4219,8 @@ class ChatApiService {
         }
         if (hasAttachedImages) {
           for (final p in userImagePaths!) {
+            final normalized = normalizeSrc(p);
+            if (!seenSources.add(normalized)) continue;
             if (p.startsWith('data:')) {
               final mime = _mimeFromDataUrl(p);
               final idx = p.indexOf('base64,');
