@@ -739,11 +739,14 @@ class HomePageController extends ChangeNotifier {
     final r = reasoning[messageId];
     if (r != null) {
       r.expanded = !r.expanded;
-      // If this is a streaming message, trigger rebuild via notifier
-      // to avoid full page rebuild while still updating the UI
-      if (streamingContentNotifier.hasNotifier(messageId)) {
+      // Check if reasoning is still loading (finishedAt == null means streaming)
+      // This is O(1) - no list traversal needed
+      final isStillStreaming = r.finishedAt == null && r.text.isNotEmpty;
+      if (isStillStreaming && streamingContentNotifier.hasNotifier(messageId)) {
+        // For actively streaming messages, use lightweight notifier update
         streamingContentNotifier.forceRebuild(messageId);
       } else {
+        // For non-streaming messages, trigger full page rebuild
         notifyListeners();
       }
     }
@@ -760,12 +763,16 @@ class HomePageController extends ChangeNotifier {
   void toggleReasoningSegment(String messageId, int segmentIndex) {
     final segments = reasoningSegments[messageId];
     if (segments != null && segmentIndex < segments.length) {
-      segments[segmentIndex].expanded = !segments[segmentIndex].expanded;
-      // If this is a streaming message, trigger rebuild via notifier
-      // to avoid full page rebuild while still updating the UI
-      if (streamingContentNotifier.hasNotifier(messageId)) {
+      final seg = segments[segmentIndex];
+      seg.expanded = !seg.expanded;
+      // Check if this segment is still loading (finishedAt == null means streaming)
+      // This is O(1) - no list traversal needed
+      final isStillStreaming = seg.finishedAt == null && seg.text.isNotEmpty;
+      if (isStillStreaming && streamingContentNotifier.hasNotifier(messageId)) {
+        // For actively streaming messages, use lightweight notifier update
         streamingContentNotifier.forceRebuild(messageId);
       } else {
+        // For non-streaming messages, trigger full page rebuild
         notifyListeners();
       }
     }
