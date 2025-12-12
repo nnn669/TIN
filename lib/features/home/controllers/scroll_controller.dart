@@ -36,6 +36,14 @@ class ChatScrollController {
   bool _showJumpToBottom = false;
   bool get showJumpToBottom => _showJumpToBottom;
 
+  /// Whether the navigation buttons should be visible (based on scroll activity).
+  bool _showNavButtons = false;
+  bool get showNavButtons => _showNavButtons;
+
+  /// Timer for auto-hiding navigation buttons.
+  Timer? _navButtonsHideTimer;
+  static const int _navButtonsHideDelayMs = 2000;
+
   /// Whether the user is actively scrolling.
   bool _isUserScrolling = false;
   bool get isUserScrolling => _isUserScrolling;
@@ -116,6 +124,13 @@ class ChatScrollController {
         // Reset chained jump anchor when user manually scrolls
         _lastJumpUserMessageId = null;
 
+        // Show navigation buttons on scroll activity
+        if (!_showNavButtons) {
+          _showNavButtons = true;
+          _onStateChanged();
+        }
+        _resetNavButtonsHideTimer();
+
         // Cancel previous timer and set a new one
         _userScrollTimer?.cancel();
         final secs = _getAutoScrollIdleSeconds();
@@ -141,6 +156,35 @@ class ChatScrollController {
     } catch (_) {}
   }
 
+  /// Reset the auto-hide timer for navigation buttons.
+  void _resetNavButtonsHideTimer() {
+    _navButtonsHideTimer?.cancel();
+    _navButtonsHideTimer = Timer(const Duration(milliseconds: _navButtonsHideDelayMs), () {
+      if (_showNavButtons) {
+        _showNavButtons = false;
+        _onStateChanged();
+      }
+    });
+  }
+
+  /// Show navigation buttons manually (e.g., when user taps a button).
+  void revealNavButtons() {
+    if (!_showNavButtons) {
+      _showNavButtons = true;
+      _onStateChanged();
+    }
+    _resetNavButtonsHideTimer();
+  }
+
+  /// Hide navigation buttons immediately.
+  void hideNavButtons() {
+    _navButtonsHideTimer?.cancel();
+    if (_showNavButtons) {
+      _showNavButtons = false;
+      _onStateChanged();
+    }
+  }
+
   // ============================================================================
   // Scroll To Bottom Methods
   // ============================================================================
@@ -158,6 +202,7 @@ class ChatScrollController {
     _isUserScrolling = false;
     _userScrollTimer?.cancel();
     _lastJumpUserMessageId = null;
+    revealNavButtons();
     scrollToBottom();
   }
 
@@ -254,6 +299,28 @@ class ChatScrollController {
   // Navigation Methods
   // ============================================================================
 
+  /// Scroll to the top of the list.
+  void scrollToTop({bool animate = true}) {
+    try {
+      if (!_scrollController.hasClients) return;
+      _lastJumpUserMessageId = null;
+      revealNavButtons();
+
+      if (animate) {
+        final pos = _scrollController.position;
+        final distance = pos.pixels;
+        final durationMs = distance < 200 ? 150 : distance < 800 ? 220 : 300;
+        pos.animateTo(
+          0.0,
+          duration: Duration(milliseconds: durationMs),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(0.0);
+      }
+    } catch (_) {}
+  }
+
   /// Jump to the previous user message (question) above the current viewport.
   ///
   /// [messages] - The collapsed list of messages to navigate through.
@@ -342,6 +409,101 @@ class ChatScrollController {
       }
       // Final fallback: go to top if still not found
       _scrollController.jumpTo(0.0);
+      _lastJumpUserMessageId = null;
+    } catch (_) {}
+  }
+
+  /// Jump to the next user message (question) below the current viewport.
+  ///
+  /// [messages] - The collapsed list of messages to navigate through.
+  /// [messageKeys] - Map of message IDs to their GlobalKeys for scrolling.
+  /// [getViewportBounds] - Function returning (listTop, listBottom) for visibility detection.
+  Future<void> jumpToNextQuestion({
+    required List<dynamic> messages,
+    required Map<String, GlobalKey> messageKeys,
+    required (double, double) Function() getViewportBounds,
+  }) async {
+    try {
+      if (!_scrollController.hasClients) return;
+      if (messages.isEmpty) return;
+
+      revealNavButtons();
+
+      // Build an id->index map for quick lookup
+      final Map<String, int> idxById = <String, int>{};
+      for (int i = 0; i < messages.length; i++) {
+        idxById[messages[i].id] = i;
+      }
+
+      // Determine anchor index: prefer last jumped user; otherwise top-most visible item
+      int? anchor;
+      if (_lastJumpUserMessageId != null && idxById.containsKey(_lastJumpUserMessageId)) {
+        anchor = idxById[_lastJumpUserMessageId!];
+      } else {
+        final (listTop, listBottom) = getViewportBounds();
+        int? firstVisibleIdx;
+        for (int i = 0; i < messages.length; i++) {
+          final key = messageKeys[messages[i].id];
+          final ctx = key?.currentContext;
+          if (ctx == null) continue;
+          final box = ctx.findRenderObject() as RenderBox?;
+          if (box == null || !box.attached) continue;
+          final top = box.localToGlobal(Offset.zero).dy;
+          final bottom = top + box.size.height;
+          final visible = bottom > listTop && top < listBottom;
+          if (visible) {
+            firstVisibleIdx ??= i;
+            break;
+          }
+        }
+        anchor = firstVisibleIdx ?? 0;
+      }
+
+      // Search forward for next user message from the anchor index
+      int target = -1;
+      for (int i = (anchor ?? 0) + 1; i < messages.length; i++) {
+        if (messages[i].role == 'user') {
+          target = i;
+          break;
+        }
+      }
+      if (target < 0) {
+        // No later user message; jump to bottom
+        forceScrollToBottom();
+        _lastJumpUserMessageId = null;
+        return;
+      }
+
+      // If target widget is not built yet (off-screen far below), page down until it is
+      const int maxAttempts = 12;
+      for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        final tKey = messageKeys[messages[target].id];
+        final tCtx = tKey?.currentContext;
+        if (tCtx != null) {
+          await Scrollable.ensureVisible(
+            tCtx,
+            alignment: 0.08,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.easeOutCubic,
+          );
+          _lastJumpUserMessageId = messages[target].id;
+          return;
+        }
+        // Step down by ~85% of viewport height
+        final pos = _scrollController.position;
+        final (_, listBottom) = getViewportBounds();
+        final viewH = listBottom;
+        final step = viewH * 0.85;
+        final newOffset = (pos.pixels + step) > pos.maxScrollExtent
+            ? pos.maxScrollExtent
+            : (pos.pixels + step);
+        if ((pos.pixels - newOffset).abs() < 1) break; // reached bottom
+        _scrollController.jumpTo(newOffset);
+        // Let the list build newly visible children
+        await WidgetsBinding.instance.endOfFrame;
+      }
+      // Final fallback: go to bottom if still not found
+      forceScrollToBottom();
       _lastJumpUserMessageId = null;
     } catch (_) {}
   }
@@ -474,5 +636,6 @@ class ChatScrollController {
   void dispose() {
     _scrollController.removeListener(_onScrollControllerChanged);
     _userScrollTimer?.cancel();
+    _navButtonsHideTimer?.cancel();
   }
 }

@@ -1,31 +1,45 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
+import '../../../icons/lucide_adapter.dart';
 
-/// Glassy scroll navigation button with backdrop blur effect.
+/// Glassy scroll navigation buttons panel with 4 buttons arranged vertically.
 ///
-/// Used for scroll-to-bottom and scroll-to-previous-question buttons.
-/// Includes fade and scale animation support via [visible] parameter.
-class GlassyScrollButton extends StatelessWidget {
-  const GlassyScrollButton({
+/// Buttons (from top to bottom):
+/// - Scroll to top (chevrons-up)
+/// - Previous user message (chevron-up)
+/// - Next user message (chevron-down)
+/// - Scroll to bottom (chevrons-down)
+///
+/// Shows with slide-in animation from right when user scrolls,
+/// hides with slide-out animation after user stops scrolling.
+class ScrollNavButtonsPanel extends StatelessWidget {
+  const ScrollNavButtonsPanel({
     super.key,
-    required this.icon,
-    required this.onTap,
-    required this.bottomOffset,
     required this.visible,
+    required this.onScrollToTop,
+    required this.onPreviousMessage,
+    required this.onNextMessage,
+    required this.onScrollToBottom,
+    this.bottomOffset = 80,
     this.iconSize = 16,
-    this.padding = 6,
+    this.buttonPadding = 6,
+    this.buttonSpacing = 8,
   });
 
-  final IconData icon;
-  final VoidCallback onTap;
-  final double bottomOffset;
   final bool visible;
+  final VoidCallback onScrollToTop;
+  final VoidCallback onPreviousMessage;
+  final VoidCallback onNextMessage;
+  final VoidCallback onScrollToBottom;
+  final double bottomOffset;
   final double iconSize;
-  final double padding;
+  final double buttonPadding;
+  final double buttonSpacing;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : Colors.black87;
+
     return Align(
       alignment: Alignment.bottomRight,
       child: SafeArea(
@@ -33,52 +47,118 @@ class GlassyScrollButton extends StatelessWidget {
         bottom: false,
         child: IgnorePointer(
           ignoring: !visible,
-          child: AnimatedScale(
-            scale: visible ? 1.0 : 0.9,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
+          child: AnimatedSlide(
+            offset: visible ? Offset.zero : const Offset(1.2, 0),
+            duration: const Duration(milliseconds: 280),
+            curve: visible ? Curves.easeOutCubic : Curves.easeInCubic,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
               opacity: visible ? 1 : 0,
               child: Padding(
-                padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.06)
-                            : Colors.white.withOpacity(0.07),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.10)
-                              : Theme.of(context).colorScheme.outline.withOpacity(0.20),
-                          width: 1,
-                        ),
-                      ),
-                      child: Material(
-                        type: MaterialType.transparency,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: onTap,
-                          child: Padding(
-                            padding: EdgeInsets.all(padding),
-                            child: Icon(
-                              icon,
-                              size: iconSize,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
+                padding: EdgeInsets.only(right: 12, bottom: bottomOffset),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _GlassyCircleButton(
+                      icon: Lucide.ChevronsUp,
+                      iconSize: iconSize,
+                      iconColor: iconColor,
+                      padding: buttonPadding,
+                      isDark: isDark,
+                      onTap: onScrollToTop,
                     ),
-                  ),
+                    SizedBox(height: buttonSpacing),
+                    _GlassyCircleButton(
+                      icon: Lucide.ChevronUp,
+                      iconSize: iconSize,
+                      iconColor: iconColor,
+                      padding: buttonPadding,
+                      isDark: isDark,
+                      onTap: onPreviousMessage,
+                    ),
+                    SizedBox(height: buttonSpacing),
+                    _GlassyCircleButton(
+                      icon: Lucide.ChevronDown,
+                      iconSize: iconSize,
+                      iconColor: iconColor,
+                      padding: buttonPadding,
+                      isDark: isDark,
+                      onTap: onNextMessage,
+                    ),
+                    SizedBox(height: buttonSpacing),
+                    _GlassyCircleButton(
+                      icon: Lucide.ChevronsDown,
+                      iconSize: iconSize,
+                      iconColor: iconColor,
+                      padding: buttonPadding,
+                      isDark: isDark,
+                      onTap: onScrollToBottom,
+                    ),
+                  ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Single glassy circle button with semi-transparent background.
+/// Uses simple opacity instead of expensive BackdropFilter for better performance.
+class _GlassyCircleButton extends StatelessWidget {
+  const _GlassyCircleButton({
+    required this.icon,
+    required this.iconSize,
+    required this.iconColor,
+    required this.padding,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final double iconSize;
+  final Color iconColor;
+  final double padding;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.black.withOpacity(0.4)
+            : Colors.white.withOpacity(0.85),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.12)
+              : Theme.of(context).colorScheme.outline.withOpacity(0.20),
+          width: 1,
+        ),
+         //  boxShadow: [
+         //    BoxShadow(
+         //      color: Colors.black.withOpacity(0.01),
+         //      blurRadius: 8,
+         //      offset: const Offset(0, 2),
+         //    ),
+         // ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(padding),
+            child: Icon(
+              icon,
+              size: iconSize,
+              color: iconColor,
             ),
           ),
         ),

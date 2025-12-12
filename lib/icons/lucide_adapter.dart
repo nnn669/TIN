@@ -148,6 +148,8 @@ class Lucide {
   static const IconData FoldVertical = lucide.LucideIcons.foldVertical;
   static const IconData ChevronsUpDown = lucide.LucideIcons.chevronsUpDown;
   static const IconData ChevronsDownUp = lucide.LucideIcons.chevronsDownUp;
+  static const IconData ChevronsUp = lucide.LucideIcons.chevronsUp;
+  static const IconData ChevronsDown = lucide.LucideIcons.chevronsDown;
   static const IconData Timer = lucide.LucideIcons.timer;
   static const IconData Maximize2 = lucide.LucideIcons.maximize2;
 }

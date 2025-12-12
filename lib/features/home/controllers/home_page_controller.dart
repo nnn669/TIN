@@ -935,6 +935,19 @@ class HomePageController extends ChangeNotifier {
     );
   }
 
+  Future<void> jumpToNextQuestion() async {
+    final collapsed = collapseVersions(messages);
+    await _scrollCtrl.jumpToNextQuestion(
+      messages: collapsed,
+      messageKeys: _messageKeys,
+      getViewportBounds: _getViewportBounds,
+    );
+  }
+
+  void scrollToTop({bool animate = true}) {
+    _scrollCtrl.scrollToTop(animate: animate);
+  }
+
   // ============================================================================
   // Public Methods - Model Checks
   // ============================================================================

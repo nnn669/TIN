@@ -9,7 +9,6 @@ import '../../../main.dart';
 import '../../../shared/widgets/interactive_drawer.dart';
 import '../../../shared/responsive/breakpoints.dart';
 import '../../../theme/design_tokens.dart';
-import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
@@ -646,21 +645,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Builder(builder: (context) {
       final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
       if (!showSetting || _controller.messages.isEmpty) return const SizedBox.shrink();
-      return Stack(
-        children: [
-          GlassyScrollButton(
-            icon: Lucide.ChevronDown,
-            onTap: _controller.forceScrollToBottom,
-            bottomOffset: _controller.inputBarHeight + 12,
-            visible: _controller.scrollCtrl.showJumpToBottom,
-          ),
-          GlassyScrollButton(
-            icon: Lucide.ChevronUp,
-            onTap: _controller.jumpToPreviousQuestion,
-            bottomOffset: _controller.inputBarHeight + 12 + 52,
-            visible: _controller.scrollCtrl.showJumpToBottom,
-          ),
-        ],
+      return ScrollNavButtonsPanel(
+        visible: _controller.scrollCtrl.showNavButtons,
+        bottomOffset: _controller.inputBarHeight + 12,
+        onScrollToTop: _controller.scrollToTop,
+        onPreviousMessage: _controller.jumpToPreviousQuestion,
+        onNextMessage: _controller.jumpToNextQuestion,
+        onScrollToBottom: _controller.forceScrollToBottom,
       );
     });
   }
