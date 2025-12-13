@@ -963,6 +963,40 @@ class _CollapsibleCodeBlock extends StatefulWidget {
 
 class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   bool _expanded = true;
+  bool _manuallyToggled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialAutoCollapse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CollapsibleCodeBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _applyAutoCollapseIfNeeded();
+  }
+
+  void _applyInitialAutoCollapse() {
+    final sp = context.read<SettingsProvider>();
+    if (!sp.autoCollapseCodeBlock) return;
+    final threshold = sp.autoCollapseCodeBlockLines;
+    if (_exceedsLineThreshold(widget.code, threshold)) {
+      _expanded = false;
+    }
+  }
+
+  void _applyAutoCollapseIfNeeded() {
+    if (_manuallyToggled) return;
+    if (!_expanded) return;
+    final sp = context.read<SettingsProvider>();
+    if (!sp.autoCollapseCodeBlock) return;
+    final threshold = sp.autoCollapseCodeBlockLines;
+
+    if (_exceedsLineThreshold(widget.code, threshold)) {
+      setState(() => _expanded = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1017,7 +1051,10 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
             shadowColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             child: InkWell(
-              onTap: () => setState(() => _expanded = !_expanded),
+              onTap: () => setState(() {
+                _manuallyToggled = true;
+                _expanded = !_expanded;
+              }),
               splashColor: Platform.isIOS ? Colors.transparent : null,
               highlightColor: Platform.isIOS ? Colors.transparent : null,
               hoverColor: Platform.isIOS ? Colors.transparent : null,
@@ -1031,13 +1068,10 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                 ),
                 decoration: BoxDecoration(
                   border: Border(
-                    // Show divider only when expanded
-                    bottom: _expanded
-                        ? BorderSide(
-                            color: cs.outlineVariant.withOpacity(0.28),
-                            width: 1.0,
-                          )
-                        : BorderSide.none,
+                    bottom: BorderSide(
+                      color: cs.outlineVariant.withOpacity(0.28),
+                      width: 1.0,
+                    ),
                   ),
                 ),
                 child: Row(
@@ -1304,25 +1338,122 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       );
                     }(),
                   )
-                : const SizedBox.shrink(key: ValueKey('code-collapsed')),
+                : Container(
+                    key: const ValueKey('code-collapsed'),
+                    width: double.infinity,
+                    color: bodyBg,
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                    child: () {
+                      final l10n = AppLocalizations.of(context)!;
+                      final code = widget.code;
+                      final end = _trimTrailingNewlinesEndIndex(code);
+
+                      final preview = <String>[];
+                      int totalLines = 0;
+                      if (end > 0) {
+                        totalLines = 1;
+                        int lineStart = 0;
+                        for (int i = 0; i < end; i++) {
+                          final cu = code.codeUnitAt(i);
+                          if (cu == 0x0A /* \n */ || cu == 0x0D /* \r */) {
+                            if (preview.length < 2) {
+                              preview.add(code.substring(lineStart, i));
+                            }
+                            totalLines++;
+                            if (cu == 0x0D /* \r */ &&
+                                i + 1 < end &&
+                                code.codeUnitAt(i + 1) == 0x0A /* \n */) {
+                              i++;
+                            }
+                            lineStart = i + 1;
+                          }
+                        }
+                        if (preview.length < 2) {
+                          preview.add(code.substring(lineStart, end));
+                        }
+                      }
+
+                      final hiddenLines =
+                          (totalLines - preview.length).clamp(0, 999999);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final line in preview)
+                            Text(
+                              line,
+                              style: TextStyle(
+                                fontFamily: codeFontFamily,
+                                fontSize: 13,
+                                height: 1.5,
+                                color: cs.onSurface,
+                              ),
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          if (hiddenLines > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                l10n.codeBlockCollapsedLines(hiddenLines),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.4,
+                                  color: cs.onSurface.withOpacity(0.55),
+                                ),
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      );
+                    }(),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  // Remove trailing newlines to avoid rendering an extra empty line at the bottom
-  String _trimTrailingNewlines(String s) {
-    if (s.isEmpty) return s;
+  bool _exceedsLineThreshold(String code, int threshold) {
+    if (threshold < 1) return true;
+    final end = _trimTrailingNewlinesEndIndex(code);
+    if (end <= 0) return false;
+
+    int lines = 1;
+    for (int i = 0; i < end; i++) {
+      final cu = code.codeUnitAt(i);
+      if (cu == 0x0A /* \n */) {
+        lines++;
+        if (lines > threshold) return true;
+        continue;
+      }
+      if (cu == 0x0D /* \r */) {
+        lines++;
+        if (lines > threshold) return true;
+        if (i + 1 < end && code.codeUnitAt(i + 1) == 0x0A) i++;
+      }
+    }
+    return false;
+  }
+
+  int _trimTrailingNewlinesEndIndex(String s) {
     int end = s.length;
     while (end > 0) {
       final ch = s.codeUnitAt(end - 1);
-      if (ch == 0x0A /* \n */ || ch == 0x0D /* \r */ ) {
+      if (ch == 0x0A /* \n */ || ch == 0x0D /* \r */) {
         end--;
         continue;
       }
       break;
     }
+    return end;
+  }
+
+  // Remove trailing newlines to avoid rendering an extra empty line at the bottom
+  String _trimTrailingNewlines(String s) {
+    if (s.isEmpty) return s;
+    final end = _trimTrailingNewlinesEndIndex(s);
     return end == s.length ? s : s.substring(0, end);
   }
 }

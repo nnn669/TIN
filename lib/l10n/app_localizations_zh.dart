@@ -830,6 +830,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codeBlockPreviewButton => '预览';
 
   @override
+  String codeBlockCollapsedLines(int n) {
+    return '… 已折叠 $n 行';
+  }
+
+  @override
   String get htmlPreviewNotSupportedOnLinux => 'Linux 暂不支持 HTML 预览';
 
   @override
@@ -1412,6 +1417,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get displaySettingsPageMobileCodeBlockWrapTitle => '移动端代码块自动换行';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockTitle => '自动折叠代码块';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesTitle => '超过多少行自动折叠';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
   String get messageExportSheetFormatTitle => '导出格式';
@@ -4148,6 +4162,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get codeBlockPreviewButton => '预览';
 
   @override
+  String codeBlockCollapsedLines(int n) {
+    return '… 已折叠 $n 行';
+  }
+
+  @override
   String get htmlPreviewNotSupportedOnLinux => 'Linux 暂不支持 HTML 预览';
 
   @override
@@ -4730,6 +4749,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageMobileCodeBlockWrapTitle => '移动端代码块自动换行';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockTitle => '自动折叠代码块';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesTitle => '超过多少行自动折叠';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
   String get messageExportSheetFormatTitle => '导出格式';
@@ -7466,6 +7494,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get codeBlockPreviewButton => '預覽';
 
   @override
+  String codeBlockCollapsedLines(int n) {
+    return '… 已摺疊 $n 行';
+  }
+
+  @override
   String get htmlPreviewNotSupportedOnLinux => 'Linux 暫不支援 HTML 預覽';
 
   @override
@@ -8047,6 +8080,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageMobileCodeBlockWrapTitle => '行動端程式碼區塊自動換行';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockTitle => '自動摺疊程式碼區塊';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesTitle => '超過多少行自動摺疊';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
   String get messageExportSheetFormatTitle => '匯出格式';

@@ -212,6 +212,14 @@
   "assistantEditVariableMessage": "內容",
   "assistantEditPreviewTitle": "預覽",
   "codeBlockPreviewButton": "預覽",
+  "codeBlockCollapsedLines": "… 已摺疊 {n} 行",
+  "@codeBlockCollapsedLines": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "htmlPreviewNotSupportedOnLinux": "Linux 暫不支援 HTML 預覽",
   "assistantEditSampleUser": "使用者",
   "assistantEditSampleMessage": "你好啊",
@@ -976,6 +984,9 @@
   "displaySettingsPageEnableReasoningMarkdownTitle": "思维鏈 Markdown 渲染",
   "displaySettingsPageEnableMathSubtitle": "渲染 LaTeX 數學公式（行內與區塊）",
   "displaySettingsPageMobileCodeBlockWrapTitle": "行動端程式碼區塊自動換行",
+  "displaySettingsPageAutoCollapseCodeBlockTitle": "自動摺疊程式碼區塊",
+  "displaySettingsPageAutoCollapseCodeBlockLinesTitle": "超過多少行自動摺疊",
+  "displaySettingsPageAutoCollapseCodeBlockLinesUnit": "行",
   "quickPhraseBackTooltip": "返回",
   "quickPhraseGlobalTitle": "快捷片語",
   "quickPhraseAssistantTitle": "助理快捷片語",

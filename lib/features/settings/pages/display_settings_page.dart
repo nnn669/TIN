@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../../../core/services/android_background.dart';
@@ -1026,11 +1027,124 @@ class RenderingSettingsPage extends StatelessWidget {
           _iosSwitchRow(context, icon: Lucide.TextSelect, label: l10n.displaySettingsPageEnableUserMarkdownTitle, value: sp.enableUserMarkdown, onChanged: (v) => context.read<SettingsProvider>().setEnableUserMarkdown(v)),
           _iosDivider(context),
           _iosSwitchRow(context, icon: Lucide.Brain, label: l10n.displaySettingsPageEnableReasoningMarkdownTitle, value: sp.enableReasoningMarkdown, onChanged: (v) => context.read<SettingsProvider>().setEnableReasoningMarkdown(v)),
+          _iosDivider(context),
+          _iosSwitchRow(
+            context,
+            icon: Lucide.FoldVertical,
+            label: l10n.displaySettingsPageAutoCollapseCodeBlockTitle,
+            value: sp.autoCollapseCodeBlock,
+            onChanged: (v) => context.read<SettingsProvider>().setAutoCollapseCodeBlock(v),
+          ),
+          if (sp.autoCollapseCodeBlock) ...[
+            _iosDivider(context),
+            const _AutoCollapseCodeBlockLinesRow(),
+          ],
           if (Platform.isAndroid || Platform.isIOS) ...[
             _iosDivider(context),
             _iosSwitchRow(context, icon: Lucide.WrapText, label: l10n.displaySettingsPageMobileCodeBlockWrapTitle, value: sp.mobileCodeBlockWrap, onChanged: (v) => context.read<SettingsProvider>().setMobileCodeBlockWrap(v)),
           ],
         ]),
+      ]),
+    );
+  }
+}
+
+class _AutoCollapseCodeBlockLinesRow extends StatefulWidget {
+  const _AutoCollapseCodeBlockLinesRow();
+  @override
+  State<_AutoCollapseCodeBlockLinesRow> createState() => _AutoCollapseCodeBlockLinesRowState();
+}
+
+class _AutoCollapseCodeBlockLinesRowState extends State<_AutoCollapseCodeBlockLinesRow> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    final sp = context.read<SettingsProvider>();
+    _controller = TextEditingController(text: '${sp.autoCollapseCodeBlockLines}');
+    _focusNode = FocusNode()
+      ..addListener(() {
+        if (!_focusNode.hasFocus) _commit();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _commit() {
+    final sp = context.read<SettingsProvider>();
+    final raw = _controller.text.trim();
+    final parsed = int.tryParse(raw) ?? sp.autoCollapseCodeBlockLines;
+    final next = parsed.clamp(1, 999);
+    sp.setAutoCollapseCodeBlockLines(next);
+    final text = '$next';
+    if (_controller.text != text) {
+      _controller.value = _controller.value.copyWith(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sp = context.watch<SettingsProvider>();
+
+    // Keep controller in sync when not editing
+    if (!_focusNode.hasFocus) {
+      final t = '${sp.autoCollapseCodeBlockLines}';
+      if (_controller.text != t) _controller.text = t;
+    }
+
+    final baseColor = cs.onSurface.withOpacity(0.9);
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.28), width: 0.8),
+    );
+    final focusBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: cs.primary, width: 1.0),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(children: [
+        SizedBox(width: 36, child: Icon(Lucide.ListOrdered, size: 20, color: baseColor)),
+        const SizedBox(width: 12),
+        Expanded(child: Text(l10n.displaySettingsPageAutoCollapseCodeBlockLinesTitle, style: TextStyle(fontSize: 15, color: baseColor), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        IntrinsicWidth(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 44, maxWidth: 80),
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: isDark ? Colors.white10 : Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: baseBorder,
+                enabledBorder: baseBorder,
+                focusedBorder: focusBorder,
+              ),
+              onSubmitted: (_) => _commit(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(l10n.displaySettingsPageAutoCollapseCodeBlockLinesUnit, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6))),
       ]),
     );
   }

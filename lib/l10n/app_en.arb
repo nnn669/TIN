@@ -322,6 +322,14 @@
   "assistantEditVariableMessage": "Message",
   "assistantEditPreviewTitle": "Preview",
   "codeBlockPreviewButton": "Preview",
+  "codeBlockCollapsedLines": "… {n} lines folded",
+  "@codeBlockCollapsedLines": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "htmlPreviewNotSupportedOnLinux": "HTML preview is not supported on Linux",
   "assistantEditSampleUser": "User",
   "assistantEditSampleMessage": "Hello there",
@@ -601,6 +609,9 @@
   "displaySettingsPageEnableUserMarkdownTitle": "Render user messages with Markdown",
   "displaySettingsPageEnableReasoningMarkdownTitle": "Render reasoning (thinking) with Markdown",
   "displaySettingsPageMobileCodeBlockWrapTitle": "Mobile Code Block Word Wrap",
+  "displaySettingsPageAutoCollapseCodeBlockTitle": "Auto-collapse Code Blocks",
+  "displaySettingsPageAutoCollapseCodeBlockLinesTitle": "Auto-collapse threshold",
+  "displaySettingsPageAutoCollapseCodeBlockLinesUnit": "lines",
   "messageExportSheetFormatTitle": "Export Format",
   "messageExportSheetMarkdown": "Markdown",
   "messageExportSheetSingleMarkdownSubtitle": "Export this message as a Markdown file",

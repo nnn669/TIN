@@ -1709,6 +1709,12 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get codeBlockPreviewButton;
 
+  /// No description provided for @codeBlockCollapsedLines.
+  ///
+  /// In en, this message translates to:
+  /// **'… {n} lines folded'**
+  String codeBlockCollapsedLines(int n);
+
   /// No description provided for @htmlPreviewNotSupportedOnLinux.
   ///
   /// In en, this message translates to:
@@ -2818,6 +2824,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mobile Code Block Word Wrap'**
   String get displaySettingsPageMobileCodeBlockWrapTitle;
+
+  /// No description provided for @displaySettingsPageAutoCollapseCodeBlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-collapse Code Blocks'**
+  String get displaySettingsPageAutoCollapseCodeBlockTitle;
+
+  /// No description provided for @displaySettingsPageAutoCollapseCodeBlockLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-collapse threshold'**
+  String get displaySettingsPageAutoCollapseCodeBlockLinesTitle;
+
+  /// No description provided for @displaySettingsPageAutoCollapseCodeBlockLinesUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'lines'**
+  String get displaySettingsPageAutoCollapseCodeBlockLinesUnit;
 
   /// No description provided for @messageExportSheetFormatTitle.
   ///

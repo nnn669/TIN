@@ -4565,6 +4565,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ToggleRowUserMarkdown(),
                   _RowDivider(),
                   _ToggleRowReasoningMarkdown(),
+                  _RowDivider(),
+                  _AutoCollapseCodeBlocksSection(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -6629,6 +6631,20 @@ class _ToggleRowReasoningMarkdown extends StatelessWidget {
   }
 }
 
+class _ToggleRowAutoCollapseCodeBlocks extends StatelessWidget {
+  const _ToggleRowAutoCollapseCodeBlocks();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageAutoCollapseCodeBlockTitle,
+      value: sp.autoCollapseCodeBlock,
+      onChanged: (v) => context.read<SettingsProvider>().setAutoCollapseCodeBlock(v),
+    );
+  }
+}
+
 class _ToggleRowAutoCollapseThinking extends StatelessWidget {
   const _ToggleRowAutoCollapseThinking();
   @override
@@ -6865,6 +6881,24 @@ class _ToggleRow extends StatelessWidget {
   }
 }
 
+class _AutoCollapseCodeBlocksSection extends StatelessWidget {
+  const _AutoCollapseCodeBlocksSection();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _ToggleRowAutoCollapseCodeBlocks(),
+        if (sp.autoCollapseCodeBlock) ...[
+          const _RowDivider(),
+          const _AutoCollapseCodeBlockLinesRow(),
+        ],
+      ],
+    );
+  }
+}
+
 // --- Others: inputs ---
 class _AutoScrollDelayRow extends StatefulWidget {
   const _AutoScrollDelayRow();
@@ -6919,6 +6953,61 @@ class _AutoScrollDelayRowState extends State<_AutoScrollDelayRow> {
             's',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(enabled ? 0.7 : 0.35),
+              fontSize: 14,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AutoCollapseCodeBlockLinesRow extends StatefulWidget {
+  const _AutoCollapseCodeBlockLinesRow();
+  @override
+  State<_AutoCollapseCodeBlockLinesRow> createState() => _AutoCollapseCodeBlockLinesRowState();
+}
+
+class _AutoCollapseCodeBlockLinesRowState extends State<_AutoCollapseCodeBlockLinesRow> {
+  late final TextEditingController _controller;
+  @override
+  void initState() {
+    super.initState();
+    final v = context.read<SettingsProvider>().autoCollapseCodeBlockLines;
+    _controller = TextEditingController(text: '${v.round()}');
+  }
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  void _commit(String text) {
+    final v = text.trim();
+    final n = int.tryParse(v);
+    if (n == null) return;
+    final clamped = n.clamp(1, 999);
+    context.read<SettingsProvider>().setAutoCollapseCodeBlockLines(clamped);
+    _controller.text = '$clamped';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.displaySettingsPageAutoCollapseCodeBlockLinesTitle,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 36, maxWidth: 72),
+              child: _BorderInput(controller: _controller, onSubmitted: _commit, onFocusLost: _commit),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            l10n.displaySettingsPageAutoCollapseCodeBlockLinesUnit,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: 14,
               decoration: TextDecoration.none,
             ),

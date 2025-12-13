@@ -60,6 +60,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayEnableReasoningMarkdownKey = 'display_enable_reasoning_markdown_v1';
   static const String _displayShowChatListDateKey = 'display_show_chat_list_date_v1';
   static const String _displayMobileCodeBlockWrapKey = 'display_mobile_code_block_wrap_v1';
+  static const String _displayAutoCollapseCodeBlockKey = 'display_auto_collapse_code_block_v1';
+  static const String _displayAutoCollapseCodeBlockLinesKey = 'display_auto_collapse_code_block_lines_v1';
   static const String _displayDesktopAutoSwitchTopicsKey = 'display_desktop_auto_switch_topics_v1';
   static const String _displayDesktopShowTrayKey = 'display_desktop_show_tray_v1';
   static const String _displayDesktopMinimizeToTrayOnCloseKey = 'display_desktop_minimize_to_tray_on_close_v1';
@@ -336,6 +338,9 @@ class SettingsProvider extends ChangeNotifier {
     _enableReasoningMarkdown = prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
     _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
     _mobileCodeBlockWrap = prefs.getBool(_displayMobileCodeBlockWrapKey) ?? false;
+    _autoCollapseCodeBlock = prefs.getBool(_displayAutoCollapseCodeBlockKey) ?? false;
+    _autoCollapseCodeBlockLines =
+        (prefs.getInt(_displayAutoCollapseCodeBlockLinesKey) ?? 2).clamp(1, 999);
     _desktopAutoSwitchTopics = prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
     // Desktop: tray settings (default enabled on desktop platforms)
     final trayPref = prefs.getBool(_displayDesktopShowTrayKey);
@@ -1738,6 +1743,29 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayMobileCodeBlockWrapKey, v);
   }
 
+  // Display: auto-collapse code blocks
+  bool _autoCollapseCodeBlock = false;
+  bool get autoCollapseCodeBlock => _autoCollapseCodeBlock;
+  Future<void> setAutoCollapseCodeBlock(bool v) async {
+    if (_autoCollapseCodeBlock == v) return;
+    _autoCollapseCodeBlock = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayAutoCollapseCodeBlockKey, v);
+  }
+
+  // Display: code block auto-collapse threshold (lines)
+  int _autoCollapseCodeBlockLines = 2;
+  int get autoCollapseCodeBlockLines => _autoCollapseCodeBlockLines;
+  Future<void> setAutoCollapseCodeBlockLines(int v) async {
+    final next = v.clamp(1, 999);
+    if (_autoCollapseCodeBlockLines == next) return;
+    _autoCollapseCodeBlockLines = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayAutoCollapseCodeBlockLinesKey, next);
+  }
+
   // Desktop-only: auto switch to Topics tab when changing assistant
   bool _desktopAutoSwitchTopics = false;
   bool get desktopAutoSwitchTopics => _desktopAutoSwitchTopics;
@@ -1973,6 +2001,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._enableUserMarkdown = _enableUserMarkdown;
     copy._enableReasoningMarkdown = _enableReasoningMarkdown;
     copy._showChatListDate = _showChatListDate;
+    copy._autoCollapseCodeBlock = _autoCollapseCodeBlock;
+    copy._autoCollapseCodeBlockLines = _autoCollapseCodeBlockLines;
     copy._desktopAutoSwitchTopics = _desktopAutoSwitchTopics;
     copy._desktopShowTray = _desktopShowTray;
     copy._desktopMinimizeToTrayOnClose = _desktopMinimizeToTrayOnClose;

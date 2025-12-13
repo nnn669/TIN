@@ -855,6 +855,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get codeBlockPreviewButton => 'Preview';
 
   @override
+  String codeBlockCollapsedLines(int n) {
+    return '… $n lines folded';
+  }
+
+  @override
   String get htmlPreviewNotSupportedOnLinux =>
       'HTML preview is not supported on Linux';
 
@@ -1458,6 +1463,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get displaySettingsPageMobileCodeBlockWrapTitle =>
       'Mobile Code Block Word Wrap';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockTitle =>
+      'Auto-collapse Code Blocks';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesTitle =>
+      'Auto-collapse threshold';
+
+  @override
+  String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => 'lines';
 
   @override
   String get messageExportSheetFormatTitle => 'Export Format';
