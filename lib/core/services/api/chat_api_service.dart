@@ -3636,7 +3636,13 @@ class ChatApiService {
           if (type == 'text') {
             final t = (it['text'] ?? '').toString();
             if (t.isNotEmpty) { assistantBlocks.add({'type': 'text', 'text': t}); buf.write(t); }
-          } else if (type == 'thinking') {
+          } else if (type == 'thinking' || type == 'redacted_thinking') {
+            // Preserve thinking blocks unmodified for tool-use continuation.
+            // When thinking is enabled, the next request must include the last assistant
+            // message starting with a thinking/redacted_thinking block.
+            try {
+              assistantBlocks.add(Map<String, dynamic>.from(it.cast<String, dynamic>()));
+            } catch (_) {}
           } else if (type == 'tool_use') {
             final id = (it['id'] ?? '').toString();
             final name = (it['name'] ?? '').toString();
@@ -3689,6 +3695,27 @@ class ChatApiService {
       final List<Map<String, dynamic>> assistantBlocks = <Map<String, dynamic>>[];
       final StringBuffer textBuf = StringBuffer();
 
+      // Track thinking blocks so they can be sent back for tool-use continuation.
+      final Map<int, int> _thinkingIndexToAssistantBlock = <int, int>{};
+      final Map<int, StringBuffer> _thinkingText = <int, StringBuffer>{};
+      final Map<int, StringBuffer> _thinkingSig = <int, StringBuffer>{};
+      final Map<int, int> _redactedThinkingIndexToAssistantBlock = <int, int>{};
+      final Map<int, StringBuffer> _redactedThinkingData = <int, StringBuffer>{};
+
+      int? _parseIndex(dynamic raw) {
+        if (raw == null) return null;
+        if (raw is int) return raw;
+        return int.tryParse(raw.toString());
+      }
+
+      void _flushTextBlock() {
+        final t = textBuf.toString();
+        if (t.isNotEmpty) {
+          assistantBlocks.add({'type': 'text', 'text': t});
+          textBuf.clear();
+        }
+      }
+
       // Server tool helpers (web_search)
       final Map<int, String> _srvIndexToId = <int, String>{};
       final Map<String, String> _srvArgsStr = <String, String>{};
@@ -3712,20 +3739,33 @@ class ChatApiService {
 
             if (type == 'content_block_start') {
               final cb = obj['content_block'];
-              if (cb is Map && (cb['type'] == 'tool_use')) {
-                // Flush text block before tool_use
-                final t = textBuf.toString();
-                if (t.isNotEmpty) {
-                  assistantBlocks.add({'type': 'text', 'text': t});
-                  textBuf.clear();
+              final idx = _parseIndex(obj['index']);
+              if (cb is Map && (cb['type'] == 'thinking')) {
+                // Preserve thinking blocks (with signature) for tool-use continuation.
+                _flushTextBlock();
+                if (idx != null) {
+                  assistantBlocks.add({'type': 'thinking', 'thinking': '', 'signature': ''});
+                  _thinkingIndexToAssistantBlock[idx] = assistantBlocks.length - 1;
+                  _thinkingText[idx] = StringBuffer();
+                  _thinkingSig[idx] = StringBuffer();
                 }
+              } else if (cb is Map && (cb['type'] == 'redacted_thinking')) {
+                _flushTextBlock();
+                if (idx != null) {
+                  assistantBlocks.add({'type': 'redacted_thinking', 'data': ''});
+                  _redactedThinkingIndexToAssistantBlock[idx] = assistantBlocks.length - 1;
+                  _redactedThinkingData[idx] = StringBuffer();
+                }
+              } else if (cb is Map && (cb['type'] == 'tool_use')) {
+                // Flush text block before tool_use
+                _flushTextBlock();
                 final id = (cb['id'] ?? '').toString();
                 final name = (cb['name'] ?? '').toString();
-                final idx = (obj['index'] is int) ? obj['index'] as int : int.tryParse((obj['index'] ?? '').toString()) ?? -1;
+                final idx2 = idx ?? -1;
                 if (id.isNotEmpty) {
                   _anthToolUse.putIfAbsent(id, () => {'name': name, 'args': ''});
                   assistantBlocks.add({'type': 'tool_use', 'id': id, 'name': name, 'input': {}});
-                  if (idx >= 0) _cliIndexToId[idx] = id;
+                  if (idx2 >= 0) _cliIndexToId[idx2] = id;
                   // Emit placeholder tool-call card immediately
                   yield ChatStreamChunk(
                     content: '',
@@ -3737,9 +3777,9 @@ class ChatApiService {
                 }
               } else if (cb is Map && (cb['type'] == 'server_tool_use')) {
                 final id = (cb['id'] ?? '').toString();
-                final idx = (obj['index'] is int) ? obj['index'] as int : int.tryParse((obj['index'] ?? '').toString()) ?? -1;
-                if (id.isNotEmpty && idx >= 0) {
-                  _srvIndexToId[idx] = id;
+                final idx2 = idx ?? -1;
+                if (id.isNotEmpty && idx2 >= 0) {
+                  _srvIndexToId[idx2] = id;
                   _srvArgsStr[id] = '';
                 }
                 // Emit placeholder for server tool to show card (e.g., built-in web_search)
@@ -3794,9 +3834,25 @@ class ChatApiService {
                     yield ChatStreamChunk(content: content, isDone: false, totalTokens: roundTokens);
                   }
                 } else if (delta['type'] == 'thinking_delta') {
+                  final idx = _parseIndex(obj['index']);
                   final thinking = (delta['thinking'] ?? delta['text'] ?? '') as String;
                   if (thinking.isNotEmpty) {
                     yield ChatStreamChunk(content: '', reasoning: thinking, isDone: false, totalTokens: roundTokens);
+                    if (idx != null && _thinkingText.containsKey(idx)) {
+                      _thinkingText[idx]!.write(thinking);
+                    }
+                  }
+                } else if (delta['type'] == 'signature_delta') {
+                  final idx = _parseIndex(obj['index']);
+                  final sig = (delta['signature'] ?? '').toString();
+                  if (sig.isNotEmpty && idx != null && _thinkingSig.containsKey(idx)) {
+                    _thinkingSig[idx]!.write(sig);
+                  }
+                } else if (delta['type'] == 'redacted_thinking_delta') {
+                  final idx = _parseIndex(obj['index']);
+                  final data = (delta['data'] ?? '').toString();
+                  if (data.isNotEmpty && idx != null && _redactedThinkingData.containsKey(idx)) {
+                    _redactedThinkingData[idx]!.write(data);
                   }
                 } else if (delta['type'] == 'tool_use_delta') {
                   // Client tool input fragments stream under the same content_block index
@@ -3824,8 +3880,20 @@ class ChatApiService {
                 }
               }
             } else if (type == 'content_block_stop') {
+              final idx = _parseIndex(obj['index']);
+              // Finalize thinking blocks so they can be sent back unmodified.
+              if (idx != null && _thinkingIndexToAssistantBlock.containsKey(idx)) {
+                final pos = _thinkingIndexToAssistantBlock.remove(idx)!;
+                final t = _thinkingText.remove(idx)?.toString() ?? '';
+                final sig = _thinkingSig.remove(idx)?.toString() ?? '';
+                assistantBlocks[pos] = {'type': 'thinking', 'thinking': t, 'signature': sig};
+              }
+              if (idx != null && _redactedThinkingIndexToAssistantBlock.containsKey(idx)) {
+                final pos = _redactedThinkingIndexToAssistantBlock.remove(idx)!;
+                final data = _redactedThinkingData.remove(idx)?.toString() ?? '';
+                assistantBlocks[pos] = {'type': 'redacted_thinking', 'data': data};
+              }
               String id = (obj['content_block']?['id'] ?? obj['id'] ?? '').toString();
-              final idx = (obj['index'] is int) ? obj['index'] as int : int.tryParse((obj['index'] ?? '').toString());
               if (id.isEmpty && idx != null && _cliIndexToId.containsKey(idx)) {
                 id = _cliIndexToId[idx]!;
               }
@@ -3848,9 +3916,8 @@ class ChatApiService {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: roundTokens, toolResults: [ToolResultInfo(id: id, name: name, arguments: args, content: res)], usage: usage);
                 }
               } else {
-                final sidx = (obj['index'] is int) ? obj['index'] as int : int.tryParse((obj['index'] ?? '').toString());
-                if (sidx != null && _srvIndexToId.containsKey(sidx)) {
-                  final sid = _srvIndexToId[sidx]!;
+                if (idx != null && _srvIndexToId.containsKey(idx)) {
+                  final sid = _srvIndexToId[idx]!;
                   Map<String, dynamic> args;
                   try { args = (jsonDecode((_srvArgsStr[sid] ?? '{}')) as Map).cast<String, dynamic>(); } catch (_) { args = <String, dynamic>{}; }
                   _srvArgs[sid] = args;
