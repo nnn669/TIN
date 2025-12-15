@@ -5372,7 +5372,7 @@ abstract class AppLocalizations {
   /// No description provided for @displaySettingsPageOtherSettingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Other'**
+  /// **'Other Settings'**
   String get displaySettingsPageOtherSettingsTitle;
 
   /// No description provided for @themeSettingsPageDynamicColorSection.
@@ -6538,6 +6538,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This action cannot be undone.'**
   String get providerDetailPageDeleteAllModelsWarning;
+
+  /// No description provided for @requestLogSettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Logging'**
+  String get requestLogSettingTitle;
+
+  /// No description provided for @requestLogSettingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, request/response details are written to logs/logs.txt (rotated daily).'**
+  String get requestLogSettingSubtitle;
 }
 
 class _AppLocalizationsDelegate

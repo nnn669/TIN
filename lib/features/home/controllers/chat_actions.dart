@@ -378,6 +378,7 @@ class ChatActions {
     // Cancel active stream for current conversation only
     final sub = _conversationStreams.remove(cid);
     await sub?.cancel();
+    ChatApiService.cancelRequest(cid);
 
     // Find the latest assistant streaming message within current conversation and mark it finished
     ChatMessage? streaming;
@@ -460,6 +461,7 @@ class ChatActions {
         extraHeaders: ctx.extraHeaders,
         extraBody: ctx.extraBody,
         stream: ctx.streamOutput,
+        requestId: conversationId,
       );
 
       await _conversationStreams[conversationId]?.cancel();

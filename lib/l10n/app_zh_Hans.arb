@@ -1149,5 +1149,8 @@
   "providerDetailPageBatchDetectStart": "开始检测",
   "providerDetailPageDetectSuccess": "检测成功",
   "providerDetailPageDetectFailed": "检测失败",
-  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回"
+  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回",
+  "displaySettingsPageOtherSettingsTitle": "其他设置",
+  "requestLogSettingTitle": "请求日志打印",
+  "requestLogSettingSubtitle": "开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。"
 }

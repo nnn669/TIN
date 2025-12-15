@@ -126,6 +126,39 @@ class _AboutPageState extends State<AboutPage> {
                                 l10n.aboutPageEasterEggMessage,
                                 style: TextStyle(color: cs.onSurface.withValues(alpha: 0.75), height: 1.3),
                               ),
+                              if (Platform.isAndroid || Platform.isIOS) ...[
+                                const SizedBox(height: 24),
+                                const Divider(),
+                                const SizedBox(height: 16),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            l10n.requestLogSettingTitle,
+                                            style: TextStyle(color: cs.onSurface.withValues(alpha: 0.9)),
+                                          ),
+                                        ),
+                                        IosSwitch(
+                                          value: dialogContext.watch<SettingsProvider>().requestLogEnabled,
+                                          onChanged: (v) => dialogContext.read<SettingsProvider>().setRequestLogEnabled(v),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    l10n.requestLogSettingSubtitle,
+                                    style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.65), height: 1.25),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 24),
                               const Divider(),
                               const SizedBox(height: 16),

@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/model_provider.dart';
 import '../../models/token_usage.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/app_directories.dart';
+import '../network/dio_http_client.dart';
 import 'google_service_account_auth.dart';
 import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
@@ -15,6 +16,17 @@ import '../../../utils/markdown_media_sanitizer.dart';
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
+  static final Map<String, CancelToken> _activeCancelTokens = <String, CancelToken>{};
+
+  static void cancelRequest(String requestId) {
+    final key = requestId.trim();
+    if (key.isEmpty) return;
+    final token = _activeCancelTokens.remove(key);
+    if (token == null) return;
+    try {
+      if (!token.isCancelled) token.cancel('cancelled');
+    } catch (_) {}
+  }
 
   /// Resolve the upstream/vendor model id for a given logical model key.
   /// When per-instance overrides specify `apiModelId`, that value is used for
@@ -455,7 +467,7 @@ class ChatApiService {
     }
     return b64;
   }
-  static http.Client _clientFor(ProviderConfig cfg) {
+  static http.Client _clientFor(ProviderConfig cfg, CancelToken cancelToken) {
     final enabled = cfg.proxyEnabled == true;
     final host = (cfg.proxyHost ?? '').trim();
     final portStr = (cfg.proxyPort ?? '').trim();
@@ -463,18 +475,18 @@ class ChatApiService {
     final pass = (cfg.proxyPassword ?? '').trim();
     if (enabled && host.isNotEmpty && portStr.isNotEmpty) {
       final port = int.tryParse(portStr) ?? 8080;
-      final io = HttpClient();
-      io.idleTimeout = const Duration(minutes: 5);
-      io.findProxy = (uri) => 'PROXY $host:$port';
-      if (user.isNotEmpty) {
-        io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
-      }
-      return IOClient(io);
+      return DioHttpClient(
+        proxy: NetworkProxyConfig(
+          enabled: true,
+          host: host,
+          port: port,
+          username: user.isEmpty ? null : user,
+          password: pass.isEmpty ? null : pass,
+        ),
+        cancelToken: cancelToken,
+      );
     }
-    // 非代理情况也需要设置 idleTimeout
-    final io = HttpClient();
-    io.idleTimeout = const Duration(minutes: 5);
-    return IOClient(io);
+    return DioHttpClient(cancelToken: cancelToken);
   }
 
   static Stream<ChatStreamChunk> sendMessageStream({
@@ -491,9 +503,17 @@ class ChatApiService {
     Map<String, String>? extraHeaders,
     Map<String, dynamic>? extraBody,
     bool stream = true,
+    String? requestId,
   }) async* {
     final kind = ProviderConfig.classify(config.id, explicitType: config.providerType);
-    final client = _clientFor(config);
+    final cancelToken = CancelToken();
+    final rid = (requestId ?? '').trim();
+    if (rid.isNotEmpty) {
+      final prev = _activeCancelTokens.remove(rid);
+      try { prev?.cancel('replaced'); } catch (_) {}
+      _activeCancelTokens[rid] = cancelToken;
+    }
+    final client = _clientFor(config, cancelToken);
 
     try {
       if (kind == ProviderKind.openai) {
@@ -550,6 +570,12 @@ class ChatApiService {
       }
     } finally {
       client.close();
+      if (rid.isNotEmpty) {
+        final cur = _activeCancelTokens[rid];
+        if (identical(cur, cancelToken)) {
+          _activeCancelTokens.remove(rid);
+        }
+      }
     }
   }
 
@@ -563,7 +589,7 @@ class ChatApiService {
     int? thinkingBudget,
   }) async {
     final kind = ProviderConfig.classify(config.id, explicitType: config.providerType);
-    final client = _clientFor(config);
+    final client = _clientFor(config, CancelToken());
     final upstreamModelId = _apiModelId(config, modelId);
     try {
       if (kind == ProviderKind.openai) {

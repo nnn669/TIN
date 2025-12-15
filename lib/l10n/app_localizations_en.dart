@@ -2833,7 +2833,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageFontResetLabel => 'Reset font settings';
 
   @override
-  String get displaySettingsPageOtherSettingsTitle => 'Other';
+  String get displaySettingsPageOtherSettingsTitle => 'Other Settings';
 
   @override
   String get themeSettingsPageDynamicColorSection => 'Dynamic Color';
@@ -3462,4 +3462,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get providerDetailPageDeleteAllModelsWarning =>
       'This action cannot be undone.';
+
+  @override
+  String get requestLogSettingTitle => 'Request Logging';
+
+  @override
+  String get requestLogSettingSubtitle =>
+      'When enabled, request/response details are written to logs/logs.txt (rotated daily).';
 }

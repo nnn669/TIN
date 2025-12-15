@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show HttpException;
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'settings_provider.dart';
+import '../services/network/dio_http_client.dart';
 import '../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 import '../services/api/google_service_account_auth.dart';
@@ -115,18 +115,17 @@ class _Http {
     final pass = (cfg.proxyPassword ?? '').trim();
     if (enabled && host.isNotEmpty && portStr.isNotEmpty) {
       final port = int.tryParse(portStr) ?? 8080;
-      final io = HttpClient();
-      io.idleTimeout = const Duration(minutes: 5);
-      io.findProxy = (uri) => 'PROXY $host:$port';
-      if (user.isNotEmpty) {
-        io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
-      }
-      return IOClient(io);
+      return DioHttpClient(
+        proxy: NetworkProxyConfig(
+          enabled: true,
+          host: host,
+          port: port,
+          username: user.isEmpty ? null : user,
+          password: pass.isEmpty ? null : pass,
+        ),
+      );
     }
-    // 非代理情况也需要设置 idleTimeout
-    final io = HttpClient();
-    io.idleTimeout = const Duration(minutes: 5);
-    return IOClient(io);
+    return DioHttpClient();
   }
 }
 

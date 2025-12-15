@@ -4599,6 +4599,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _AutoScrollDelayRow(),
                   _RowDivider(),
                   _BackgroundMaskRow(),
+                  _RowDivider(),
+                  _ToggleRowRequestLogging(),
                 ],
               ),
             ],
@@ -6669,6 +6671,20 @@ class _ToggleRowAutoScrollEnabled extends StatelessWidget {
       label: l10n.displaySettingsPageAutoScrollEnableTitle,
       value: sp.autoScrollEnabled,
       onChanged: (v) => context.read<SettingsProvider>().setAutoScrollEnabled(v),
+    );
+  }
+}
+
+class _ToggleRowRequestLogging extends StatelessWidget {
+  const _ToggleRowRequestLogging();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.requestLogSettingTitle,
+      value: sp.requestLogEnabled,
+      onChanged: (v) => context.read<SettingsProvider>().setRequestLogEnabled(v),
     );
   }
 }

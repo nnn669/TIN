@@ -1145,5 +1145,8 @@
   "providerDetailPageBatchDetectStart": "開始檢測",
   "providerDetailPageDetectSuccess": "檢測成功",
   "providerDetailPageDetectFailed": "檢測失敗",
-  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回"
+  "providerDetailPageDeleteAllModelsWarning": "此操作不可撤回",
+  "displaySettingsPageOtherSettingsTitle": "其他設定",
+  "requestLogSettingTitle": "請求日誌列印",
+  "requestLogSettingSubtitle": "開啟後會將請求/回應詳細寫入 logs/logs.txt（依日期自動分檔）。"
 }

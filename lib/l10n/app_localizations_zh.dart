@@ -3334,6 +3334,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get providerDetailPageDeleteAllModelsWarning => '此操作不可撤回';
+
+  @override
+  String get requestLogSettingTitle => '请求日志打印';
+
+  @override
+  String get requestLogSettingSubtitle =>
+      '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -6666,6 +6673,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get providerDetailPageDeleteAllModelsWarning => '此操作不可撤回';
+
+  @override
+  String get requestLogSettingTitle => '请求日志打印';
+
+  @override
+  String get requestLogSettingSubtitle =>
+      '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -9998,4 +10012,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get providerDetailPageDeleteAllModelsWarning => '此操作不可撤回';
+
+  @override
+  String get requestLogSettingTitle => '請求日誌列印';
+
+  @override
+  String get requestLogSettingSubtitle =>
+      '開啟後會將請求/回應詳細寫入 logs/logs.txt（依日期自動分檔）。';
 }

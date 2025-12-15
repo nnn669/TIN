@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import '../services/search/search_service.dart';
 import '../services/tts/network_tts.dart';
+import '../services/network/request_logger.dart';
 import '../models/api_keys.dart';
 import '../models/backup.dart';
 import '../services/haptics.dart';
@@ -67,6 +68,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayDesktopMinimizeToTrayOnCloseKey = 'display_desktop_minimize_to_tray_on_close_v1';
   static const String _displayUsePureBackgroundKey = 'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey = 'display_chat_message_background_style_v1';
+  // Network request logging (debug)
+  static const String _requestLogEnabledKey = 'request_log_enabled_v1';
   // Desktop topic panel placement + right sidebar open state
   static const String _desktopTopicPositionKey = 'desktop_topic_position_v1';
   static const String _desktopRightSidebarOpenKey = 'desktop_right_sidebar_open_v1';
@@ -316,6 +319,8 @@ class SettingsProvider extends ChangeNotifier {
     // Apply global haptics to service layer
     Haptics.setEnabled(_hapticsGlobalEnabled);
     _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
+    _requestLogEnabled = prefs.getBool(_requestLogEnabledKey) ?? false;
+    await RequestLogger.setEnabled(_requestLogEnabled);
     _newChatOnLaunch = prefs.getBool(_displayNewChatOnLaunchKey) ?? true;
     _newChatOnAssistantSwitch = prefs.getBool(_displayNewChatOnAssistantSwitchKey) ?? false;
     _newChatAfterDelete = prefs.getBool(_displayNewChatAfterDeleteKey) ?? false;
@@ -1883,6 +1888,18 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowAppUpdatesKey, v);
   }
 
+  // Network: request logging (debug)
+  bool _requestLogEnabled = false;
+  bool get requestLogEnabled => _requestLogEnabled;
+  Future<void> setRequestLogEnabled(bool v) async {
+    if (_requestLogEnabled == v) return;
+    _requestLogEnabled = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_requestLogEnabledKey, v);
+    await RequestLogger.setEnabled(v);
+  }
+
   // Search service settings
   Future<void> setSearchServices(List<SearchServiceOptions> services) async {
     _searchServices = List.from(services);
@@ -1990,6 +2007,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._hapticsOnListItemTap = _hapticsOnListItemTap;
     copy._hapticsOnCardTap = _hapticsOnCardTap;
     copy._showAppUpdates = _showAppUpdates;
+    copy._requestLogEnabled = _requestLogEnabled;
     copy._newChatOnLaunch = _newChatOnLaunch;
     copy._newChatOnAssistantSwitch = _newChatOnAssistantSwitch;
     copy._newChatAfterDelete = _newChatAfterDelete;
