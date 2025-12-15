@@ -69,13 +69,21 @@ class DioHttpClient extends http.BaseClient {
 
   @override
   void close() {
+    // 注意：不要在这里取消 CancelToken！
+    // close() 是在 finally 块中被调用的，此时流可能还没有被完全消费。
+    // 如果取消 CancelToken，会中断 Dio 的请求，导致流收到错误，
+    // 进而影响工具调用后的后续请求。
+    // CancelToken 的取消应该只在 onCancel 回调中进行（用户主动取消订阅时）。
+    // try {
+    //   if (!_cancelToken.isCancelled) {
+    //     _cancelToken.cancel('closed');
+    //   }
+    // } catch (_) {}
+    // try {
+    //   _dio.close(force: true);
+    // } catch (_) {}
     try {
-      if (!_cancelToken.isCancelled) {
-        _cancelToken.cancel('closed');
-      }
-    } catch (_) {}
-    try {
-      _dio.close(force: true);
+      _dio.close();
     } catch (_) {}
   }
 
@@ -163,18 +171,17 @@ class DioHttpClient extends http.BaseClient {
           cancelOnError: false,
         );
       };
-      controller.onCancel = () async {
-        try {
-          if (!_cancelToken.isCancelled) {
-            _cancelToken.cancel('cancelled');
-          }
-        } catch (_) {}
-        try {
-          await sub?.cancel();
-        } catch (_) {}
-        try {
-          await controller.close();
-        } catch (_) {}
+      controller.onCancel = () {
+        // 注意：当 await for 循环被 break 中断时（如工具调用处理），Dart 会取消流订阅，
+        // 触发 onCancel。这里不要做任何清理操作！
+        //
+        // 原因：
+        // 1. 不能取消 _cancelToken - 会导致后续请求失败
+        // 2. 不能调用 sub?.cancel() - 会影响 Dio 的 HTTP 连接状态，
+        //    导致使用同一个 Dio 实例的后续请求失败
+        // 3. 不能调用 controller.close() - controller 会在流自然结束时自动关闭
+        //
+        // 让旧的流自然结束或被垃圾回收，不要主动干预。
       };
 
       return http.StreamedResponse(
