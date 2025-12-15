@@ -6550,6 +6550,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When enabled, request/response details are written to logs/logs.txt (rotated daily).'**
   String get requestLogSettingSubtitle;
+
+  /// No description provided for @logViewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Logs'**
+  String get logViewerTitle;
+
+  /// No description provided for @logViewerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No logs yet'**
+  String get logViewerEmpty;
+
+  /// No description provided for @logViewerCurrentLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Log'**
+  String get logViewerCurrentLog;
+
+  /// No description provided for @logViewerExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get logViewerExport;
+
+  /// No description provided for @logViewerOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Logs Folder'**
+  String get logViewerOpenFolder;
 }
 
 class _AppLocalizationsDelegate

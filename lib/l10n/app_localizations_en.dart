@@ -3469,4 +3469,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get requestLogSettingSubtitle =>
       'When enabled, request/response details are written to logs/logs.txt (rotated daily).';
+
+  @override
+  String get logViewerTitle => 'Request Logs';
+
+  @override
+  String get logViewerEmpty => 'No logs yet';
+
+  @override
+  String get logViewerCurrentLog => 'Current Log';
+
+  @override
+  String get logViewerExport => 'Export';
+
+  @override
+  String get logViewerOpenFolder => 'Open Logs Folder';
 }

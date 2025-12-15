@@ -13,6 +13,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
+import 'log_viewer_page.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -142,6 +143,19 @@ class _AboutPageState extends State<AboutPage> {
                                             style: TextStyle(color: cs.onSurface.withValues(alpha: 0.9)),
                                           ),
                                         ),
+                                        InkWell(
+                                          borderRadius: BorderRadius.circular(6),
+                                          onTap: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(builder: (_) => const LogViewerPage()),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(6),
+                                            child: Icon(Lucide.FolderOpen, size: 20, color: cs.primary),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
                                         IosSwitch(
                                           value: dialogContext.watch<SettingsProvider>().requestLogEnabled,
                                           onChanged: (v) => dialogContext.read<SettingsProvider>().setRequestLogEnabled(v),

@@ -23,6 +23,7 @@ import '../core/models/assistant.dart';
 import '../utils/avatar_cache.dart';
 import '../utils/sandbox_path_resolver.dart';
 import 'dart:io' show Directory, File;
+import '../utils/app_directories.dart';
 import 'package:characters/characters.dart';
 import '../features/provider/pages/multi_key_manager_page.dart';
 import '../features/model/widgets/model_detail_sheet.dart';
@@ -6681,10 +6682,40 @@ class _ToggleRowRequestLogging extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final sp = context.watch<SettingsProvider>();
-    return _ToggleRow(
-      label: l10n.requestLogSettingTitle,
-      value: sp.requestLogEnabled,
-      onChanged: (v) => context.read<SettingsProvider>().setRequestLogEnabled(v),
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l10n.requestLogSettingTitle,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9), decoration: TextDecoration.none),
+            ),
+          ),
+          Tooltip(
+            message: l10n.logViewerOpenFolder,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () async {
+                final dir = await AppDirectories.getAppDataDirectory();
+                final logsDir = Directory('${dir.path}/logs');
+                if (!await logsDir.exists()) {
+                  await logsDir.create(recursive: true);
+                }
+                final uri = Uri.file(logsDir.path);
+                await launchUrl(uri);
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(lucide.Lucide.FolderOpen, size: 18, color: cs.primary),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IosSwitch(value: sp.requestLogEnabled, onChanged: (v) => context.read<SettingsProvider>().setRequestLogEnabled(v)),
+        ],
+      ),
     );
   }
 }

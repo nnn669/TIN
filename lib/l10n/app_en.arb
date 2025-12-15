@@ -1375,5 +1375,10 @@
   "providerDetailPageDeleteAllModelsWarning": "This action cannot be undone.",
   "displaySettingsPageOtherSettingsTitle": "Other Settings",
   "requestLogSettingTitle": "Request Logging",
-  "requestLogSettingSubtitle": "When enabled, request/response details are written to logs/logs.txt (rotated daily)."
+  "requestLogSettingSubtitle": "When enabled, request/response details are written to logs/logs.txt (rotated daily).",
+  "logViewerTitle": "Request Logs",
+  "logViewerEmpty": "No logs yet",
+  "logViewerCurrentLog": "Current Log",
+  "logViewerExport": "Export",
+  "logViewerOpenFolder": "Open Logs Folder"
 }

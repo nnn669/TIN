@@ -3341,6 +3341,21 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get requestLogSettingSubtitle =>
       '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
+
+  @override
+  String get logViewerTitle => '请求日志';
+
+  @override
+  String get logViewerEmpty => '暂无日志';
+
+  @override
+  String get logViewerCurrentLog => '当前日志';
+
+  @override
+  String get logViewerExport => '导出';
+
+  @override
+  String get logViewerOpenFolder => '打开日志目录';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -6680,6 +6695,21 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get requestLogSettingSubtitle =>
       '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
+
+  @override
+  String get logViewerTitle => '请求日志';
+
+  @override
+  String get logViewerEmpty => '暂无日志';
+
+  @override
+  String get logViewerCurrentLog => '当前日志';
+
+  @override
+  String get logViewerExport => '导出';
+
+  @override
+  String get logViewerOpenFolder => '打开日志目录';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -10019,4 +10049,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get requestLogSettingSubtitle =>
       '開啟後會將請求/回應詳細寫入 logs/logs.txt（依日期自動分檔）。';
+
+  @override
+  String get logViewerTitle => '請求日誌';
+
+  @override
+  String get logViewerEmpty => '暫無日誌';
+
+  @override
+  String get logViewerCurrentLog => '目前日誌';
+
+  @override
+  String get logViewerExport => '匯出';
+
+  @override
+  String get logViewerOpenFolder => '開啟日誌目錄';
 }
