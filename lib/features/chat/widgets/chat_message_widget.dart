@@ -875,6 +875,22 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 ),
               ),
               const SizedBox(width: 6),
+              if (widget.onEdit != null) ...[
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: Center(
+                    child: IosIconButton(
+                      size: 16,
+                      padding: EdgeInsets.all(4),
+                      icon: Lucide.Pencil,
+                      color: cs.onSurface.withOpacity(0.9),
+                      onTap: widget.onEdit,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
               SizedBox(
                 width: 28,
                 height: 28,
