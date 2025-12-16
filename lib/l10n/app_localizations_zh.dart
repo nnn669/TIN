@@ -3342,7 +3342,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get requestLogSettingSubtitle => '开启后会将请求/响应详情写入 logs/logs.txt';
 
   @override
-  String get flutterLogSettingTitle => 'Flutter日志打印';
+  String get flutterLogSettingTitle => '应用日志打印';
 
   @override
   String get flutterLogSettingSubtitle =>
@@ -6702,7 +6702,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get requestLogSettingSubtitle => '开启后会将请求/响应详情写入 logs/logs.txt';
 
   @override
-  String get flutterLogSettingTitle => 'Flutter日志打印';
+  String get flutterLogSettingTitle => '应用日志打印';
 
   @override
   String get flutterLogSettingSubtitle =>
