@@ -197,7 +197,7 @@ class Tool {
   factory Tool.fromJson(Map<String, dynamic> json) {
     return Tool(
       name: json['name'] as String,
-      description: json['description'] as String,
+      description: json['description'] as String? ?? '',
       inputSchema: json['inputSchema'] as Map<String, dynamic>,
       supportsProgress: json['supportsProgress'] as bool?,
       supportsCancellation: json['supportsCancellation'] as bool?,
