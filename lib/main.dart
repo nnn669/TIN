@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
-// import 'dart:async';
+import 'dart:async';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'features/home/pages/home_page.dart';
@@ -30,6 +30,7 @@ import 'core/providers/backup_provider.dart';
 import 'core/providers/hotkey_provider.dart';
 import 'core/services/chat/chat_service.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
+import 'core/services/logging/flutter_logger.dart';
 import 'utils/sandbox_path_resolver.dart';
 import 'shared/widgets/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,6 +39,7 @@ import 'package:flutter/painting.dart' show PaintingBinding;
 import 'dart:io' show HttpOverrides, Platform; // kept for global override usage inside provider
 import 'core/services/android_background.dart';
 import 'core/services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
@@ -46,27 +48,43 @@ bool _didEnsureSystemFonts = false; // one-time system fonts load when needed
 
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // Trim Flutter global image cache to reduce memory pressure from large images
-  try {
-    PaintingBinding.instance.imageCache.maximumSize = 200;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20; // ~48MB
-  } catch (_) {}
-  // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
-  await _initDesktopWindow();
-  // Avoid preloading all system fonts at launch (huge memory on desktop)
-  // Debug logging and global error handlers were enabled previously for diagnosis.
-  // They are commented out now per request to reduce log noise.
-  // FlutterError.onError = (FlutterErrorDetails details) { ... };
-  // WidgetsBinding.instance.platformDispatcher.onError = (Object error, StackTrace stack) { ... };
-  // logging.Logger.root.level = logging.Level.ALL;
-  // logging.Logger.root.onRecord.listen((rec) { ... });
-  // Cache current Documents directory to fix sandboxed absolute paths on iOS
-  await SandboxPathResolver.init();
-  // Enable edge-to-edge to allow content under system bars (Android)
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  // Start app (no extra guarded zone logging)
-  runApp(const MyApp());
+  await runZoned(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      FlutterLogger.installGlobalHandlers();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final enabled = prefs.getBool('flutter_log_enabled_v1') ?? false;
+        await FlutterLogger.setEnabled(enabled);
+      } catch (_) {}
+      // Trim Flutter global image cache to reduce memory pressure from large images
+      try {
+        PaintingBinding.instance.imageCache.maximumSize = 200;
+        PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20; // ~48MB
+      } catch (_) {}
+      // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
+      await _initDesktopWindow();
+      // Avoid preloading all system fonts at launch (huge memory on desktop)
+      // Debug logging and global error handlers were enabled previously for diagnosis.
+      // They are commented out now per request to reduce log noise.
+      // FlutterError.onError = (FlutterErrorDetails details) { ... };
+      // WidgetsBinding.instance.platformDispatcher.onError = (Object error, StackTrace stack) { ... };
+      // logging.Logger.root.level = logging.Level.ALL;
+      // logging.Logger.root.onRecord.listen((rec) { ... });
+      // Cache current Documents directory to fix sandboxed absolute paths on iOS
+      await SandboxPathResolver.init();
+      // Enable edge-to-edge to allow content under system bars (Android)
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      // Start app (Flutter log capture is toggleable and off by default)
+      runApp(const MyApp());
+    },
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        FlutterLogger.logPrint(line);
+        parent.print(zone, line);
+      },
+    ),
+  );
 }
 
 Future<void> _initDesktopWindow() async {

@@ -6551,6 +6551,18 @@ abstract class AppLocalizations {
   /// **'When enabled, request/response details are written to logs/logs.txt (rotated daily).'**
   String get requestLogSettingSubtitle;
 
+  /// No description provided for @flutterLogSettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Flutter Logging'**
+  String get flutterLogSettingTitle;
+
+  /// No description provided for @flutterLogSettingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, Flutter errors and print output are written to logs/flutter_logs.txt (rotated daily).'**
+  String get flutterLogSettingSubtitle;
+
   /// No description provided for @logViewerTitle.
   ///
   /// In en, this message translates to:

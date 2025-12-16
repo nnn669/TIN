@@ -1376,6 +1376,8 @@
   "displaySettingsPageOtherSettingsTitle": "Other Settings",
   "requestLogSettingTitle": "Request Logging",
   "requestLogSettingSubtitle": "When enabled, request/response details are written to logs/logs.txt (rotated daily).",
+  "flutterLogSettingTitle": "Flutter Logging",
+  "flutterLogSettingSubtitle": "When enabled, Flutter errors and print output are written to logs/flutter_logs.txt (rotated daily).",
   "logViewerTitle": "Request Logs",
   "logViewerEmpty": "No logs yet",
   "logViewerCurrentLog": "Current Log",

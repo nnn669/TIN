@@ -1,18 +1,20 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 
 import '../../../utils/app_directories.dart';
 
-class RequestLogger {
-  RequestLogger._();
+class FlutterLogger {
+  FlutterLogger._();
+
+  static const String _activeFileName = 'flutter_logs.txt';
+  static const String _rotatedFilePrefix = 'flutter_logs_';
 
   static bool _enabled = false;
   static bool get enabled => _enabled;
   static bool _writeErrorReported = false;
-
-  static int _nextRequestId = 0;
-  static int nextRequestId() => ++_nextRequestId;
 
   static Future<void> setEnabled(bool v) async {
     if (_enabled == v) return;
@@ -29,6 +31,40 @@ class RequestLogger {
     } else {
       _writeErrorReported = false;
     }
+  }
+
+  static bool _installed = false;
+  static FlutterExceptionHandler? _originalFlutterOnError;
+  static bool Function(Object, StackTrace)? _originalPlatformOnError;
+
+  static void installGlobalHandlers() {
+    if (_installed) return;
+    _installed = true;
+
+    _originalFlutterOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      try {
+        log(details.toString().trimRight(), tag: 'FlutterError');
+      } catch (_) {}
+
+      final original = _originalFlutterOnError;
+      if (original != null) {
+        original(details);
+      } else {
+        FlutterError.dumpErrorToConsole(details);
+      }
+    };
+
+    _originalPlatformOnError = ui.PlatformDispatcher.instance.onError;
+    ui.PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      try {
+        log('$error\n$stack', tag: 'Uncaught');
+      } catch (_) {}
+
+      final original = _originalPlatformOnError;
+      if (original != null) return original(error, stack);
+      return false;
+    };
   }
 
   static IOSink? _sink;
@@ -62,20 +98,20 @@ class RequestLogger {
       await logsDir.create(recursive: true);
     }
 
-    final active = File('${logsDir.path}/logs.txt');
+    final active = File('${logsDir.path}/$_activeFileName');
     if (await active.exists()) {
       try {
         final stat = await active.stat();
         final fileDay = _dayOf(stat.modified.toLocal());
         if (fileDay != today) {
           final suffix = _formatDate(fileDay);
-          var rotated = File('${logsDir.path}/logs_$suffix.txt');
+          var rotated = File('${logsDir.path}/${_rotatedFilePrefix}$suffix.txt');
           if (await rotated.exists()) {
             int i = 1;
-            while (await File('${logsDir.path}/logs_${suffix}_$i.txt').exists()) {
+            while (await File('${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt').exists()) {
               i++;
             }
-            rotated = File('${logsDir.path}/logs_${suffix}_$i.txt');
+            rotated = File('${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt');
           }
           await active.rename(rotated.path);
         }
@@ -86,10 +122,18 @@ class RequestLogger {
     return _sink!;
   }
 
-  static void logLine(String line) {
+  static void log(String message, {String? tag}) {
     if (!_enabled) return;
     final now = DateTime.now();
-    final text = '[${_formatTs(now)}] $line\n';
+    final prefix = '[${_formatTs(now)}]${tag == null ? '' : ' [$tag]'} ';
+    final normalized = message.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final lines = normalized.split('\n');
+    final buffer = StringBuffer();
+    for (final line in lines) {
+      buffer.writeln('$prefix$line');
+    }
+    final text = buffer.toString();
+
     _writeQueue = _writeQueue.then((_) async {
       if (!_enabled) return;
       try {
@@ -108,34 +152,14 @@ class RequestLogger {
         if (!_writeErrorReported) {
           _writeErrorReported = true;
           try {
-            stderr.writeln('[RequestLogger] write failed; further write errors will be suppressed.');
+            stderr.writeln('[FlutterLogger] write failed; further write errors will be suppressed.');
           } catch (_) {}
         }
       }
     });
   }
 
-  static String encodeObject(Object? obj) {
-    try {
-      return const JsonEncoder.withIndent('  ').convert(obj);
-    } catch (_) {
-      return obj?.toString() ?? '';
-    }
-  }
-
-  static String safeDecodeUtf8(List<int> bytes) {
-    try {
-      return utf8.decode(bytes, allowMalformed: true);
-    } catch (_) {
-      return '';
-    }
-  }
-
-  static String escape(String input) {
-    return input
-        .replaceAll('\\', r'\\')
-        .replaceAll('\r', r'\r')
-        .replaceAll('\n', r'\n')
-        .replaceAll('\t', r'\t');
+  static void logPrint(String line) {
+    log(line, tag: 'print');
   }
 }

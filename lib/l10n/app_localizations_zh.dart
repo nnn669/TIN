@@ -3339,8 +3339,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get requestLogSettingTitle => '请求日志打印';
 
   @override
-  String get requestLogSettingSubtitle =>
-      '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
+  String get requestLogSettingSubtitle => '开启后会将请求/响应详情写入 logs/logs.txt';
+
+  @override
+  String get flutterLogSettingTitle => 'Flutter日志打印';
+
+  @override
+  String get flutterLogSettingSubtitle =>
+      '开启后会将 Flutter 错误与 print 输出写入 logs/flutter_logs.txt';
 
   @override
   String get logViewerTitle => '请求日志';
@@ -6693,8 +6699,14 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get requestLogSettingTitle => '请求日志打印';
 
   @override
-  String get requestLogSettingSubtitle =>
-      '开启后会将请求/响应详情写入 logs/logs.txt（按日期自动分文件）。';
+  String get requestLogSettingSubtitle => '开启后会将请求/响应详情写入 logs/logs.txt';
+
+  @override
+  String get flutterLogSettingTitle => 'Flutter日志打印';
+
+  @override
+  String get flutterLogSettingSubtitle =>
+      '开启后会将 Flutter 错误与 print 输出写入 logs/flutter_logs.txt';
 
   @override
   String get logViewerTitle => '请求日志';
@@ -10047,8 +10059,14 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get requestLogSettingTitle => '請求日誌列印';
 
   @override
-  String get requestLogSettingSubtitle =>
-      '開啟後會將請求/回應詳細寫入 logs/logs.txt（依日期自動分檔）。';
+  String get requestLogSettingSubtitle => '開啟後會將請求/回應詳細寫入 logs/logs.txt';
+
+  @override
+  String get flutterLogSettingTitle => 'Flutter日誌列印';
+
+  @override
+  String get flutterLogSettingSubtitle =>
+      '開啟後會將 Flutter 錯誤與 print 輸出寫入 logs/flutter_logs.txt';
 
   @override
   String get logViewerTitle => '請求日誌';
