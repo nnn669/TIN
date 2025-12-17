@@ -1985,7 +1985,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelDetailSheetConfirmButton => '确认';
 
   @override
-  String get modelDetailSheetInvalidIdError => '请输入有效的模型 ID（不少于2个字符且不含空格）';
+  String get modelDetailSheetInvalidIdError => '请输入有效的模型 ID（不少于2个字符）';
 
   @override
   String get modelDetailSheetModelIdExistsError => '模型 ID 已存在';
@@ -5345,7 +5345,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get modelDetailSheetConfirmButton => '确认';
 
   @override
-  String get modelDetailSheetInvalidIdError => '请输入有效的模型 ID（不少于2个字符且不含空格）';
+  String get modelDetailSheetInvalidIdError => '请输入有效的模型 ID（不少于2个字符）';
 
   @override
   String get modelDetailSheetModelIdExistsError => '模型 ID 已存在';
@@ -8704,7 +8704,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get modelDetailSheetConfirmButton => '確認';
 
   @override
-  String get modelDetailSheetInvalidIdError => '請輸入有效的模型 ID（不少於2個字元且不含空格）';
+  String get modelDetailSheetInvalidIdError => '請輸入有效的模型 ID（不少於2個字元）';
 
   @override
   String get modelDetailSheetModelIdExistsError => '模型 ID 已存在';

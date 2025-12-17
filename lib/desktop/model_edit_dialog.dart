@@ -366,7 +366,7 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
     final old = settings.getProviderConfig(widget.providerKey);
     final String prevKey = widget.modelId;
     final String apiModelId = _idCtrl.text.trim();
-    if (apiModelId.isEmpty || apiModelId.length < 2 || apiModelId.contains(' ')) {
+    if (apiModelId.isEmpty || apiModelId.length < 2) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.modelDetailSheetInvalidIdError), backgroundColor: Theme.of(context).colorScheme.error));
       return;

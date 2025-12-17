@@ -545,7 +545,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
     // Upstream/vendor model id typed by the user
     final String apiModelId = _idCtrl.text.trim();
     // Basic validation
-    if (apiModelId.isEmpty || apiModelId.length < 2 || apiModelId.contains(' ')) {
+    if (apiModelId.isEmpty || apiModelId.length < 2) {
       final l10n = AppLocalizations.of(context)!;
       showAppSnackBar(
         context,

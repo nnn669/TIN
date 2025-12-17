@@ -868,7 +868,7 @@
   "modelDetailSheetCancelButton": "Cancel",
   "modelDetailSheetAddButton": "Add",
   "modelDetailSheetConfirmButton": "Confirm",
-  "modelDetailSheetInvalidIdError": "Please enter a valid model ID (>=2 chars, no spaces)",
+  "modelDetailSheetInvalidIdError": "Please enter a valid model ID (>=2 chars)",
   "modelDetailSheetModelIdExistsError": "Model ID already exists",
   "modelDetailSheetHeaderKeyHint": "Header Key",
   "modelDetailSheetHeaderValueHint": "Header Value",

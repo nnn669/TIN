@@ -2055,7 +2055,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelDetailSheetInvalidIdError =>
-      'Please enter a valid model ID (>=2 chars, no spaces)';
+      'Please enter a valid model ID (>=2 chars)';
 
   @override
   String get modelDetailSheetModelIdExistsError => 'Model ID already exists';

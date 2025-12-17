@@ -3914,7 +3914,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelDetailSheetInvalidIdError.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a valid model ID (>=2 chars, no spaces)'**
+  /// **'Please enter a valid model ID (>=2 chars)'**
   String get modelDetailSheetInvalidIdError;
 
   /// No description provided for @modelDetailSheetModelIdExistsError.

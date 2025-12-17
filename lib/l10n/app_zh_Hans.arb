@@ -686,7 +686,7 @@
   "modelDetailSheetCancelButton": "取消",
   "modelDetailSheetAddButton": "添加",
   "modelDetailSheetConfirmButton": "确认",
-  "modelDetailSheetInvalidIdError": "请输入有效的模型 ID（不少于2个字符且不含空格）",
+  "modelDetailSheetInvalidIdError": "请输入有效的模型 ID（不少于2个字符）",
   "modelDetailSheetModelIdExistsError": "模型 ID 已存在",
   "modelDetailSheetHeaderKeyHint": "Header Key",
   "modelDetailSheetHeaderValueHint": "Header Value",

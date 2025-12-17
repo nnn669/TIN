@@ -644,7 +644,7 @@
   "modelDetailSheetCancelButton": "取消",
   "modelDetailSheetAddButton": "新增",
   "modelDetailSheetConfirmButton": "確認",
-  "modelDetailSheetInvalidIdError": "請輸入有效的模型 ID（不少於2個字元且不含空格）",
+  "modelDetailSheetInvalidIdError": "請輸入有效的模型 ID（不少於2個字元）",
   "modelDetailSheetModelIdExistsError": "模型 ID 已存在",
   "modelDetailSheetHeaderKeyHint": "Header Key",
   "modelDetailSheetHeaderValueHint": "Header Value",
