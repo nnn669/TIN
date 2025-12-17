@@ -8,6 +8,10 @@ class AvatarCache {
 
   static final Map<String, String?> _memo = <String, String?>{};
 
+  static void clearMemory() {
+    _memo.clear();
+  }
+
   static Future<Directory> _cacheDir() async {
     return await AppDirectories.getAvatarCacheDirectory();
   }
@@ -36,7 +40,16 @@ class AvatarCache {
   /// On failure, returns null.
   static Future<String?> getPath(String url) async {
     if (url.isEmpty) return null;
-    if (_memo.containsKey(url)) return _memo[url];
+    if (_memo.containsKey(url)) {
+      final cached = _memo[url];
+      if (cached == null) return null;
+      try {
+        final f = File(cached);
+        if (await f.exists()) return cached;
+      } catch (_) {}
+      // Stale entry: file was deleted; re-resolve.
+      _memo.remove(url);
+    }
     try {
       final dir = await _cacheDir();
       if (!await dir.exists()) {

@@ -262,6 +262,264 @@ abstract class AppLocalizations {
   /// **'{count} files · {size}'**
   String settingsPageFilesCount(int count, String size);
 
+  /// No description provided for @storageSpacePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage Space'**
+  String get storageSpacePageTitle;
+
+  /// No description provided for @storageSpaceRefreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get storageSpaceRefreshTooltip;
+
+  /// No description provided for @storageSpaceLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load storage usage'**
+  String get storageSpaceLoadFailed;
+
+  /// No description provided for @storageSpaceTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Used'**
+  String get storageSpaceTotalLabel;
+
+  /// No description provided for @storageSpaceClearableLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clearable: {size}'**
+  String storageSpaceClearableLabel(String size);
+
+  /// No description provided for @storageSpaceClearableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Safe to clear: {size}'**
+  String storageSpaceClearableHint(String size);
+
+  /// No description provided for @storageSpaceCategoryImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get storageSpaceCategoryImages;
+
+  /// No description provided for @storageSpaceCategoryFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get storageSpaceCategoryFiles;
+
+  /// No description provided for @storageSpaceCategoryChatData.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat Records'**
+  String get storageSpaceCategoryChatData;
+
+  /// No description provided for @storageSpaceCategoryAssistantData.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistants'**
+  String get storageSpaceCategoryAssistantData;
+
+  /// No description provided for @storageSpaceCategoryCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache'**
+  String get storageSpaceCategoryCache;
+
+  /// No description provided for @storageSpaceCategoryLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get storageSpaceCategoryLogs;
+
+  /// No description provided for @storageSpaceCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get storageSpaceCategoryOther;
+
+  /// No description provided for @storageSpaceFilesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files'**
+  String storageSpaceFilesCount(int count);
+
+  /// No description provided for @storageSpaceSafeToClearHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Safe to clear. This will not affect your chat history.'**
+  String get storageSpaceSafeToClearHint;
+
+  /// No description provided for @storageSpaceNotSafeToClearHint.
+  ///
+  /// In en, this message translates to:
+  /// **'May affect your chat history. Delete with care.'**
+  String get storageSpaceNotSafeToClearHint;
+
+  /// No description provided for @storageSpaceBreakdownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakdown'**
+  String get storageSpaceBreakdownTitle;
+
+  /// No description provided for @storageSpaceSubChatMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get storageSpaceSubChatMessages;
+
+  /// No description provided for @storageSpaceSubChatConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversations'**
+  String get storageSpaceSubChatConversations;
+
+  /// No description provided for @storageSpaceSubChatToolEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool events'**
+  String get storageSpaceSubChatToolEvents;
+
+  /// No description provided for @storageSpaceSubAssistantAvatars.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatars'**
+  String get storageSpaceSubAssistantAvatars;
+
+  /// No description provided for @storageSpaceSubAssistantImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get storageSpaceSubAssistantImages;
+
+  /// No description provided for @storageSpaceSubCacheAvatars.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar cache'**
+  String get storageSpaceSubCacheAvatars;
+
+  /// No description provided for @storageSpaceSubCacheOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other cache'**
+  String get storageSpaceSubCacheOther;
+
+  /// No description provided for @storageSpaceSubLogsFlutter.
+  ///
+  /// In en, this message translates to:
+  /// **'Flutter logs'**
+  String get storageSpaceSubLogsFlutter;
+
+  /// No description provided for @storageSpaceSubLogsRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Network logs'**
+  String get storageSpaceSubLogsRequests;
+
+  /// No description provided for @storageSpaceSubLogsOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other logs'**
+  String get storageSpaceSubLogsOther;
+
+  /// No description provided for @storageSpaceClearConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm clear'**
+  String get storageSpaceClearConfirmTitle;
+
+  /// No description provided for @storageSpaceClearConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear {targetName}?'**
+  String storageSpaceClearConfirmMessage(String targetName);
+
+  /// No description provided for @storageSpaceClearButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get storageSpaceClearButton;
+
+  /// No description provided for @storageSpaceClearDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{targetName} cleared'**
+  String storageSpaceClearDone(String targetName);
+
+  /// No description provided for @storageSpaceClearFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear failed: {error}'**
+  String storageSpaceClearFailed(String error);
+
+  /// No description provided for @storageSpaceClearAvatarCacheButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Avatar Cache'**
+  String get storageSpaceClearAvatarCacheButton;
+
+  /// No description provided for @storageSpaceClearCacheButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get storageSpaceClearCacheButton;
+
+  /// No description provided for @storageSpaceClearLogsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Logs'**
+  String get storageSpaceClearLogsButton;
+
+  /// No description provided for @storageSpaceDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm deletion'**
+  String get storageSpaceDeleteConfirmTitle;
+
+  /// No description provided for @storageSpaceDeleteUploadsConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} items? Attachments in chat history may become unavailable.'**
+  String storageSpaceDeleteUploadsConfirmMessage(int count);
+
+  /// No description provided for @storageSpaceDeletedUploadsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} items'**
+  String storageSpaceDeletedUploadsDone(int count);
+
+  /// No description provided for @storageSpaceNoUploads.
+  ///
+  /// In en, this message translates to:
+  /// **'No items'**
+  String get storageSpaceNoUploads;
+
+  /// No description provided for @storageSpaceSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get storageSpaceSelectAll;
+
+  /// No description provided for @storageSpaceClearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get storageSpaceClearSelection;
+
+  /// No description provided for @storageSpaceSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String storageSpaceSelectedCount(int count);
+
+  /// No description provided for @storageSpaceUploadsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String storageSpaceUploadsCount(int count);
+
   /// No description provided for @settingsPageAboutSection.
   ///
   /// In en, this message translates to:
@@ -1120,6 +1378,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Translate'**
   String get desktopNavTranslateTooltip;
+
+  /// No description provided for @desktopNavStorageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get desktopNavStorageTooltip;
 
   /// No description provided for @desktopNavThemeToggleTooltip.
   ///

@@ -7,7 +7,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../model/pages/default_model_page.dart';
 import '../../provider/pages/providers_page.dart';
 import 'display_settings_page.dart';
-import '../../../core/services/chat/chat_service.dart';
 import '../../mcp/pages/mcp_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
 import 'about_page.dart';
@@ -18,6 +17,8 @@ import '../../backup/pages/backup_page.dart';
 import '../../quick_phrase/pages/quick_phrases_page.dart';
 import '../../instruction_injection/pages/instruction_injection_page.dart';
 import 'network_proxy_page.dart';
+import 'storage_space_page.dart';
+import '../../../core/services/storage/storage_usage_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/services/haptics.dart';
@@ -276,32 +277,10 @@ class SettingsPage extends StatelessWidget {
               context,
               icon: Lucide.HardDrive,
               label: l10n.settingsPageChatStorage,
-              detailBuilder: (ctx) {
-                String fmtBytes(int bytes) {
-                  const kb = 1024;
-                  const mb = kb * 1024;
-                  const gb = mb * 1024;
-                  if (bytes >= gb) return (bytes / gb).toStringAsFixed(2) + ' GB';
-                  if (bytes >= mb) return (bytes / mb).toStringAsFixed(2) + ' MB';
-                  if (bytes >= kb) return (bytes / kb).toStringAsFixed(1) + ' KB';
-                  return '$bytes B';
-                }
-                final l10n = AppLocalizations.of(ctx)!;
-                final svc = ctx.read<ChatService>();
-                return FutureBuilder<UploadStats>(
-                  future: svc.getUploadStats(),
-                  builder: (context, snapshot) {
-                    final data = snapshot.data;
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return Text(l10n.settingsPageCalculating, style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.6), fontSize: 13));
-                    }
-                    final count = data?.fileCount ?? 0;
-                    final size = fmtBytes(data?.totalBytes ?? 0);
-                    return Text(l10n.settingsPageFilesCount(count, size), style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.6), fontSize: 13));
-                  },
-                );
+              detailBuilder: (_) => const _ChatStorageSummary(),
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StorageSpacePage()));
               },
-              onTap: null, // disabled: no tap, no chevron, no press feedback
             ),
           ]),
 
@@ -419,6 +398,53 @@ class _AnimatedPressColor extends StatelessWidget {
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       builder: (context, color, _) => builder(color ?? base),
+    );
+  }
+}
+
+class _ChatStorageSummary extends StatefulWidget {
+  const _ChatStorageSummary();
+
+  @override
+  State<_ChatStorageSummary> createState() => _ChatStorageSummaryState();
+}
+
+class _ChatStorageSummaryState extends State<_ChatStorageSummary> {
+  late Future<StorageUsageReport> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = StorageUsageService.computeReport();
+  }
+
+  String _fmtBytes(int bytes) {
+    const kb = 1024;
+    const mb = kb * 1024;
+    const gb = mb * 1024;
+    if (bytes >= gb) return '${(bytes / gb).toStringAsFixed(2)} GB';
+    if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(2)} MB';
+    if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)} KB';
+    return '$bytes B';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final style = TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 13);
+
+    return FutureBuilder<StorageUsageReport>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Text(l10n.settingsPageCalculating, style: style);
+        }
+        final count = data?.totalFiles ?? 0;
+        final size = _fmtBytes(data?.totalBytes ?? 0);
+        return Text(l10n.settingsPageFilesCount(count, size), style: style);
+      },
     );
   }
 }

@@ -1629,7 +1629,7 @@ class _DesktopModelSelectDialogBodyState extends State<_DesktopModelSelectDialog
                   Future.microtask(() {
                     nav.push(
                       PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => DesktopHomePage(initialTabIndex: 2, initialProviderKey: providerKey),
+                        pageBuilder: (_, __, ___) => DesktopHomePage(initialTabIndex: 3, initialProviderKey: providerKey),
                         transitionDuration: const Duration(milliseconds: 220),
                         reverseTransitionDuration: const Duration(milliseconds: 200),
                         transitionsBuilder: (ctx, anim, sec, child) {

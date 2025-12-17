@@ -92,6 +92,155 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get storageSpacePageTitle => '存储空间';
+
+  @override
+  String get storageSpaceRefreshTooltip => '刷新';
+
+  @override
+  String get storageSpaceLoadFailed => '加载失败';
+
+  @override
+  String get storageSpaceTotalLabel => '已用空间';
+
+  @override
+  String storageSpaceClearableLabel(String size) {
+    return '可清理：$size';
+  }
+
+  @override
+  String storageSpaceClearableHint(String size) {
+    return '共发现可清理空间 $size';
+  }
+
+  @override
+  String get storageSpaceCategoryImages => '图片';
+
+  @override
+  String get storageSpaceCategoryFiles => '文件';
+
+  @override
+  String get storageSpaceCategoryChatData => '聊天记录';
+
+  @override
+  String get storageSpaceCategoryAssistantData => '角色';
+
+  @override
+  String get storageSpaceCategoryCache => '缓存';
+
+  @override
+  String get storageSpaceCategoryLogs => '日志';
+
+  @override
+  String get storageSpaceCategoryOther => '应用';
+
+  @override
+  String storageSpaceFilesCount(int count) {
+    return '$count 个文件';
+  }
+
+  @override
+  String get storageSpaceSafeToClearHint => '可安全清理，不影响聊天记录。';
+
+  @override
+  String get storageSpaceNotSafeToClearHint => '可能影响聊天记录，请谨慎删除。';
+
+  @override
+  String get storageSpaceBreakdownTitle => '明细';
+
+  @override
+  String get storageSpaceSubChatMessages => '消息';
+
+  @override
+  String get storageSpaceSubChatConversations => '会话';
+
+  @override
+  String get storageSpaceSubChatToolEvents => '工具事件';
+
+  @override
+  String get storageSpaceSubAssistantAvatars => '头像';
+
+  @override
+  String get storageSpaceSubAssistantImages => '图片';
+
+  @override
+  String get storageSpaceSubCacheAvatars => '头像缓存';
+
+  @override
+  String get storageSpaceSubCacheOther => '其他缓存';
+
+  @override
+  String get storageSpaceSubLogsFlutter => '运行日志';
+
+  @override
+  String get storageSpaceSubLogsRequests => '网络日志';
+
+  @override
+  String get storageSpaceSubLogsOther => '其他日志';
+
+  @override
+  String get storageSpaceClearConfirmTitle => '确认清理';
+
+  @override
+  String storageSpaceClearConfirmMessage(String targetName) {
+    return '确定要清理 $targetName 吗？';
+  }
+
+  @override
+  String get storageSpaceClearButton => '清理';
+
+  @override
+  String storageSpaceClearDone(String targetName) {
+    return '已清理 $targetName';
+  }
+
+  @override
+  String storageSpaceClearFailed(String error) {
+    return '清理失败：$error';
+  }
+
+  @override
+  String get storageSpaceClearAvatarCacheButton => '清理头像缓存';
+
+  @override
+  String get storageSpaceClearCacheButton => '清理缓存';
+
+  @override
+  String get storageSpaceClearLogsButton => '清理日志';
+
+  @override
+  String get storageSpaceDeleteConfirmTitle => '确认删除';
+
+  @override
+  String storageSpaceDeleteUploadsConfirmMessage(int count) {
+    return '删除 $count 个项目？删除后聊天记录中的附件可能无法打开。';
+  }
+
+  @override
+  String storageSpaceDeletedUploadsDone(int count) {
+    return '已删除 $count 个项目';
+  }
+
+  @override
+  String get storageSpaceNoUploads => '暂无内容';
+
+  @override
+  String get storageSpaceSelectAll => '全选';
+
+  @override
+  String get storageSpaceClearSelection => '清空选择';
+
+  @override
+  String storageSpaceSelectedCount(int count) {
+    return '已选 $count 项';
+  }
+
+  @override
+  String storageSpaceUploadsCount(int count) {
+    return '共 $count 项';
+  }
+
+  @override
   String get settingsPageAboutSection => '关于';
 
   @override
@@ -531,6 +680,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get desktopNavTranslateTooltip => '翻译';
+
+  @override
+  String get desktopNavStorageTooltip => '存储';
 
   @override
   String get desktopNavThemeToggleTooltip => '主题切换';
@@ -3452,6 +3604,155 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
+  String get storageSpacePageTitle => '存储空间';
+
+  @override
+  String get storageSpaceRefreshTooltip => '刷新';
+
+  @override
+  String get storageSpaceLoadFailed => '加载失败';
+
+  @override
+  String get storageSpaceTotalLabel => '已用空间';
+
+  @override
+  String storageSpaceClearableLabel(String size) {
+    return '可清理：$size';
+  }
+
+  @override
+  String storageSpaceClearableHint(String size) {
+    return '共发现可清理空间 $size';
+  }
+
+  @override
+  String get storageSpaceCategoryImages => '图片';
+
+  @override
+  String get storageSpaceCategoryFiles => '文件';
+
+  @override
+  String get storageSpaceCategoryChatData => '聊天记录';
+
+  @override
+  String get storageSpaceCategoryAssistantData => '角色';
+
+  @override
+  String get storageSpaceCategoryCache => '缓存';
+
+  @override
+  String get storageSpaceCategoryLogs => '日志';
+
+  @override
+  String get storageSpaceCategoryOther => '应用';
+
+  @override
+  String storageSpaceFilesCount(int count) {
+    return '$count 个文件';
+  }
+
+  @override
+  String get storageSpaceSafeToClearHint => '可安全清理，不影响聊天记录。';
+
+  @override
+  String get storageSpaceNotSafeToClearHint => '可能影响聊天记录，请谨慎删除。';
+
+  @override
+  String get storageSpaceBreakdownTitle => '明细';
+
+  @override
+  String get storageSpaceSubChatMessages => '消息';
+
+  @override
+  String get storageSpaceSubChatConversations => '会话';
+
+  @override
+  String get storageSpaceSubChatToolEvents => '工具事件';
+
+  @override
+  String get storageSpaceSubAssistantAvatars => '头像';
+
+  @override
+  String get storageSpaceSubAssistantImages => '图片';
+
+  @override
+  String get storageSpaceSubCacheAvatars => '头像缓存';
+
+  @override
+  String get storageSpaceSubCacheOther => '其他缓存';
+
+  @override
+  String get storageSpaceSubLogsFlutter => '运行日志';
+
+  @override
+  String get storageSpaceSubLogsRequests => '网络日志';
+
+  @override
+  String get storageSpaceSubLogsOther => '其他日志';
+
+  @override
+  String get storageSpaceClearConfirmTitle => '确认清理';
+
+  @override
+  String storageSpaceClearConfirmMessage(String targetName) {
+    return '确定要清理 $targetName 吗？';
+  }
+
+  @override
+  String get storageSpaceClearButton => '清理';
+
+  @override
+  String storageSpaceClearDone(String targetName) {
+    return '已清理 $targetName';
+  }
+
+  @override
+  String storageSpaceClearFailed(String error) {
+    return '清理失败：$error';
+  }
+
+  @override
+  String get storageSpaceClearAvatarCacheButton => '清理头像缓存';
+
+  @override
+  String get storageSpaceClearCacheButton => '清理缓存';
+
+  @override
+  String get storageSpaceClearLogsButton => '清理日志';
+
+  @override
+  String get storageSpaceDeleteConfirmTitle => '确认删除';
+
+  @override
+  String storageSpaceDeleteUploadsConfirmMessage(int count) {
+    return '删除 $count 个项目？删除后聊天记录中的附件可能无法打开。';
+  }
+
+  @override
+  String storageSpaceDeletedUploadsDone(int count) {
+    return '已删除 $count 个项目';
+  }
+
+  @override
+  String get storageSpaceNoUploads => '暂无内容';
+
+  @override
+  String get storageSpaceSelectAll => '全选';
+
+  @override
+  String get storageSpaceClearSelection => '清空选择';
+
+  @override
+  String storageSpaceSelectedCount(int count) {
+    return '已选 $count 项';
+  }
+
+  @override
+  String storageSpaceUploadsCount(int count) {
+    return '共 $count 项';
+  }
+
+  @override
   String get settingsPageAboutSection => '关于';
 
   @override
@@ -3891,6 +4192,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get desktopNavTranslateTooltip => '翻译';
+
+  @override
+  String get desktopNavStorageTooltip => '存储';
 
   @override
   String get desktopNavThemeToggleTooltip => '主题切换';
@@ -6812,6 +7116,155 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String get storageSpacePageTitle => '儲存空間';
+
+  @override
+  String get storageSpaceRefreshTooltip => '重新整理';
+
+  @override
+  String get storageSpaceLoadFailed => '載入失敗';
+
+  @override
+  String get storageSpaceTotalLabel => '已用空間';
+
+  @override
+  String storageSpaceClearableLabel(String size) {
+    return '可清理：$size';
+  }
+
+  @override
+  String storageSpaceClearableHint(String size) {
+    return '共發現可清理空間 $size';
+  }
+
+  @override
+  String get storageSpaceCategoryImages => '圖片';
+
+  @override
+  String get storageSpaceCategoryFiles => '檔案';
+
+  @override
+  String get storageSpaceCategoryChatData => '聊天記錄';
+
+  @override
+  String get storageSpaceCategoryAssistantData => '角色';
+
+  @override
+  String get storageSpaceCategoryCache => '快取';
+
+  @override
+  String get storageSpaceCategoryLogs => '日誌';
+
+  @override
+  String get storageSpaceCategoryOther => '應用';
+
+  @override
+  String storageSpaceFilesCount(int count) {
+    return '$count 個檔案';
+  }
+
+  @override
+  String get storageSpaceSafeToClearHint => '可安全清理，不影響聊天記錄。';
+
+  @override
+  String get storageSpaceNotSafeToClearHint => '可能影響聊天記錄，請謹慎刪除。';
+
+  @override
+  String get storageSpaceBreakdownTitle => '明細';
+
+  @override
+  String get storageSpaceSubChatMessages => '訊息';
+
+  @override
+  String get storageSpaceSubChatConversations => '對話';
+
+  @override
+  String get storageSpaceSubChatToolEvents => '工具事件';
+
+  @override
+  String get storageSpaceSubAssistantAvatars => '頭像';
+
+  @override
+  String get storageSpaceSubAssistantImages => '圖片';
+
+  @override
+  String get storageSpaceSubCacheAvatars => '頭像快取';
+
+  @override
+  String get storageSpaceSubCacheOther => '其他快取';
+
+  @override
+  String get storageSpaceSubLogsFlutter => '執行日誌';
+
+  @override
+  String get storageSpaceSubLogsRequests => '網路日誌';
+
+  @override
+  String get storageSpaceSubLogsOther => '其他日誌';
+
+  @override
+  String get storageSpaceClearConfirmTitle => '確認清理';
+
+  @override
+  String storageSpaceClearConfirmMessage(String targetName) {
+    return '確定要清理 $targetName 嗎？';
+  }
+
+  @override
+  String get storageSpaceClearButton => '清理';
+
+  @override
+  String storageSpaceClearDone(String targetName) {
+    return '已清理 $targetName';
+  }
+
+  @override
+  String storageSpaceClearFailed(String error) {
+    return '清理失敗：$error';
+  }
+
+  @override
+  String get storageSpaceClearAvatarCacheButton => '清理頭像快取';
+
+  @override
+  String get storageSpaceClearCacheButton => '清理快取';
+
+  @override
+  String get storageSpaceClearLogsButton => '清理日誌';
+
+  @override
+  String get storageSpaceDeleteConfirmTitle => '確認刪除';
+
+  @override
+  String storageSpaceDeleteUploadsConfirmMessage(int count) {
+    return '刪除 $count 個項目？刪除後聊天記錄中的附件可能無法開啟。';
+  }
+
+  @override
+  String storageSpaceDeletedUploadsDone(int count) {
+    return '已刪除 $count 個項目';
+  }
+
+  @override
+  String get storageSpaceNoUploads => '暫無內容';
+
+  @override
+  String get storageSpaceSelectAll => '全選';
+
+  @override
+  String get storageSpaceClearSelection => '清除選取';
+
+  @override
+  String storageSpaceSelectedCount(int count) {
+    return '已選 $count 項';
+  }
+
+  @override
+  String storageSpaceUploadsCount(int count) {
+    return '共 $count 項';
+  }
+
+  @override
   String get settingsPageAboutSection => '關於';
 
   @override
@@ -7251,6 +7704,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopNavTranslateTooltip => '翻譯';
+
+  @override
+  String get desktopNavStorageTooltip => '儲存';
 
   @override
   String get desktopNavThemeToggleTooltip => '主題切換';

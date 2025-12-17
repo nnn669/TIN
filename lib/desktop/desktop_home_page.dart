@@ -7,6 +7,7 @@ import 'desktop_chat_page.dart';
 import 'window_title_bar.dart';
 import 'desktop_settings_page.dart';
 import 'desktop_translate_page.dart';
+import '../features/settings/pages/storage_space_page.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:async';
 import 'hotkeys/hotkey_event_bus.dart';
@@ -21,7 +22,7 @@ class DesktopHomePage extends StatefulWidget {
     this.initialProviderKey,
   });
 
-  final int? initialTabIndex; // 0=Chat,1=Translate,2=Settings
+  final int? initialTabIndex; // 0=Chat,1=Translate,2=Storage,3=Settings
   final String? initialProviderKey;
 
   @override
@@ -29,15 +30,17 @@ class DesktopHomePage extends StatefulWidget {
 }
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
-  int _tabIndex = 0; // 0=Chat, 1=Translate, 2=Settings
+  int _tabIndex = 0; // 0=Chat, 1=Translate, 2=Storage, 3=Settings
+  bool _storageVisited = false;
   StreamSubscription<HotkeyAction>? _hotkeySub;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialTabIndex != null) {
-      _tabIndex = widget.initialTabIndex!.clamp(0, 2);
+      _tabIndex = widget.initialTabIndex!.clamp(0, 3);
     }
+    _storageVisited = _tabIndex == 2;
     // 初始进入时如果就是聊天页，则聚焦聊天输入框
     if (_tabIndex == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,7 +51,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     _hotkeySub = HotkeyEventBus.instance.stream.listen((action) async {
       switch (action) {
         case HotkeyAction.openSettings:
-          if (mounted) setState(() => _tabIndex = 2);
+          if (mounted) setState(() => _tabIndex = 3);
           break;
         case HotkeyAction.closeWindow:
           try { await windowManager.close(); } catch (_) {}
@@ -127,8 +130,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 ChatActionBus.instance.fire(ChatAction.focusInput);
               },
               onTapTranslate: () => setState(() => _tabIndex = 1),
+              onTapStorage: () => setState(() {
+                _tabIndex = 2;
+                _storageVisited = true;
+              }),
               onTapSettings: () {
-                setState(() => _tabIndex = 2);
+                setState(() => _tabIndex = 3);
               },
             ),
             Expanded(
@@ -141,11 +148,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   const DesktopChatPage(),
                   // Translate page remains mounted
                   const DesktopTranslatePage(key: ValueKey('translate_page')),
-                  // Settings page remains mounted with its initialProviderKey
-                  DesktopSettingsPage(
-                    key: const ValueKey('settings_page'),
-                    initialProviderKey: widget.initialProviderKey,
-                  ),
+                  _storageVisited ? const StorageSpacePage(key: ValueKey('storage_space_page'), embedded: true) : const SizedBox.shrink(),
+                  DesktopSettingsPage(key: const ValueKey('settings_page'), initialProviderKey: widget.initialProviderKey),
                 ],
               ),
             ),
@@ -168,7 +172,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         body,
                         // Inject the lazily-built settings page into the IndexedStack when needed
                         // to pass initialProviderKey without dropping chat state.
-                        if (_tabIndex == 2) const SizedBox.shrink(),
+                        if (_tabIndex == 3) const SizedBox.shrink(),
                       ],
                     ),
                   ),
