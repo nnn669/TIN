@@ -324,6 +324,30 @@ abstract final class StorageUsageService {
     AvatarCache.clearMemory();
   }
 
+  static Future<void> clearOtherCache() async {
+    final cacheDir = await AppDirectories.getCacheDirectory();
+    final avatarCacheDir = await AppDirectories.getAvatarCacheDirectory();
+    if (!await cacheDir.exists()) return;
+
+    final String avatarAbs = p.normalize(Directory(avatarCacheDir.path).absolute.path);
+    try {
+      await for (final ent in cacheDir.list(recursive: false, followLinks: false)) {
+        try {
+          final entAbs = p.normalize(p.absolute(ent.path));
+          if (p.equals(entAbs, avatarAbs)) continue;
+          await ent.delete(recursive: true);
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> clearSystemCache() async {
+    try {
+      final dir = await AppDirectories.getSystemCacheDirectory();
+      await _deleteDirectoryContents(dir);
+    } catch (_) {}
+  }
+
   static Future<void> clearLogs() async {
     final flutterOn = FlutterLogger.enabled;
     final requestOn = RequestLogger.enabled;

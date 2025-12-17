@@ -197,6 +197,58 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
     }
   }
 
+  Future<void> _doClearOtherCache() async {
+    if (_clearing) return;
+    final l10n = AppLocalizations.of(context)!;
+    final targetName = l10n.storageSpaceSubCacheOther;
+    final ok = await _confirmAction(
+      context,
+      title: l10n.storageSpaceClearConfirmTitle,
+      message: l10n.storageSpaceClearConfirmMessage(targetName),
+      actionLabel: l10n.storageSpaceClearButton,
+    );
+    if (!ok) return;
+
+    setState(() => _clearing = true);
+    try {
+      await StorageUsageService.clearOtherCache();
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearDone(targetName), type: NotificationType.success);
+      await _refreshReport();
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearFailed(e.toString()), type: NotificationType.error);
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
+  Future<void> _doClearSystemCache() async {
+    if (_clearing) return;
+    final l10n = AppLocalizations.of(context)!;
+    final targetName = l10n.storageSpaceSubCacheSystem;
+    final ok = await _confirmAction(
+      context,
+      title: l10n.storageSpaceClearConfirmTitle,
+      message: l10n.storageSpaceClearConfirmMessage(targetName),
+      actionLabel: l10n.storageSpaceClearButton,
+    );
+    if (!ok) return;
+
+    setState(() => _clearing = true);
+    try {
+      await StorageUsageService.clearSystemCache();
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearDone(targetName), type: NotificationType.success);
+      await _refreshReport();
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearFailed(e.toString()), type: NotificationType.error);
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
   Future<void> _doClearLogs() async {
     if (_clearing) return;
     final l10n = AppLocalizations.of(context)!;
@@ -383,6 +435,8 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
                         subTitleFor: (id) => _subTitleFor(id, l10n),
                         clearing: _clearing,
                         onClearCache: _clearing ? null : _doClearCache,
+                        onClearOtherCache: _clearing ? null : _doClearOtherCache,
+                        onClearSystemCache: _clearing ? null : _doClearSystemCache,
                         onClearLogs: _clearing ? null : _doClearLogs,
                         refreshReport: _refreshReport,
                       ),
@@ -551,6 +605,56 @@ class _StorageCategoryPageState extends State<_StorageCategoryPage> {
     }
   }
 
+  Future<void> _clearOtherCache() async {
+    if (_clearing) return;
+    final l10n = AppLocalizations.of(context)!;
+    final targetName = l10n.storageSpaceSubCacheOther;
+    final ok = await _confirmAction(
+      title: l10n.storageSpaceClearConfirmTitle,
+      message: l10n.storageSpaceClearConfirmMessage(targetName),
+      actionLabel: l10n.storageSpaceClearButton,
+    );
+    if (!ok) return;
+
+    setState(() => _clearing = true);
+    try {
+      await StorageUsageService.clearOtherCache();
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearDone(targetName), type: NotificationType.success);
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearFailed(e.toString()), type: NotificationType.error);
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
+  Future<void> _clearSystemCache() async {
+    if (_clearing) return;
+    final l10n = AppLocalizations.of(context)!;
+    final targetName = l10n.storageSpaceSubCacheSystem;
+    final ok = await _confirmAction(
+      title: l10n.storageSpaceClearConfirmTitle,
+      message: l10n.storageSpaceClearConfirmMessage(targetName),
+      actionLabel: l10n.storageSpaceClearButton,
+    );
+    if (!ok) return;
+
+    setState(() => _clearing = true);
+    try {
+      await StorageUsageService.clearSystemCache();
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearDone(targetName), type: NotificationType.success);
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, message: l10n.storageSpaceClearFailed(e.toString()), type: NotificationType.error);
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
   Future<void> _clearLogs() async {
     if (_clearing) return;
     final l10n = AppLocalizations.of(context)!;
@@ -613,6 +717,8 @@ class _StorageCategoryPageState extends State<_StorageCategoryPage> {
           subTitleFor: widget.subTitleFor,
           clearing: _clearing,
           onClearCache: (category.key == StorageUsageCategoryKey.cache) ? _clearCache : null,
+          onClearOtherCache: (category.key == StorageUsageCategoryKey.cache) ? _clearOtherCache : null,
+          onClearSystemCache: (category.key == StorageUsageCategoryKey.cache) ? _clearSystemCache : null,
           onClearLogs: (category.key == StorageUsageCategoryKey.logs) ? _clearLogs : null,
           refreshReport: _refresh,
         ),
@@ -777,6 +883,8 @@ class _CategoryDetail extends StatelessWidget {
     required this.subTitleFor,
     required this.clearing,
     required this.onClearCache,
+    required this.onClearOtherCache,
+    required this.onClearSystemCache,
     required this.onClearLogs,
     required this.refreshReport,
   });
@@ -787,6 +895,8 @@ class _CategoryDetail extends StatelessWidget {
   final String Function(String) subTitleFor;
   final bool clearing;
   final Future<void> Function({required bool avatarsOnly})? onClearCache;
+  final Future<void> Function()? onClearOtherCache;
+  final Future<void> Function()? onClearSystemCache;
   final Future<void> Function()? onClearLogs;
   final Future<void> Function() refreshReport;
 
@@ -910,6 +1020,18 @@ class _CategoryDetail extends StatelessWidget {
                               label: l10n.storageSpaceClearButton,
                               enabled: !clearing,
                               onTap: () => onClearCache?.call(avatarsOnly: true),
+                            ),
+                          if (category.key == StorageUsageCategoryKey.cache && s.id == 'other_cache')
+                            _MiniActionButton(
+                              label: l10n.storageSpaceClearButton,
+                              enabled: !clearing,
+                              onTap: () => onClearOtherCache?.call(),
+                            ),
+                          if (category.key == StorageUsageCategoryKey.cache && s.id == 'system_cache')
+                            _MiniActionButton(
+                              label: l10n.storageSpaceClearButton,
+                              enabled: !clearing,
+                              onTap: () => onClearSystemCache?.call(),
                             ),
                         ],
                       ),

@@ -123,7 +123,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storageSpaceCategoryChatData => '聊天记录';
 
   @override
-  String get storageSpaceCategoryAssistantData => '角色';
+  String get storageSpaceCategoryAssistantData => '助手';
 
   @override
   String get storageSpaceCategoryCache => '缓存';
