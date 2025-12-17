@@ -51,6 +51,15 @@ class AppDirectories {
     return Directory('${root.path}/cache');
   }
 
+  /// Gets the platform-provided application cache directory.
+  ///
+  /// - Android: /data/user/0/<package>/cache
+  /// - iOS/macOS: Caches directory
+  /// - Windows/Linux: platform cache directory (app-specific on Linux via XDG)
+  static Future<Directory> getSystemCacheDirectory() async {
+    return await getApplicationCacheDirectory();
+  }
+
   /// Gets the directory for avatar cache files.
   static Future<Directory> getAvatarCacheDirectory() async {
     final root = await getAppDataDirectory();

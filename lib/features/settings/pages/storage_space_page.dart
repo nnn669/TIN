@@ -140,6 +140,8 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
         return l10n.storageSpaceSubCacheAvatars;
       case 'other_cache':
         return l10n.storageSpaceSubCacheOther;
+      case 'system_cache':
+        return l10n.storageSpaceSubCacheSystem;
       case 'flutter_logs':
         return l10n.storageSpaceSubLogsFlutter;
       case 'request_logs':
@@ -454,19 +456,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
                   icon: _iconFor(report.categories[i].key),
                   label: _titleFor(report.categories[i].key, l10n),
                   detailText: '${_fmtBytes(report.categories[i].stats.bytes)} · ${l10n.storageSpaceFilesCount(report.categories[i].stats.fileCount)}',
-                  trailing: report.categories[i].key == StorageUsageCategoryKey.cache
-                      ? _MiniActionButton(
-                          label: l10n.storageSpaceClearButton,
-                          enabled: !_clearing,
-                          onTap: () => _doClearCache(avatarsOnly: false),
-                        )
-                      : report.categories[i].key == StorageUsageCategoryKey.logs
-                          ? _MiniActionButton(
-                              label: l10n.storageSpaceClearButton,
-                              enabled: !_clearing,
-                              onTap: _doClearLogs,
-                            )
-                          : null,
                   onTap: () => _openCategoryDetail(report.categories[i].key),
                 ),
                 if (i != report.categories.length - 1) _iosDivider(context),

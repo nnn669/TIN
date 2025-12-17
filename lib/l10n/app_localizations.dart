@@ -406,6 +406,12 @@ abstract class AppLocalizations {
   /// **'Other cache'**
   String get storageSpaceSubCacheOther;
 
+  /// No description provided for @storageSpaceSubCacheSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System cache'**
+  String get storageSpaceSubCacheSystem;
+
   /// No description provided for @storageSpaceSubLogsFlutter.
   ///
   /// In en, this message translates to:

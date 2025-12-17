@@ -81,6 +81,7 @@
   "storageSpaceSubAssistantImages": "Images",
   "storageSpaceSubCacheAvatars": "Avatar cache",
   "storageSpaceSubCacheOther": "Other cache",
+  "storageSpaceSubCacheSystem": "System cache",
   "storageSpaceSubLogsFlutter": "Flutter logs",
   "storageSpaceSubLogsRequests": "Network logs",
   "storageSpaceSubLogsOther": "Other logs",

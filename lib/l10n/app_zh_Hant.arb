@@ -50,6 +50,7 @@
   "storageSpaceSubAssistantImages": "圖片",
   "storageSpaceSubCacheAvatars": "頭像快取",
   "storageSpaceSubCacheOther": "其他快取",
+  "storageSpaceSubCacheSystem": "系統快取",
   "storageSpaceSubLogsFlutter": "執行日誌",
   "storageSpaceSubLogsRequests": "網路日誌",
   "storageSpaceSubLogsOther": "其他日誌",

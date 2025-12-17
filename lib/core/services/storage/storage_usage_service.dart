@@ -114,6 +114,7 @@ abstract final class StorageUsageService {
     final cacheSubs = <String, _MutableStats>{
       'avatar_cache': _MutableStats(),
       'other_cache': _MutableStats(),
+      'system_cache': _MutableStats(),
     };
 
     final logsSubs = <String, _MutableStats>{
@@ -219,12 +220,30 @@ abstract final class StorageUsageService {
       // If listing fails for any reason, fall back to 0s; UI will show load failed.
     }
 
-    final uploadDir = await AppDirectories.getUploadDirectory();
     final avatarsDir = await AppDirectories.getAvatarsDirectory();
-    final imagesDir = await AppDirectories.getImagesDirectory();
     final cacheDir = await AppDirectories.getCacheDirectory();
+    final systemCacheDir = await AppDirectories.getSystemCacheDirectory();
     final avatarCacheDir = await AppDirectories.getAvatarCacheDirectory();
     final logsDir = Directory(p.join(root.path, 'logs'));
+
+    // Platform cache directory (e.g. Android /data/user/0/<package>/cache).
+    try {
+      if (await systemCacheDir.exists()) {
+        await for (final ent in systemCacheDir.list(recursive: true, followLinks: false)) {
+          if (ent is! File) continue;
+          int bytes = 0;
+          try {
+            bytes = await ent.length();
+          } catch (_) {
+            bytes = 0;
+          }
+          totalFiles += 1;
+          totalBytes += bytes;
+          byCat[StorageUsageCategoryKey.cache]!.add(bytes);
+          cacheSubs['system_cache']!.add(bytes);
+        }
+      }
+    } catch (_) {}
 
     final clearable = StorageUsageStats(
       fileCount: byCat[StorageUsageCategoryKey.cache]!.fileCount + byCat[StorageUsageCategoryKey.logs]!.fileCount,
@@ -262,6 +281,8 @@ abstract final class StorageUsageService {
         subcategories: [
           StorageUsageSubcategory(id: 'avatar_cache', stats: cacheSubs['avatar_cache']!.toStats(), path: avatarCacheDir.path),
           StorageUsageSubcategory(id: 'other_cache', stats: cacheSubs['other_cache']!.toStats(), path: cacheDir.path),
+          if (cacheSubs['system_cache']!.bytes > 0 || cacheSubs['system_cache']!.fileCount > 0)
+            StorageUsageSubcategory(id: 'system_cache', stats: cacheSubs['system_cache']!.toStats(), path: systemCacheDir.path),
         ],
       ),
       StorageUsageCategory(
@@ -296,6 +317,10 @@ abstract final class StorageUsageService {
     }
     final dir = await AppDirectories.getCacheDirectory();
     await _deleteDirectoryContents(dir);
+    try {
+      final sys = await AppDirectories.getSystemCacheDirectory();
+      await _deleteDirectoryContents(sys);
+    } catch (_) {}
     AvatarCache.clearMemory();
   }
 

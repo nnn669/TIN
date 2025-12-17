@@ -50,6 +50,7 @@
   "storageSpaceSubAssistantImages": "图片",
   "storageSpaceSubCacheAvatars": "头像缓存",
   "storageSpaceSubCacheOther": "其他缓存",
+  "storageSpaceSubCacheSystem": "系统缓存",
   "storageSpaceSubLogsFlutter": "运行日志",
   "storageSpaceSubLogsRequests": "网络日志",
   "storageSpaceSubLogsOther": "其他日志",
