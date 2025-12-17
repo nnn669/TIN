@@ -5201,12 +5201,6 @@ abstract class AppLocalizations {
   /// **'No services. Add from Search Services.'**
   String get searchSettingsSheetNoServicesMessage;
 
-  /// No description provided for @aboutPageEasterEggTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Easter Egg Unlocked!'**
-  String get aboutPageEasterEggTitle;
-
   /// No description provided for @aboutPageEasterEggMessage.
   ///
   /// In en, this message translates to:

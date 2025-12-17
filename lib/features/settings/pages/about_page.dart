@@ -113,20 +113,11 @@ class _AboutPageState extends State<AboutPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(Lucide.Sparkles, size: 28, color: cs.primary),
-                      const SizedBox(height: 10),
-                      Text(
-                        l10n.aboutPageEasterEggTitle,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       Expanded(
                         child: SingleChildScrollView(
                           child: Column(
                             children: [
-                              Text(
-                                l10n.aboutPageEasterEggMessage,
-                                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.75), height: 1.3),
-                              ),
                               if (Platform.isAndroid || Platform.isIOS) ...[
                                 const SizedBox(height: 24),
                                 const Divider(),

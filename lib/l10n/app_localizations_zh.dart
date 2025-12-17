@@ -973,7 +973,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditMessageTemplateTitle => '聊天内容模板';
 
   @override
-  String get assistantEditVariableRole => '角色';
+  String get assistantEditVariableRole => '助手';
 
   @override
   String get assistantEditVariableMessage => '内容';
@@ -2657,9 +2657,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchSettingsSheetNoServicesMessage => '暂无可用服务，请先在\"搜索服务\"中添加';
 
   @override
-  String get aboutPageEasterEggTitle => '彩蛋已解锁！';
-
-  @override
   String get aboutPageEasterEggMessage => '\n（好吧现在还没彩蛋）';
 
   @override
@@ -3638,7 +3635,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get storageSpaceCategoryChatData => '聊天记录';
 
   @override
-  String get storageSpaceCategoryAssistantData => '角色';
+  String get storageSpaceCategoryAssistantData => '助手';
 
   @override
   String get storageSpaceCategoryCache => '缓存';
@@ -6172,9 +6169,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get searchSettingsSheetNoServicesMessage => '暂无可用服务，请先在\"搜索服务\"中添加';
 
   @override
-  String get aboutPageEasterEggTitle => '彩蛋已解锁！';
-
-  @override
   String get aboutPageEasterEggMessage => '\n（好吧现在还没彩蛋）';
 
   @override
@@ -7153,7 +7147,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get storageSpaceCategoryChatData => '聊天記錄';
 
   @override
-  String get storageSpaceCategoryAssistantData => '角色';
+  String get storageSpaceCategoryAssistantData => '助理';
 
   @override
   String get storageSpaceCategoryCache => '快取';
@@ -9683,9 +9677,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchSettingsSheetNoServicesMessage => '暫無可用服務，請先在\"搜尋服務\"中新增';
-
-  @override
-  String get aboutPageEasterEggTitle => '彩蛋已解鎖！';
 
   @override
   String get aboutPageEasterEggMessage => '\n（好吧現在還沒彩蛋）';

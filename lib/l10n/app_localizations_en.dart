@@ -2742,9 +2742,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No services. Add from Search Services.';
 
   @override
-  String get aboutPageEasterEggTitle => 'Easter Egg Unlocked!';
-
-  @override
   String get aboutPageEasterEggMessage =>
       'Thanks for exploring! \n (No egg yet)';
 
