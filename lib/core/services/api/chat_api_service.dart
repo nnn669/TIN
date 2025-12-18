@@ -13,6 +13,7 @@ import 'google_service_account_auth.dart';
 import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
+import '../../../utils/unicode_sanitizer.dart';
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
@@ -513,6 +514,7 @@ class ChatApiService {
       try { prev?.cancel('replaced'); } catch (_) {}
       _activeCancelTokens[rid] = cancelToken;
     }
+    final safeMessages = _sanitizeMessages(messages);
     final client = _clientFor(config, cancelToken);
 
     try {
@@ -521,7 +523,7 @@ class ChatApiService {
           client,
           config,
           modelId,
-          messages,
+          safeMessages,
           userImagePaths: userImagePaths,
           thinkingBudget: thinkingBudget,
           temperature: temperature,
@@ -538,7 +540,7 @@ class ChatApiService {
           client,
           config,
           modelId,
-          messages,
+          safeMessages,
           userImagePaths: userImagePaths,
           thinkingBudget: thinkingBudget,
           temperature: temperature,
@@ -555,7 +557,7 @@ class ChatApiService {
           client,
           config,
           modelId,
-          messages,
+          safeMessages,
           userImagePaths: userImagePaths,
           thinkingBudget: thinkingBudget,
           temperature: temperature,
@@ -591,6 +593,7 @@ class ChatApiService {
     final kind = ProviderConfig.classify(config.id, explicitType: config.providerType);
     final client = _clientFor(config, CancelToken());
     final upstreamModelId = _apiModelId(config, modelId);
+    final safePrompt = UnicodeSanitizer.sanitize(prompt);
     try {
       if (kind == ProviderKind.openai) {
         final base = config.baseUrl.endsWith('/')
@@ -636,7 +639,7 @@ class ChatApiService {
           body = {
             'model': upstreamModelId,
             'input': [
-              {'role': 'user', 'content': prompt}
+              {'role': 'user', 'content': safePrompt}
             ],
             if (toolsList.isNotEmpty) 'tools': _toResponsesToolsFormat(toolsList),
             if (toolsList.isNotEmpty) 'tool_choice': 'auto',
@@ -650,7 +653,7 @@ class ChatApiService {
           body = {
             'model': upstreamModelId,
             'messages': [
-              {'role': 'user', 'content': prompt}
+              {'role': 'user', 'content': safePrompt}
             ],
             'temperature': 0.3,
             if (isReasoning && effort != 'off' && effort != 'auto') 'reasoning_effort': effort,
@@ -737,7 +740,7 @@ class ChatApiService {
           'max_tokens': 512,
           'temperature': 0.3,
           'messages': [
-            {'role': 'user', 'content': prompt}
+            {'role': 'user', 'content': safePrompt}
           ],
         };
         final headers = <String, String>{
@@ -783,7 +786,7 @@ class ChatApiService {
             {
               'role': 'user',
               'parts': [
-                {'text': prompt}
+                {'text': safePrompt}
               ]
             }
           ],
@@ -840,6 +843,28 @@ class ChatApiService {
     } finally {
       client.close();
     }
+  }
+
+  static List<Map<String, dynamic>> _sanitizeMessages(List<Map<String, dynamic>> messages) {
+    List<Map<String, dynamic>>? out;
+    for (int i = 0; i < messages.length; i++) {
+      final m = messages[i];
+      final content = m['content'];
+      if (content is String) {
+        final cleaned = UnicodeSanitizer.sanitize(content);
+        if (cleaned != content) {
+          out ??= <Map<String, dynamic>>[
+            for (int j = 0; j < i; j++) Map<String, dynamic>.from(messages[j]),
+          ];
+          final copy = Map<String, dynamic>.from(m);
+          copy['content'] = cleaned;
+          out.add(copy);
+          continue;
+        }
+      }
+      if (out != null) out.add(Map<String, dynamic>.from(m));
+    }
+    return out ?? messages;
   }
 
   static bool _isOff(int? budget) => (budget != null && budget != -1 && budget < 1024);

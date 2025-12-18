@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 import 'package:xml/xml.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../utils/sandbox_path_resolver.dart';
+import '../../../utils/unicode_sanitizer.dart';
 
 class DocumentTextExtractor {
   static Future<String> extract({required String path, required String mime}) async {
@@ -18,7 +19,7 @@ class DocumentTextExtractor {
           final bytes = await file.readAsBytes();
           final document = PdfDocument(inputBytes: bytes);
           final extractor = PdfTextExtractor(document);
-          final text = extractor.extractText();
+          final text = UnicodeSanitizer.sanitize(extractor.extractText());
           document.dispose();
           if (text.trim().isNotEmpty) return text;
           return '[PDF] Unable to extract text from file.';
@@ -35,7 +36,7 @@ class DocumentTextExtractor {
       // Fallback: read as text
       final file = File(fixedPath);
       final bytes = await file.readAsBytes();
-      return utf8.decode(bytes, allowMalformed: true);
+      return UnicodeSanitizer.sanitize(utf8.decode(bytes, allowMalformed: true));
     } catch (e) {
       return '[[Failed to read file: $e]]';
     }
@@ -60,7 +61,7 @@ class DocumentTextExtractor {
         }
         buffer.writeln();
       }
-      return buffer.toString();
+      return UnicodeSanitizer.sanitize(buffer.toString());
     } catch (e) {
       return '[[Failed to parse DOCX: $e]]';
     }
