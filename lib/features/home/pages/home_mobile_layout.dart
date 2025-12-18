@@ -74,13 +74,13 @@ class HomeMobileScaffold extends StatelessWidget {
         assistantName: _getAssistantName(context),
         closePickerTicker: assistantPickerCloseTick,
         loadingConversationIds: loadingConversationIds,
-        onSelectConversation: (id) {
+        onSelectConversation: (id, {closeDrawer = true}) {
           onSelectConversation(id);
-          drawerController.close();
+          if (closeDrawer) drawerController.close();
         },
-        onNewConversation: () async {
+        onNewConversation: ({closeDrawer = true}) async {
           await onCreateNewConversation();
-          drawerController.close();
+          if (closeDrawer) drawerController.close();
         },
       ),
       child: Scaffold(

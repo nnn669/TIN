@@ -26,8 +26,12 @@ class DesktopSidebar extends StatelessWidget {
       embeddedWidth: 300,
       userName: userName,
       assistantName: assistantName,
-      onSelectConversation: onSelectConversation,
-      onNewConversation: onNewConversation,
+      onSelectConversation: onSelectConversation == null
+          ? null
+          : (id, {closeDrawer = true}) => onSelectConversation!(id),
+      onNewConversation: onNewConversation == null
+          ? null
+          : ({closeDrawer = true}) => onNewConversation!(),
       loadingConversationIds: loadingConversationIds,
       showBottomBar: false,
     );
