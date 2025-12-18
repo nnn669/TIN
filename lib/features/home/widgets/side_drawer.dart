@@ -62,8 +62,8 @@ class SideDrawer extends StatefulWidget {
 
   final String userName;
   final String assistantName;
-  final void Function(String id)? onSelectConversation;
-  final VoidCallback? onNewConversation;
+  final FutureOr<void> Function(String id, {bool closeDrawer})? onSelectConversation;
+  final FutureOr<void> Function({bool closeDrawer})? onNewConversation;
   final ValueNotifier<int>? closePickerTicker;
   final Set<String> loadingConversationIds;
   final bool embedded; // when true, render as a fixed side panel instead of a Drawer
@@ -290,10 +290,11 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
               if (targetId != null) {
                 await chatService.moveConversationToAssistant(conversationId: chat.id, assistantId: targetId);
                 if (movingCurrent || chatService.currentConversationId == null) {
+                  final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
                   if (nextId != null) {
-                    widget.onSelectConversation?.call(nextId!);
+                    widget.onSelectConversation?.call(nextId!, closeDrawer: closeDrawer);
                   } else {
-                    widget.onNewConversation?.call();
+                    widget.onNewConversation?.call(closeDrawer: closeDrawer);
                   }
                 }
               }
@@ -427,10 +428,11 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                         if (targetId != null) {
                           await chatService.moveConversationToAssistant(conversationId: chat.id, assistantId: targetId);
                           if (movingCurrent || chatService.currentConversationId == null) {
+                            final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
                             if (nextId != null) {
-                              widget.onSelectConversation?.call(nextId!);
+                              widget.onSelectConversation?.call(nextId!, closeDrawer: closeDrawer);
                             } else {
-                              widget.onNewConversation?.call();
+                              widget.onNewConversation?.call(closeDrawer: closeDrawer);
                             }
                           }
                         }
@@ -488,21 +490,22 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     required String? nextConversationId,
   }) {
     if (!(deletingCurrent || chatService.currentConversationId == null)) return;
+    final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
     final preferNewChat = context.read<SettingsProvider>().newChatAfterDelete;
     if (preferNewChat && widget.onNewConversation != null) {
-      widget.onNewConversation!.call();
+      widget.onNewConversation!.call(closeDrawer: closeDrawer);
       return;
     }
     if (!preferNewChat && nextConversationId != null) {
-      widget.onSelectConversation?.call(nextConversationId);
+      widget.onSelectConversation?.call(nextConversationId, closeDrawer: closeDrawer);
       return;
     }
     if (widget.onNewConversation != null) {
-      widget.onNewConversation!.call();
+      widget.onNewConversation!.call(closeDrawer: closeDrawer);
       return;
     }
     if (nextConversationId != null) {
-      widget.onSelectConversation?.call(nextConversationId);
+      widget.onSelectConversation?.call(nextConversationId, closeDrawer: closeDrawer);
     }
   }
 
@@ -849,7 +852,8 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                                     onTap: () async {
                                       final selectedId = await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId);
                                       if (selectedId != null && selectedId.isNotEmpty) {
-                                        widget.onSelectConversation?.call(selectedId);
+                                        final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                                        widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
                                       }
                                     },
                                   ),
@@ -938,7 +942,8 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                                   MaterialPageRoute(builder: (_) => ChatHistoryPage(assistantId: currentAssistantId)),
                                 );
                                 if (selectedId != null && selectedId.isNotEmpty) {
-                                  widget.onSelectConversation?.call(selectedId);
+                                  final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                                  widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
                                 }
                               },
                             ),
@@ -1235,9 +1240,12 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
   }
 
   Future<void> _handleSelectAssistant(Assistant assistant) async {
-    _closeAssistantPicker();
-    final ap = context.read<AssistantProvider>();
     final sp = context.read<SettingsProvider>();
+    final closeDrawer = !sp.keepSidebarOpenOnAssistantTap;
+    if (closeDrawer) {
+      _closeAssistantPicker();
+    }
+    final ap = context.read<AssistantProvider>();
     await ap.setCurrentAssistant(assistant.id);
     // Desktop: optionally switch to Topics tab per user preference
     try {
@@ -1248,7 +1256,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     if (!mounted) return;
     final forceNewChat = sp.newChatOnAssistantSwitch && widget.onNewConversation != null;
     if (forceNewChat) {
-      widget.onNewConversation?.call();
+      widget.onNewConversation?.call(closeDrawer: closeDrawer);
     } else {
       // Jump to the most recent conversation for this assistant if any,
       // otherwise create a new conversation.
@@ -1261,16 +1269,18 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
             .toList();
         if (recent.isNotEmpty) {
           // getAllConversations is already sorted by updatedAt desc
-          widget.onSelectConversation?.call(recent.first.id);
+          widget.onSelectConversation?.call(recent.first.id, closeDrawer: closeDrawer);
         } else {
-          widget.onNewConversation?.call();
+          widget.onNewConversation?.call(closeDrawer: closeDrawer);
         }
       } catch (_) {
         // Fallback: new conversation on any error
-        widget.onNewConversation?.call();
+        widget.onNewConversation?.call(closeDrawer: closeDrawer);
       }
     }
-    Navigator.of(context).maybePop();
+    if (closeDrawer) {
+      Navigator.of(context).maybePop();
+    }
   }
 
   void _openAssistantSettings(String id) {
@@ -2226,7 +2236,10 @@ extension on _SideDrawerState {
                       textColor: textBase,
                       selected: pinnedList[i].id == chatService.currentConversationId,
                       loading: widget.loadingConversationIds.contains(pinnedList[i].id),
-                      onTap: () => widget.onSelectConversation?.call(pinnedList[i].id),
+                      onTap: () {
+                        final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                        widget.onSelectConversation?.call(pinnedList[i].id, closeDrawer: closeDrawer);
+                      },
                       onLongPress: () => _showChatMenu(context, pinnedList[i]),
                       onSecondaryTap: (pos) => _showChatMenu(context, pinnedList[i], anchor: pos),
                     ).animate(key: ValueKey('pin-${pinnedList[i].id}'))
@@ -2254,7 +2267,10 @@ extension on _SideDrawerState {
                       textColor: textBase,
                       selected: group.items[j].id == chatService.currentConversationId,
                       loading: widget.loadingConversationIds.contains(group.items[j].id),
-                      onTap: () => widget.onSelectConversation?.call(group.items[j].id),
+                      onTap: () {
+                        final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                        widget.onSelectConversation?.call(group.items[j].id, closeDrawer: closeDrawer);
+                      },
                       onLongPress: () => _showChatMenu(context, group.items[j]),
                       onSecondaryTap: (pos) => _showChatMenu(context, group.items[j], anchor: pos),
                     ).animate(key: ValueKey('grp-${group.label}-${group.items[j].id}'))

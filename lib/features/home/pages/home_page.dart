@@ -146,7 +146,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _controller.onDrawerValueChanged(_drawerController.value);
     // Close assistant picker when drawer closes
     if (_drawerController.value < 0.95) {
-      _assistantPickerCloseTick.value++;
+      final sp = context.read<SettingsProvider>();
+      if (!sp.keepAssistantListExpandedOnSidebarClose) {
+        _assistantPickerCloseTick.value++;
+      }
     }
   }
 
@@ -205,11 +208,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       onDismissKeyboard: _controller.dismissKeyboard,
       onSelectConversation: (id) {
         _controller.switchConversationAnimated(id);
-        _drawerController.close();
       },
       onNewConversation: () async {
         await _controller.createNewConversationAnimated();
-        _drawerController.close();
       },
       onOpenMiniMap: () async {
         final collapsed = _controller.collapseVersions(_controller.messages);

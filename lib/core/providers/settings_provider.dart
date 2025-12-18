@@ -49,6 +49,9 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayHapticsOnListItemTapKey = 'display_haptics_on_list_item_tap_v1';
   static const String _displayHapticsOnCardTapKey = 'display_haptics_on_card_tap_v1';
   static const String _displayShowAppUpdatesKey = 'display_show_app_updates_v1';
+  static const String _displayKeepSidebarOpenOnAssistantTapKey = 'display_keep_sidebar_open_on_assistant_tap_v1';
+  static const String _displayKeepSidebarOpenOnTopicTapKey = 'display_keep_sidebar_open_on_topic_tap_v1';
+  static const String _displayKeepAssistantListExpandedOnSidebarCloseKey = 'display_keep_assistant_list_expanded_on_sidebar_close_v1';
   static const String _displayNewChatOnAssistantSwitchKey = 'display_new_chat_on_assistant_switch_v1';
   static const String _displayNewChatOnLaunchKey = 'display_new_chat_on_launch_v1';
   static const String _displayNewChatAfterDeleteKey = 'display_new_chat_after_delete_v1';
@@ -322,6 +325,9 @@ class SettingsProvider extends ChangeNotifier {
     // Apply global haptics to service layer
     Haptics.setEnabled(_hapticsGlobalEnabled);
     _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
+    _keepSidebarOpenOnAssistantTap = prefs.getBool(_displayKeepSidebarOpenOnAssistantTapKey) ?? false;
+    _keepSidebarOpenOnTopicTap = prefs.getBool(_displayKeepSidebarOpenOnTopicTapKey) ?? false;
+    _keepAssistantListExpandedOnSidebarClose = prefs.getBool(_displayKeepAssistantListExpandedOnSidebarCloseKey) ?? false;
     _requestLogEnabled = prefs.getBool(_requestLogEnabledKey) ?? false;
     await RequestLogger.setEnabled(_requestLogEnabled);
     _flutterLogEnabled = prefs.getBool(_flutterLogEnabledKey) ?? false;
@@ -1893,6 +1899,39 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowAppUpdatesKey, v);
   }
 
+  // Display: keep sidebar open when selecting assistant (mobile)
+  bool _keepSidebarOpenOnAssistantTap = false;
+  bool get keepSidebarOpenOnAssistantTap => _keepSidebarOpenOnAssistantTap;
+  Future<void> setKeepSidebarOpenOnAssistantTap(bool v) async {
+    if (_keepSidebarOpenOnAssistantTap == v) return;
+    _keepSidebarOpenOnAssistantTap = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayKeepSidebarOpenOnAssistantTapKey, v);
+  }
+
+  // Display: keep sidebar open when switching topics (mobile)
+  bool _keepSidebarOpenOnTopicTap = false;
+  bool get keepSidebarOpenOnTopicTap => _keepSidebarOpenOnTopicTap;
+  Future<void> setKeepSidebarOpenOnTopicTap(bool v) async {
+    if (_keepSidebarOpenOnTopicTap == v) return;
+    _keepSidebarOpenOnTopicTap = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayKeepSidebarOpenOnTopicTapKey, v);
+  }
+
+  // Display: keep assistant list expanded when closing sidebar (mobile)
+  bool _keepAssistantListExpandedOnSidebarClose = false;
+  bool get keepAssistantListExpandedOnSidebarClose => _keepAssistantListExpandedOnSidebarClose;
+  Future<void> setKeepAssistantListExpandedOnSidebarClose(bool v) async {
+    if (_keepAssistantListExpandedOnSidebarClose == v) return;
+    _keepAssistantListExpandedOnSidebarClose = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayKeepAssistantListExpandedOnSidebarCloseKey, v);
+  }
+
   // Network: request logging (debug)
   bool _requestLogEnabled = false;
   bool get requestLogEnabled => _requestLogEnabled;
@@ -2024,6 +2063,9 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._hapticsOnListItemTap = _hapticsOnListItemTap;
     copy._hapticsOnCardTap = _hapticsOnCardTap;
     copy._showAppUpdates = _showAppUpdates;
+    copy._keepSidebarOpenOnAssistantTap = _keepSidebarOpenOnAssistantTap;
+    copy._keepSidebarOpenOnTopicTap = _keepSidebarOpenOnTopicTap;
+    copy._keepAssistantListExpandedOnSidebarClose = _keepAssistantListExpandedOnSidebarClose;
     copy._requestLogEnabled = _requestLogEnabled;
     copy._flutterLogEnabled = _flutterLogEnabled;
     copy._newChatOnLaunch = _newChatOnLaunch;

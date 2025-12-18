@@ -2739,6 +2739,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageShowChatListDateSubtitle => '在左侧对话列表中显示日期分组标签';
 
   @override
+  String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
+      '点选助手时不自动关闭侧边栏';
+
+  @override
+  String get displaySettingsPageKeepSidebarOpenOnTopicTapTitle =>
+      '点选话题时不自动关闭侧边栏';
+
+  @override
+  String get displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle =>
+      '关闭侧边栏时不折叠助手列表';
+
+  @override
   String get displaySettingsPageShowUpdatesTitle => '显示更新';
 
   @override
@@ -6251,6 +6263,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageShowChatListDateSubtitle => '在左侧对话列表中显示日期分组标签';
 
   @override
+  String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
+      '点选助手时不自动关闭侧边栏';
+
+  @override
+  String get displaySettingsPageKeepSidebarOpenOnTopicTapTitle =>
+      '点选话题时不自动关闭侧边栏';
+
+  @override
+  String get displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle =>
+      '关闭侧边栏时不折叠助手列表';
+
+  @override
   String get displaySettingsPageShowUpdatesTitle => '显示更新';
 
   @override
@@ -9759,6 +9783,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageShowChatListDateSubtitle => '在左側對話列表中顯示日期分組標籤';
+
+  @override
+  String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
+      '點選助手時不自動關閉側邊欄';
+
+  @override
+  String get displaySettingsPageKeepSidebarOpenOnTopicTapTitle =>
+      '點選話題時不自動關閉側邊欄';
+
+  @override
+  String get displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle =>
+      '關閉側邊欄時不折疊助手列表';
 
   @override
   String get displaySettingsPageShowUpdatesTitle => '顯示更新';

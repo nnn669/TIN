@@ -2834,6 +2834,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Display date group labels in the conversation list';
 
   @override
+  String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
+      'Keep sidebar open when selecting assistant';
+
+  @override
+  String get displaySettingsPageKeepSidebarOpenOnTopicTapTitle =>
+      'Keep sidebar open when selecting topic';
+
+  @override
+  String get displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle =>
+      'Don\'t collapse assistant list when closing sidebar';
+
+  @override
   String get displaySettingsPageShowUpdatesTitle => 'Show Updates';
 
   @override

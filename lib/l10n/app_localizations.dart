@@ -5357,6 +5357,24 @@ abstract class AppLocalizations {
   /// **'Display date group labels in the conversation list'**
   String get displaySettingsPageShowChatListDateSubtitle;
 
+  /// No description provided for @displaySettingsPageKeepSidebarOpenOnAssistantTapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep sidebar open when selecting assistant'**
+  String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle;
+
+  /// No description provided for @displaySettingsPageKeepSidebarOpenOnTopicTapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep sidebar open when selecting topic'**
+  String get displaySettingsPageKeepSidebarOpenOnTopicTapTitle;
+
+  /// No description provided for @displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t collapse assistant list when closing sidebar'**
+  String get displaySettingsPageKeepAssistantListExpandedOnSidebarCloseTitle;
+
   /// No description provided for @displaySettingsPageShowUpdatesTitle.
   ///
   /// In en, this message translates to:

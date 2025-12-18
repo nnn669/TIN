@@ -152,8 +152,8 @@ class HomeDesktopScaffold extends StatelessWidget {
       loadingConversationIds: loadingConversationIds,
       useDesktopTabs: _isDesktop && !topicsOnRight,
       desktopAssistantsOnly: _isDesktop && topicsOnRight,
-      onSelectConversation: onSelectConversation,
-      onNewConversation: onNewConversation,
+      onNewConversation: ({closeDrawer = true}) => onNewConversation(),
+      onSelectConversation: (id, {closeDrawer = true}) => onSelectConversation(id),
     );
 
     return AnimatedContainer(
@@ -203,8 +203,8 @@ class HomeDesktopScaffold extends StatelessWidget {
                   loadingConversationIds: loadingConversationIds,
                   useDesktopTabs: false,
                   desktopTopicsOnly: true,
-                  onSelectConversation: onSelectConversation,
-                  onNewConversation: onNewConversation,
+                  onSelectConversation: (id, {closeDrawer = true}) => onSelectConversation(id),
+                  onNewConversation: ({closeDrawer = true}) => onNewConversation(),
                 ),
               ),
             ),
