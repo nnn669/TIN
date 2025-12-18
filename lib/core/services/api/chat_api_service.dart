@@ -208,6 +208,27 @@ class ChatApiService {
     dotAll: true,
   );
 
+  static final RegExp _youtubeUrlRegex = RegExp(
+    r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=[^\s<>()]+|youtu\.be/[^\s<>()]+))',
+    caseSensitive: false,
+  );
+
+  static List<String> _extractYouTubeUrls(String text) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final m in _youtubeUrlRegex.allMatches(text)) {
+      var url = (m.group(1) ?? '').trim();
+      if (url.isEmpty) continue;
+      // Trim common trailing punctuation from markdown/parentheses
+      while (url.isNotEmpty && '.,;:!?)"]}'.contains(url[url.length - 1])) {
+        url = url.substring(0, url.length - 1);
+      }
+      if (url.isEmpty) continue;
+      if (seen.add(url)) out.add(url);
+    }
+    return out;
+  }
+
   static _GeminiSignatureMeta _extractGeminiThoughtMeta(String raw) {
     try {
       final m = _geminiThoughtSigComment.firstMatch(raw);
@@ -803,6 +824,9 @@ class ChatApiService {
           if (builtIns.contains('url_context')) {
             toolsArr.add({'url_context': {}});
           }
+          if (builtIns.contains('code_execution')) {
+            toolsArr.add({'code_execution': {}});
+          }
           if (toolsArr.isNotEmpty) {
             (body as Map<String, dynamic>)['tools'] = toolsArr;
           }
@@ -1028,6 +1052,25 @@ class ChatApiService {
         }
       }
 
+      final builtIns = _builtInTools(config, modelId);
+      void addResponsesBuiltInTool(Map<String, dynamic> entry) {
+        final type = (entry['type'] ?? '').toString();
+        if (type.isEmpty) return;
+        final exists = toolList.any((e) => (e['type'] ?? '').toString() == type);
+        if (!exists) toolList.add(entry);
+      }
+
+      // OpenAI built-in tools (Responses API)
+      if (builtIns.contains('code_interpreter')) {
+        addResponsesBuiltInTool({
+          'type': 'code_interpreter',
+          'container': {'type': 'auto', 'memory_limit': '4g'},
+        });
+      }
+      if (builtIns.contains('image_generation')) {
+        addResponsesBuiltInTool({'type': 'image_generation'});
+      }
+
       // Built-in web search for Responses API when enabled on supported models
       bool _isResponsesWebSearchSupported(String id) {
         final m = id.toLowerCase();
@@ -1040,7 +1083,6 @@ class ChatApiService {
       }
 
       if (_isResponsesWebSearchSupported(upstreamModelId)) {
-        final builtIns = _builtInTools(config, modelId);
         if (builtIns.contains('search')) {
           // Optional per-model configuration under modelOverrides[modelId]['webSearch']
           Map<String, dynamic> ws = const <String, dynamic>{};
@@ -4061,6 +4103,8 @@ class ChatApiService {
       {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
     final bool _persistGeminiThoughtSigs = modelId.toLowerCase().contains('gemini-3');
+    final builtIns = _builtInTools(config, modelId);
+    final enableYoutube = builtIns.contains('youtube');
     // Non-streaming path: use generateContent
     if (!stream) {
       final isVertex = config.vertexAI == true;
@@ -4146,6 +4190,14 @@ class ChatApiService {
         } else {
           if (raw.isNotEmpty) parts.add({'text': raw});
         }
+        // YouTube URL ingestion as file_data parts (Gemini official API)
+        // Only inject on the last user message of this request.
+        if (role == 'user' && isLast && enableYoutube) {
+          final urls = _extractYouTubeUrls(raw);
+          for (final u in urls) {
+            parts.add({'file_data': {'file_uri': u}});
+          }
+        }
         if (role == 'model') {
           _applyGeminiThoughtSignatures(meta, parts, attachDummyWhenMissing: _persistGeminiThoughtSigs);
         }
@@ -4154,14 +4206,14 @@ class ChatApiService {
 
       final effective = _effectiveModelInfo(config, modelId);
       final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
-      final builtIns = _builtInTools(config, modelId);
       final builtInToolEntries = <Map<String, dynamic>>[];
       if (builtIns.isNotEmpty) {
         if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
         if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
+        if (builtIns.contains('code_execution')) builtInToolEntries.add({'code_execution': {}});
       }
       List<Map<String, dynamic>>? geminiTools;
-      if (builtInToolEntries.isEmpty && tools != null && tools.isNotEmpty) {
+      if (tools != null && tools.isNotEmpty) {
         final decls = <Map<String, dynamic>>[];
         for (final t in tools) {
           final fn = (t['function'] as Map<String, dynamic>?);
@@ -4183,14 +4235,18 @@ class ChatApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
+      final toolsArr = <Map<String, dynamic>>[
+        ...builtInToolEntries,
+        if (geminiTools != null) ...geminiTools,
+      ];
+
       Map<String, dynamic> baseBody = {
         'contents': contents,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'topP': topP,
         if (maxTokens != null) 'generationConfig': {'maxOutputTokens': maxTokens},
-        if (geminiTools != null) 'tools': geminiTools,
-        if (builtInToolEntries.isNotEmpty) 'tools': builtInToolEntries,
-        if (geminiTools != null || builtInToolEntries.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
+        if (toolsArr.isNotEmpty) 'tools': toolsArr,
+        if (toolsArr.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
       };
       final extraG = _customBody(config, modelId);
       if (extraG.isNotEmpty) baseBody.addAll(extraG);
@@ -4360,6 +4416,14 @@ class ChatApiService {
         // No images, use simple text content
         if (raw.isNotEmpty) parts.add({'text': raw});
       }
+      // YouTube URL ingestion as file_data parts (Gemini official API)
+      // Only inject on the last user message of this request.
+      if (role == 'user' && isLast && enableYoutube) {
+        final urls = _extractYouTubeUrls(raw);
+        for (final u in urls) {
+          parts.add({'file_data': {'file_uri': u}});
+        }
+      }
       if (role == 'model') {
         _applyGeminiThoughtSignatures(meta, parts, attachDummyWhenMissing: _persistGeminiThoughtSigs);
       }
@@ -4374,7 +4438,6 @@ class ChatApiService {
     bool _receivedImage = false;
     final off = _isOff(thinkingBudget);
     // Built-in Gemini tools (supported for both official Gemini API and Vertex)
-    final builtIns = _builtInTools(config, modelId);
     final builtInToolEntries = <Map<String, dynamic>>[];
     if (builtIns.isNotEmpty) {
       if (builtIns.contains('search')) {
@@ -4383,11 +4446,14 @@ class ChatApiService {
       if (builtIns.contains('url_context')) {
         builtInToolEntries.add({'url_context': {}});
       }
+      if (builtIns.contains('code_execution')) {
+        builtInToolEntries.add({'code_execution': {}});
+      }
     }
 
-    // Map OpenAI-style tools to Gemini functionDeclarations (skip if built-in tools are enabled, as they are not compatible)
+    // Map OpenAI-style tools to Gemini functionDeclarations
     List<Map<String, dynamic>>? geminiTools;
-    if (builtInToolEntries.isEmpty && tools != null && tools.isNotEmpty) {
+    if (tools != null && tools.isNotEmpty) {
       final decls = <Map<String, dynamic>>[];
       for (final t in tools) {
         final fn = (t['function'] as Map<String, dynamic>?);
@@ -4407,6 +4473,10 @@ class ChatApiService {
       }
       if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
     }
+    final toolsArr = <Map<String, dynamic>>[
+      ...builtInToolEntries,
+      if (geminiTools != null) ...geminiTools,
+    ];
 
     // Maintain a rolling conversation for multi-round tool calls
     List<Map<String, dynamic>> convo = List<Map<String, dynamic>>.from(contents);
@@ -4468,9 +4538,8 @@ class ChatApiService {
       final body = <String, dynamic>{
         'contents': convo,
         if (gen.isNotEmpty) 'generationConfig': gen,
-        // Prefer built-in tools when configured; otherwise map function tools
-        if (builtInToolEntries.isNotEmpty) 'tools': builtInToolEntries,
-        if (builtInToolEntries.isEmpty && geminiTools != null && geminiTools.isNotEmpty) 'tools': geminiTools,
+        if (toolsArr.isNotEmpty) 'tools': toolsArr,
+        if (toolsArr.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
       };
 
       final request = http.Request('POST', uri);

@@ -2049,6 +2049,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelDetailSheetAdvancedTab => '高级设置';
 
   @override
+  String get modelDetailSheetBuiltinToolsTab => '内置工具';
+
+  @override
   String get modelDetailSheetModelIdLabel => '模型 ID';
 
   @override
@@ -2116,7 +2119,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅支持部分 API（例如 Gemini 官方 API）（暂未实现）。';
+      '内置工具仅对部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。';
+
+  @override
+  String get modelDetailSheetBuiltinToolsUnsupportedHint => '当前供应商不支持这些内置工具。';
 
   @override
   String get modelDetailSheetSearchTool => '搜索';
@@ -2129,6 +2135,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelDetailSheetUrlContextToolDescription => '启用 URL 内容处理';
+
+  @override
+  String get modelDetailSheetCodeExecutionTool => '代码执行';
+
+  @override
+  String get modelDetailSheetCodeExecutionToolDescription => '启用代码执行工具';
+
+  @override
+  String get modelDetailSheetYoutubeTool => 'YouTube';
+
+  @override
+  String get modelDetailSheetYoutubeToolDescription =>
+      '启用 YouTube 链接读取（自动识别提示词中的链接）';
+
+  @override
+  String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
+      '需要启用 OpenAI Responses API（请在供应商设置中开启「Responses API」）。';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterTool => '代码解释器';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterToolDescription =>
+      '启用代码解释器工具（容器自动，内存上限 4g）';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationTool => '图像生成';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationToolDescription =>
+      '启用图像生成工具';
 
   @override
   String get modelDetailSheetCancelButton => '取消';
@@ -5628,7 +5665,10 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅支持部分 API（例如 Gemini 官方 API）（暂未实现）。';
+      '内置工具仅对部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。';
+
+  @override
+  String get modelDetailSheetBuiltinToolsUnsupportedHint => '当前供应商不支持这些内置工具。';
 
   @override
   String get modelDetailSheetSearchTool => '搜索';
@@ -5641,6 +5681,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetUrlContextToolDescription => '启用 URL 内容处理';
+
+  @override
+  String get modelDetailSheetCodeExecutionTool => '代码执行';
+
+  @override
+  String get modelDetailSheetCodeExecutionToolDescription => '启用代码执行工具';
+
+  @override
+  String get modelDetailSheetYoutubeTool => 'YouTube';
+
+  @override
+  String get modelDetailSheetYoutubeToolDescription =>
+      '启用 YouTube 链接读取（自动识别提示词中的链接）';
 
   @override
   String get modelDetailSheetCancelButton => '取消';
@@ -9072,6 +9125,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get modelDetailSheetAdvancedTab => '進階設定';
 
   @override
+  String get modelDetailSheetBuiltinToolsTab => '內建工具';
+
+  @override
   String get modelDetailSheetModelIdLabel => '模型 ID';
 
   @override
@@ -9139,7 +9195,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      '內建工具僅支援部分 API（例如 Gemini 官方 API）（暫未實現）。';
+      '內建工具僅對部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。';
+
+  @override
+  String get modelDetailSheetBuiltinToolsUnsupportedHint => '目前供應商不支援這些內建工具。';
 
   @override
   String get modelDetailSheetSearchTool => '搜尋';
@@ -9152,6 +9211,37 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetUrlContextToolDescription => '啟用 URL 內容處理';
+
+  @override
+  String get modelDetailSheetCodeExecutionTool => '程式碼執行';
+
+  @override
+  String get modelDetailSheetCodeExecutionToolDescription => '啟用程式碼執行工具';
+
+  @override
+  String get modelDetailSheetYoutubeTool => 'YouTube';
+
+  @override
+  String get modelDetailSheetYoutubeToolDescription =>
+      '啟用 YouTube 連結讀取（自動辨識提示詞中的連結）';
+
+  @override
+  String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
+      '需要啟用 OpenAI Responses API（請在供應商設定中開啟「Responses API」）。';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterTool => '程式碼解譯器';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterToolDescription =>
+      '啟用程式碼解譯器工具（容器自動，記憶體上限 4g）';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationTool => '圖像生成';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationToolDescription =>
+      '啟用圖像生成工具';
 
   @override
   String get modelDetailSheetCancelButton => '取消';

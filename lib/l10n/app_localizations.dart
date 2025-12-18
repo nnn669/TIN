@@ -4007,6 +4007,12 @@ abstract class AppLocalizations {
   /// **'Advanced'**
   String get modelDetailSheetAdvancedTab;
 
+  /// No description provided for @modelDetailSheetBuiltinToolsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in Tools'**
+  String get modelDetailSheetBuiltinToolsTab;
+
   /// No description provided for @modelDetailSheetModelIdLabel.
   ///
   /// In en, this message translates to:
@@ -4136,8 +4142,14 @@ abstract class AppLocalizations {
   /// No description provided for @modelDetailSheetBuiltinToolsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Built-in tools currently support limited APIs (e.g., Gemini).'**
+  /// **'Built-in tools only work with some APIs (e.g., Gemini official API / Vertex, OpenAI Responses API).'**
   String get modelDetailSheetBuiltinToolsDescription;
+
+  /// No description provided for @modelDetailSheetBuiltinToolsUnsupportedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Current provider does not support these built-in tools.'**
+  String get modelDetailSheetBuiltinToolsUnsupportedHint;
 
   /// No description provided for @modelDetailSheetSearchTool.
   ///
@@ -4162,6 +4174,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enable URL content ingestion'**
   String get modelDetailSheetUrlContextToolDescription;
+
+  /// No description provided for @modelDetailSheetCodeExecutionTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Execution'**
+  String get modelDetailSheetCodeExecutionTool;
+
+  /// No description provided for @modelDetailSheetCodeExecutionToolDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable code execution tool'**
+  String get modelDetailSheetCodeExecutionToolDescription;
+
+  /// No description provided for @modelDetailSheetYoutubeTool.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube'**
+  String get modelDetailSheetYoutubeTool;
+
+  /// No description provided for @modelDetailSheetYoutubeToolDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable YouTube URL ingestion (auto-detect links in prompts)'**
+  String get modelDetailSheetYoutubeToolDescription;
+
+  /// No description provided for @modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires OpenAI Responses API (enable "Responses API" in provider settings).'**
+  String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint;
+
+  /// No description provided for @modelDetailSheetOpenaiCodeInterpreterTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Interpreter'**
+  String get modelDetailSheetOpenaiCodeInterpreterTool;
+
+  /// No description provided for @modelDetailSheetOpenaiCodeInterpreterToolDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable code interpreter tool (container auto, memory limit 4g)'**
+  String get modelDetailSheetOpenaiCodeInterpreterToolDescription;
+
+  /// No description provided for @modelDetailSheetOpenaiImageGenerationTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Image Generation'**
+  String get modelDetailSheetOpenaiImageGenerationTool;
+
+  /// No description provided for @modelDetailSheetOpenaiImageGenerationToolDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable image generation tool'**
+  String get modelDetailSheetOpenaiImageGenerationToolDescription;
 
   /// No description provided for @modelDetailSheetCancelButton.
   ///
