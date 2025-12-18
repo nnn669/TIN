@@ -1012,7 +1012,7 @@ class _ToolTile extends StatelessWidget {
   final String title;
   final String desc;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
