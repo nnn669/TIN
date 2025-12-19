@@ -1553,7 +1553,7 @@ class ChatApiService {
             for (final m in messages) {
               next.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningForTools;
             }
@@ -1689,7 +1689,7 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
             }
@@ -1998,7 +1998,7 @@ class ChatApiService {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                 }
                 // Append for next loop - including any content accumulated in this round
-                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                 if (needsReasoningEcho) {
                   nextAssistantToolCall['reasoning_content'] = reasoningAccum;
                 }
@@ -2655,7 +2655,7 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
             }
@@ -2969,7 +2969,7 @@ class ChatApiService {
                 if (resultsInfo2.isNotEmpty) {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                 }
-                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                 if (needsReasoningEcho) {
                   nextAssistantToolCall['reasoning_content'] = reasoningAccum;
                 }
@@ -3042,7 +3042,7 @@ class ChatApiService {
                 for (final m in messages) {
                   mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
                 }
-                final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+                final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
                 if (needsReasoningEcho) {
                   assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
                 }
@@ -3330,7 +3330,7 @@ class ChatApiService {
                     if (resultsInfo2.isNotEmpty) {
                       yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                     }
-                    final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls2};
+                    final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                     if (needsReasoningEcho) {
                       nextAssistantToolCall['reasoning_content'] = reasoningAccum;
                     }
@@ -3420,7 +3420,7 @@ class ChatApiService {
             for (final m in messages) {
               mm2.add({'role': m['role'] ?? 'user', 'content': m['content'] ?? ''});
             }
-            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '', 'tool_calls': calls};
+            final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
             }
