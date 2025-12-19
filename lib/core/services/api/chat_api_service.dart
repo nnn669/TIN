@@ -2369,7 +2369,15 @@ class ChatApiService {
 
                 // Build follow-up Responses request input
                 List<Map<String, dynamic>> currentInput = <Map<String, dynamic>>[...responsesInitialInput];
-                if (lastResponseOutputItems.isNotEmpty) currentInput.addAll(lastResponseOutputItems);
+                // Filter lastResponseOutputItems to only include supported types
+                // image_generation_call, code_interpreter_call etc. are not valid input types for follow-up
+                // Only 'message' and 'function_call' types are valid for tool follow-up input
+                if (lastResponseOutputItems.isNotEmpty) {
+                  currentInput.addAll(lastResponseOutputItems.where((item) {
+                    final t = (item['type'] ?? '').toString();
+                    return t == 'message' || t == 'function_call';
+                  }));
+                }
                 currentInput.addAll(followUpOutputs);
 
                 // Iteratively request until no more tool calls
@@ -2531,7 +2539,13 @@ class ChatApiService {
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                   }
                   // Extend current input with this round's model output and our outputs
-                  if (outItems2.isNotEmpty) currentInput.addAll(outItems2);
+                  // Filter outItems2 to only include supported types for follow-up input
+                  if (outItems2.isNotEmpty) {
+                    currentInput.addAll(outItems2.where((item) {
+                      final t = (item['type'] ?? '').toString();
+                      return t == 'message' || t == 'function_call';
+                    }));
+                  }
                   currentInput.addAll(followUpOutputs2);
                 }
 
