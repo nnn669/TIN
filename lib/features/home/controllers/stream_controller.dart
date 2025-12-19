@@ -196,7 +196,7 @@ class StreamController {
   // Gemini Thought Signature Handling
   // ============================================================================
 
-  /// Capture and store Gemini thought signature from content.
+  /// Capture and strip Gemini thought signature from content.
   String captureGeminiThoughtSignature(String content, String messageId) {
     if (content.isEmpty) return content;
     final m = _geminiThoughtSigRe.firstMatch(content);
