@@ -976,7 +976,7 @@
   "modelDetailSheetCustomBodyTitle": "Custom Body",
   "modelFetchInvertTooltip": "Invert",
   "modelDetailSheetAddBody": "Add Body",
-  "modelDetailSheetBuiltinToolsDescription": "Built-in tools only work with some APIs (e.g., Gemini official API / Vertex, OpenAI Responses API).",
+  "modelDetailSheetBuiltinToolsDescription": "Built-in tools only support official APIs (Gemini/Vertex API, Responses API).",
   "modelDetailSheetBuiltinToolsUnsupportedHint": "Current provider does not support these built-in tools.",
   "modelDetailSheetSearchTool": "Search",
   "modelDetailSheetSearchToolDescription": "Enable Google Search integration",

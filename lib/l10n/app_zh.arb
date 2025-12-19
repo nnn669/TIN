@@ -694,7 +694,7 @@
   "modelDetailSheetAddHeader": "添加 Header",
   "modelDetailSheetCustomBodyTitle": "自定义 Body",
   "modelDetailSheetAddBody": "添加 Body",
-  "modelDetailSheetBuiltinToolsDescription": "内置工具仅对部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。",
+  "modelDetailSheetBuiltinToolsDescription": "内置工具仅支持官方 API（Gemini/Vertex API, Responses API）。",
   "modelDetailSheetBuiltinToolsUnsupportedHint": "当前供应商不支持这些内置工具。",
   "modelDetailSheetSearchTool": "搜索",
   "modelDetailSheetSearchToolDescription": "启用 Google 搜索集成",

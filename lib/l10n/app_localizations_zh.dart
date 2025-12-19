@@ -2119,7 +2119,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅对部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。';
+      '内置工具仅支持官方 API（Gemini/Vertex API, Responses API）。';
 
   @override
   String get modelDetailSheetBuiltinToolsUnsupportedHint => '当前供应商不支持这些内置工具。';
@@ -5677,7 +5677,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅对部分 API 生效（例如 Gemini 官方 API / Vertex、OpenAI Responses API）。';
+      '内置工具仅支持官方 API（Gemini/Vertex API, Responses API）。';
 
   @override
   String get modelDetailSheetBuiltinToolsUnsupportedHint => '当前供应商不支持这些内置工具。';

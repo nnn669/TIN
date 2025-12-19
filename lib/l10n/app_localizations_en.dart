@@ -2188,7 +2188,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      'Built-in tools only work with some APIs (e.g., Gemini official API / Vertex, OpenAI Responses API).';
+      'Built-in tools only support official APIs (Gemini/Vertex API, Responses API).';
 
   @override
   String get modelDetailSheetBuiltinToolsUnsupportedHint =>

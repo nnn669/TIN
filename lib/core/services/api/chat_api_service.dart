@@ -4246,10 +4246,13 @@ class ChatApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      final toolsArr = <Map<String, dynamic>>[
-        ...builtInToolEntries,
-        if (geminiTools != null) ...geminiTools,
-      ];
+      // Built-in tools and function_declarations are mutually exclusive in Gemini API
+      final toolsArr = <Map<String, dynamic>>[];
+      if (builtInToolEntries.isNotEmpty) {
+        toolsArr.addAll(builtInToolEntries);
+      } else if (geminiTools != null) {
+        toolsArr.addAll(geminiTools);
+      }
 
       Map<String, dynamic> baseBody = {
         'contents': contents,
@@ -4492,10 +4495,13 @@ class ChatApiService {
       }
       if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
     }
-    final toolsArr = <Map<String, dynamic>>[
-      ...builtInToolEntries,
-      if (geminiTools != null) ...geminiTools,
-    ];
+    // Built-in tools and function_declarations are mutually exclusive in Gemini API
+    final toolsArr = <Map<String, dynamic>>[];
+    if (builtInToolEntries.isNotEmpty) {
+      toolsArr.addAll(builtInToolEntries);
+    } else if (geminiTools != null) {
+      toolsArr.addAll(geminiTools);
+    }
 
     // Maintain a rolling conversation for multi-round tool calls
     List<Map<String, dynamic>> convo = List<Map<String, dynamic>>.from(contents);

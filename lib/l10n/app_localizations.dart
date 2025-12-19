@@ -4142,7 +4142,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelDetailSheetBuiltinToolsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Built-in tools only work with some APIs (e.g., Gemini official API / Vertex, OpenAI Responses API).'**
+  /// **'Built-in tools only support official APIs (Gemini/Vertex API, Responses API).'**
   String get modelDetailSheetBuiltinToolsDescription;
 
   /// No description provided for @modelDetailSheetBuiltinToolsUnsupportedHint.
