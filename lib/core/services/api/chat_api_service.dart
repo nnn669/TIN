@@ -1158,6 +1158,8 @@ class ChatApiService {
           }
         }
       }
+      // Collect the last assistant image to attach to the new user message
+      String? lastAssistantImageUrl;
       for (int i = 0; i < messages.length; i++) {
         final m = messages[i];
         final isLast = i == messages.length - 1;
@@ -1172,12 +1174,16 @@ class ChatApiService {
           continue;
         }
 
+        final isAssistant = roleRaw == 'assistant';
+
         // Only parse images if there are images to process
         final hasMarkdownImages = raw.contains('![') && raw.contains('](');
         final hasCustomImages = raw.contains('[image:');
         final hasAttachedImages = isLast && (userImagePaths?.isNotEmpty == true) && (m['role'] == 'user');
+        // For the last user message, also attach the last assistant image if available
+        final shouldAttachAssistantImage = isLast && (m['role'] == 'user') && lastAssistantImageUrl != null;
 
-        if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
+        if (hasMarkdownImages || hasCustomImages || hasAttachedImages || shouldAttachAssistantImage) {
           final parsed = await _parseTextAndImages(
             raw,
             allowRemoteImages: canImageInput,
@@ -1202,7 +1208,8 @@ class ChatApiService {
             }
           }
           if (parsed.text.isNotEmpty) {
-            parts.add({'type': 'input_text', 'text': parsed.text});
+            // Use output_text for assistant, input_text for user
+            parts.add({'type': isAssistant ? 'output_text' : 'input_text', 'text': parsed.text});
           }
           // Images extracted from this message's text
           for (final ref in parsed.images) {
@@ -1216,7 +1223,12 @@ class ChatApiService {
             } else {
               url = ref.src; // http(s)
             }
-            addImage(url);
+            // For assistant messages, collect the last image; for user messages, add directly
+            if (isAssistant) {
+              lastAssistantImageUrl = url;
+            } else {
+              addImage(url);
+            }
           }
           // Additional images explicitly attached to the last user message
           if (hasAttachedImages) {
@@ -1227,10 +1239,29 @@ class ChatApiService {
               addImage(dataUrl);
             }
           }
-          input.add({'role': roleRaw, 'content': parts});
+          // Attach last assistant image to the last user message
+          if (shouldAttachAssistantImage) {
+            addImage(lastAssistantImageUrl!);
+          }
+          // Use proper message object format for assistant messages
+          if (isAssistant) {
+            input.add({'type': 'message', 'role': 'assistant', 'status': 'completed', 'content': parts});
+          } else {
+            input.add({'role': roleRaw, 'content': parts});
+          }
         } else {
-          // No images, use simple string content
-          input.add({'role': roleRaw, 'content': raw});
+          // No images
+          if (isAssistant) {
+            // Use proper message object format for assistant messages
+            input.add({
+              'type': 'message',
+              'role': 'assistant',
+              'status': 'completed',
+              'content': [{'type': 'output_text', 'text': raw}]
+            });
+          } else {
+            input.add({'role': roleRaw, 'content': raw});
+          }
         }
       }
       body = {
