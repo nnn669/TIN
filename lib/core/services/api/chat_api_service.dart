@@ -1006,6 +1006,8 @@ class ChatApiService {
     final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
     final bool isAzureOpenAI = host.contains('openai.azure.com');
     final bool needsReasoningEcho = (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) && isReasoning;
+    // OpenRouter reasoning models require preserving `reasoning_details` across tool-calling turns.
+    final bool preserveReasoningDetails = host.contains('openrouter.ai') && isReasoning;
     final String completionTokensKey = isAzureOpenAI ? 'max_completion_tokens' : 'max_tokens';
     void _setMaxTokens(Map<String, dynamic> map) {
       if (maxTokens != null) map[completionTokensKey] = maxTokens;
@@ -1512,6 +1514,7 @@ class ChatApiService {
 
           final msg = (c0['message'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
           final reasoningForTools = (msg['reasoning_content'] ?? msg['reasoning'])?.toString() ?? '';
+          final reasoningDetailsForTools = msg['reasoning_details'];
           final tcs = (msg['tool_calls'] as List?) ?? const <dynamic>[];
           if (tcs.isNotEmpty && onToolCall != null) {
             final calls = <Map<String, dynamic>>[];
@@ -1556,6 +1559,9 @@ class ChatApiService {
             final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningForTools;
+            }
+            if (preserveReasoningDetails && reasoningDetailsForTools is List && reasoningDetailsForTools.isNotEmpty) {
+              assistantToolCallMsg['reasoning_details'] = reasoningDetailsForTools;
             }
             next.add(assistantToolCallMsg);
             for (final r in results) {
@@ -1620,6 +1626,7 @@ class ChatApiService {
     final int approxPromptTokens = _approxTokensFromChars(approxPromptChars);
     int approxCompletionChars = 0;
     String reasoningBuffer = '';
+    dynamic reasoningDetailsBuffer;
 
     // Track potential tool calls (OpenAI Chat Completions)
     final Map<int, Map<String, String>> toolAcc = <int, Map<String, String>>{}; // index -> {id,name,args}
@@ -1692,6 +1699,9 @@ class ChatApiService {
             final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+            }
+            if (preserveReasoningDetails && reasoningDetailsBuffer is List && reasoningDetailsBuffer.isNotEmpty) {
+              assistantToolCallMsg['reasoning_details'] = reasoningDetailsBuffer;
             }
             mm2.add(assistantToolCallMsg);
             for (final r in results) {
@@ -1833,6 +1843,7 @@ class ChatApiService {
               String? finishReason2;
               String contentAccum = ''; // Accumulate content for this round
               String reasoningAccum = '';
+              dynamic reasoningDetailsAccum;
               await for (final ch in s2) {
                 buf2 += ch;
                 final lines2 = buf2.split('\n');
@@ -1902,6 +1913,12 @@ class ChatApiService {
                         if (rcMsg is String && rcMsg.isNotEmpty && needsReasoningEcho) {
                           reasoningAccum += rcMsg;
                         }
+                      }
+                      if (preserveReasoningDetails) {
+                        final rd = delta?['reasoning_details'];
+                        if (rd is List && rd.isNotEmpty) reasoningDetailsAccum = rd;
+                        final rdMsg = message?['reasoning_details'];
+                        if (rdMsg is List && rdMsg.isNotEmpty) reasoningDetailsAccum = rdMsg;
                       }
                       // Handle image outputs from OpenRouter-style deltas
                       // Possible shapes:
@@ -2001,6 +2018,9 @@ class ChatApiService {
                 final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                 if (needsReasoningEcho) {
                   nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                }
+                if (preserveReasoningDetails && reasoningDetailsAccum is List && reasoningDetailsAccum.isNotEmpty) {
+                  nextAssistantToolCall['reasoning_details'] = reasoningDetailsAccum;
                 }
                 currentMessages = [
                   ...currentMessages,
@@ -2446,6 +2466,10 @@ class ChatApiService {
                   reasoning = rc;
                   if (needsReasoningEcho) reasoningBuffer += rc;
                 }
+                if (preserveReasoningDetails) {
+                  final rd = delta['reasoning_details'];
+                  if (rd is List && rd.isNotEmpty) reasoningDetailsBuffer = rd;
+                }
 
                 // images handling from delta (unchanged)
                 if (wantsImageOutput) {
@@ -2494,6 +2518,11 @@ class ChatApiService {
                     if (argsDelta != null && argsDelta.isNotEmpty) entry['args'] = (entry['args'] ?? '') + argsDelta;
                   }
                 }
+              }
+
+              if (preserveReasoningDetails && message != null) {
+                final rdMsg = message['reasoning_details'];
+                if (rdMsg is List && rdMsg.isNotEmpty) reasoningDetailsBuffer = rdMsg;
               }
 
               // 2) Fallback and merge: parse choices[0].message.content
@@ -2659,6 +2688,9 @@ class ChatApiService {
             if (needsReasoningEcho) {
               assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
             }
+            if (preserveReasoningDetails && reasoningDetailsBuffer is List && reasoningDetailsBuffer.isNotEmpty) {
+              assistantToolCallMsg['reasoning_details'] = reasoningDetailsBuffer;
+            }
             mm2.add(assistantToolCallMsg);
             for (final r in results) {
               final id = r['tool_call_id'];
@@ -2789,6 +2821,7 @@ class ChatApiService {
               String? finishReason2;
               String contentAccum = '';
               String reasoningAccum = '';
+              dynamic reasoningDetailsAccum;
               await for (final ch in s2) {
                 buf2 += ch;
                 final lines2 = buf2.split('\n');
@@ -2913,6 +2946,12 @@ class ChatApiService {
                           reasoningAccum += rcMsg;
                         }
                       }
+                      if (preserveReasoningDetails) {
+                        final rd = delta?['reasoning_details'];
+                        if (rd is List && rd.isNotEmpty) reasoningDetailsAccum = rd;
+                        final rdMsg = message?['reasoning_details'];
+                        if (rdMsg is List && rdMsg.isNotEmpty) reasoningDetailsAccum = rdMsg;
+                      }
                     }
                     // XinLiu compatibility for follow-up requests too
                     final rootToolCalls2 = o['tool_calls'] as List?;
@@ -2972,6 +3011,9 @@ class ChatApiService {
                 final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                 if (needsReasoningEcho) {
                   nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                }
+                if (preserveReasoningDetails && reasoningDetailsAccum is List && reasoningDetailsAccum.isNotEmpty) {
+                  nextAssistantToolCall['reasoning_details'] = reasoningDetailsAccum;
                 }
                 currentMessages = [
                   ...currentMessages,
@@ -3045,6 +3087,9 @@ class ChatApiService {
                 final assistantToolCallMsg = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls};
                 if (needsReasoningEcho) {
                   assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
+                }
+                if (preserveReasoningDetails && reasoningDetailsBuffer is List && reasoningDetailsBuffer.isNotEmpty) {
+                  assistantToolCallMsg['reasoning_details'] = reasoningDetailsBuffer;
                 }
                 mm2.add(assistantToolCallMsg);
                 for (final r in results) {
@@ -3169,6 +3214,7 @@ class ChatApiService {
                   String? finishReason2;
                   String contentAccum = '';
                   String reasoningAccum = '';
+                  dynamic reasoningDetailsAccum;
                   await for (final ch in s2) {
                     buf2 += ch;
                     final lines2 = buf2.split('\n');
@@ -3274,6 +3320,12 @@ class ChatApiService {
                               reasoningAccum += rcMsg;
                             }
                           }
+                          if (preserveReasoningDetails) {
+                            final rd = delta?['reasoning_details'];
+                            if (rd is List && rd.isNotEmpty) reasoningDetailsAccum = rd;
+                            final rdMsg = message?['reasoning_details'];
+                            if (rdMsg is List && rdMsg.isNotEmpty) reasoningDetailsAccum = rdMsg;
+                          }
                         }
                         // XinLiu compatibility for follow-up requests too
                         final rootToolCalls2 = o['tool_calls'] as List?;
@@ -3333,6 +3385,9 @@ class ChatApiService {
                     final nextAssistantToolCall = <String, dynamic>{'role': 'assistant', 'content': '\n\n', 'tool_calls': calls2};
                     if (needsReasoningEcho) {
                       nextAssistantToolCall['reasoning_content'] = reasoningAccum;
+                    }
+                    if (preserveReasoningDetails && reasoningDetailsAccum is List && reasoningDetailsAccum.isNotEmpty) {
+                      nextAssistantToolCall['reasoning_details'] = reasoningDetailsAccum;
                     }
                     currentMessages = [
                       ...currentMessages,
