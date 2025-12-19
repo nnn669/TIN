@@ -73,5 +73,6 @@ class BrandAssets {
     MapEntry(RegExp(r'kat'), 'katkwaipilot-color.svg'),
     MapEntry(RegExp(r'duckduckgo'), 'duckduckgo-color.svg'),
     MapEntry(RegExp(r'inclusionai'), 'ling.png'),
+    MapEntry(RegExp(r'mimo|xiaomi|小米'), 'mimo.svg'),
   ];
 }

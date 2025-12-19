@@ -606,6 +606,8 @@ class ChatApiService {
         final isReasoning = effectiveInfo.abilities.contains(ModelAbility.reasoning);
         final effort = _effortForBudget(thinkingBudget);
         final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
+        final modelLower = upstreamModelId.toLowerCase();
+        final bool isMimo = host.contains('xiaomimimo') || modelLower.startsWith('mimo-') || modelLower.contains('/mimo-');
         if (config.useResponseApi == true) {
           // Inject built-in web_search tool when enabled and supported
           final toolsList = <Map<String, dynamic>>[];
@@ -675,8 +677,8 @@ class ChatApiService {
         // Vendor-specific reasoning knobs for chat-completions compatible hosts (non-streaming)
         if (config.useResponseApi != true) {
           final off = _isOff(thinkingBudget);
-          if (host.contains('open.bigmodel.cn') || host.contains('bigmodel')) {
-            // Zhipu BigModel: thinking: { type: enabled|disabled }
+          if (host.contains('open.bigmodel.cn') || host.contains('bigmodel') || isMimo) {
+            // Zhipu BigModel / Xiaomi MiMo: thinking: { type: enabled|disabled }
             if (isReasoning) {
               (body as Map<String, dynamic>)['thinking'] = {'type': off ? 'disabled' : 'enabled'};
             } else {
@@ -1004,11 +1006,15 @@ class ChatApiService {
 
     final effort = _effortForBudget(thinkingBudget);
     final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
+    final modelLower = upstreamModelId.toLowerCase();
     final bool isAzureOpenAI = host.contains('openai.azure.com');
-    final bool needsReasoningEcho = (host.contains('deepseek') || upstreamModelId.toLowerCase().contains('deepseek')) && isReasoning;
+    final bool isMimoHost = host.contains('xiaomimimo');
+    final bool isMimoModel = modelLower.startsWith('mimo-') || modelLower.contains('/mimo-');
+    final bool isMimo = isMimoHost || isMimoModel;
+    final bool needsReasoningEcho = (host.contains('deepseek') || modelLower.contains('deepseek') || isMimo) && isReasoning;
     // OpenRouter reasoning models require preserving `reasoning_details` across tool-calling turns.
     final bool preserveReasoningDetails = host.contains('openrouter.ai') && isReasoning;
-    final String completionTokensKey = isAzureOpenAI ? 'max_completion_tokens' : 'max_tokens';
+    final String completionTokensKey = (isAzureOpenAI || isMimo) ? 'max_completion_tokens' : 'max_tokens';
     void _setMaxTokens(Map<String, dynamic> map) {
       if (maxTokens != null) map[completionTokensKey] = maxTokens;
     }
@@ -1330,8 +1336,8 @@ class ChatApiService {
           (body as Map<String, dynamic>).remove('thinking_budget');
         }
         (body as Map<String, dynamic>).remove('reasoning_effort');
-      } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel')) {
-        // Zhipu (BigModel): thinking.type enabled/disabled
+      } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel') || isMimo) {
+        // Zhipu (BigModel) / Xiaomi MiMo: thinking.type enabled/disabled
         if (isReasoning) {
           (body as Map<String, dynamic>)['thinking'] = {'type': off ? 'disabled' : 'enabled'};
         } else {
@@ -1754,7 +1760,7 @@ class ChatApiService {
                   body2.remove('thinking_budget');
                 }
                 body2.remove('reasoning_effort');
-              } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel')) {
+              } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel') || isMimo) {
                 if (isReasoning) {
                   body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
                 } else {
@@ -2739,7 +2745,7 @@ class ChatApiService {
                   body2.remove('thinking_budget');
                 }
                 body2.remove('reasoning_effort');
-              } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel')) {
+              } else if (host.contains('open.bigmodel.cn') || host.contains('bigmodel') || isMimo) {
                 if (isReasoning) {
                   body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
                 } else {
@@ -3139,7 +3145,7 @@ class ChatApiService {
                       body2.remove('thinking_budget');
                     }
                     body2.remove('reasoning_effort');
-                  } else if (host.contains('ark.cn-beijing.volces.com') || host.contains('volc') || host.contains('ark')) {
+                  } else if (host.contains('ark.cn-beijing.volces.com') || host.contains('volc') || host.contains('ark') || isMimo) {
                     if (isReasoning) {
                       body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
                     } else {
