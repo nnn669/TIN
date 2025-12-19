@@ -241,6 +241,46 @@ class ChatApiService {
     return 0; // Fallback to beginning
   }
 
+  // Get file extension from MIME type
+  static String _extFromMime(String mime) {
+    switch (mime.toLowerCase()) {
+      case 'image/jpeg':
+      case 'image/jpg':
+        return 'jpg';
+      case 'image/webp':
+        return 'webp';
+      case 'image/gif':
+        return 'gif';
+      case 'image/png':
+      default:
+        return 'png';
+    }
+  }
+
+  // Save base64 image data to file and return the path
+  static Future<String?> _saveInlineImageToFile(String mime, String data) async {
+    try {
+      final dir = await AppDirectories.getImagesDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final cleaned = data.replaceAll(RegExp(r'\s'), '');
+      List<int> bytes;
+      try {
+        bytes = base64Decode(cleaned);
+      } catch (_) {
+        bytes = base64Url.decode(cleaned);
+      }
+      final ext = _extFromMime(mime);
+      final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
+      final f = File(path);
+      await f.writeAsBytes(bytes, flush: true);
+      return path;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static final RegExp _youtubeUrlRegex = RegExp(
     r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=[^\s<>()]+|youtu\.be/[^\s<>()]+))',
     caseSensitive: false,
@@ -4712,44 +4752,6 @@ class ChatApiService {
           if (data.startsWith(p)) return true;
         }
         return false;
-      }
-
-      String _extFromMime(String mime) {
-        switch (mime.toLowerCase()) {
-          case 'image/jpeg':
-          case 'image/jpg':
-            return 'jpg';
-          case 'image/webp':
-            return 'webp';
-          case 'image/gif':
-            return 'gif';
-          case 'image/png':
-          default:
-            return 'png';
-        }
-      }
-
-      Future<String?> _saveInlineImageToFile(String mime, String data) async {
-        try {
-          final dir = await AppDirectories.getImagesDirectory();
-          if (!await dir.exists()) {
-            await dir.create(recursive: true);
-          }
-          final cleaned = data.replaceAll(RegExp(r'\s'), '');
-          List<int> bytes;
-          try {
-            bytes = base64Decode(cleaned);
-          } catch (_) {
-            bytes = base64Url.decode(cleaned);
-          }
-          final ext = _extFromMime(mime);
-          final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
-          final f = File(path);
-          await f.writeAsBytes(bytes, flush: true);
-          return path;
-        } catch (_) {
-          return null;
-        }
       }
 
       Future<String> _sanitizeTextIfNeeded(String input) async {
