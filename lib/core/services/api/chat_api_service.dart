@@ -2303,7 +2303,7 @@ class ChatApiService {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo);
                 }
 
-                // Build follow-up Responses request input (accumulate conversation context)
+                // Build follow-up Responses request input
                 List<Map<String, dynamic>> currentInput = <Map<String, dynamic>>[...responsesInitialInput];
                 if (lastResponseOutputItems.isNotEmpty) currentInput.addAll(lastResponseOutputItems);
                 currentInput.addAll(followUpOutputs);
@@ -2466,7 +2466,7 @@ class ChatApiService {
                   if (resultsInfo2.isNotEmpty) {
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                   }
-                  // Update current input for next round (accumulate context)
+                  // Extend current input with this round's model output and our outputs
                   if (outItems2.isNotEmpty) currentInput.addAll(outItems2);
                   currentInput.addAll(followUpOutputs2);
                 }

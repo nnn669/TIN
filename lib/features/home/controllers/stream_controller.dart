@@ -129,10 +129,6 @@ class StreamController {
   static final RegExp _geminiThoughtSigRe =
       RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
 
-  /// Regex to capture OpenAI response_id comments (for Responses API follow-up).
-  static final RegExp _openaiResponseIdRe =
-      RegExp(r'<!--\s*openai_response_id:[^>]+-->');
-
   // ============================================================================
   // Public Methods - State Access
   // ============================================================================
@@ -200,8 +196,7 @@ class StreamController {
   // Gemini Thought Signature Handling
   // ============================================================================
 
-  /// Capture and strip Gemini thought signature from content.
-  /// Also strips OpenAI response_id comments for display.
+  /// Capture and store Gemini thought signature from content.
   String captureGeminiThoughtSignature(String content, String messageId) {
     if (content.isEmpty) return content;
     final m = _geminiThoughtSigRe.firstMatch(content);
@@ -214,10 +209,6 @@ class StreamController {
         }
       }
       content = content.replaceAll(_geminiThoughtSigRe, '').trimRight();
-    }
-    // Also strip OpenAI response_id comments for display
-    if (content.contains('openai_response_id:')) {
-      content = content.replaceAll(_openaiResponseIdRe, '').trimRight();
     }
     return content;
   }
@@ -238,16 +229,6 @@ class StreamController {
   /// Clear Gemini thought signatures map.
   void clearGeminiThoughtSigs() {
     _geminiThoughtSigs.clear();
-  }
-
-  /// Strip OpenAI response_id comment from content (for display only).
-  /// Unlike Gemini thought signatures, this doesn't need to be stored/restored
-  /// since it's only used for API follow-up, not for re-sending history.
-  String stripOpenAIResponseIdForDisplay(String content) {
-    if (content.isEmpty || !content.contains('openai_response_id:')) {
-      return content;
-    }
-    return content.replaceAll(_openaiResponseIdRe, '').trimRight();
   }
 
   // ============================================================================
