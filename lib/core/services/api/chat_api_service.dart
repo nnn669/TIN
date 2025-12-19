@@ -1193,7 +1193,7 @@ class ChatApiService {
           if (usePreview && ws['search_context_size'] is String) {
             entry['search_context_size'] = ws['search_context_size'];
           }
-          toolList.add(entry);
+          addResponsesBuiltInTool(entry);
           // Optionally request sources in output
           if (ws['include_sources'] == true) {
             // Merge/append include array
@@ -2367,18 +2367,9 @@ class ChatApiService {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo);
                 }
 
-                // Build follow-up Responses request input
-                List<Map<String, dynamic>> currentInput = <Map<String, dynamic>>[...responsesInitialInput];
-                // Filter lastResponseOutputItems to only include supported types
-                // image_generation_call, code_interpreter_call etc. are not valid input types for follow-up
-                // Only 'message' and 'function_call' types are valid for tool follow-up input
-                if (lastResponseOutputItems.isNotEmpty) {
-                  currentInput.addAll(lastResponseOutputItems.where((item) {
-                    final t = (item['type'] ?? '').toString();
-                    return t == 'message' || t == 'function_call';
-                  }));
-                }
-                currentInput.addAll(followUpOutputs);
+                // Build follow-up Responses request input using previous_response_id
+                // Only send function_call_output, server has context via previous_response_id
+                List<Map<String, dynamic>> currentInput = followUpOutputs;
 
                 // Iteratively request until no more tool calls
                 for (int round = 0; round < 3; round++) {
@@ -2386,6 +2377,8 @@ class ChatApiService {
                     'model': upstreamModelId,
                     'input': currentInput,
                     'stream': true,
+                    // Use previous_response_id for context - server already has conversation history
+                    if (responsesLastResponseId.isNotEmpty) 'previous_response_id': responsesLastResponseId,
                     if (responsesToolsSpec.isNotEmpty) 'tools': responsesToolsSpec,
                     if (responsesToolsSpec.isNotEmpty) 'tool_choice': 'auto',
                     if (responsesInstructions.isNotEmpty) 'instructions': responsesInstructions,
@@ -2488,6 +2481,11 @@ class ChatApiService {
                             usage = (usage ?? const TokenUsage()).merge(TokenUsage(promptTokens: inTok, completionTokens: outTok));
                             totalTokens = usage!.totalTokens;
                           }
+                          // Update response ID for next round's previous_response_id
+                          final respId2 = (o['response']?['id'] ?? '').toString();
+                          if (respId2.isNotEmpty) {
+                            responsesLastResponseId = respId2;
+                          }
                           // capture output items
                           final out2 = o['response']?['output'];
                           if (out2 is List) {
@@ -2538,15 +2536,9 @@ class ChatApiService {
                   if (resultsInfo2.isNotEmpty) {
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
                   }
-                  // Extend current input with this round's model output and our outputs
-                  // Filter outItems2 to only include supported types for follow-up input
-                  if (outItems2.isNotEmpty) {
-                    currentInput.addAll(outItems2.where((item) {
-                      final t = (item['type'] ?? '').toString();
-                      return t == 'message' || t == 'function_call';
-                    }));
-                  }
-                  currentInput.addAll(followUpOutputs2);
+                  // Update current input with only function_call_output for next round
+                  // Server has context via previous_response_id
+                  currentInput = followUpOutputs2;
                 }
 
                 // Safety
