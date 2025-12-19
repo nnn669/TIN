@@ -208,6 +208,39 @@ class ChatApiService {
     dotAll: true,
   );
 
+  // OpenAI Responses API: store previous_response_id for follow-up
+  static const String _openaiResponseIdTag = 'openai_response_id';
+  static final RegExp _openaiResponseIdComment = RegExp(
+    r'<!--\s*openai_response_id:([^>]+)-->',
+  );
+
+  // Extract OpenAI response ID from message content
+  static String? _extractOpenAIResponseId(String raw) {
+    final m = _openaiResponseIdComment.firstMatch(raw);
+    return m?.group(1)?.trim();
+  }
+
+  // Remove OpenAI response ID comment from message content
+  static String _stripOpenAIResponseId(String raw) {
+    return raw.replaceAll(_openaiResponseIdComment, '').trimRight();
+  }
+
+  // Build OpenAI response ID comment to embed in message
+  static String _buildOpenAIResponseIdComment(String responseId) {
+    if (responseId.isEmpty) return '';
+    return '\n<!-- $_openaiResponseIdTag:$responseId -->';
+  }
+
+  // Find the index of the last user message for Responses API follow-up
+  static int _findLastUserMessageIndex(List<Map<String, dynamic>> messages) {
+    for (int i = messages.length - 1; i >= 0; i--) {
+      if ((messages[i]['role'] ?? '').toString() == 'user') {
+        return i;
+      }
+    }
+    return 0; // Fallback to beginning
+  }
+
   static final RegExp _youtubeUrlRegex = RegExp(
     r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=[^\s<>()]+|youtu\.be/[^\s<>()]+))',
     caseSensitive: false,
@@ -1046,6 +1079,16 @@ class ChatApiService {
       final input = <Map<String, dynamic>>[];
       // Extract system messages into `instructions` (Responses API best practice)
       String instructions = '';
+      // Extract previous_response_id from last assistant message (for follow-up)
+      String? previousResponseId;
+      for (int i = messages.length - 1; i >= 0; i--) {
+        final m = messages[i];
+        if ((m['role'] ?? '').toString() == 'assistant') {
+          final content = (m['content'] ?? '').toString();
+          previousResponseId = _extractOpenAIResponseId(content);
+          break;
+        }
+      }
       // Prepare tools list for Responses path (may be augmented with built-in web search)
       final List<Map<String, dynamic>> toolList = [];
       if (tools != null && tools.isNotEmpty) {
@@ -1118,11 +1161,23 @@ class ChatApiService {
           }
         }
       }
-      for (int i = 0; i < messages.length; i++) {
+      // When using previous_response_id, only send the latest user message
+      // Server already has conversation context from previous response
+      final int startIdx = (previousResponseId != null && previousResponseId.isNotEmpty)
+          ? _findLastUserMessageIndex(messages)
+          : 0;
+      for (int i = startIdx; i < messages.length; i++) {
         final m = messages[i];
         final isLast = i == messages.length - 1;
-        final raw = (m['content'] ?? '').toString();
+        var raw = (m['content'] ?? '').toString();
         final roleRaw = (m['role'] ?? 'user').toString();
+
+        // Strip previous_response_id comment from assistant messages
+        if (roleRaw == 'assistant') {
+          raw = _stripOpenAIResponseId(raw);
+          // Skip assistant messages when using previous_response_id
+          if (previousResponseId != null && previousResponseId.isNotEmpty) continue;
+        }
 
         // Responses API supports a top-level `instructions` field that has higher priority
         if (roleRaw == 'system') {
@@ -1208,6 +1263,8 @@ class ChatApiService {
             'summary': 'auto',
             if (effort != 'auto') 'effort': effort,
           },
+        // Enable follow-up with previous_response_id
+        if (previousResponseId != null && previousResponseId.isNotEmpty) 'previous_response_id': previousResponseId,
       };
       // Append include parameter if we opted into sources via overrides
       try {
@@ -1672,6 +1729,8 @@ class ChatApiService {
     // Responses API: track by output_index to capture call_id reliably
     final Map<int, Map<String, String>> respToolCallsByIndex = <int, Map<String, String>>{}; // index -> {call_id,name,args}
     List<Map<String, dynamic>> lastResponseOutputItems = const <Map<String, dynamic>>[];
+    // Responses API: track response ID for previous_response_id support
+    String responsesLastResponseId = '';
     String? finishReason;
 
     await for (final chunk in sse) {
@@ -2152,6 +2211,11 @@ class ChatApiService {
                 usage = (usage ?? const TokenUsage()).merge(TokenUsage(promptTokens: inTok, completionTokens: outTok));
                 totalTokens = usage!.totalTokens;
               }
+              // Extract response.id for potential follow-up with previous_response_id
+              final respId = (json['response']?['id'] ?? '').toString();
+              if (respId.isNotEmpty) {
+                responsesLastResponseId = respId;
+              }
               // Extract web search citations from final output (Responses API)
               try {
                 final output = json['response']?['output'];
@@ -2184,6 +2248,22 @@ class ChatApiService {
                             seen.add(url);
                             idx += 1;
                           }
+                        }
+                      }
+                    } else if (it['type'] == 'image_generation_call') {
+                      // Handle image generation output from OpenAI Responses API
+                      // it['result'] is directly the base64 image data
+                      final b64 = (it['result'] ?? '').toString();
+                      if (b64.isNotEmpty) {
+                        final savedPath = await _saveInlineImageToFile('image/png', b64);
+                        if (savedPath != null && savedPath.isNotEmpty) {
+                          final mdImg = '\n![Generated Image]($savedPath)\n';
+                          yield ChatStreamChunk(
+                            content: mdImg,
+                            isDone: false,
+                            totalTokens: totalTokens,
+                            usage: usage,
+                          );
                         }
                       }
                     }
@@ -2417,13 +2497,15 @@ class ChatApiService {
 
                 // Safety
                 final approxTotal = approxPromptTokens + _approxTokensFromChars(approxCompletionChars);
-                yield ChatStreamChunk(content: '', reasoning: null, isDone: true, totalTokens: usage?.totalTokens ?? approxTotal, usage: usage);
+                final respIdComment = responsesLastResponseId.isNotEmpty ? _buildOpenAIResponseIdComment(responsesLastResponseId) : '';
+                yield ChatStreamChunk(content: respIdComment, reasoning: null, isDone: true, totalTokens: usage?.totalTokens ?? approxTotal, usage: usage);
                 return;
               }
 
               final approxTotal = approxPromptTokens + _approxTokensFromChars(approxCompletionChars);
+              final respIdComment2 = responsesLastResponseId.isNotEmpty ? _buildOpenAIResponseIdComment(responsesLastResponseId) : '';
               yield ChatStreamChunk(
-                content: '',
+                content: respIdComment2,
                 reasoning: null,
                 isDone: true,
                 totalTokens: usage?.totalTokens ?? approxTotal,
