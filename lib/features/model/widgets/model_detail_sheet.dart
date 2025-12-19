@@ -520,7 +520,10 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
             title: l10n.modelDetailSheetUrlContextTool,
             desc: l10n.modelDetailSheetUrlContextToolDescription,
             value: _googleUrlContextTool,
-            onChanged: (v) => setState(() => _googleUrlContextTool = v),
+            // URL Context is disabled when Code Execution is enabled (mutually exclusive)
+            onChanged: _googleCodeExecutionTool
+                ? null
+                : (v) => setState(() => _googleUrlContextTool = v),
           ),
         ),
         Padding(
@@ -529,7 +532,10 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
             title: l10n.modelDetailSheetCodeExecutionTool,
             desc: l10n.modelDetailSheetCodeExecutionToolDescription,
             value: _googleCodeExecutionTool,
-            onChanged: (v) => setState(() => _googleCodeExecutionTool = v),
+            // Code Execution is disabled when URL Context is enabled (mutually exclusive)
+            onChanged: _googleUrlContextTool
+                ? null
+                : (v) => setState(() => _googleCodeExecutionTool = v),
           ),
         ),
         Padding(

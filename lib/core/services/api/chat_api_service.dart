@@ -815,17 +815,19 @@ class ChatApiService {
         };
 
         // Inject Gemini built-in tools (now supported for both official API and Vertex)
+        // code_execution is exclusive - cannot be used with other built-in tools
         final builtIns = _builtInTools(config, modelId);
         if (builtIns.isNotEmpty) {
           final toolsArr = <Map<String, dynamic>>[];
-          if (builtIns.contains('search')) {
-            toolsArr.add({'google_search': {}});
-          }
-          if (builtIns.contains('url_context')) {
-            toolsArr.add({'url_context': {}});
-          }
           if (builtIns.contains('code_execution')) {
             toolsArr.add({'code_execution': {}});
+          } else {
+            if (builtIns.contains('search')) {
+              toolsArr.add({'google_search': {}});
+            }
+            if (builtIns.contains('url_context')) {
+              toolsArr.add({'url_context': {}});
+            }
           }
           if (toolsArr.isNotEmpty) {
             (body as Map<String, dynamic>)['tools'] = toolsArr;
@@ -4195,7 +4197,12 @@ class ChatApiService {
         if (role == 'user' && isLast && enableYoutube) {
           final urls = _extractYouTubeUrls(raw);
           for (final u in urls) {
-            parts.add({'file_data': {'file_uri': u}});
+            // Vertex AI requires mime_type for file_data
+            if (isVertex) {
+              parts.add({'file_data': {'file_uri': u, 'mime_type': 'video/*'}});
+            } else {
+              parts.add({'file_data': {'file_uri': u}});
+            }
           }
         }
         if (role == 'model') {
@@ -4207,10 +4214,14 @@ class ChatApiService {
       final effective = _effectiveModelInfo(config, modelId);
       final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
       final builtInToolEntries = <Map<String, dynamic>>[];
+      // code_execution is exclusive - cannot be used with other built-in tools
       if (builtIns.isNotEmpty) {
-        if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
-        if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
-        if (builtIns.contains('code_execution')) builtInToolEntries.add({'code_execution': {}});
+        if (builtIns.contains('code_execution')) {
+          builtInToolEntries.add({'code_execution': {}});
+        } else {
+          if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
+          if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
+        }
       }
       List<Map<String, dynamic>>? geminiTools;
       if (tools != null && tools.isNotEmpty) {
@@ -4334,6 +4345,7 @@ class ChatApiService {
     }
     qp['alt'] = 'sse';
     final uri = uriBase.replace(queryParameters: qp);
+    final isVertex = config.vertexAI == true;
 
     // Convert messages to Google contents format
     final contents = <Map<String, dynamic>>[];
@@ -4421,7 +4433,12 @@ class ChatApiService {
       if (role == 'user' && isLast && enableYoutube) {
         final urls = _extractYouTubeUrls(raw);
         for (final u in urls) {
-          parts.add({'file_data': {'file_uri': u}});
+          // Vertex AI requires mime_type for file_data
+          if (isVertex) {
+            parts.add({'file_data': {'file_uri': u, 'mime_type': 'video/*'}});
+          } else {
+            parts.add({'file_data': {'file_uri': u}});
+          }
         }
       }
       if (role == 'model') {
@@ -4438,16 +4455,18 @@ class ChatApiService {
     bool _receivedImage = false;
     final off = _isOff(thinkingBudget);
     // Built-in Gemini tools (supported for both official Gemini API and Vertex)
+    // code_execution is exclusive - cannot be used with other built-in tools
     final builtInToolEntries = <Map<String, dynamic>>[];
     if (builtIns.isNotEmpty) {
-      if (builtIns.contains('search')) {
-        builtInToolEntries.add({'google_search': {}});
-      }
-      if (builtIns.contains('url_context')) {
-        builtInToolEntries.add({'url_context': {}});
-      }
       if (builtIns.contains('code_execution')) {
         builtInToolEntries.add({'code_execution': {}});
+      } else {
+        if (builtIns.contains('search')) {
+          builtInToolEntries.add({'google_search': {}});
+        }
+        if (builtIns.contains('url_context')) {
+          builtInToolEntries.add({'url_context': {}});
+        }
       }
     }
 
