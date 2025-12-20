@@ -234,7 +234,7 @@ class GoogleProvider extends BaseProvider {
         for (final e in arr) {
           if (e is Map) {
             final name = (e['name'] as String?) ?? '';
-            final id = name.contains('/') ? name.split('/').last : name;
+            final id = name.startsWith('models/') ? name.substring('models/'.length) : name;
             final displayName = (e['displayName'] as String?) ?? id;
             final methods = (e['supportedGenerationMethods'] as List?)?.map((m) => m.toString()).toSet() ?? {};
             if (!(methods.contains('generateContent') || methods.contains('embedContent'))) continue;
