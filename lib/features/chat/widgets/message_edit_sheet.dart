@@ -44,7 +44,7 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       // Ensure keyboard-safe bottom inset for the sheet
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.8,

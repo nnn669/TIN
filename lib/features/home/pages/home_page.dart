@@ -284,7 +284,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _buildChatBackground(context, cs),
         // Main content
         Padding(
-          padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.of(context).padding.top),
+          padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.paddingOf(context).top),
           child: Column(
             children: [
               Expanded(
@@ -380,7 +380,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Stack(
       children: [
         Padding(
-          padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.of(context).padding.top),
+          padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.paddingOf(context).top),
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(

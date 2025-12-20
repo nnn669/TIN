@@ -329,7 +329,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final bubbleTopLeft = box.localToGlobal(Offset.zero, ancestor: overlayBox);
     final bubbleSize = box.size;
     final screenSize = overlayBox.size;
-    final insets = MediaQuery.of(context).padding; // status bar / gesture insets
+    final insets = MediaQuery.paddingOf(context); // status bar / gesture insets
     final safeLeft = insets.left + 12;
     final safeRight = insets.right + 12;
     final safeTop = insets.top + 12;
@@ -659,7 +659,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: Container(
               key: _userBubbleKey,
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                maxWidth: MediaQuery.sizeOf(context).width * 0.75,
               ),
               child: _buildBubbleContainer(
                 context: context,
@@ -835,7 +835,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             Align(
               alignment: Alignment.centerRight,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.75),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -1758,7 +1758,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+        final bottomInset = MediaQuery.viewInsetsOf(ctx).bottom;
         return SafeArea(
           child: FractionallySizedBox(
             heightFactor: 0.5,
@@ -2341,7 +2341,7 @@ class _ToolCallItem extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+        final bottomInset = MediaQuery.viewInsetsOf(ctx).bottom;
         return SafeArea(
           child: FractionallySizedBox(
             heightFactor: 0.6,
@@ -2897,7 +2897,7 @@ class _MarqueeState extends State<_Marquee> with SingleTickerProviderStateMixin 
       text: TextSpan(text: text, style: style),
       maxLines: 1,
       textDirection: ui.TextDirection.ltr,
-      textScaleFactor: MediaQuery.of(context).textScaleFactor,
+      textScaleFactor: MediaQuery.textScaleFactorOf(context),
     )..layout();
     return tp.width;
   }

@@ -278,45 +278,53 @@ class MessageListView extends StatelessWidget {
                 ),
               ),
             Expanded(
-              child: MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaleFactor: MediaQuery.of(context).textScaleFactor * chatScale,
-                ),
-                child: isStreaming
-                    ? _buildStreamingMessageWidget(
-                        context,
-                        message: message,
-                        index: index,
-                        messages: messages,
-                        byGroup: byGroup,
-                        r: r,
-                        t: t,
-                        useAssist: useAssist,
-                        assistant: assistant,
-                        showMsgNav: showMsgNav,
-                        gid: gid,
-                        selectedIdx: selectedIdx,
-                        total: total,
-                        effectiveIndex: effectiveIndex,
-                        effectiveTotal: effectiveTotal,
-                      )
-                    : _buildChatMessageWidget(
-                        context,
-                        message: message,
-                        index: index,
-                        messages: messages,
-                        byGroup: byGroup,
-                        r: r,
-                        t: t,
-                        useAssist: useAssist,
-                        assistant: assistant,
-                        showMsgNav: showMsgNav,
-                        gid: gid,
-                        selectedIdx: selectedIdx,
-                        total: total,
-                        effectiveIndex: effectiveIndex,
-                        effectiveTotal: effectiveTotal,
-                      ),
+              child: Builder(
+                builder: (context) {
+                  final textScale = MediaQuery.textScaleFactorOf(context);
+                  final baseMediaQuery = context.getInheritedWidgetOfExactType<MediaQuery>();
+                  final baseData = baseMediaQuery?.data;
+                  return MediaQuery(
+                    // Keep chat font scaling without rebuilding on keyboard insets.
+                    data: (baseData ?? MediaQuery.of(context)).copyWith(
+                      textScaleFactor: textScale * chatScale,
+                    ),
+                    child: isStreaming
+                        ? _buildStreamingMessageWidget(
+                            context,
+                            message: message,
+                            index: index,
+                            messages: messages,
+                            byGroup: byGroup,
+                            r: r,
+                            t: t,
+                            useAssist: useAssist,
+                            assistant: assistant,
+                            showMsgNav: showMsgNav,
+                            gid: gid,
+                            selectedIdx: selectedIdx,
+                            total: total,
+                            effectiveIndex: effectiveIndex,
+                            effectiveTotal: effectiveTotal,
+                          )
+                        : _buildChatMessageWidget(
+                            context,
+                            message: message,
+                            index: index,
+                            messages: messages,
+                            byGroup: byGroup,
+                            r: r,
+                            t: t,
+                            useAssist: useAssist,
+                            assistant: assistant,
+                            showMsgNav: showMsgNav,
+                            gid: gid,
+                            selectedIdx: selectedIdx,
+                            total: total,
+                            effectiveIndex: effectiveIndex,
+                            effectiveTotal: effectiveTotal,
+                          ),
+                  );
+                },
               ),
             ),
           ],

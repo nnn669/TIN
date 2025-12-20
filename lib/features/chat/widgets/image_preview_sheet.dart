@@ -62,7 +62,7 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
         return offset & box.size;
       }
     } catch (_) {}
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery.sizeOf(context);
     final center = Offset(size.width / 2, size.height / 2);
     return Rect.fromCenter(center: center, width: 1, height: 1);
   }
@@ -429,7 +429,7 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
         return offset & box.size;
       }
     } catch (_) {}
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery.sizeOf(context);
     final center = Offset(size.width / 2, size.height / 2);
     return Rect.fromCenter(center: center, width: 1, height: 1);
   }

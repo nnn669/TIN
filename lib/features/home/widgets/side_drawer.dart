@@ -332,7 +332,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
       ),
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
-        final maxH = MediaQuery.of(ctx).size.height * 0.8;
+        final maxH = MediaQuery.sizeOf(ctx).height * 0.8;
         Widget row({required IconData icon, required String label, Color? color, required Future<void> Function() action}) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1206,7 +1206,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
 
     return Drawer(
       backgroundColor: cs.surface,
-      width: MediaQuery.of(context).size.width,
+      width: MediaQuery.sizeOf(context).width,
       child: inner,
     );
   }
@@ -1453,7 +1453,7 @@ extension on _SideDrawerState {
       ),
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
-        final maxH = MediaQuery.of(ctx).size.height * 0.8;
+        final maxH = MediaQuery.sizeOf(ctx).height * 0.8;
         Widget row(String text, VoidCallback onTap) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1541,8 +1541,9 @@ extension on _SideDrawerState {
         return StatefulBuilder(builder: (ctx, setLocal) {
           // Revert to non-scrollable dialog but cap grid height
           // based on available height when keyboard is visible.
-          final media = MediaQuery.of(ctx);
-          final avail = media.size.height - media.viewInsets.bottom;
+          final size = MediaQuery.sizeOf(ctx);
+          final viewInsets = MediaQuery.viewInsetsOf(ctx);
+          final avail = size.height - viewInsets.bottom;
           final double gridHeight = (avail * 0.28).clamp(120.0, 220.0);
           return AlertDialog(
             scrollable: true,
