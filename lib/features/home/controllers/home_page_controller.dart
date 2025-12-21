@@ -929,7 +929,7 @@ class HomePageController extends ChangeNotifier {
       messages: collapsed,
       messageKeys: _messageKeys,
       getViewportBounds: _getViewportBounds,
-      getViewHeight: () => MediaQuery.of(_context).size.height,
+      getViewHeight: () => MediaQuery.sizeOf(_context).height,
     );
   }
 
@@ -1048,9 +1048,10 @@ class HomePageController extends ChangeNotifier {
   void _scrollToBottomSoon({bool animate = true}) => _scrollCtrl.scrollToBottomSoon(animate: animate);
 
   (double, double) _getViewportBounds() {
-    final media = MediaQuery.of(_context);
-    final double listTop = kToolbarHeight + media.padding.top;
-    final double listBottom = media.size.height - media.padding.bottom - _inputBarHeight - 8;
+    final size = MediaQuery.sizeOf(_context);
+    final padding = MediaQuery.paddingOf(_context);
+    final double listTop = kToolbarHeight + padding.top;
+    final double listBottom = size.height - padding.bottom - _inputBarHeight - 8;
     return (listTop, listBottom);
   }
 

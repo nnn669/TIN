@@ -48,7 +48,7 @@ class _LearningPromptSheetState extends State<LearningPromptSheet> {
           left: 16,
           right: 16,
           top: 12,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

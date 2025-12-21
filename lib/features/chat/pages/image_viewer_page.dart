@@ -280,11 +280,11 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
           final global = ro.localToGlobal(center);
           anchor = Rect.fromCenter(center: global, width: 1, height: 1);
         } else {
-          final size = MediaQuery.of(context).size;
+          final size = MediaQuery.sizeOf(context);
           anchor = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
         }
       } catch (_) {
-        final size = MediaQuery.of(context).size;
+        final size = MediaQuery.sizeOf(context);
         anchor = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
       }
       final src = widget.images[_index];

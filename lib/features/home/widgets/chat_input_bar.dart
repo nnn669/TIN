@@ -1152,9 +1152,10 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
     final hasText = _controller.text.trim().isNotEmpty;
     final hasImages = _images.isNotEmpty;
     final hasDocs = _docs.isNotEmpty;
-    final mq = MediaQuery.of(context);
-    final bool isMobileLayout = mq.size.width < AppBreakpoints.tablet;
-    final double visibleHeight = mq.size.height - mq.viewInsets.bottom;
+    final size = MediaQuery.sizeOf(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final bool isMobileLayout = size.width < AppBreakpoints.tablet;
+    final double visibleHeight = size.height - viewInsets.bottom;
     final double attachmentsHeight =
         (hasDocs ? 48 + AppSpacing.xs : 0) + (hasImages ? 64 + AppSpacing.xs : 0);
     const double baseChromeHeight = 120; // padding + action row + chrome buffer

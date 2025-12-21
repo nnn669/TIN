@@ -202,7 +202,7 @@ class _MessageMoreSheetState extends State<_MessageMoreSheet> {
 
     // Footer metadata (time/model) removed per iOS-style spec
 
-    final maxHeight = MediaQuery.of(context).size.height * 0.8;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
     return SafeArea(
       top: false,
       child: ConstrainedBox(

@@ -59,7 +59,8 @@ class ModelRegistry {
               r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
               r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
               r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2)|'
-              r'deepseek-reasoner'
+              r'deepseek-reasoner|'
+              r'mimo-v2-flash'
               r')'
           )
           .replaceAll(' ', ''),
@@ -73,7 +74,8 @@ class ModelRegistry {
               r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
               r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
               r'deepseek-(?:r1|v3\.1|v3\.2)|'
-              r'deepseek-reasoner'
+              r'deepseek-reasoner|'
+              r'mimo-v2-flash'
               r')'
           )
           .replaceAll(' ', ''),
@@ -133,13 +135,12 @@ class OpenAIProvider extends BaseProvider {
   @override
   Future<List<ModelInfo>> listModels(ProviderConfig cfg) async {
     final key = ProviderManager._effectiveApiKey(cfg);
-    if (key.isEmpty) return [];
     final client = _Http.clientFor(cfg);
     try {
       final uri = Uri.parse('${cfg.baseUrl}/models');
-      final res = await client.get(uri, headers: {
-        'Authorization': 'Bearer $key',
-      });
+      final headers = <String, String>{};
+      if (key.isNotEmpty) headers['Authorization'] = 'Bearer $key';
+      final res = await client.get(uri, headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = (jsonDecode(res.body)['data'] as List?) ?? [];
         return [
@@ -160,14 +161,14 @@ class ClaudeProvider extends BaseProvider {
   @override
   Future<List<ModelInfo>> listModels(ProviderConfig cfg) async {
     final key = ProviderManager._effectiveApiKey(cfg);
-    if (key.isEmpty) return [];
     final client = _Http.clientFor(cfg);
     try {
       final uri = Uri.parse('${cfg.baseUrl}/models');
-      final res = await client.get(uri, headers: {
-        'x-api-key': key,
+      final headers = <String, String>{
         'anthropic-version': anthropicVersion,
-      });
+      };
+      if (key.isNotEmpty) headers['x-api-key'] = key;
+      final res = await client.get(uri, headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final obj = jsonDecode(res.body) as Map<String, dynamic>;
         final data = (obj['data'] as List?) ?? [];
@@ -233,7 +234,7 @@ class GoogleProvider extends BaseProvider {
         for (final e in arr) {
           if (e is Map) {
             final name = (e['name'] as String?) ?? '';
-            final id = name.contains('/') ? name.split('/').last : name;
+            final id = name.startsWith('models/') ? name.substring('models/'.length) : name;
             final displayName = (e['displayName'] as String?) ?? id;
             final methods = (e['supportedGenerationMethods'] as List?)?.map((m) => m.toString()).toSet() ?? {};
             if (!(methods.contains('generateContent') || methods.contains('embedContent'))) continue;

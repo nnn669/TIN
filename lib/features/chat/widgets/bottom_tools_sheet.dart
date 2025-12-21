@@ -34,7 +34,7 @@ class BottomToolsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bg = Theme.of(context).colorScheme.surface;
-    final maxHeight = MediaQuery.of(context).size.height * 0.8;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
 
     Widget roundedAction({required IconData icon, required String label, VoidCallback? onTap}) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -305,7 +305,7 @@ Future<void> _editInstructionInjectionPrompt(BuildContext context, InstructionIn
           left: 16,
           right: 16,
           top: 12,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 16,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

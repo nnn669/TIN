@@ -73,7 +73,7 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final pairs = _filteredPairs(_buildPairs(widget.messages));
-    final searchWidth = min(MediaQuery.of(context).size.width * 0.6, 260.0);
+    final searchWidth = min(MediaQuery.sizeOf(context).width * 0.6, 260.0);
 
     return SafeArea(
       top: false,
@@ -302,7 +302,7 @@ class _MiniMapRow extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75 - 32, // subtract side paddings approx in sheet
+                maxWidth: MediaQuery.sizeOf(context).width * 0.75 - 32, // subtract side paddings approx in sheet
               ),
               child: Material(
                 color: Colors.transparent,
