@@ -739,7 +739,6 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
             ? settings.getProviderConfig(currentProviderKey)
             : null;
         bool builtinSearchActive = false;
-        bool geminiCodeExecutionActive = false;
         if (cfg != null && currentModelId != null) {
           final isGemini = cfg.providerType == ProviderKind.google;
           final isClaude = cfg.providerType == ProviderKind.claude;
@@ -750,10 +749,6 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
             final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
             final builtInSet = list.map((e) => e.toString().toLowerCase()).toSet();
             builtinSearchActive = builtInSet.contains('search');
-            // Check if Gemini code execution is active (mutually exclusive with other tools)
-            if (isGemini) {
-              geminiCodeExecutionActive = builtInSet.contains('code_execution') || builtInSet.contains('codeexecution');
-            }
           }
         }
         final appSearchEnabled = settings.searchEnabled;
@@ -766,64 +761,62 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           return BrandAssets.assetForName(svc.name);
         })();
 
-        // Hide search button when Gemini code execution is active (mutually exclusive)
-        if (!geminiCodeExecutionActive) {
-          actions.add(_OverflowAction(
-            width: normalButtonW,
-            builder: () {
-              // Not enabled at all -> default globe
-              if (!appSearchEnabled && !builtinSearchActive) {
-                return _CompactIconButton(
-                  tooltip: l10n.chatInputBarOnlineSearchTooltip,
-                  icon: Lucide.Globe,
-                  active: false,
-                  onTap: widget.onOpenSearch,
-                );
-              }
-              // Built-in search -> magnifier icon in theme color
-              if (builtinSearchActive) {
-                return _CompactIconButton(
-                  tooltip: l10n.chatInputBarOnlineSearchTooltip,
-                  icon: Lucide.Search,
-                  active: true,
-                  onTap: widget.onOpenSearch,
-                );
-              }
-              // External provider search -> brand icon
+        // Search button
+        actions.add(_OverflowAction(
+          width: normalButtonW,
+          builder: () {
+            // Not enabled at all -> default globe
+            if (!appSearchEnabled && !builtinSearchActive) {
               return _CompactIconButton(
                 tooltip: l10n.chatInputBarOnlineSearchTooltip,
                 icon: Lucide.Globe,
+                active: false,
+                onTap: widget.onOpenSearch,
+              );
+            }
+            // Built-in search -> magnifier icon in theme color
+            if (builtinSearchActive) {
+              return _CompactIconButton(
+                tooltip: l10n.chatInputBarOnlineSearchTooltip,
+                icon: Lucide.Search,
                 active: true,
                 onTap: widget.onOpenSearch,
-                childBuilder: (c) {
-                  final asset = brandAsset;
-                  if (asset != null) {
-                    if (asset.endsWith('.svg')) {
-                      return SvgPicture.asset(asset, width: 20, height: 20, colorFilter: ColorFilter.mode(c, BlendMode.srcIn));
-                    } else {
-                      return Image.asset(asset, width: 20, height: 20, color: c, colorBlendMode: BlendMode.srcIn);
-                    }
-                  } else {
-                    return Icon(Lucide.Globe, size: 20, color: c);
-                  }
-                },
               );
-            },
-            menu: () {
-              // Prefer vector icon if brandAsset is svg, otherwise pick reasonable default
-              if (!appSearchEnabled && !builtinSearchActive) {
-                return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
-              }
-              if (builtinSearchActive) {
-                return DesktopContextMenuItem(icon: Lucide.Search, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
-              }
-              if (brandAsset != null && brandAsset.endsWith('.svg')) {
-                return DesktopContextMenuItem(svgAsset: brandAsset, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
-              }
+            }
+            // External provider search -> brand icon
+            return _CompactIconButton(
+              tooltip: l10n.chatInputBarOnlineSearchTooltip,
+              icon: Lucide.Globe,
+              active: true,
+              onTap: widget.onOpenSearch,
+              childBuilder: (c) {
+                final asset = brandAsset;
+                if (asset != null) {
+                  if (asset.endsWith('.svg')) {
+                    return SvgPicture.asset(asset, width: 20, height: 20, colorFilter: ColorFilter.mode(c, BlendMode.srcIn));
+                  } else {
+                    return Image.asset(asset, width: 20, height: 20, color: c, colorBlendMode: BlendMode.srcIn);
+                  }
+                } else {
+                  return Icon(Lucide.Globe, size: 20, color: c);
+                }
+              },
+            );
+          },
+          menu: () {
+            // Prefer vector icon if brandAsset is svg, otherwise pick reasonable default
+            if (!appSearchEnabled && !builtinSearchActive) {
               return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
-            }(),
-          ));
-        }
+            }
+            if (builtinSearchActive) {
+              return DesktopContextMenuItem(icon: Lucide.Search, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+            }
+            if (brandAsset != null && brandAsset.endsWith('.svg')) {
+              return DesktopContextMenuItem(svgAsset: brandAsset, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+            }
+            return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
+          }(),
+        ));
 
         if (widget.supportsReasoning) {
           actions.add(_OverflowAction(
@@ -848,8 +841,8 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           ));
         }
 
-        // Hide MCP button when Gemini code execution is active (mutually exclusive)
-        if (widget.showMcpButton && !geminiCodeExecutionActive) {
+        // MCP button
+        if (widget.showMcpButton) {
           actions.add(_OverflowAction(
             width: normalButtonW,
             builder: () => _CompactIconButton(
