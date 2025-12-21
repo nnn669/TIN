@@ -14,6 +14,7 @@ import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../utils/unicode_sanitizer.dart';
+import 'builtin_tools.dart';
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
@@ -76,7 +77,7 @@ class ChatApiService {
       if (ov is Map<String, dynamic>) {
         final raw = ov['builtInTools'];
         if (raw is List) {
-          return raw.map((e) => e.toString().trim().toLowerCase()).where((e) => e.isNotEmpty).toSet();
+          return BuiltInToolNames.parseAndNormalize(raw);
         }
       }
     } catch (_) {}
@@ -248,8 +249,9 @@ class ChatApiService {
     }
   }
 
+  // YouTube URL regex: watch, shorts, embed, youtu.be (with optional timestamps)
   static final RegExp _youtubeUrlRegex = RegExp(
-    r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=[^\s<>()]+|youtu\.be/[^\s<>()]+))',
+    r'(https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)[a-zA-Z0-9_-]+(?:[?&][^\s<>()]*)?)',
     caseSensitive: false,
   );
 
@@ -683,7 +685,7 @@ class ChatApiService {
           }
           if (_isResponsesWebSearchSupported(upstreamModelId)) {
             final builtIns = _builtInTools(config, modelId);
-            if (builtIns.contains('search')) {
+            if (builtIns.contains(BuiltInToolNames.search)) {
               Map<String, dynamic> ws = const <String, dynamic>{};
               try {
                 final ov = config.modelOverrides[modelId];
@@ -861,13 +863,13 @@ class ChatApiService {
         final builtIns = _builtInTools(config, modelId);
         if (builtIns.isNotEmpty) {
           final toolsArr = <Map<String, dynamic>>[];
-          if (builtIns.contains('code_execution')) {
+          if (builtIns.contains(BuiltInToolNames.codeExecution)) {
             toolsArr.add({'code_execution': {}});
           } else {
-            if (builtIns.contains('search')) {
+            if (builtIns.contains(BuiltInToolNames.search)) {
               toolsArr.add({'google_search': {}});
             }
-            if (builtIns.contains('url_context')) {
+            if (builtIns.contains(BuiltInToolNames.urlContext)) {
               toolsArr.add({'url_context': {}});
             }
           }
@@ -1111,13 +1113,13 @@ class ChatApiService {
       }
 
       // OpenAI built-in tools (Responses API)
-      if (builtIns.contains('code_interpreter')) {
+      if (builtIns.contains(BuiltInToolNames.codeInterpreter)) {
         addResponsesBuiltInTool({
           'type': 'code_interpreter',
           'container': {'type': 'auto', 'memory_limit': '4g'},
         });
       }
-      if (builtIns.contains('image_generation')) {
+      if (builtIns.contains(BuiltInToolNames.imageGeneration)) {
         addResponsesBuiltInTool({'type': 'image_generation'});
       }
 
@@ -1133,7 +1135,7 @@ class ChatApiService {
       }
 
       if (_isResponsesWebSearchSupported(upstreamModelId)) {
-        if (builtIns.contains('search')) {
+        if (builtIns.contains(BuiltInToolNames.search)) {
           // Optional per-model configuration under modelOverrides[modelId]['webSearch']
           Map<String, dynamic> ws = const <String, dynamic>{};
           try {
@@ -1248,8 +1250,8 @@ class ChatApiService {
             }
           }
           // Attach last assistant image to the last user message
-          if (shouldAttachAssistantImage) {
-            addImage(lastAssistantImageUrl!);
+          if (shouldAttachAssistantImage && lastAssistantImageUrl != null) {
+            addImage(lastAssistantImageUrl);
           }
           // Use proper message object format for assistant messages
           if (isAssistant) {
@@ -1527,7 +1529,7 @@ class ChatApiService {
     // Inject Grok built-in search if configured
     if (upstreamModelId.toLowerCase().contains('grok')) {
       final builtIns = _builtInTools(config, modelId);
-      if (builtIns.contains('search')) {
+      if (builtIns.contains(BuiltInToolNames.search)) {
         (body as Map<String, dynamic>)['search_parameters'] = {
           'mode': 'auto',
           'return_citations': true,
@@ -3785,7 +3787,7 @@ class ChatApiService {
       }
     }
     final builtIns = _builtInTools(config, modelId);
-    if (builtIns.contains('search')) {
+    if (builtIns.contains(BuiltInToolNames.search)) {
       Map<String, dynamic> ws = const <String, dynamic>{};
       try {
         final ov = config.modelOverrides[modelId];
@@ -4254,7 +4256,7 @@ class ChatApiService {
       ) async* {
     final bool _persistGeminiThoughtSigs = modelId.toLowerCase().contains('gemini-3');
     final builtIns = _builtInTools(config, modelId);
-    final enableYoutube = builtIns.contains('youtube');
+    final enableYoutube = builtIns.contains(BuiltInToolNames.youtube);
     // Non-streaming path: use generateContent
     if (!stream) {
       final isVertex = config.vertexAI == true;
@@ -4390,11 +4392,11 @@ class ChatApiService {
       // code_execution = exclusive mode (cannot coexist with anything)
       // search/url_context = can coexist, but exclude MCP
       final toolsArr = <Map<String, dynamic>>[];
-      if (builtIns.contains('code_execution')) {
+      if (builtIns.contains(BuiltInToolNames.codeExecution)) {
         toolsArr.add({'code_execution': {}});
-      } else if (builtIns.contains('search') || builtIns.contains('url_context')) {
-        if (builtIns.contains('search')) toolsArr.add({'google_search': {}});
-        if (builtIns.contains('url_context')) toolsArr.add({'url_context': {}});
+      } else if (builtIns.contains(BuiltInToolNames.search) || builtIns.contains(BuiltInToolNames.urlContext)) {
+        if (builtIns.contains(BuiltInToolNames.search)) toolsArr.add({'google_search': {}});
+        if (builtIns.contains(BuiltInToolNames.urlContext)) toolsArr.add({'url_context': {}});
       } else if (geminiTools != null) {
         toolsArr.addAll(geminiTools);
       }
@@ -4629,11 +4631,11 @@ class ChatApiService {
     // code_execution = exclusive mode (cannot coexist with anything)
     // search/url_context = can coexist, but exclude MCP
     final toolsArr = <Map<String, dynamic>>[];
-    if (builtIns.contains('code_execution')) {
+    if (builtIns.contains(BuiltInToolNames.codeExecution)) {
       toolsArr.add({'code_execution': {}});
-    } else if (builtIns.contains('search') || builtIns.contains('url_context')) {
-      if (builtIns.contains('search')) toolsArr.add({'google_search': {}});
-      if (builtIns.contains('url_context')) toolsArr.add({'url_context': {}});
+    } else if (builtIns.contains(BuiltInToolNames.search) || builtIns.contains(BuiltInToolNames.urlContext)) {
+      if (builtIns.contains(BuiltInToolNames.search)) toolsArr.add({'google_search': {}});
+      if (builtIns.contains(BuiltInToolNames.urlContext)) toolsArr.add({'url_context': {}});
     } else if (geminiTools != null) {
       toolsArr.addAll(geminiTools);
     }

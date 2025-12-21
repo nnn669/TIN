@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/model_provider.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -169,17 +170,14 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         }
         // Built-in tools toggles
         final builtIns = (ov['builtInTools'] as List?) ?? const <dynamic>[];
-        final builtInSet = builtIns
-            .map((e) => e.toString().trim().toLowerCase())
-            .where((e) => e.isNotEmpty)
-            .toSet();
+        final builtInSet = BuiltInToolNames.parseAndNormalize(builtIns);
 
-        _googleUrlContextTool = builtInSet.contains('url_context') || builtInSet.contains('urlcontext');
-        _googleCodeExecutionTool = builtInSet.contains('code_execution') || builtInSet.contains('codeexecution');
-        _googleYoutubeTool = builtInSet.contains('youtube');
+        _googleUrlContextTool = builtInSet.contains(BuiltInToolNames.urlContext);
+        _googleCodeExecutionTool = builtInSet.contains(BuiltInToolNames.codeExecution);
+        _googleYoutubeTool = builtInSet.contains(BuiltInToolNames.youtube);
 
-        _openaiCodeInterpreterTool = builtInSet.contains('code_interpreter') || builtInSet.contains('codeinterpreter');
-        _openaiImageGenerationTool = builtInSet.contains('image_generation') || builtInSet.contains('imagegeneration');
+        _openaiCodeInterpreterTool = builtInSet.contains(BuiltInToolNames.codeInterpreter);
+        _openaiImageGenerationTool = builtInSet.contains(BuiltInToolNames.imageGeneration);
 
         // Backward compatibility: legacy UI-only tools map (older versions)
         final tools = (ov['tools'] as Map?) ?? const {};
@@ -666,34 +664,27 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         ? (ov[prevKey] as Map).cast<String, dynamic>()
         : const <String, dynamic>{};
     final builtInsPrev = (prev['builtInTools'] as List?) ?? const <dynamic>[];
-    final builtInSet = builtInsPrev
-        .map((e) => e.toString().trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
+    final builtInSet = BuiltInToolNames.parseAndNormalize(builtInsPrev);
     if (_providerKind == ProviderKind.google) {
-      builtInSet.remove('url_context');
-      builtInSet.remove('urlcontext');
-      builtInSet.remove('code_execution');
-      builtInSet.remove('codeexecution');
-      builtInSet.remove('youtube');
-      if (_googleUrlContextTool) builtInSet.add('url_context');
-      if (_googleCodeExecutionTool) builtInSet.add('code_execution');
-      if (_googleYoutubeTool) builtInSet.add('youtube');
+      builtInSet.remove(BuiltInToolNames.urlContext);
+      builtInSet.remove(BuiltInToolNames.codeExecution);
+      builtInSet.remove(BuiltInToolNames.youtube);
+      if (_googleUrlContextTool) builtInSet.add(BuiltInToolNames.urlContext);
+      if (_googleCodeExecutionTool) builtInSet.add(BuiltInToolNames.codeExecution);
+      if (_googleYoutubeTool) builtInSet.add(BuiltInToolNames.youtube);
     } else if (_providerKind == ProviderKind.openai) {
-      builtInSet.remove('code_interpreter');
-      builtInSet.remove('codeinterpreter');
-      builtInSet.remove('image_generation');
-      builtInSet.remove('imagegeneration');
-      if (_openaiCodeInterpreterTool) builtInSet.add('code_interpreter');
-      if (_openaiImageGenerationTool) builtInSet.add('image_generation');
+      builtInSet.remove(BuiltInToolNames.codeInterpreter);
+      builtInSet.remove(BuiltInToolNames.imageGeneration);
+      if (_openaiCodeInterpreterTool) builtInSet.add(BuiltInToolNames.codeInterpreter);
+      if (_openaiImageGenerationTool) builtInSet.add(BuiltInToolNames.imageGeneration);
     }
     final preferredOrder = <String>[
-      'search',
-      'url_context',
-      'code_execution',
-      'youtube',
-      'code_interpreter',
-      'image_generation',
+      BuiltInToolNames.search,
+      BuiltInToolNames.urlContext,
+      BuiltInToolNames.codeExecution,
+      BuiltInToolNames.youtube,
+      BuiltInToolNames.codeInterpreter,
+      BuiltInToolNames.imageGeneration,
     ];
     final builtInTools = <String>[
       for (final k in preferredOrder)

@@ -19,6 +19,7 @@ import '../../../utils/clipboard_images.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/services/search/search_service.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/app_directories.dart';
@@ -738,29 +739,12 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
         final cfg = (currentProviderKey != null)
             ? settings.getProviderConfig(currentProviderKey)
             : null;
-        // Check built-in tools state for Gemini
-        bool builtinSearchActive = false;
-        bool codeExecutionActive = false;
-        bool urlContextActive = false;
-        if (cfg != null && currentModelId != null) {
-          final isGemini = cfg.providerType == ProviderKind.google;
-          final isClaude = cfg.providerType == ProviderKind.claude;
-          final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-          final isGrok = cfg.providerType == ProviderKind.openai && (currentModelId.toLowerCase().contains('grok'));
-          if (isGemini || isClaude || isOpenAIResponses || isGrok) {
-            final ov = cfg.modelOverrides[currentModelId] as Map?;
-            final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-            final builtInSet = list.map((e) => e.toString().toLowerCase()).toSet();
-            builtinSearchActive = builtInSet.contains('search');
-            // Only Gemini has code_execution and url_context
-            if (isGemini) {
-              codeExecutionActive = builtInSet.contains('code_execution');
-              urlContextActive = builtInSet.contains('url_context');
-            }
-          }
-        }
+        // Check built-in tools state using helper
+        final toolsState = BuiltInToolsHelper.getActiveTools(cfg: cfg, modelId: currentModelId);
+        final builtinSearchActive = toolsState.searchActive;
+        final codeExecutionActive = toolsState.codeExecutionActive;
         // Any built-in tool active means MCP should be hidden
-        final anyBuiltInActive = builtinSearchActive || codeExecutionActive || urlContextActive;
+        final anyBuiltInActive = toolsState.anyMcpConflictingToolActive;
         final appSearchEnabled = settings.searchEnabled;
         final brandAsset = (() {
           if (!appSearchEnabled || builtinSearchActive) return null;
