@@ -2056,6 +2056,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for extracting text and descriptions from images';
 
   @override
+  String get defaultModelPageSummaryModelTitle => 'Summary Model';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle =>
+      'Used for generating conversation summaries';
+
+  @override
   String get defaultModelPagePromptLabel => 'Prompt';
 
   @override
@@ -2071,6 +2078,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter prompt template for OCR image understanding';
 
   @override
+  String get defaultModelPageSummaryPromptHint =>
+      'Enter prompt template for summary generation';
+
+  @override
   String get defaultModelPageResetDefault => 'Reset to default';
 
   @override
@@ -2084,6 +2095,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
     return 'Variables: source text: $sourceVar, target language: $targetVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return 'Variables: previous summary: $previousSummaryVar, new messages: $userMessagesVar';
   }
 
   @override

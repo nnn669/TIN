@@ -338,20 +338,27 @@ class MessageBuilderService {
       }
       if (assistant?.enableRecentChatsReference == true) {
         final chats = chatService.getAllConversations();
-        final titles = chats
+        final relevantChats = chats
             .where((c) => c.assistantId == assistant!.id)
             .take(10)
-            .map((c) => c.title)
-            .where((t) => t.trim().isNotEmpty)
+            .where((c) => c.title.trim().isNotEmpty)
             .toList();
-        if (titles.isNotEmpty) {
+        if (relevantChats.isNotEmpty) {
           final sb = StringBuffer();
           sb.writeln('## 最近的对话');
-          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
+          sb.writeln('这是用户最近的一些对话标题和摘要，你可以参考这些内容了解用户偏好和关注点:');
           sb.writeln('<recent_chats>');
-          for (final t in titles) {
+          for (final c in relevantChats) {
             sb.writeln('<conversation>');
-            sb.writeln('  <title>$t</title>');
+            // Format: timestamp: title || summary
+            final timestamp = c.updatedAt.toIso8601String().substring(0, 10);
+            final title = c.title.trim();
+            final summary = (c.summary ?? '').trim();
+            if (summary.isNotEmpty) {
+              sb.writeln('  $timestamp: $title || $summary');
+            } else {
+              sb.writeln('  $timestamp: $title');
+            }
             sb.writeln('</conversation>');
           }
           sb.writeln('</recent_chats>');

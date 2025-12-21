@@ -3899,6 +3899,18 @@ abstract class AppLocalizations {
   /// **'Used for extracting text and descriptions from images'**
   String get defaultModelPageOcrModelSubtitle;
 
+  /// No description provided for @defaultModelPageSummaryModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary Model'**
+  String get defaultModelPageSummaryModelTitle;
+
+  /// No description provided for @defaultModelPageSummaryModelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for generating conversation summaries'**
+  String get defaultModelPageSummaryModelSubtitle;
+
   /// No description provided for @defaultModelPagePromptLabel.
   ///
   /// In en, this message translates to:
@@ -3923,6 +3935,12 @@ abstract class AppLocalizations {
   /// **'Enter prompt template for OCR image understanding'**
   String get defaultModelPageOcrPromptHint;
 
+  /// No description provided for @defaultModelPageSummaryPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter prompt template for summary generation'**
+  String get defaultModelPageSummaryPromptHint;
+
   /// No description provided for @defaultModelPageResetDefault.
   ///
   /// In en, this message translates to:
@@ -3946,6 +3964,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Variables: source text: {sourceVar}, target language: {targetVar}'**
   String defaultModelPageTranslateVars(String sourceVar, String targetVar);
+
+  /// No description provided for @defaultModelPageSummaryVars.
+  ///
+  /// In en, this message translates to:
+  /// **'Variables: previous summary: {previousSummaryVar}, new messages: {userMessagesVar}'**
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar);
 
   /// No description provided for @defaultModelPageUseCurrentModel.
   ///

@@ -909,10 +909,13 @@
   "defaultModelPageTranslateModelSubtitle": "Used for translating message content; prefer fast & accurate models",
   "defaultModelPageOcrModelTitle": "OCR Model",
   "defaultModelPageOcrModelSubtitle": "Used for extracting text and descriptions from images",
+  "defaultModelPageSummaryModelTitle": "Summary Model",
+  "defaultModelPageSummaryModelSubtitle": "Used for generating conversation summaries",
   "defaultModelPagePromptLabel": "Prompt",
   "defaultModelPageTitlePromptHint": "Enter prompt template for title summarization",
   "defaultModelPageTranslatePromptHint": "Enter prompt template for translation",
   "defaultModelPageOcrPromptHint": "Enter prompt template for OCR image understanding",
+  "defaultModelPageSummaryPromptHint": "Enter prompt template for summary generation",
   "defaultModelPageResetDefault": "Reset to default",
   "defaultModelPageSave": "Save",
   "defaultModelPageTitleVars": "Vars: content: {contentVar}, locale: {localeVar}",
@@ -933,6 +936,17 @@
         "type": "String"
       },
       "targetVar": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultModelPageSummaryVars": "Variables: previous summary: {previousSummaryVar}, new messages: {userMessagesVar}",
+  "@defaultModelPageSummaryVars": {
+    "placeholders": {
+      "previousSummaryVar": {
+        "type": "String"
+      },
+      "userMessagesVar": {
         "type": "String"
       }
     }

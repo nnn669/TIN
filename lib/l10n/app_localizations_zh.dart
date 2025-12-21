@@ -1991,6 +1991,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型';
+
+  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
@@ -2001,6 +2007,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
+
+  @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -2016,6 +2025,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
     return '变量：原始文本：$sourceVar，目标语言：$targetVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
@@ -5556,6 +5570,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型';
+
+  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
@@ -5566,6 +5586,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
+
+  @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -5581,6 +5604,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
     return '变量：原始文本：$sourceVar，目标语言：$targetVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
@@ -9124,6 +9152,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
     return '變數：原始文本：$sourceVar，目標語言：$targetVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '變數：舊摘要：$previousSummaryVar，新訊息：$userMessagesVar';
   }
 
   @override
