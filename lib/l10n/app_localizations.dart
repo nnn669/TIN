@@ -6970,6 +6970,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Logs Folder'**
   String get logViewerOpenFolder;
+
+  /// In en, this message translates to:
+  /// **'Manage Summaries'**
+  String get assistantEditManageSummariesTitle;
+
+  /// In en, this message translates to:
+  /// **'No summaries yet'**
+  String get assistantEditSummaryEmpty;
+
+  /// In en, this message translates to:
+  /// **'Edit Summary'**
+  String get assistantEditSummaryDialogTitle;
+
+  /// In en, this message translates to:
+  /// **'Enter summary content'**
+  String get assistantEditSummaryDialogHint;
+
+  /// In en, this message translates to:
+  /// **'Clear Summary'**
+  String get assistantEditDeleteSummaryTitle;
+
+  /// In en, this message translates to:
+  /// **'Are you sure you want to clear this summary?'**
+  String get assistantEditDeleteSummaryContent;
 }
 
 class _AppLocalizationsDelegate

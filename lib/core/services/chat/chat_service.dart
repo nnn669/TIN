@@ -421,6 +421,38 @@ class ChatService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Gets all conversations with non-empty summaries for a specific assistant.
+  List<Conversation> getConversationsWithSummaryForAssistant(String assistantId) {
+    if (!_initialized) return [];
+    return getAllConversations()
+        .where((c) =>
+            c.assistantId == assistantId &&
+            c.summary != null &&
+            c.summary!.trim().isNotEmpty)
+        .toList();
+  }
+
+  /// Clears the summary of a specific conversation.
+  Future<void> clearConversationSummary(String conversationId) async {
+    if (!_initialized) return;
+
+    if (_draftConversations.containsKey(conversationId)) {
+      final draft = _draftConversations[conversationId]!;
+      draft.summary = null;
+      draft.lastSummarizedMessageCount = 0;
+      notifyListeners();
+      return;
+    }
+
+    final conversation = _conversationsBox.get(conversationId);
+    if (conversation == null) return;
+
+    conversation.summary = null;
+    conversation.lastSummarizedMessageCount = 0;
+    await conversation.save();
+    notifyListeners();
+  }
+
   Future<void> togglePinConversation(String id) async {
     if (!_initialized) return;
 

@@ -1218,5 +1218,11 @@
   "logViewerEmpty": "暫無日誌",
   "logViewerCurrentLog": "目前日誌",
   "logViewerExport": "匯出",
-  "logViewerOpenFolder": "開啟日誌目錄"
+  "logViewerOpenFolder": "開啟日誌目錄",
+  "assistantEditManageSummariesTitle": "管理摘要",
+  "assistantEditSummaryEmpty": "暫無摘要",
+  "assistantEditSummaryDialogTitle": "編輯摘要",
+  "assistantEditSummaryDialogHint": "輸入摘要內容",
+  "assistantEditDeleteSummaryTitle": "清除摘要",
+  "assistantEditDeleteSummaryContent": "確定要清除此摘要嗎？"
 }

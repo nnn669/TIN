@@ -3581,6 +3581,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logViewerOpenFolder => '打开日志目录';
+
+  @override
+  String get assistantEditManageSummariesTitle => '管理摘要';
+
+  @override
+  String get assistantEditSummaryEmpty => '暂无摘要';
+
+  @override
+  String get assistantEditSummaryDialogTitle => '编辑摘要';
+
+  @override
+  String get assistantEditSummaryDialogHint => '输入摘要内容';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => '清除摘要';
+
+  @override
+  String get assistantEditDeleteSummaryContent => '确定要清除此摘要吗？';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -10718,4 +10736,22 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get logViewerOpenFolder => '開啟日誌目錄';
+
+  @override
+  String get assistantEditManageSummariesTitle => '管理摘要';
+
+  @override
+  String get assistantEditSummaryEmpty => '暫無摘要';
+
+  @override
+  String get assistantEditSummaryDialogTitle => '編輯摘要';
+
+  @override
+  String get assistantEditSummaryDialogHint => '輸入摘要內容';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => '清除摘要';
+
+  @override
+  String get assistantEditDeleteSummaryContent => '確定要清除此摘要嗎？';
 }

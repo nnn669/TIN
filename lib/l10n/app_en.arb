@@ -1525,5 +1525,11 @@
   "logViewerEmpty": "No logs yet",
   "logViewerCurrentLog": "Current Log",
   "logViewerExport": "Export",
-  "logViewerOpenFolder": "Open Logs Folder"
+  "logViewerOpenFolder": "Open Logs Folder",
+  "assistantEditManageSummariesTitle": "Manage Summaries",
+  "assistantEditSummaryEmpty": "No summaries yet",
+  "assistantEditSummaryDialogTitle": "Edit Summary",
+  "assistantEditSummaryDialogHint": "Enter summary content",
+  "assistantEditDeleteSummaryTitle": "Clear Summary",
+  "assistantEditDeleteSummaryContent": "Are you sure you want to clear this summary?"
 }

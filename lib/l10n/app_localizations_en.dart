@@ -3716,4 +3716,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logViewerOpenFolder => 'Open Logs Folder';
+
+  @override
+  String get assistantEditManageSummariesTitle => 'Manage Summaries';
+
+  @override
+  String get assistantEditSummaryEmpty => 'No summaries yet';
+
+  @override
+  String get assistantEditSummaryDialogTitle => 'Edit Summary';
+
+  @override
+  String get assistantEditSummaryDialogHint => 'Enter summary content';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => 'Clear Summary';
+
+  @override
+  String get assistantEditDeleteSummaryContent =>
+      'Are you sure you want to clear this summary?';
 }
