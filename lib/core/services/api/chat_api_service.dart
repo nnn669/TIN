@@ -4394,11 +4394,11 @@ class ChatApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      // Built-in tools and function_declarations are mutually exclusive in Gemini API
       final toolsArr = <Map<String, dynamic>>[];
       if (builtInToolEntries.isNotEmpty) {
         toolsArr.addAll(builtInToolEntries);
-      } else if (geminiTools != null) {
+      }
+      if (geminiTools != null) {
         toolsArr.addAll(geminiTools);
       }
 
@@ -4643,11 +4643,11 @@ class ChatApiService {
       }
       if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
     }
-    // Built-in tools and function_declarations are mutually exclusive in Gemini API
     final toolsArr = <Map<String, dynamic>>[];
     if (builtInToolEntries.isNotEmpty) {
       toolsArr.addAll(builtInToolEntries);
-    } else if (geminiTools != null) {
+    }
+    if (geminiTools != null) {
       toolsArr.addAll(geminiTools);
     }
 
