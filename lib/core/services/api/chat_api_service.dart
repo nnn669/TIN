@@ -4680,16 +4680,32 @@ class ChatApiService {
         if (wantsImageOutput) 'responseModalities': ['TEXT', 'IMAGE'],
         if (isReasoning)
           'thinkingConfig': () {
-            final isGemini3Pro = modelId.contains(RegExp(r'gemini-3-pro-preview', caseSensitive: false));
-            if (off) return {'includeThoughts': false};
+            // Match gemini-3-pro or gemini-3-pro-preview (and similar variants)
+            final isGemini3Pro = modelId.contains(RegExp(r'gemini-3-pro(-preview)?', caseSensitive: false));
+            final isGemini3Flash = modelId.contains(RegExp(r'gemini-3-flash(-preview)?', caseSensitive: false));
+            // Gemini 3 Pro: supports 'low' and 'high' only (no off)
             if (isGemini3Pro) {
               String level = 'high';
-              if (thinkingBudget != null && thinkingBudget > 0) {
-                if (thinkingBudget < 2048) level = 'low';
-                else level = 'high';
+              if (off || (thinkingBudget != null && thinkingBudget > 0 && thinkingBudget < 8000)) {
+                // Off or Light (1024) → low
+                level = 'low';
               }
               return {'includeThoughts': true, 'thinkingLevel': level};
             }
+            // Gemini 3 Flash: supports 'minimal', 'low', 'medium', 'high'
+            if (isGemini3Flash) {
+              String level = 'high';
+              if (off) {
+                level = 'minimal';
+              } else if (thinkingBudget != null && thinkingBudget > 0) {
+                // Light (1024) → low, Medium (16000) → medium, Heavy (32000) → high
+                if (thinkingBudget < 8000) level = 'low';
+                else if (thinkingBudget < 24000) level = 'medium';
+              }
+              return {'includeThoughts': true, 'thinkingLevel': level};
+            }
+            // Gemini 2.x and below: use thinkingBudget
+            if (off) return {'includeThoughts': false};
             return {
               'includeThoughts': true,
               if (thinkingBudget != null && thinkingBudget >= 0)
