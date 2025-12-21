@@ -2117,6 +2117,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelDetailSheetAdvancedTab => 'Advanced';
 
   @override
+  String get modelDetailSheetBuiltinToolsTab => 'Built-in Tools';
+
+  @override
   String get modelDetailSheetModelIdLabel => 'Model ID';
 
   @override
@@ -2185,7 +2188,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      'Built-in tools currently support limited APIs (e.g., Gemini).';
+      'Built-in tools only support official APIs.';
+
+  @override
+  String get modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint =>
+      'Code execution cannot coexist with Search/URL Context/MCP tools.';
+
+  @override
+  String get modelDetailSheetBuiltinToolsUnsupportedHint =>
+      'Current provider does not support these built-in tools.';
 
   @override
   String get modelDetailSheetSearchTool => 'Search';
@@ -2200,6 +2211,38 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get modelDetailSheetUrlContextToolDescription =>
       'Enable URL content ingestion';
+
+  @override
+  String get modelDetailSheetCodeExecutionTool => 'Code Execution';
+
+  @override
+  String get modelDetailSheetCodeExecutionToolDescription =>
+      'Enable code execution tool';
+
+  @override
+  String get modelDetailSheetYoutubeTool => 'YouTube';
+
+  @override
+  String get modelDetailSheetYoutubeToolDescription =>
+      'Enable YouTube URL ingestion (auto-detect links in prompts)';
+
+  @override
+  String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
+      'Requires OpenAI Responses API (enable "Responses API" in provider settings).';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterTool => 'Code Interpreter';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterToolDescription =>
+      'Enable code interpreter tool (container auto, memory limit 4g)';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationTool => 'Image Generation';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationToolDescription =>
+      'Enable image generation tool';
 
   @override
   String get modelDetailSheetCancelButton => 'Cancel';

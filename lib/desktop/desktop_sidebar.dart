@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../features/home/widgets/side_drawer.dart';
 
@@ -15,8 +16,12 @@ class DesktopSidebar extends StatelessWidget {
 
   final String userName;
   final String assistantName;
-  final void Function(String id)? onSelectConversation;
-  final VoidCallback? onNewConversation;
+  /// Callback when a conversation is selected.
+  /// The [closeDrawer] parameter is ignored on desktop (sidebar is always visible).
+  final FutureOr<void> Function(String id, {bool closeDrawer})? onSelectConversation;
+  /// Callback when a new conversation is requested.
+  /// The [closeDrawer] parameter is ignored on desktop (sidebar is always visible).
+  final FutureOr<void> Function({bool closeDrawer})? onNewConversation;
   final Set<String> loadingConversationIds;
 
   @override
@@ -26,12 +31,8 @@ class DesktopSidebar extends StatelessWidget {
       embeddedWidth: 300,
       userName: userName,
       assistantName: assistantName,
-      onSelectConversation: onSelectConversation == null
-          ? null
-          : (id, {closeDrawer = true}) => onSelectConversation!(id),
-      onNewConversation: onNewConversation == null
-          ? null
-          : ({closeDrawer = true}) => onNewConversation!(),
+      onSelectConversation: onSelectConversation,
+      onNewConversation: onNewConversation,
       loadingConversationIds: loadingConversationIds,
       showBottomBar: false,
     );

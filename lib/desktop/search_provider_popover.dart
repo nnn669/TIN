@@ -222,6 +222,17 @@ class _SearchContent extends StatelessWidget {
     return true;
   }
 
+  bool _hasUrlContextEnabled(SettingsProvider settings, AssistantProvider ap) {
+    final a = ap.currentAssistant;
+    final providerKey = a?.chatModelProvider ?? settings.currentModelProvider;
+    final modelId = a?.chatModelId ?? settings.currentModelId;
+    if (providerKey == null || (modelId ?? '').isEmpty) return false;
+    final cfg = settings.getProviderConfig(providerKey);
+    final ov = cfg.modelOverrides[modelId!] as Map?;
+    final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
+    return list.map((e) => e.toString().toLowerCase()).contains('url_context');
+  }
+
   bool _hasBuiltInSearchEnabled(SettingsProvider settings, AssistantProvider ap) {
     final a = ap.currentAssistant;
     final providerKey = a?.chatModelProvider ?? settings.currentModelProvider;
@@ -280,6 +291,9 @@ class _SearchContent extends StatelessWidget {
     final enabled = sp.searchEnabled;
     final supportsBuiltIn = _supportsBuiltInSearch(sp, ap);
     final builtInEnabled = _hasBuiltInSearchEnabled(sp, ap);
+    final hasUrlContext = _hasUrlContextEnabled(sp, ap);
+    // When url_context is active, treat as built-in mode (hide external search options)
+    final builtInMode = builtInEnabled || hasUrlContext;
 
     final rows = <Widget>[];
 
@@ -308,23 +322,25 @@ class _SearchContent extends StatelessWidget {
       ));
     }
 
-    // 3) External services list
-    for (int i = 0; i < services.length; i++) {
-      final s = services[i];
-      final svc = SearchService.getService(s);
-      final name = svc.name;
-      final isSelectedActive = !builtInEnabled && enabled && (i == selected);
-      rows.add(_RowItem(
-        leading: _BrandIcon(name: name),
-        label: name,
-        selected: isSelectedActive,
-        onTap: () async {
-          await context.read<SettingsProvider>().setSearchServiceSelected(i);
-          await _disableBuiltInSearch(context);
-          await context.read<SettingsProvider>().setSearchEnabled(true);
-          onDone();
-        },
-      ));
+    // 3) External services list (hidden when url_context is active)
+    if (!builtInMode) {
+      for (int i = 0; i < services.length; i++) {
+        final s = services[i];
+        final svc = SearchService.getService(s);
+        final name = svc.name;
+        final isSelectedActive = enabled && (i == selected);
+        rows.add(_RowItem(
+          leading: _BrandIcon(name: name),
+          label: name,
+          selected: isSelectedActive,
+          onTap: () async {
+            await context.read<SettingsProvider>().setSearchServiceSelected(i);
+            await _disableBuiltInSearch(context);
+            await context.read<SettingsProvider>().setSearchEnabled(true);
+            onDone();
+          },
+        ));
+      }
     }
 
     return Padding(

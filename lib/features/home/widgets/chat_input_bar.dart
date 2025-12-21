@@ -19,6 +19,7 @@ import '../../../utils/clipboard_images.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/services/search/search_service.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/app_directories.dart';
@@ -738,18 +739,12 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
         final cfg = (currentProviderKey != null)
             ? settings.getProviderConfig(currentProviderKey)
             : null;
-        bool builtinSearchActive = false;
-        if (cfg != null && currentModelId != null) {
-          final isGemini = cfg.providerType == ProviderKind.google;
-          final isClaude = cfg.providerType == ProviderKind.claude;
-          final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-          final isGrok = cfg.providerType == ProviderKind.openai && (currentModelId.toLowerCase().contains('grok'));
-          if (isGemini || isClaude || isOpenAIResponses || isGrok) {
-            final ov = cfg.modelOverrides[currentModelId] as Map?;
-            final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-            builtinSearchActive = list.map((e) => e.toString().toLowerCase()).contains('search');
-          }
-        }
+        // Check built-in tools state using helper
+        final toolsState = BuiltInToolsHelper.getActiveTools(cfg: cfg, modelId: currentModelId);
+        final builtinSearchActive = toolsState.searchActive;
+        final codeExecutionActive = toolsState.codeExecutionActive;
+        // Any built-in tool active means MCP should be hidden
+        final anyBuiltInActive = toolsState.anyMcpConflictingToolActive;
         final appSearchEnabled = settings.searchEnabled;
         final brandAsset = (() {
           if (!appSearchEnabled || builtinSearchActive) return null;
@@ -760,7 +755,9 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           return BrandAssets.assetForName(svc.name);
         })();
 
-        actions.add(_OverflowAction(
+        // Search button (hidden when code_execution is active)
+        if (!codeExecutionActive) {
+          actions.add(_OverflowAction(
           width: normalButtonW,
           builder: () {
             // Not enabled at all -> default globe
@@ -815,6 +812,7 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
             return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
           }(),
         ));
+        }
 
         if (widget.supportsReasoning) {
           actions.add(_OverflowAction(
@@ -839,7 +837,8 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           ));
         }
 
-        if (widget.showMcpButton) {
+        // MCP button (hidden when any built-in tool is active)
+        if (widget.showMcpButton && !anyBuiltInActive) {
           actions.add(_OverflowAction(
             width: normalButtonW,
             builder: () => _CompactIconButton(

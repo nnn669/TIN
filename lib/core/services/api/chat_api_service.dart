@@ -14,6 +14,7 @@ import '../../services/api_key_manager.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../utils/unicode_sanitizer.dart';
+import 'builtin_tools.dart';
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
@@ -76,7 +77,7 @@ class ChatApiService {
       if (ov is Map<String, dynamic>) {
         final raw = ov['builtInTools'];
         if (raw is List) {
-          return raw.map((e) => e.toString().trim().toLowerCase()).where((e) => e.isNotEmpty).toSet();
+          return BuiltInToolNames.parseAndNormalize(raw);
         }
       }
     } catch (_) {}
@@ -207,6 +208,68 @@ class ChatApiService {
     r'<!--\s*gemini_thought_signatures:(.*?)-->',
     dotAll: true,
   );
+
+  // Get file extension from MIME type
+  static String _extFromMime(String mime) {
+    switch (mime.toLowerCase()) {
+      case 'image/jpeg':
+      case 'image/jpg':
+        return 'jpg';
+      case 'image/webp':
+        return 'webp';
+      case 'image/gif':
+        return 'gif';
+      case 'image/png':
+      default:
+        return 'png';
+    }
+  }
+
+  // Save base64 image data to file and return the path
+  static Future<String?> _saveInlineImageToFile(String mime, String data) async {
+    try {
+      final dir = await AppDirectories.getImagesDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final cleaned = data.replaceAll(RegExp(r'\s'), '');
+      List<int> bytes;
+      try {
+        bytes = base64Decode(cleaned);
+      } catch (_) {
+        bytes = base64Url.decode(cleaned);
+      }
+      final ext = _extFromMime(mime);
+      final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
+      final f = File(path);
+      await f.writeAsBytes(bytes, flush: true);
+      return path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // YouTube URL regex: watch, shorts, embed, youtu.be (with optional timestamps)
+  static final RegExp _youtubeUrlRegex = RegExp(
+    r'(https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)[a-zA-Z0-9_-]+(?:[?&][^\s<>()]*)?)',
+    caseSensitive: false,
+  );
+
+  static List<String> _extractYouTubeUrls(String text) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final m in _youtubeUrlRegex.allMatches(text)) {
+      var url = (m.group(1) ?? '').trim();
+      if (url.isEmpty) continue;
+      // Trim common trailing punctuation from markdown/parentheses
+      while (url.isNotEmpty && '.,;:!?)"]}'.contains(url[url.length - 1])) {
+        url = url.substring(0, url.length - 1);
+      }
+      if (url.isEmpty) continue;
+      if (seen.add(url)) out.add(url);
+    }
+    return out;
+  }
 
   static _GeminiSignatureMeta _extractGeminiThoughtMeta(String raw) {
     try {
@@ -622,7 +685,7 @@ class ChatApiService {
           }
           if (_isResponsesWebSearchSupported(upstreamModelId)) {
             final builtIns = _builtInTools(config, modelId);
-            if (builtIns.contains('search')) {
+            if (builtIns.contains(BuiltInToolNames.search)) {
               Map<String, dynamic> ws = const <String, dynamic>{};
               try {
                 final ov = config.modelOverrides[modelId];
@@ -796,14 +859,19 @@ class ChatApiService {
         };
 
         // Inject Gemini built-in tools (now supported for both official API and Vertex)
+        // code_execution is exclusive - cannot be used with other built-in tools
         final builtIns = _builtInTools(config, modelId);
         if (builtIns.isNotEmpty) {
           final toolsArr = <Map<String, dynamic>>[];
-          if (builtIns.contains('search')) {
-            toolsArr.add({'google_search': {}});
-          }
-          if (builtIns.contains('url_context')) {
-            toolsArr.add({'url_context': {}});
+          if (builtIns.contains(BuiltInToolNames.codeExecution)) {
+            toolsArr.add({'code_execution': {}});
+          } else {
+            if (builtIns.contains(BuiltInToolNames.search)) {
+              toolsArr.add({'google_search': {}});
+            }
+            if (builtIns.contains(BuiltInToolNames.urlContext)) {
+              toolsArr.add({'url_context': {}});
+            }
           }
           if (toolsArr.isNotEmpty) {
             (body as Map<String, dynamic>)['tools'] = toolsArr;
@@ -1036,6 +1104,25 @@ class ChatApiService {
         }
       }
 
+      final builtIns = _builtInTools(config, modelId);
+      void addResponsesBuiltInTool(Map<String, dynamic> entry) {
+        final type = (entry['type'] ?? '').toString();
+        if (type.isEmpty) return;
+        final exists = toolList.any((e) => (e['type'] ?? '').toString() == type);
+        if (!exists) toolList.add(entry);
+      }
+
+      // OpenAI built-in tools (Responses API)
+      if (builtIns.contains(BuiltInToolNames.codeInterpreter)) {
+        addResponsesBuiltInTool({
+          'type': 'code_interpreter',
+          'container': {'type': 'auto', 'memory_limit': '4g'},
+        });
+      }
+      if (builtIns.contains(BuiltInToolNames.imageGeneration)) {
+        addResponsesBuiltInTool({'type': 'image_generation'});
+      }
+
       // Built-in web search for Responses API when enabled on supported models
       bool _isResponsesWebSearchSupported(String id) {
         final m = id.toLowerCase();
@@ -1048,8 +1135,7 @@ class ChatApiService {
       }
 
       if (_isResponsesWebSearchSupported(upstreamModelId)) {
-        final builtIns = _builtInTools(config, modelId);
-        if (builtIns.contains('search')) {
+        if (builtIns.contains(BuiltInToolNames.search)) {
           // Optional per-model configuration under modelOverrides[modelId]['webSearch']
           Map<String, dynamic> ws = const <String, dynamic>{};
           try {
@@ -1074,7 +1160,7 @@ class ChatApiService {
           if (usePreview && ws['search_context_size'] is String) {
             entry['search_context_size'] = ws['search_context_size'];
           }
-          toolList.add(entry);
+          addResponsesBuiltInTool(entry);
           // Optionally request sources in output
           if (ws['include_sources'] == true) {
             // Merge/append include array
@@ -1082,6 +1168,8 @@ class ChatApiService {
           }
         }
       }
+      // Collect the last assistant image to attach to the new user message
+      String? lastAssistantImageUrl;
       for (int i = 0; i < messages.length; i++) {
         final m = messages[i];
         final isLast = i == messages.length - 1;
@@ -1096,12 +1184,16 @@ class ChatApiService {
           continue;
         }
 
+        final isAssistant = roleRaw == 'assistant';
+
         // Only parse images if there are images to process
         final hasMarkdownImages = raw.contains('![') && raw.contains('](');
         final hasCustomImages = raw.contains('[image:');
         final hasAttachedImages = isLast && (userImagePaths?.isNotEmpty == true) && (m['role'] == 'user');
+        // For the last user message, also attach the last assistant image if available
+        final shouldAttachAssistantImage = isLast && (m['role'] == 'user') && lastAssistantImageUrl != null;
 
-        if (hasMarkdownImages || hasCustomImages || hasAttachedImages) {
+        if (hasMarkdownImages || hasCustomImages || hasAttachedImages || shouldAttachAssistantImage) {
           final parsed = await _parseTextAndImages(
             raw,
             allowRemoteImages: canImageInput,
@@ -1126,7 +1218,8 @@ class ChatApiService {
             }
           }
           if (parsed.text.isNotEmpty) {
-            parts.add({'type': 'input_text', 'text': parsed.text});
+            // Use output_text for assistant, input_text for user
+            parts.add({'type': isAssistant ? 'output_text' : 'input_text', 'text': parsed.text});
           }
           // Images extracted from this message's text
           for (final ref in parsed.images) {
@@ -1140,7 +1233,12 @@ class ChatApiService {
             } else {
               url = ref.src; // http(s)
             }
-            addImage(url);
+            // For assistant messages, collect the last image; for user messages, add directly
+            if (isAssistant) {
+              lastAssistantImageUrl = url;
+            } else {
+              addImage(url);
+            }
           }
           // Additional images explicitly attached to the last user message
           if (hasAttachedImages) {
@@ -1151,10 +1249,29 @@ class ChatApiService {
               addImage(dataUrl);
             }
           }
-          input.add({'role': roleRaw, 'content': parts});
+          // Attach last assistant image to the last user message
+          if (shouldAttachAssistantImage && lastAssistantImageUrl != null) {
+            addImage(lastAssistantImageUrl);
+          }
+          // Use proper message object format for assistant messages
+          if (isAssistant) {
+            input.add({'type': 'message', 'role': 'assistant', 'status': 'completed', 'content': parts});
+          } else {
+            input.add({'role': roleRaw, 'content': parts});
+          }
         } else {
-          // No images, use simple string content
-          input.add({'role': roleRaw, 'content': raw});
+          // No images
+          if (isAssistant) {
+            // Use proper message object format for assistant messages
+            input.add({
+              'type': 'message',
+              'role': 'assistant',
+              'status': 'completed',
+              'content': [{'type': 'output_text', 'text': raw}]
+            });
+          } else {
+            input.add({'role': roleRaw, 'content': raw});
+          }
         }
       }
       body = {
@@ -1412,7 +1529,7 @@ class ChatApiService {
     // Inject Grok built-in search if configured
     if (upstreamModelId.toLowerCase().contains('grok')) {
       final builtIns = _builtInTools(config, modelId);
-      if (builtIns.contains('search')) {
+      if (builtIns.contains(BuiltInToolNames.search)) {
         (body as Map<String, dynamic>)['search_parameters'] = {
           'mode': 'auto',
           'return_citations': true,
@@ -2166,6 +2283,22 @@ class ChatApiService {
                             seen.add(url);
                             idx += 1;
                           }
+                        }
+                      }
+                    } else if (it['type'] == 'image_generation_call') {
+                      // Handle image generation output from OpenAI Responses API
+                      // it['result'] is directly the base64 image data
+                      final b64 = (it['result'] ?? '').toString();
+                      if (b64.isNotEmpty) {
+                        final savedPath = await _saveInlineImageToFile('image/png', b64);
+                        if (savedPath != null && savedPath.isNotEmpty) {
+                          final mdImg = '\n![Generated Image]($savedPath)\n';
+                          yield ChatStreamChunk(
+                            content: mdImg,
+                            isDone: false,
+                            totalTokens: totalTokens,
+                            usage: usage,
+                          );
                         }
                       }
                     }
@@ -3654,7 +3787,7 @@ class ChatApiService {
       }
     }
     final builtIns = _builtInTools(config, modelId);
-    if (builtIns.contains('search')) {
+    if (builtIns.contains(BuiltInToolNames.search)) {
       Map<String, dynamic> ws = const <String, dynamic>{};
       try {
         final ov = config.modelOverrides[modelId];
@@ -4122,6 +4255,8 @@ class ChatApiService {
       {List<String>? userImagePaths, int? thinkingBudget, double? temperature, double? topP, int? maxTokens, List<Map<String, dynamic>>? tools, Future<String> Function(String, Map<String, dynamic>)? onToolCall, Map<String, String>? extraHeaders, Map<String, dynamic>? extraBody, bool stream = true}
       ) async* {
     final bool _persistGeminiThoughtSigs = modelId.toLowerCase().contains('gemini-3');
+    final builtIns = _builtInTools(config, modelId);
+    final enableYoutube = builtIns.contains(BuiltInToolNames.youtube);
     // Non-streaming path: use generateContent
     if (!stream) {
       final isVertex = config.vertexAI == true;
@@ -4207,6 +4342,19 @@ class ChatApiService {
         } else {
           if (raw.isNotEmpty) parts.add({'text': raw});
         }
+        // YouTube URL ingestion as file_data parts (Gemini official API)
+        // Only inject on the last user message of this request.
+        if (role == 'user' && isLast && enableYoutube) {
+          final urls = _extractYouTubeUrls(raw);
+          for (final u in urls) {
+            // Vertex AI requires mime_type for file_data
+            if (isVertex) {
+              parts.add({'file_data': {'file_uri': u, 'mime_type': 'video/*'}});
+            } else {
+              parts.add({'file_data': {'file_uri': u}});
+            }
+          }
+        }
         if (role == 'model') {
           _applyGeminiThoughtSignatures(meta, parts, attachDummyWhenMissing: _persistGeminiThoughtSigs);
         }
@@ -4215,14 +4363,10 @@ class ChatApiService {
 
       final effective = _effectiveModelInfo(config, modelId);
       final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
-      final builtIns = _builtInTools(config, modelId);
-      final builtInToolEntries = <Map<String, dynamic>>[];
-      if (builtIns.isNotEmpty) {
-        if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
-        if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
-      }
+
+      // Map OpenAI-style tools to Gemini functionDeclarations (MCP)
       List<Map<String, dynamic>>? geminiTools;
-      if (builtInToolEntries.isEmpty && tools != null && tools.isNotEmpty) {
+      if (tools != null && tools.isNotEmpty) {
         final decls = <Map<String, dynamic>>[];
         for (final t in tools) {
           final fn = (t['function'] as Map<String, dynamic>?);
@@ -4244,14 +4388,26 @@ class ChatApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
+      // Built-in tools and function_declarations (MCP) are mutually exclusive in Gemini API
+      // code_execution = exclusive mode (cannot coexist with anything)
+      // search/url_context = can coexist, but exclude MCP
+      final toolsArr = <Map<String, dynamic>>[];
+      if (builtIns.contains(BuiltInToolNames.codeExecution)) {
+        toolsArr.add({'code_execution': {}});
+      } else if (builtIns.contains(BuiltInToolNames.search) || builtIns.contains(BuiltInToolNames.urlContext)) {
+        if (builtIns.contains(BuiltInToolNames.search)) toolsArr.add({'google_search': {}});
+        if (builtIns.contains(BuiltInToolNames.urlContext)) toolsArr.add({'url_context': {}});
+      } else if (geminiTools != null) {
+        toolsArr.addAll(geminiTools);
+      }
+
       Map<String, dynamic> baseBody = {
         'contents': contents,
         if (temperature != null) 'temperature': temperature,
         if (topP != null) 'topP': topP,
         if (maxTokens != null) 'generationConfig': {'maxOutputTokens': maxTokens},
-        if (geminiTools != null) 'tools': geminiTools,
-        if (builtInToolEntries.isNotEmpty) 'tools': builtInToolEntries,
-        if (geminiTools != null || builtInToolEntries.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
+        if (toolsArr.isNotEmpty) 'tools': toolsArr,
+        if (toolsArr.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
       };
       final extraG = _customBody(config, modelId);
       if (extraG.isNotEmpty) baseBody.addAll(extraG);
@@ -4339,6 +4495,7 @@ class ChatApiService {
     }
     qp['alt'] = 'sse';
     final uri = uriBase.replace(queryParameters: qp);
+    final isVertex = config.vertexAI == true;
 
     // Convert messages to Google contents format
     final contents = <Map<String, dynamic>>[];
@@ -4421,6 +4578,19 @@ class ChatApiService {
         // No images, use simple text content
         if (raw.isNotEmpty) parts.add({'text': raw});
       }
+      // YouTube URL ingestion as file_data parts (Gemini official API)
+      // Only inject on the last user message of this request.
+      if (role == 'user' && isLast && enableYoutube) {
+        final urls = _extractYouTubeUrls(raw);
+        for (final u in urls) {
+          // Vertex AI requires mime_type for file_data
+          if (isVertex) {
+            parts.add({'file_data': {'file_uri': u, 'mime_type': 'video/*'}});
+          } else {
+            parts.add({'file_data': {'file_uri': u}});
+          }
+        }
+      }
       if (role == 'model') {
         _applyGeminiThoughtSignatures(meta, parts, attachDummyWhenMissing: _persistGeminiThoughtSigs);
       }
@@ -4434,21 +4604,10 @@ class ChatApiService {
     bool _expectImage = wantsImageOutput;
     bool _receivedImage = false;
     final off = _isOff(thinkingBudget);
-    // Built-in Gemini tools (supported for both official Gemini API and Vertex)
-    final builtIns = _builtInTools(config, modelId);
-    final builtInToolEntries = <Map<String, dynamic>>[];
-    if (builtIns.isNotEmpty) {
-      if (builtIns.contains('search')) {
-        builtInToolEntries.add({'google_search': {}});
-      }
-      if (builtIns.contains('url_context')) {
-        builtInToolEntries.add({'url_context': {}});
-      }
-    }
 
-    // Map OpenAI-style tools to Gemini functionDeclarations (skip if built-in tools are enabled, as they are not compatible)
+    // Map OpenAI-style tools to Gemini functionDeclarations (MCP)
     List<Map<String, dynamic>>? geminiTools;
-    if (builtInToolEntries.isEmpty && tools != null && tools.isNotEmpty) {
+    if (tools != null && tools.isNotEmpty) {
       final decls = <Map<String, dynamic>>[];
       for (final t in tools) {
         final fn = (t['function'] as Map<String, dynamic>?);
@@ -4467,6 +4626,18 @@ class ChatApiService {
         decls.add(d);
       }
       if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
+    }
+    // Built-in tools and function_declarations (MCP) are mutually exclusive in Gemini API
+    // code_execution = exclusive mode (cannot coexist with anything)
+    // search/url_context = can coexist, but exclude MCP
+    final toolsArr = <Map<String, dynamic>>[];
+    if (builtIns.contains(BuiltInToolNames.codeExecution)) {
+      toolsArr.add({'code_execution': {}});
+    } else if (builtIns.contains(BuiltInToolNames.search) || builtIns.contains(BuiltInToolNames.urlContext)) {
+      if (builtIns.contains(BuiltInToolNames.search)) toolsArr.add({'google_search': {}});
+      if (builtIns.contains(BuiltInToolNames.urlContext)) toolsArr.add({'url_context': {}});
+    } else if (geminiTools != null) {
+      toolsArr.addAll(geminiTools);
     }
 
     // Maintain a rolling conversation for multi-round tool calls
@@ -4529,9 +4700,8 @@ class ChatApiService {
       final body = <String, dynamic>{
         'contents': convo,
         if (gen.isNotEmpty) 'generationConfig': gen,
-        // Prefer built-in tools when configured; otherwise map function tools
-        if (builtInToolEntries.isNotEmpty) 'tools': builtInToolEntries,
-        if (builtInToolEntries.isEmpty && geminiTools != null && geminiTools.isNotEmpty) 'tools': geminiTools,
+        if (toolsArr.isNotEmpty) 'tools': toolsArr,
+        if (toolsArr.isNotEmpty) 'toolConfig': {'function_calling_config': {'mode': 'AUTO'}},
       };
 
       final request = http.Request('POST', uri);
@@ -4597,44 +4767,6 @@ class ChatApiService {
           if (data.startsWith(p)) return true;
         }
         return false;
-      }
-
-      String _extFromMime(String mime) {
-        switch (mime.toLowerCase()) {
-          case 'image/jpeg':
-          case 'image/jpg':
-            return 'jpg';
-          case 'image/webp':
-            return 'webp';
-          case 'image/gif':
-            return 'gif';
-          case 'image/png':
-          default:
-            return 'png';
-        }
-      }
-
-      Future<String?> _saveInlineImageToFile(String mime, String data) async {
-        try {
-          final dir = await AppDirectories.getImagesDirectory();
-          if (!await dir.exists()) {
-            await dir.create(recursive: true);
-          }
-          final cleaned = data.replaceAll(RegExp(r'\s'), '');
-          List<int> bytes;
-          try {
-            bytes = base64Decode(cleaned);
-          } catch (_) {
-            bytes = base64Url.decode(cleaned);
-          }
-          final ext = _extFromMime(mime);
-          final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
-          final f = File(path);
-          await f.writeAsBytes(bytes, flush: true);
-          return path;
-        } catch (_) {
-          return null;
-        }
       }
 
       Future<String> _sanitizeTextIfNeeded(String input) async {
