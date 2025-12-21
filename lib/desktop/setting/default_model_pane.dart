@@ -91,6 +91,30 @@ class DesktopDefaultModelPane extends StatelessWidget {
 
                   const SizedBox(height: 16),
                   _ModelCard(
+                    icon: lucide.Lucide.FileText,
+                    title: l10n.defaultModelPageSummaryModelTitle,
+                    subtitle: l10n.defaultModelPageSummaryModelSubtitle,
+                    modelProvider: settings.summaryModelProvider,
+                    modelId: settings.summaryModelId,
+                    fallbackProvider: settings.titleModelProvider ?? settings.currentModelProvider,
+                    fallbackModelId: settings.titleModelId ?? settings.currentModelId,
+                    onReset: () async {
+                      await context.read<SettingsProvider>().resetSummaryModel();
+                    },
+                    onPick: () async {
+                      final sel = await showModelSelector(context);
+                      if (sel != null) {
+                        await context.read<SettingsProvider>().setSummaryModel(
+                          sel.providerKey,
+                          sel.modelId,
+                        );
+                      }
+                    },
+                    configAction: () => _showSummaryPromptDialog(context),
+                  ),
+
+                  const SizedBox(height: 16),
+                  _ModelCard(
                     icon: lucide.Lucide.Languages,
                     title: l10n.defaultModelPageTranslateModelTitle,
                     subtitle: l10n.defaultModelPageTranslateModelSubtitle,
@@ -135,29 +159,6 @@ class DesktopDefaultModelPane extends StatelessWidget {
                       }
                     },
                     configAction: () => _showOcrPromptDialog(context),
-                  ),
-                  const SizedBox(height: 16),
-                  _ModelCard(
-                    icon: lucide.Lucide.FileText,
-                    title: l10n.defaultModelPageSummaryModelTitle,
-                    subtitle: l10n.defaultModelPageSummaryModelSubtitle,
-                    modelProvider: settings.summaryModelProvider,
-                    modelId: settings.summaryModelId,
-                    fallbackProvider: settings.titleModelProvider ?? settings.currentModelProvider,
-                    fallbackModelId: settings.titleModelId ?? settings.currentModelId,
-                    onReset: () async {
-                      await context.read<SettingsProvider>().resetSummaryModel();
-                    },
-                    onPick: () async {
-                      final sel = await showModelSelector(context);
-                      if (sel != null) {
-                        await context.read<SettingsProvider>().setSummaryModel(
-                          sel.providerKey,
-                          sel.modelId,
-                        );
-                      }
-                    },
-                    configAction: () => _showSummaryPromptDialog(context),
                   ),
                 ],
               ),

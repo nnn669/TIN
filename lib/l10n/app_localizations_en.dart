@@ -2042,6 +2042,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for summarizing conversation titles; prefer fast & cheap models';
 
   @override
+  String get defaultModelPageSummaryModelTitle => 'Summary Model';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle =>
+      'Used for generating conversation summaries; prefer fast and cheap models';
+
+  @override
   String get defaultModelPageTranslateModelTitle => 'Translation Model';
 
   @override
@@ -2056,18 +2063,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for extracting text and descriptions from images';
 
   @override
-  String get defaultModelPageSummaryModelTitle => 'Summary Model';
-
-  @override
-  String get defaultModelPageSummaryModelSubtitle =>
-      'Used for generating conversation summaries';
-
-  @override
   String get defaultModelPagePromptLabel => 'Prompt';
 
   @override
   String get defaultModelPageTitlePromptHint =>
       'Enter prompt template for title summarization';
+
+  @override
+  String get defaultModelPageSummaryPromptHint =>
+      'Enter prompt template for summary generation';
 
   @override
   String get defaultModelPageTranslatePromptHint =>
@@ -2076,10 +2080,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get defaultModelPageOcrPromptHint =>
       'Enter prompt template for OCR image understanding';
-
-  @override
-  String get defaultModelPageSummaryPromptHint =>
-      'Enter prompt template for summary generation';
 
   @override
   String get defaultModelPageResetDefault => 'Reset to default';
@@ -2093,13 +2093,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
-    return 'Variables: source text: $sourceVar, target language: $targetVar';
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return 'Variables: previous summary: $previousSummaryVar, new messages: $userMessagesVar';
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
-    return 'Variables: previous summary: $previousSummaryVar, new messages: $userMessagesVar';
+  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
+    return 'Variables: source text: $sourceVar, target language: $targetVar';
   }
 
   @override

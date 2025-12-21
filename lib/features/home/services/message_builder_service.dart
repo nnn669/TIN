@@ -294,8 +294,9 @@ class MessageBuilderService {
   /// Inject memory prompts and recent chats reference into apiMessages.
   Future<void> injectMemoryAndRecentChats(
     List<Map<String, dynamic>> apiMessages,
-    Assistant? assistant,
-  ) async {
+    Assistant? assistant, {
+    String? currentConversationId,
+  }) async {
     try {
       if (assistant?.enableMemory == true) {
         final mp = contextProvider.read<MemoryProvider>();
@@ -339,7 +340,7 @@ class MessageBuilderService {
       if (assistant?.enableRecentChatsReference == true) {
         final chats = chatService.getAllConversations();
         final relevantChats = chats
-            .where((c) => c.assistantId == assistant!.id)
+            .where((c) => c.assistantId == assistant!.id && c.id != currentConversationId)
             .take(10)
             .where((c) => c.title.trim().isNotEmpty)
             .toList();

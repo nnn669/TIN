@@ -1978,6 +1978,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -1991,25 +1997,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
 
   @override
-  String get defaultModelPageSummaryModelTitle => '摘要模型';
-
-  @override
-  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型';
-
-  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
   String get defaultModelPageTitlePromptHint => '输入用于标题总结的提示词模板';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
 
   @override
   String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
-
-  @override
-  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -2023,13 +2023,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
-    return '变量：原始文本：$sourceVar，目标语言：$targetVar';
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
-    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
+  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
+    return '变量：原始文本：$sourceVar，目标语言：$targetVar';
   }
 
   @override
@@ -5557,6 +5557,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -5570,25 +5576,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageOcrModelSubtitle => '用于对图片执行文字识别的模型';
 
   @override
-  String get defaultModelPageSummaryModelTitle => '摘要模型';
-
-  @override
-  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型';
-
-  @override
   String get defaultModelPagePromptLabel => '提示词';
 
   @override
   String get defaultModelPageTitlePromptHint => '输入用于标题总结的提示词模板';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
 
   @override
   String get defaultModelPageOcrPromptHint => '输入用于 OCR 识别的提示词模板';
-
-  @override
-  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
 
   @override
   String get defaultModelPageResetDefault => '重置为默认';
@@ -5602,13 +5602,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
-  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
-    return '变量：原始文本：$sourceVar，目标语言：$targetVar';
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
-    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
+  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
+    return '变量：原始文本：$sourceVar，目标语言：$targetVar';
   }
 
   @override
@@ -9114,6 +9114,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用於總結對話標題的模型，推薦使用快速且便宜的模型';
 
   @override
+    String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+    String get defaultModelPageSummaryModelSubtitle => '用於生成對話摘要的模型，推薦使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻譯模型';
 
   @override
@@ -9133,6 +9139,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get defaultModelPageTitlePromptHint => '輸入用於標題總結的提示詞範本';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '輸入用於生成摘要的提示詞範本';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '輸入用於翻譯的提示詞範本';
 
   @override
@@ -9150,13 +9159,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
-    return '變數：原始文本：$sourceVar，目標語言：$targetVar';
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '變數：舊摘要：$previousSummaryVar，新訊息：$userMessagesVar';
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
-    return '變數：舊摘要：$previousSummaryVar，新訊息：$userMessagesVar';
+  String defaultModelPageTranslateVars(String sourceVar, String targetVar) {
+    return '變數：原始文本：$sourceVar，目標語言：$targetVar';
   }
 
   @override

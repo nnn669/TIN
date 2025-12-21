@@ -95,6 +95,26 @@ class DefaultModelPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _ModelCard(
+            icon: Lucide.FileText,
+            title: l10n.defaultModelPageSummaryModelTitle,
+            subtitle: l10n.defaultModelPageSummaryModelSubtitle,
+            modelProvider: settings.summaryModelProvider,
+            modelId: settings.summaryModelId,
+            fallbackProvider: settings.titleModelProvider ?? settings.currentModelProvider,
+            fallbackModelId: settings.titleModelId ?? settings.currentModelId,
+            onReset: () async {
+              await context.read<SettingsProvider>().resetSummaryModel();
+            },
+            onPick: () async {
+              final sel = await showModelSelector(context);
+              if (sel != null) {
+                await context.read<SettingsProvider>().setSummaryModel(sel.providerKey, sel.modelId);
+              }
+            },
+            configAction: () => _showSummaryPromptSheet(context),
+          ),
+          const SizedBox(height: 16),
+          _ModelCard(
             icon: Lucide.Languages,
             title: l10n.defaultModelPageTranslateModelTitle,
             subtitle: l10n.defaultModelPageTranslateModelSubtitle,
@@ -132,26 +152,6 @@ class DefaultModelPage extends StatelessWidget {
               }
             },
             configAction: () => showOcrPromptSheet(context),
-          ),
-          const SizedBox(height: 16),
-          _ModelCard(
-            icon: Lucide.FileText,
-            title: l10n.defaultModelPageSummaryModelTitle,
-            subtitle: l10n.defaultModelPageSummaryModelSubtitle,
-            modelProvider: settings.summaryModelProvider,
-            modelId: settings.summaryModelId,
-            fallbackProvider: settings.titleModelProvider ?? settings.currentModelProvider,
-            fallbackModelId: settings.titleModelId ?? settings.currentModelId,
-            onReset: () async {
-              await context.read<SettingsProvider>().resetSummaryModel();
-            },
-            onPick: () async {
-              final sel = await showModelSelector(context);
-              if (sel != null) {
-                await context.read<SettingsProvider>().setSummaryModel(sel.providerKey, sel.modelId);
-              }
-            },
-            configAction: () => _showSummaryPromptSheet(context),
           ),
         ],
       ),

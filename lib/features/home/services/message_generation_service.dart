@@ -103,7 +103,11 @@ class MessageGenerationService {
 
     // Inject prompts
     messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
-    await messageBuilderService.injectMemoryAndRecentChats(apiMessages, assistant);
+    await messageBuilderService.injectMemoryAndRecentChats(
+      apiMessages,
+      assistant,
+      currentConversationId: currentConversation?.id,
+    );
 
     final hasBuiltInSearch = messageBuilderService.hasBuiltInGeminiSearch(settings, providerKey, modelId);
     messageBuilderService.injectSearchPrompt(apiMessages, settings, hasBuiltInSearch);
