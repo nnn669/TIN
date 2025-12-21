@@ -42,7 +42,7 @@ class _ModelEditDialogBody extends StatefulWidget {
   State<_ModelEditDialogBody> createState() => _ModelEditDialogBodyState();
 }
 
-enum _TabKind { basic, advanced }
+enum _TabKind { basic, advanced, tools }
 
 class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
@@ -57,16 +57,43 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
   final Set<ModelAbility> _abilities = {};
   final List<_HeaderKV> _headers = [];
   final List<_BodyKV> _bodies = [];
-  bool _searchTool = false;
-  bool _urlContextTool = false;
+
+  // Provider kind for conditional UI
+  ProviderKind? _providerKind;
+
+  // Google built-in tools
+  bool _googleUrlContextTool = false;
+  bool _googleCodeExecutionTool = false;
+  bool _googleYoutubeTool = false;
+
+  // OpenAI built-in tools
+  bool _openaiCodeInterpreterTool = false;
+  bool _openaiImageGenerationTool = false;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() { if (!_tabCtrl.indexIsChanging) setState(() => _tab = _tabCtrl.index == 0 ? _TabKind.basic : _TabKind.advanced); });
     final settings = context.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(widget.providerKey);
+    _providerKind = cfg.providerType;
+
+    // Determine tab count: 3 for Google/OpenAI (has tools tab), 2 for others
+    final hasToolsTab = _providerKind == ProviderKind.google || _providerKind == ProviderKind.openai;
+    _tabCtrl = TabController(length: hasToolsTab ? 3 : 2, vsync: this);
+    _tabCtrl.addListener(() {
+      if (!_tabCtrl.indexIsChanging) {
+        setState(() {
+          if (_tabCtrl.index == 0) {
+            _tab = _TabKind.basic;
+          } else if (_tabCtrl.index == 1) {
+            _tab = _TabKind.advanced;
+          } else {
+            _tab = _TabKind.tools;
+          }
+        });
+      }
+    });
+
     // Resolve display model id from per-model overrides when present (apiModelId),
     // falling back to the logical key for backwards compatibility.
     Map? _initialOv;
@@ -108,9 +135,17 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
         for (final h in hdrs) { if (h is Map) { final kv = _HeaderKV(); kv.name.text = (h['name'] as String?) ?? ''; kv.value.text = (h['value'] as String?) ?? ''; _headers.add(kv); } }
         final bds = (ov['body'] as List?) ?? const [];
         for (final b in bds) { if (b is Map) { final kv = _BodyKV(); kv.keyCtrl.text = (b['key'] as String?) ?? ''; kv.valueCtrl.text = (b['value'] as String?) ?? ''; _bodies.add(kv); } }
-        final tools = (ov['tools'] as Map?) ?? const {};
-        _searchTool = (tools['search'] as bool?) ?? false;
-        _urlContextTool = (tools['urlContext'] as bool?) ?? false;
+
+        // Read built-in tools from builtInTools array
+        final builtInToolsList = (ov['builtInTools'] as List?) ?? const <dynamic>[];
+        final builtInSet = builtInToolsList.map((e) => e.toString().toLowerCase()).toSet();
+        // Google tools
+        _googleUrlContextTool = builtInSet.contains('url_context') || builtInSet.contains('urlcontext');
+        _googleCodeExecutionTool = builtInSet.contains('code_execution') || builtInSet.contains('codeexecution');
+        _googleYoutubeTool = builtInSet.contains('youtube');
+        // OpenAI tools
+        _openaiCodeInterpreterTool = builtInSet.contains('code_interpreter') || builtInSet.contains('codeinterpreter');
+        _openaiImageGenerationTool = builtInSet.contains('image_generation') || builtInSet.contains('imagegeneration');
       }
     }
   }
@@ -189,7 +224,15 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                          child: _SegTabBar(controller: _tabCtrl, tabs: [l10n.modelDetailSheetBasicTab, l10n.modelDetailSheetAdvancedTab]),
+                          child: _SegTabBar(
+                            controller: _tabCtrl,
+                            tabs: [
+                              l10n.modelDetailSheetBasicTab,
+                              l10n.modelDetailSheetAdvancedTab,
+                              if (_providerKind == ProviderKind.google || _providerKind == ProviderKind.openai)
+                                l10n.modelDetailSheetBuiltinToolsTab,
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Expanded(
@@ -233,6 +276,8 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
         return _buildBasic(context, l10n);
       case _TabKind.advanced:
         return _buildAdvanced(context, l10n);
+      case _TabKind.tools:
+        return _buildTools(context, l10n);
     }
   }
 
@@ -346,6 +391,84 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
     ];
   }
 
+  List<Widget> _buildTools(BuildContext context, AppLocalizations l10n) {
+    final cs = Theme.of(context).colorScheme;
+    final settings = context.watch<SettingsProvider>();
+    final cfg = settings.getProviderConfig(widget.providerKey);
+    return [
+      Text(
+        l10n.modelDetailSheetBuiltinToolsDescription,
+        style: TextStyle(color: cs.onSurface.withOpacity(0.8), fontSize: 13),
+      ),
+      if (_providerKind == ProviderKind.google) ...[
+        const SizedBox(height: 4),
+        Text(
+          l10n.modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint,
+          style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        _ToolTile(
+          title: l10n.modelDetailSheetUrlContextTool,
+          desc: l10n.modelDetailSheetUrlContextToolDescription,
+          value: _googleUrlContextTool,
+          // URL Context is disabled when Code Execution is enabled (mutually exclusive)
+          onChanged: _googleCodeExecutionTool
+              ? null
+              : (v) => setState(() => _googleUrlContextTool = v),
+        ),
+        const SizedBox(height: 8),
+        _ToolTile(
+          title: l10n.modelDetailSheetCodeExecutionTool,
+          desc: l10n.modelDetailSheetCodeExecutionToolDescription,
+          value: _googleCodeExecutionTool,
+          // Code Execution is disabled when URL Context is enabled (mutually exclusive)
+          onChanged: _googleUrlContextTool
+              ? null
+              : (v) => setState(() => _googleCodeExecutionTool = v),
+        ),
+        const SizedBox(height: 8),
+        _ToolTile(
+          title: l10n.modelDetailSheetYoutubeTool,
+          desc: l10n.modelDetailSheetYoutubeToolDescription,
+          value: _googleYoutubeTool,
+          onChanged: (v) => setState(() => _googleYoutubeTool = v),
+        ),
+      ] else if (_providerKind == ProviderKind.openai) ...[
+        if (cfg.useResponseApi != true) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint,
+            style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 10),
+        _ToolTile(
+          title: l10n.modelDetailSheetOpenaiCodeInterpreterTool,
+          desc: l10n.modelDetailSheetOpenaiCodeInterpreterToolDescription,
+          value: _openaiCodeInterpreterTool,
+          onChanged: (cfg.useResponseApi == true)
+              ? (v) => setState(() => _openaiCodeInterpreterTool = v)
+              : null,
+        ),
+        const SizedBox(height: 8),
+        _ToolTile(
+          title: l10n.modelDetailSheetOpenaiImageGenerationTool,
+          desc: l10n.modelDetailSheetOpenaiImageGenerationToolDescription,
+          value: _openaiImageGenerationTool,
+          onChanged: (cfg.useResponseApi == true)
+              ? (v) => setState(() => _openaiImageGenerationTool = v)
+              : null,
+        ),
+      ] else ...[
+        const SizedBox(height: 10),
+        Text(
+          l10n.modelDetailSheetBuiltinToolsUnsupportedHint,
+          style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 12),
+        ),
+      ],
+    ];
+  }
+
   Widget _label(BuildContext context, String text) => Text(text, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)));
 
   // Generate a unique logical key for a model instance within a provider.
@@ -374,6 +497,18 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
     final ov = Map<String, dynamic>.from(old.modelOverrides);
     final headers = [for (final h in _headers) if (h.name.text.trim().isNotEmpty) {'name': h.name.text.trim(), 'value': h.value.text}];
     final bodies = [for (final b in _bodies) if (b.keyCtrl.text.trim().isNotEmpty) {'key': b.keyCtrl.text.trim(), 'value': b.valueCtrl.text}];
+
+    // Build builtInTools list based on provider type
+    final builtInTools = <String>[];
+    if (_providerKind == ProviderKind.google) {
+      if (_googleUrlContextTool) builtInTools.add('url_context');
+      if (_googleCodeExecutionTool) builtInTools.add('code_execution');
+      if (_googleYoutubeTool) builtInTools.add('youtube');
+    } else if (_providerKind == ProviderKind.openai) {
+      if (_openaiCodeInterpreterTool) builtInTools.add('code_interpreter');
+      if (_openaiImageGenerationTool) builtInTools.add('image_generation');
+    }
+
     final String key = (prevKey.isEmpty || widget.isNew) ? _nextModelKey(old, apiModelId) : prevKey;
     ov[key] = {
       'apiModelId': apiModelId,
@@ -384,6 +519,7 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
       'abilities': _abilities.map((e) => e == ModelAbility.reasoning ? 'reasoning' : 'tool').toList(),
       'headers': headers,
       'body': bodies,
+      'builtInTools': builtInTools,
     };
 
     if (prevKey.isEmpty || widget.isNew) {
@@ -672,7 +808,7 @@ class _ToolTile extends StatefulWidget {
   final String title;
   final String desc;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   @override
   State<_ToolTile> createState() => _ToolTileState();
 }
@@ -683,27 +819,33 @@ class _ToolTileState extends State<_ToolTile> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          color: _hover ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.03)) : (isDark ? Colors.white10 : const Color(0xFFF2F3F5)),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Text(widget.desc, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
-            ]),
+    final bool isDisabled = widget.onChanged == null;
+    return Opacity(
+      opacity: isDisabled ? 0.45 : 1.0,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: _hover && !isDisabled
+                ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.03))
+                : (isDark ? Colors.white10 : const Color(0xFFF2F3F5)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
           ),
-          Switch.adaptive(value: widget.value, onChanged: widget.onChanged),
-        ]),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(widget.desc, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+              ]),
+            ),
+            Switch.adaptive(value: widget.value, onChanged: widget.onChanged),
+          ]),
+        ),
       ),
     );
   }

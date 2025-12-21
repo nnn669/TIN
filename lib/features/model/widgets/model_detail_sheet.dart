@@ -515,6 +515,13 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
       ),
       if (_providerKind == ProviderKind.google) ...[
         Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Text(
+            l10n.modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint,
+            style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 12),
+          ),
+        ),
+        Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: _ToolTile(
             title: l10n.modelDetailSheetUrlContextTool,
@@ -550,7 +557,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
       ] else if (_providerKind == ProviderKind.openai) ...[
         if (cfg.useResponseApi != true)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
               l10n.modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint,
               style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 12),
@@ -1022,25 +1029,30 @@ class _ToolTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(desc, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
-                ],
+    final cs = Theme.of(context).colorScheme;
+    final bool isDisabled = onChanged == null;
+    return Opacity(
+      opacity: isDisabled ? 0.45 : 1.0,
+      child: Material(
+        color: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(desc, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+                  ],
+                ),
               ),
-            ),
-            IosSwitch(value: value, onChanged: onChanged),
-          ],
+              IosSwitch(value: value, onChanged: onChanged),
+            ],
+          ),
         ),
       ),
     );
