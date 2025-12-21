@@ -977,7 +977,7 @@
   "modelFetchInvertTooltip": "Invert",
   "modelDetailSheetAddBody": "Add Body",
   "modelDetailSheetBuiltinToolsDescription": "Built-in tools only support official APIs.",
-  "modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint": "Code execution cannot be used with other tools simultaneously (including Search/MCP).",
+  "modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint": "Code execution cannot coexist with Search/URL Context/MCP tools.",
   "modelDetailSheetBuiltinToolsUnsupportedHint": "Current provider does not support these built-in tools.",
   "modelDetailSheetSearchTool": "Search",
   "modelDetailSheetSearchToolDescription": "Enable Google Search integration",

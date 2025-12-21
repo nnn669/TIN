@@ -2188,7 +2188,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelDetailSheetBuiltinToolsDescription =>
-      'Built-in tools only support official APIs (Gemini/Vertex API, Responses API).';
+      'Built-in tools only support official APIs.';
+
+  @override
+  String get modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint =>
+      'Code execution cannot coexist with Search/URL Context/MCP tools.';
 
   @override
   String get modelDetailSheetBuiltinToolsUnsupportedHint =>
