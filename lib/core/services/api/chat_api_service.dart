@@ -4361,16 +4361,8 @@ class ChatApiService {
 
       final effective = _effectiveModelInfo(config, modelId);
       final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
-      final builtInToolEntries = <Map<String, dynamic>>[];
-      // code_execution is exclusive - cannot be used with other built-in tools
-      if (builtIns.isNotEmpty) {
-        if (builtIns.contains('code_execution')) {
-          builtInToolEntries.add({'code_execution': {}});
-        } else {
-          if (builtIns.contains('search')) builtInToolEntries.add({'google_search': {}});
-          if (builtIns.contains('url_context')) builtInToolEntries.add({'url_context': {}});
-        }
-      }
+
+      // Map OpenAI-style tools to Gemini functionDeclarations (MCP)
       List<Map<String, dynamic>>? geminiTools;
       if (tools != null && tools.isNotEmpty) {
         final decls = <Map<String, dynamic>>[];
@@ -4394,11 +4386,16 @@ class ChatApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
+      // Built-in tools and function_declarations (MCP) are mutually exclusive in Gemini API
+      // code_execution = exclusive mode (cannot coexist with anything)
+      // search/url_context = can coexist, but exclude MCP
       final toolsArr = <Map<String, dynamic>>[];
-      if (builtInToolEntries.isNotEmpty) {
-        toolsArr.addAll(builtInToolEntries);
-      }
-      if (geminiTools != null) {
+      if (builtIns.contains('code_execution')) {
+        toolsArr.add({'code_execution': {}});
+      } else if (builtIns.contains('search') || builtIns.contains('url_context')) {
+        if (builtIns.contains('search')) toolsArr.add({'google_search': {}});
+        if (builtIns.contains('url_context')) toolsArr.add({'url_context': {}});
+      } else if (geminiTools != null) {
         toolsArr.addAll(geminiTools);
       }
 
@@ -4605,23 +4602,8 @@ class ChatApiService {
     bool _expectImage = wantsImageOutput;
     bool _receivedImage = false;
     final off = _isOff(thinkingBudget);
-    // Built-in Gemini tools (supported for both official Gemini API and Vertex)
-    // code_execution is exclusive - cannot be used with other built-in tools
-    final builtInToolEntries = <Map<String, dynamic>>[];
-    if (builtIns.isNotEmpty) {
-      if (builtIns.contains('code_execution')) {
-        builtInToolEntries.add({'code_execution': {}});
-      } else {
-        if (builtIns.contains('search')) {
-          builtInToolEntries.add({'google_search': {}});
-        }
-        if (builtIns.contains('url_context')) {
-          builtInToolEntries.add({'url_context': {}});
-        }
-      }
-    }
 
-    // Map OpenAI-style tools to Gemini functionDeclarations
+    // Map OpenAI-style tools to Gemini functionDeclarations (MCP)
     List<Map<String, dynamic>>? geminiTools;
     if (tools != null && tools.isNotEmpty) {
       final decls = <Map<String, dynamic>>[];
@@ -4643,11 +4625,16 @@ class ChatApiService {
       }
       if (decls.isNotEmpty) geminiTools = [{'function_declarations': decls}];
     }
+    // Built-in tools and function_declarations (MCP) are mutually exclusive in Gemini API
+    // code_execution = exclusive mode (cannot coexist with anything)
+    // search/url_context = can coexist, but exclude MCP
     final toolsArr = <Map<String, dynamic>>[];
-    if (builtInToolEntries.isNotEmpty) {
-      toolsArr.addAll(builtInToolEntries);
-    }
-    if (geminiTools != null) {
+    if (builtIns.contains('code_execution')) {
+      toolsArr.add({'code_execution': {}});
+    } else if (builtIns.contains('search') || builtIns.contains('url_context')) {
+      if (builtIns.contains('search')) toolsArr.add({'google_search': {}});
+      if (builtIns.contains('url_context')) toolsArr.add({'url_context': {}});
+    } else if (geminiTools != null) {
       toolsArr.addAll(geminiTools);
     }
 

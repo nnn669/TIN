@@ -116,18 +116,21 @@ class _SearchSettingsSheet extends StatelessWidget {
         cfg.providerType == ProviderKind.openai &&
         (modelId ?? '').toLowerCase().contains('grok');
 
-    // Read current built-in search toggle from modelOverrides
+    // Read current built-in search/url_context toggle from modelOverrides
     bool hasBuiltInSearch = false;
+    bool hasUrlContext = false;
     if ((isGeminiProvider || isClaude || isOpenAIResponses || isGrok) &&
         providerKey != null &&
         (modelId ?? '').isNotEmpty) {
       final mid = modelId!;
       final ov = cfg!.modelOverrides[mid] as Map?;
       final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      hasBuiltInSearch = list
-          .map((e) => e.toString().toLowerCase())
-          .contains('search');
+      final builtInSet = list.map((e) => e.toString().toLowerCase()).toSet();
+      hasBuiltInSearch = builtInSet.contains('search');
+      hasUrlContext = builtInSet.contains('url_context');
     }
+    // When url_context is active, treat as built-in search mode (hide external search options)
+    final builtInMode = hasBuiltInSearch || hasUrlContext;
     // Claude supported models per Anthropic docs
     final claudeSupportedModels = <String>{
       'claude-sonnet-4-5-20250929',
@@ -322,7 +325,7 @@ class _SearchSettingsSheet extends StatelessWidget {
                 ],
 
                 // Toggle card
-                if (!hasBuiltInSearch) ...[
+                if (!builtInMode) ...[
                   IosCardPress(
                     borderRadius: BorderRadius.circular(14),
                     baseColor: cs.surface,
@@ -383,7 +386,7 @@ class _SearchSettingsSheet extends StatelessWidget {
                   const SizedBox(height: 14),
                 ],
                 // Services list (iOS-style rows like learning mode)
-                if (!hasBuiltInSearch && services.isNotEmpty) ...[
+                if (!builtInMode && services.isNotEmpty) ...[
                   ...List.generate(services.length, (i) {
                     final s = services[i];
                     final bool isSelected = i == selected;
@@ -434,7 +437,7 @@ class _SearchSettingsSheet extends StatelessWidget {
                     );
                   }),
                   const SizedBox(height: 8),
-                ] else if (!hasBuiltInSearch) ...[
+                ] else if (!builtInMode) ...[
                   Text(
                     l10n.searchSettingsSheetNoServicesMessage,
                     style: TextStyle(color: cs.onSurface.withOpacity(0.7)),

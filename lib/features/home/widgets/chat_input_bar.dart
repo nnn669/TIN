@@ -738,7 +738,10 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
         final cfg = (currentProviderKey != null)
             ? settings.getProviderConfig(currentProviderKey)
             : null;
+        // Check built-in tools state for Gemini
         bool builtinSearchActive = false;
+        bool codeExecutionActive = false;
+        bool urlContextActive = false;
         if (cfg != null && currentModelId != null) {
           final isGemini = cfg.providerType == ProviderKind.google;
           final isClaude = cfg.providerType == ProviderKind.claude;
@@ -749,8 +752,15 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
             final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
             final builtInSet = list.map((e) => e.toString().toLowerCase()).toSet();
             builtinSearchActive = builtInSet.contains('search');
+            // Only Gemini has code_execution and url_context
+            if (isGemini) {
+              codeExecutionActive = builtInSet.contains('code_execution');
+              urlContextActive = builtInSet.contains('url_context');
+            }
           }
         }
+        // Any built-in tool active means MCP should be hidden
+        final anyBuiltInActive = builtinSearchActive || codeExecutionActive || urlContextActive;
         final appSearchEnabled = settings.searchEnabled;
         final brandAsset = (() {
           if (!appSearchEnabled || builtinSearchActive) return null;
@@ -761,8 +771,9 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           return BrandAssets.assetForName(svc.name);
         })();
 
-        // Search button
-        actions.add(_OverflowAction(
+        // Search button (hidden when code_execution is active)
+        if (!codeExecutionActive) {
+          actions.add(_OverflowAction(
           width: normalButtonW,
           builder: () {
             // Not enabled at all -> default globe
@@ -817,6 +828,7 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
             return DesktopContextMenuItem(icon: Lucide.Globe, label: l10n.chatInputBarOnlineSearchTooltip, onTap: widget.onOpenSearch);
           }(),
         ));
+        }
 
         if (widget.supportsReasoning) {
           actions.add(_OverflowAction(
@@ -841,8 +853,8 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           ));
         }
 
-        // MCP button
-        if (widget.showMcpButton) {
+        // MCP button (hidden when any built-in tool is active)
+        if (widget.showMcpButton && !anyBuiltInActive) {
           actions.add(_OverflowAction(
             width: normalButtonW,
             builder: () => _CompactIconButton(
