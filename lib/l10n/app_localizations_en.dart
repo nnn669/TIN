@@ -2042,6 +2042,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for summarizing conversation titles; prefer fast & cheap models';
 
   @override
+  String get defaultModelPageSummaryModelTitle => 'Summary Model';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle =>
+      'Used for generating conversation summaries; prefer fast and cheap models';
+
+  @override
   String get defaultModelPageTranslateModelTitle => 'Translation Model';
 
   @override
@@ -2063,6 +2070,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter prompt template for title summarization';
 
   @override
+  String get defaultModelPageSummaryPromptHint =>
+      'Enter prompt template for summary generation';
+
+  @override
   String get defaultModelPageTranslatePromptHint =>
       'Enter prompt template for translation';
 
@@ -2079,6 +2090,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String defaultModelPageTitleVars(String contentVar, String localeVar) {
     return 'Vars: content: $contentVar, locale: $localeVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return 'Variables: previous summary: $previousSummaryVar, new messages: $userMessagesVar';
   }
 
   @override
@@ -3700,4 +3716,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logViewerOpenFolder => 'Open Logs Folder';
+
+  @override
+  String get assistantEditManageSummariesTitle => 'Manage Summaries';
+
+  @override
+  String get assistantEditSummaryEmpty => 'No summaries yet';
+
+  @override
+  String get assistantEditSummaryDialogTitle => 'Edit Summary';
+
+  @override
+  String get assistantEditSummaryDialogHint => 'Enter summary content';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => 'Clear Summary';
+
+  @override
+  String get assistantEditDeleteSummaryContent =>
+      'Are you sure you want to clear this summary?';
 }

@@ -39,6 +39,14 @@ class Conversation extends HiveObject {
   @HiveField(9)
   Map<String, int> versionSelections;
 
+  // LLM-generated conversation summary
+  @HiveField(10)
+  String? summary;
+
+  // Message count when summary was last generated (to avoid redundant updates)
+  @HiveField(11)
+  int lastSummarizedMessageCount;
+
   Conversation({
     String? id,
     required this.title,
@@ -50,6 +58,8 @@ class Conversation extends HiveObject {
     String? assistantId,
     int? truncateIndex,
     Map<String, int>? versionSelections,
+    this.summary,
+    int? lastSummarizedMessageCount,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now(),
@@ -57,7 +67,8 @@ class Conversation extends HiveObject {
         mcpServerIds = mcpServerIds ?? [],
         assistantId = assistantId,
         truncateIndex = truncateIndex ?? -1,
-        versionSelections = versionSelections ?? <String, int>{};
+        versionSelections = versionSelections ?? <String, int>{},
+        lastSummarizedMessageCount = lastSummarizedMessageCount ?? 0;
 
   Conversation copyWith({
     String? id,
@@ -70,6 +81,9 @@ class Conversation extends HiveObject {
     String? assistantId,
     int? truncateIndex,
     Map<String, int>? versionSelections,
+    String? summary,
+    int? lastSummarizedMessageCount,
+    bool clearSummary = false,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -82,6 +96,9 @@ class Conversation extends HiveObject {
       assistantId: assistantId ?? this.assistantId,
       truncateIndex: truncateIndex ?? this.truncateIndex,
       versionSelections: versionSelections ?? this.versionSelections,
+      summary: clearSummary ? null : (summary ?? this.summary),
+      lastSummarizedMessageCount:
+          lastSummarizedMessageCount ?? this.lastSummarizedMessageCount,
     );
   }
 
@@ -97,6 +114,8 @@ class Conversation extends HiveObject {
       'assistantId': assistantId,
       'truncateIndex': truncateIndex,
       'versionSelections': versionSelections,
+      'summary': summary,
+      'lastSummarizedMessageCount': lastSummarizedMessageCount,
     };
   }
 
@@ -112,6 +131,8 @@ class Conversation extends HiveObject {
       assistantId: json['assistantId'] as String?,
       truncateIndex: json['truncateIndex'] as int? ?? -1,
       versionSelections: (json['versionSelections'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v as num).toInt())) ?? <String, int>{},
+      summary: json['summary'] as String?,
+      lastSummarizedMessageCount: json['lastSummarizedMessageCount'] as int? ?? 0,
     );
   }
 }

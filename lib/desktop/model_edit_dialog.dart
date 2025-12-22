@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../core/providers/settings_provider.dart';
 import '../core/providers/assistant_provider.dart';
 import '../core/providers/model_provider.dart';
+import '../core/services/api/builtin_tools.dart';
 import '../shared/widgets/snackbar.dart';
 
 Future<bool?> showDesktopModelEditDialog(BuildContext context, {required String providerKey, required String modelId}) async {
@@ -137,15 +138,14 @@ class _ModelEditDialogBodyState extends State<_ModelEditDialogBody> with SingleT
         for (final b in bds) { if (b is Map) { final kv = _BodyKV(); kv.keyCtrl.text = (b['key'] as String?) ?? ''; kv.valueCtrl.text = (b['value'] as String?) ?? ''; _bodies.add(kv); } }
 
         // Read built-in tools from builtInTools array
-        final builtInToolsList = (ov['builtInTools'] as List?) ?? const <dynamic>[];
-        final builtInSet = builtInToolsList.map((e) => e.toString().toLowerCase()).toSet();
+        final builtInSet = BuiltInToolNames.parseAndNormalize(ov['builtInTools']);
         // Google tools
-        _googleUrlContextTool = builtInSet.contains('url_context') || builtInSet.contains('urlcontext');
-        _googleCodeExecutionTool = builtInSet.contains('code_execution') || builtInSet.contains('codeexecution');
-        _googleYoutubeTool = builtInSet.contains('youtube');
+        _googleUrlContextTool = builtInSet.contains(BuiltInToolNames.urlContext);
+        _googleCodeExecutionTool = builtInSet.contains(BuiltInToolNames.codeExecution);
+        _googleYoutubeTool = builtInSet.contains(BuiltInToolNames.youtube);
         // OpenAI tools
-        _openaiCodeInterpreterTool = builtInSet.contains('code_interpreter') || builtInSet.contains('codeinterpreter');
-        _openaiImageGenerationTool = builtInSet.contains('image_generation') || builtInSet.contains('imagegeneration');
+        _openaiCodeInterpreterTool = builtInSet.contains(BuiltInToolNames.codeInterpreter);
+        _openaiImageGenerationTool = builtInSet.contains(BuiltInToolNames.imageGeneration);
       }
     }
   }

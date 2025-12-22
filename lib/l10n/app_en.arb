@@ -905,12 +905,15 @@
   "defaultModelPageChatModelSubtitle": "Global default chat model",
   "defaultModelPageTitleModelTitle": "Title Summary Model",
   "defaultModelPageTitleModelSubtitle": "Used for summarizing conversation titles; prefer fast & cheap models",
+  "defaultModelPageSummaryModelTitle": "Summary Model",
+  "defaultModelPageSummaryModelSubtitle": "Used for generating conversation summaries; prefer fast and cheap models",
   "defaultModelPageTranslateModelTitle": "Translation Model",
   "defaultModelPageTranslateModelSubtitle": "Used for translating message content; prefer fast & accurate models",
   "defaultModelPageOcrModelTitle": "OCR Model",
   "defaultModelPageOcrModelSubtitle": "Used for extracting text and descriptions from images",
   "defaultModelPagePromptLabel": "Prompt",
   "defaultModelPageTitlePromptHint": "Enter prompt template for title summarization",
+  "defaultModelPageSummaryPromptHint": "Enter prompt template for summary generation",
   "defaultModelPageTranslatePromptHint": "Enter prompt template for translation",
   "defaultModelPageOcrPromptHint": "Enter prompt template for OCR image understanding",
   "defaultModelPageResetDefault": "Reset to default",
@@ -922,6 +925,17 @@
         "type": "String"
       },
       "localeVar": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultModelPageSummaryVars": "Variables: previous summary: {previousSummaryVar}, new messages: {userMessagesVar}",
+  "@defaultModelPageSummaryVars": {
+    "placeholders": {
+      "previousSummaryVar": {
+        "type": "String"
+      },
+      "userMessagesVar": {
         "type": "String"
       }
     }
@@ -1511,5 +1525,11 @@
   "logViewerEmpty": "No logs yet",
   "logViewerCurrentLog": "Current Log",
   "logViewerExport": "Export",
-  "logViewerOpenFolder": "Open Logs Folder"
+  "logViewerOpenFolder": "Open Logs Folder",
+  "assistantEditManageSummariesTitle": "Manage Summaries",
+  "assistantEditSummaryEmpty": "No summaries yet",
+  "assistantEditSummaryDialogTitle": "Edit Summary",
+  "assistantEditSummaryDialogHint": "Enter summary content",
+  "assistantEditDeleteSummaryTitle": "Clear Summary",
+  "assistantEditDeleteSummaryContent": "Are you sure you want to clear this summary?"
 }

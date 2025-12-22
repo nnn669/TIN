@@ -138,7 +138,8 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
     _abilities..clear()..addAll(base.abilities);
 
     if (!widget.isNew) {
-      final ov = _initialOv ?? cfg.modelOverrides[widget.modelId] as Map?;
+      final rawOv = cfg.modelOverrides[widget.modelId];
+      final ov = _initialOv ?? (rawOv is Map ? rawOv : null);
       if (ov != null) {
         _nameCtrl.text = (ov['name'] as String?)?.trim().isNotEmpty == true ? (ov['name'] as String) : _nameCtrl.text;
         final t = (ov['type'] as String?) ?? '';
@@ -150,7 +151,8 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         _output..clear()..addAll(outArr.map((e) => e == 'image' ? Modality.image : Modality.text));
         _abilities..clear()..addAll(abArr.map((e) => e == 'reasoning' ? ModelAbility.reasoning : ModelAbility.tool));
         // headers/body
-        final hdrs = (ov['headers'] as List?) ?? const [];
+        final rawHdrs = ov['headers'];
+        final hdrs = (rawHdrs is List) ? rawHdrs : const <dynamic>[];
         for (final h in hdrs) {
           if (h is Map) {
             final kv = _HeaderKV();
@@ -159,7 +161,8 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
             _headers.add(kv);
           }
         }
-        final bds = (ov['body'] as List?) ?? const [];
+        final rawBds = ov['body'];
+        final bds = (rawBds is List) ? rawBds : const <dynamic>[];
         for (final b in bds) {
           if (b is Map) {
             final kv = _BodyKV();
@@ -169,8 +172,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
           }
         }
         // Built-in tools toggles
-        final builtIns = (ov['builtInTools'] as List?) ?? const <dynamic>[];
-        final builtInSet = BuiltInToolNames.parseAndNormalize(builtIns);
+        final builtInSet = BuiltInToolNames.parseAndNormalize(ov['builtInTools']);
 
         _googleUrlContextTool = builtInSet.contains(BuiltInToolNames.urlContext);
         _googleCodeExecutionTool = builtInSet.contains(BuiltInToolNames.codeExecution);
@@ -180,7 +182,8 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
         _openaiImageGenerationTool = builtInSet.contains(BuiltInToolNames.imageGeneration);
 
         // Backward compatibility: legacy UI-only tools map (older versions)
-        final tools = (ov['tools'] as Map?) ?? const {};
+        final rawTools = ov['tools'];
+        final tools = rawTools is Map ? rawTools : const <dynamic, dynamic>{};
         _googleUrlContextTool = _googleUrlContextTool || ((tools['urlContext'] as bool?) ?? false);
       }
     }
@@ -663,8 +666,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
     final prev = (prevKey.isNotEmpty && ov[prevKey] is Map)
         ? (ov[prevKey] as Map).cast<String, dynamic>()
         : const <String, dynamic>{};
-    final builtInsPrev = (prev['builtInTools'] as List?) ?? const <dynamic>[];
-    final builtInSet = BuiltInToolNames.parseAndNormalize(builtInsPrev);
+    final builtInSet = BuiltInToolNames.parseAndNormalize(prev['builtInTools']);
     if (_providerKind == ProviderKind.google) {
       builtInSet.remove(BuiltInToolNames.urlContext);
       builtInSet.remove(BuiltInToolNames.codeExecution);
@@ -678,20 +680,7 @@ class _ModelDetailSheetState extends State<_ModelDetailSheet> with SingleTickerP
       if (_openaiCodeInterpreterTool) builtInSet.add(BuiltInToolNames.codeInterpreter);
       if (_openaiImageGenerationTool) builtInSet.add(BuiltInToolNames.imageGeneration);
     }
-    final preferredOrder = <String>[
-      BuiltInToolNames.search,
-      BuiltInToolNames.urlContext,
-      BuiltInToolNames.codeExecution,
-      BuiltInToolNames.youtube,
-      BuiltInToolNames.codeInterpreter,
-      BuiltInToolNames.imageGeneration,
-    ];
-    final builtInTools = <String>[
-      for (final k in preferredOrder)
-        if (builtInSet.contains(k)) k,
-      for (final k in builtInSet)
-        if (!preferredOrder.contains(k)) k,
-    ];
+    final builtInTools = BuiltInToolNames.orderedForStorage(builtInSet);
     // Decide which logical key to use for this instance
     final String key = (prevKey.isEmpty || widget.isNew) ? _nextModelKey(old, apiModelId) : prevKey;
     ov[key] = {

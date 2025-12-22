@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../icons/lucide_adapter.dart';
 import '../core/providers/settings_provider.dart';
 import '../core/providers/assistant_provider.dart';
+import '../core/services/api/builtin_tools.dart';
 import '../core/services/search/search_service.dart';
 import '../utils/brand_assets.dart';
 import '../l10n/app_localizations.dart';
@@ -228,9 +229,10 @@ class _SearchContent extends StatelessWidget {
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || (modelId ?? '').isEmpty) return false;
     final cfg = settings.getProviderConfig(providerKey);
-    final ov = cfg.modelOverrides[modelId!] as Map?;
-    final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-    return list.map((e) => e.toString().toLowerCase()).contains('url_context');
+    final rawOv = cfg.modelOverrides[modelId!] ;
+    final ov = rawOv is Map ? rawOv : null;
+    final tools = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+    return tools.contains(BuiltInToolNames.urlContext);
   }
 
   bool _hasBuiltInSearchEnabled(SettingsProvider settings, AssistantProvider ap) {
@@ -239,9 +241,10 @@ class _SearchContent extends StatelessWidget {
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || (modelId ?? '').isEmpty) return false;
     final cfg = settings.getProviderConfig(providerKey);
-    final ov = cfg.modelOverrides[modelId!] as Map?;
-    final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-    return list.map((e) => e.toString().toLowerCase()).contains('search');
+    final rawOv = cfg.modelOverrides[modelId!] ;
+    final ov = rawOv is Map ? rawOv : null;
+    final tools = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+    return tools.contains(BuiltInToolNames.search);
   }
 
   Future<void> _enableBuiltInSearch(BuildContext context) async {
@@ -253,10 +256,12 @@ class _SearchContent extends StatelessWidget {
     if (providerKey == null || (modelId ?? '').isEmpty) return;
     final cfg = sp.getProviderConfig(providerKey);
     final overrides = Map<String, dynamic>.from(cfg.modelOverrides);
-    final mo = Map<String, dynamic>.from((overrides[modelId!] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? const <String, dynamic>{});
-    final list = List<String>.from(((mo['builtInTools'] as List?) ?? const <dynamic>[]).map((e) => e.toString()));
-    if (!list.map((e) => e.toLowerCase()).contains('search')) list.add('search');
-    mo['builtInTools'] = list;
+    final rawMo = overrides[modelId!];
+    final existingMo = rawMo is Map ? rawMo : null;
+    final mo = Map<String, dynamic>.from(existingMo?.map((k, v) => MapEntry(k.toString(), v)) ?? const <String, dynamic>{});
+
+    final tools = BuiltInToolNames.parseAndNormalize(mo['builtInTools'])..add(BuiltInToolNames.search);
+    mo['builtInTools'] = BuiltInToolNames.orderedForStorage(tools);
     overrides[modelId] = mo;
     await sp.setProviderConfig(providerKey, cfg.copyWith(modelOverrides: overrides));
     await sp.setSearchEnabled(false);
@@ -271,10 +276,16 @@ class _SearchContent extends StatelessWidget {
     if (providerKey == null || (modelId ?? '').isEmpty) return;
     final cfg = sp.getProviderConfig(providerKey);
     final overrides = Map<String, dynamic>.from(cfg.modelOverrides);
-    final mo = Map<String, dynamic>.from((overrides[modelId!] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? const <String, dynamic>{});
-    final list = List<String>.from(((mo['builtInTools'] as List?) ?? const <dynamic>[]).map((e) => e.toString()));
-    list.removeWhere((e) => e.toLowerCase() == 'search');
-    mo['builtInTools'] = list;
+    final rawMo = overrides[modelId!];
+    final existingMo = rawMo is Map ? rawMo : null;
+    final mo = Map<String, dynamic>.from(existingMo?.map((k, v) => MapEntry(k.toString(), v)) ?? const <String, dynamic>{});
+
+    final tools = BuiltInToolNames.parseAndNormalize(mo['builtInTools'])..remove(BuiltInToolNames.search);
+    if (tools.isEmpty) {
+      mo.remove('builtInTools');
+    } else {
+      mo['builtInTools'] = BuiltInToolNames.orderedForStorage(tools);
+    }
     overrides[modelId] = mo;
     await sp.setProviderConfig(providerKey, cfg.copyWith(modelOverrides: overrides));
   }

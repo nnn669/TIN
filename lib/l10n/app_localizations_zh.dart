@@ -1978,6 +1978,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -1997,6 +2003,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageTitlePromptHint => '输入用于标题总结的提示词模板';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
 
   @override
@@ -2011,6 +2020,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String defaultModelPageTitleVars(String contentVar, String localeVar) {
     return '变量: 对话内容: $contentVar, 语言: $localeVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
@@ -3567,6 +3581,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logViewerOpenFolder => '打开日志目录';
+
+  @override
+  String get assistantEditManageSummariesTitle => '管理摘要';
+
+  @override
+  String get assistantEditSummaryEmpty => '暂无摘要';
+
+  @override
+  String get assistantEditSummaryDialogTitle => '编辑摘要';
+
+  @override
+  String get assistantEditSummaryDialogHint => '输入摘要内容';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => '清除摘要';
+
+  @override
+  String get assistantEditDeleteSummaryContent => '确定要清除此摘要吗？';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -5543,6 +5575,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -5562,6 +5600,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitlePromptHint => '输入用于标题总结的提示词模板';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
 
   @override
@@ -5576,6 +5617,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String defaultModelPageTitleVars(String contentVar, String localeVar) {
     return '变量: 对话内容: $contentVar, 语言: $localeVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
@@ -9086,6 +9132,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用於總結對話標題的模型，推薦使用快速且便宜的模型';
 
   @override
+    String get defaultModelPageSummaryModelTitle => '摘要模型';
+
+  @override
+    String get defaultModelPageSummaryModelSubtitle => '用於生成對話摘要的模型，推薦使用快速且便宜的模型';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻譯模型';
 
   @override
@@ -9105,6 +9157,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get defaultModelPageTitlePromptHint => '輸入用於標題總結的提示詞範本';
 
   @override
+  String get defaultModelPageSummaryPromptHint => '輸入用於生成摘要的提示詞範本';
+
+  @override
   String get defaultModelPageTranslatePromptHint => '輸入用於翻譯的提示詞範本';
 
   @override
@@ -9119,6 +9174,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String defaultModelPageTitleVars(String contentVar, String localeVar) {
     return '變數: 對話內容: $contentVar, 語言: $localeVar';
+  }
+
+  @override
+  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+    return '變數：舊摘要：$previousSummaryVar，新訊息：$userMessagesVar';
   }
 
   @override
@@ -10676,4 +10736,22 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get logViewerOpenFolder => '開啟日誌目錄';
+
+  @override
+  String get assistantEditManageSummariesTitle => '管理摘要';
+
+  @override
+  String get assistantEditSummaryEmpty => '暫無摘要';
+
+  @override
+  String get assistantEditSummaryDialogTitle => '編輯摘要';
+
+  @override
+  String get assistantEditSummaryDialogHint => '輸入摘要內容';
+
+  @override
+  String get assistantEditDeleteSummaryTitle => '清除摘要';
+
+  @override
+  String get assistantEditDeleteSummaryContent => '確定要清除此摘要嗎？';
 }

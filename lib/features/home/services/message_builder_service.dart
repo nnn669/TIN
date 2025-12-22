@@ -14,6 +14,7 @@ import '../../../core/services/chat/prompt_transformer.dart';
 import '../../../core/services/instruction_injection_store.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 
 /// Service for building API messages from conversation state.
@@ -294,8 +295,9 @@ class MessageBuilderService {
   /// Inject memory prompts and recent chats reference into apiMessages.
   Future<void> injectMemoryAndRecentChats(
     List<Map<String, dynamic>> apiMessages,
-    Assistant? assistant,
-  ) async {
+    Assistant? assistant, {
+    String? currentConversationId,
+  }) async {
     try {
       if (assistant?.enableMemory == true) {
         final mp = contextProvider.read<MemoryProvider>();
@@ -338,20 +340,26 @@ class MessageBuilderService {
       }
       if (assistant?.enableRecentChatsReference == true) {
         final chats = chatService.getAllConversations();
-        final titles = chats
-            .where((c) => c.assistantId == assistant!.id)
+        final relevantChats = chats
+            .where((c) => c.assistantId == assistant!.id && c.id != currentConversationId)
+            .where((c) => c.title.trim().isNotEmpty)
             .take(10)
-            .map((c) => c.title)
-            .where((t) => t.trim().isNotEmpty)
             .toList();
-        if (titles.isNotEmpty) {
+        if (relevantChats.isNotEmpty) {
           final sb = StringBuffer();
-          sb.writeln('## 最近的对话');
-          sb.writeln('这是用户最近的一些对话，你可以参考这些对话了解用户偏好:');
           sb.writeln('<recent_chats>');
-          for (final t in titles) {
+          sb.writeln('这是用户最近的一些对话标题和摘要，你可以参考这些内容了解用户偏好和关注点');
+          for (final c in relevantChats) {
             sb.writeln('<conversation>');
-            sb.writeln('  <title>$t</title>');
+            // Format: timestamp: title || summary
+            final timestamp = c.updatedAt.toIso8601String().substring(0, 10);
+            final title = c.title.trim();
+            final summary = (c.summary ?? '').trim();
+            if (summary.isNotEmpty) {
+              sb.writeln('  $timestamp: $title || $summary');
+            } else {
+              sb.writeln('  $timestamp: $title');
+            }
             sb.writeln('</conversation>');
           }
           sb.writeln('</recent_chats>');
@@ -442,9 +450,10 @@ class MessageBuilderService {
     try {
       final cfg = settings.getProviderConfig(providerKey);
       if (cfg.providerType != ProviderKind.google) return false;
-      final ov = cfg.modelOverrides[modelId] as Map?;
-      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      return list.map((e) => e.toString().toLowerCase()).contains('search');
+      final rawOv = cfg.modelOverrides[modelId];
+      final ov = rawOv is Map ? rawOv : null;
+      final builtIns = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+      return builtIns.contains(BuiltInToolNames.search);
     } catch (_) {
       return false;
     }

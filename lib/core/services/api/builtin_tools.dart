@@ -33,13 +33,38 @@ abstract class BuiltInToolNames {
     }
   }
 
-  /// Parse a list of tool names and normalize them.
-  static Set<String> parseAndNormalize(List<dynamic>? list) {
-    if (list == null || list.isEmpty) return const <String>{};
-    return list
-        .map((e) => normalize(e.toString()))
-        .where((e) => e.isNotEmpty)
-        .toSet();
+  /// Parse tool names from persisted settings and normalize them.
+  ///
+  /// Accepts legacy/unknown types defensively (e.g. null, non-iterables).
+  /// Returns a mutable Set even when empty to avoid read-only mutation crashes.
+  static Set<String> parseAndNormalize(Object? raw) {
+    if (raw == null) return <String>{};
+    if (raw is! Iterable) return <String>{};
+    final out = <String>{};
+    for (final e in raw) {
+      final v = normalize(e.toString());
+      if (v.isNotEmpty) out.add(v);
+    }
+    return out;
+  }
+
+  /// Stable ordering for persisting tool lists (keeps UI diffs minimal).
+  static List<String> orderedForStorage(Iterable<String> tools) {
+    final remaining = Set<String>.from(tools);
+    const preferredOrder = <String>[
+      BuiltInToolNames.search,
+      BuiltInToolNames.urlContext,
+      BuiltInToolNames.codeExecution,
+      BuiltInToolNames.youtube,
+      BuiltInToolNames.codeInterpreter,
+      BuiltInToolNames.imageGeneration,
+    ];
+    final out = <String>[
+      for (final k in preferredOrder)
+        if (remaining.remove(k)) k,
+      ...remaining,
+    ];
+    return out;
   }
 }
 
@@ -79,9 +104,9 @@ abstract class BuiltInToolsHelper {
     }
 
     final kind = ProviderConfig.classify(cfg.id, explicitType: cfg.providerType);
-    final ov = cfg.modelOverrides[modelId] as Map?;
-    final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-    final builtInSet = BuiltInToolNames.parseAndNormalize(list);
+    final rawOv = cfg.modelOverrides[modelId];
+    final ov = rawOv is Map ? rawOv : null;
+    final builtInSet = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
 
     bool searchActive = builtInSet.contains(BuiltInToolNames.search);
     bool codeExecutionActive = false;

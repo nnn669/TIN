@@ -30,6 +30,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _titlePromptKey = 'title_prompt_v1';
   static const String _ocrModelKey = 'ocr_model_v1';
   static const String _ocrPromptKey = 'ocr_prompt_v1';
+  static const String _summaryModelKey = 'summary_model_v1';
+  static const String _summaryPromptKey = 'summary_prompt_v1';
   static const String _themePaletteKey = 'theme_palette_v1';
   static const String _useDynamicColorKey = 'use_dynamic_color_v1';
   static const String _thinkingBudgetKey = 'thinking_budget_v1';
@@ -299,6 +301,19 @@ class SettingsProvider extends ChangeNotifier {
     if (_ocrModelProvider == null || _ocrModelId == null) {
       _ocrEnabled = false;
     }
+    // load summary model
+    final summarySel = prefs.getString(_summaryModelKey);
+    if (summarySel != null && summarySel.contains('::')) {
+      final parts = summarySel.split('::');
+      if (parts.length >= 2) {
+        _summaryModelProvider = parts[0];
+        _summaryModelId = parts.sublist(1).join('::');
+      }
+    }
+    // load summary prompt
+    final summaryp = prefs.getString(_summaryPromptKey);
+    _summaryPrompt =
+        (summaryp == null || summaryp.trim().isEmpty) ? defaultSummaryPrompt : summaryp;
     // learning mode
     _learningModeEnabled = prefs.getBool(_learningModeEnabledKey) ?? false;
     final lmp = prefs.getString(_learningModePromptKey);
@@ -1136,6 +1151,12 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.setBool(_ocrEnabledKey, false);
       changed = true;
     }
+    if (_summaryModelProvider == providerKey) {
+      _summaryModelProvider = null;
+      _summaryModelId = null;
+      await prefs.remove(_summaryModelKey);
+      changed = true;
+    }
     if (changed) notifyListeners();
   }
 
@@ -1168,6 +1189,12 @@ class SettingsProvider extends ChangeNotifier {
       _ocrEnabled = false;
       await prefs.remove(_ocrModelKey);
       await prefs.setBool(_ocrEnabledKey, false);
+      changed = true;
+    }
+    if (_summaryModelProvider == providerKey && _summaryModelId == modelId) {
+      _summaryModelProvider = null;
+      _summaryModelId = null;
+      await prefs.remove(_summaryModelKey);
       changed = true;
     }
     // Also remove from pinned if applicable
@@ -1209,6 +1236,11 @@ class SettingsProvider extends ChangeNotifier {
       _ocrEnabled = false;
       await prefs.remove(_ocrModelKey);
       await prefs.setBool(_ocrEnabledKey, false);
+    }
+    if (_summaryModelProvider == key) {
+      _summaryModelProvider = null;
+      _summaryModelId = null;
+      await prefs.remove(_summaryModelKey);
     }
 
     // Remove pinned models for this provider
@@ -1443,6 +1475,63 @@ Do not interpret or translate—only transcribe and describe what is visually pr
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_ocrEnabledKey, _ocrEnabled);
   }
+
+  // Summary model and prompt
+  String? _summaryModelProvider;
+  String? _summaryModelId;
+  String? get summaryModelProvider => _summaryModelProvider;
+  String? get summaryModelId => _summaryModelId;
+  String? get summaryModelKey =>
+      (_summaryModelProvider != null && _summaryModelId != null)
+          ? '${_summaryModelProvider!}::${_summaryModelId!}'
+          : null;
+
+  static const String defaultSummaryPrompt =
+      '''I will give you user messages from a conversation in the `<messages>` block.
+Generate or update a brief summary of the user's questions and intentions.
+
+1. The summary should be in the same language as the user messages
+2. Focus on the user's core questions and intentions
+3. Keep it under 100 characters
+4. Output the summary directly without any prefix
+5. If a previous summary exists, incorporate it with the new messages
+
+<previous_summary>
+{previous_summary}
+</previous_summary>
+
+<messages>
+{user_messages}
+</messages>''';
+
+  String _summaryPrompt = defaultSummaryPrompt;
+  String get summaryPrompt => _summaryPrompt;
+
+  Future<void> setSummaryModel(String providerKey, String modelId) async {
+    _summaryModelProvider = providerKey;
+    _summaryModelId = modelId;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_summaryModelKey, '$providerKey::$modelId');
+  }
+
+  Future<void> resetSummaryModel() async {
+    _summaryModelProvider = null;
+    _summaryModelId = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_summaryModelKey);
+  }
+
+  Future<void> setSummaryPrompt(String prompt) async {
+    _summaryPrompt = prompt.trim().isEmpty ? defaultSummaryPrompt : prompt;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_summaryPromptKey, _summaryPrompt);
+  }
+
+  Future<void> resetSummaryPrompt() async =>
+      setSummaryPrompt(defaultSummaryPrompt);
 
   // Learning Mode
   bool _learningModeEnabled = false;

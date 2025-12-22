@@ -91,6 +91,30 @@ class DesktopDefaultModelPane extends StatelessWidget {
 
                   const SizedBox(height: 16),
                   _ModelCard(
+                    icon: lucide.Lucide.FileText,
+                    title: l10n.defaultModelPageSummaryModelTitle,
+                    subtitle: l10n.defaultModelPageSummaryModelSubtitle,
+                    modelProvider: settings.summaryModelProvider,
+                    modelId: settings.summaryModelId,
+                    fallbackProvider: settings.titleModelProvider ?? settings.currentModelProvider,
+                    fallbackModelId: settings.titleModelId ?? settings.currentModelId,
+                    onReset: () async {
+                      await context.read<SettingsProvider>().resetSummaryModel();
+                    },
+                    onPick: () async {
+                      final sel = await showModelSelector(context);
+                      if (sel != null) {
+                        await context.read<SettingsProvider>().setSummaryModel(
+                          sel.providerKey,
+                          sel.modelId,
+                        );
+                      }
+                    },
+                    configAction: () => _showSummaryPromptDialog(context),
+                  ),
+
+                  const SizedBox(height: 16),
+                  _ModelCard(
                     icon: lucide.Lucide.Languages,
                     title: l10n.defaultModelPageTranslateModelTitle,
                     subtitle: l10n.defaultModelPageTranslateModelSubtitle,
@@ -421,6 +445,106 @@ class DesktopDefaultModelPane extends StatelessWidget {
                         },
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showSummaryPromptDialog(BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.read<SettingsProvider>();
+    final ctrl = TextEditingController(text: sp.summaryPrompt);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.defaultModelPagePromptLabel,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      _SmallIconBtn(
+                        icon: lucide.Lucide.X,
+                        onTap: () => Navigator.of(ctx).maybePop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 160),
+                    child: TextField(
+                      controller: ctrl,
+                      maxLines: null,
+                      minLines: 8,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _deskInputDecoration(ctx).copyWith(
+                        hintText: l10n.defaultModelPageSummaryPromptHint,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _DeskIosButton(
+                        label: l10n.defaultModelPageResetDefault,
+                        filled: false,
+                        dense: true,
+                        onTap: () async {
+                          await sp.resetSummaryPrompt();
+                          ctrl.text = sp.summaryPrompt;
+                        },
+                      ),
+                      const Spacer(),
+                      _DeskIosButton(
+                        label: l10n.defaultModelPageSave,
+                        filled: true,
+                        dense: true,
+                        onTap: () async {
+                          await sp.setSummaryPrompt(ctrl.text.trim());
+                          if (ctx.mounted) Navigator.of(ctx).maybePop();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.defaultModelPageSummaryVars(
+                      '{previous_summary}',
+                      '{user_messages}',
+                    ),
+                    style: TextStyle(
+                      color: cs.onSurface.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

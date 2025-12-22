@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/search/search_service.dart';
 import '../../../core/providers/assistant_provider.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../pages/search_services_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -123,11 +124,11 @@ class _SearchSettingsSheet extends StatelessWidget {
         providerKey != null &&
         (modelId ?? '').isNotEmpty) {
       final mid = modelId!;
-      final ov = cfg!.modelOverrides[mid] as Map?;
-      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      final builtInSet = list.map((e) => e.toString().toLowerCase()).toSet();
-      hasBuiltInSearch = builtInSet.contains('search');
-      hasUrlContext = builtInSet.contains('url_context');
+      final rawOv = cfg!.modelOverrides[mid];
+      final ov = rawOv is Map ? rawOv : null;
+      final builtInSet = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+      hasBuiltInSearch = builtInSet.contains(BuiltInToolNames.search);
+      hasUrlContext = builtInSet.contains(BuiltInToolNames.urlContext);
     }
     // When url_context is active, treat as built-in search mode (hide external search options)
     final builtInMode = hasBuiltInSearch || hasUrlContext;
@@ -216,25 +217,25 @@ class _SearchSettingsSheet extends StatelessWidget {
                       final overrides = Map<String, dynamic>.from(
                         cfg!.modelOverrides,
                       );
+                      final rawMo = overrides[mid];
+                      final baseMo = rawMo is Map ? rawMo : null;
                       final mo = Map<String, dynamic>.from(
-                        (overrides[mid] as Map?)?.map(
+                        baseMo?.map(
                               (k, val) => MapEntry(k.toString(), val),
                             ) ??
                             const <String, dynamic>{},
                       );
-                      final list = List<String>.from(
-                        ((mo['builtInTools'] as List?) ?? const <dynamic>[])
-                            .map((e) => e.toString()),
-                      );
+                      final builtIns = BuiltInToolNames.parseAndNormalize(mo['builtInTools']);
                       if (v) {
-                        if (!list
-                            .map((e) => e.toLowerCase())
-                            .contains('search'))
-                          list.add('search');
+                        builtIns.add(BuiltInToolNames.search);
                       } else {
-                        list.removeWhere((e) => e.toLowerCase() == 'search');
+                        builtIns.remove(BuiltInToolNames.search);
                       }
-                      mo['builtInTools'] = list;
+                      if (builtIns.isEmpty) {
+                        mo.remove('builtInTools');
+                      } else {
+                        mo['builtInTools'] = BuiltInToolNames.orderedForStorage(builtIns);
+                      }
                       overrides[mid] = mo;
                       await context.read<SettingsProvider>().setProviderConfig(
                         providerKey,
@@ -282,28 +283,25 @@ class _SearchSettingsSheet extends StatelessWidget {
                             final overrides = Map<String, dynamic>.from(
                               cfg!.modelOverrides,
                             );
+                            final rawMo = overrides[mid];
+                            final baseMo = rawMo is Map ? rawMo : null;
                             final mo = Map<String, dynamic>.from(
-                              (overrides[mid] as Map?)?.map(
+                              baseMo?.map(
                                     (k, val) => MapEntry(k.toString(), val),
                                   ) ??
                                   const <String, dynamic>{},
                             );
-                            final list = List<String>.from(
-                              ((mo['builtInTools'] as List?) ??
-                                      const <dynamic>[])
-                                  .map((e) => e.toString()),
-                            );
+                            final builtIns = BuiltInToolNames.parseAndNormalize(mo['builtInTools']);
                             if (v) {
-                              if (!list
-                                  .map((e) => e.toLowerCase())
-                                  .contains('search'))
-                                list.add('search');
+                              builtIns.add(BuiltInToolNames.search);
                             } else {
-                              list.removeWhere(
-                                (e) => e.toLowerCase() == 'search',
-                              );
+                              builtIns.remove(BuiltInToolNames.search);
                             }
-                            mo['builtInTools'] = list;
+                            if (builtIns.isEmpty) {
+                              mo.remove('builtInTools');
+                            } else {
+                              mo['builtInTools'] = BuiltInToolNames.orderedForStorage(builtIns);
+                            }
                             overrides[mid] = mo;
                             await context
                                 .read<SettingsProvider>()

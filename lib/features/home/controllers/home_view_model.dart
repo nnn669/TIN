@@ -61,6 +61,7 @@ class HomeViewModel extends ChangeNotifier {
     _chatActions.onContentUpdated = _onContentUpdated;
     _chatActions.onStreamError = _onStreamError;
     _chatActions.onMaybeGenerateTitle = _onMaybeGenerateTitle;
+    _chatActions.onMaybeGenerateSummary = _onMaybeGenerateSummary;
     _chatActions.onStreamFinished = _onStreamFinished;
   }
 
@@ -164,6 +165,11 @@ class HomeViewModel extends ChangeNotifier {
   void _onMaybeGenerateTitle(String conversationId) {
     // Trigger title generation asynchronously
     _maybeGenerateTitleFor(conversationId);
+  }
+
+  void _onMaybeGenerateSummary(String conversationId) {
+    // Trigger summary generation asynchronously
+    _maybeGenerateSummaryFor(conversationId);
   }
 
   void _onStreamFinished() {
@@ -601,6 +607,97 @@ class HomeViewModel extends ChangeNotifier {
     final cid = currentConversation?.id;
     if (cid != null) {
       await _maybeGenerateTitleFor(cid, force: force);
+    }
+  }
+
+  // ============================================================================
+  // Summary Generation
+  // ============================================================================
+
+  /// Generate summary for a conversation if conditions are met.
+  /// Triggers every 5 new messages since last summary.
+  Future<void> _maybeGenerateSummaryFor(String conversationId) async {
+    final convo = _chatService.getConversation(conversationId);
+    if (convo == null) return;
+
+    final msgCount = convo.messageIds.length;
+    // Only generate summary every 5 new messages
+    if (msgCount == 0 || msgCount - convo.lastSummarizedMessageCount < 5) return;
+
+    final settings = _contextProvider.read<SettingsProvider>();
+    final assistantProvider = _contextProvider.read<AssistantProvider>();
+
+    // Get assistant for this conversation
+    final assistant = convo.assistantId != null
+        ? assistantProvider.getById(convo.assistantId!)
+        : assistantProvider.currentAssistant;
+
+    // Only generate summary if assistant has recent chats reference enabled
+    if (assistant?.enableRecentChatsReference != true) return;
+
+    // Use summary model if configured, else fall back to title model, then current model
+    final provKey = settings.summaryModelProvider ??
+        settings.titleModelProvider ??
+        assistant?.chatModelProvider ??
+        settings.currentModelProvider;
+    final mdlId = settings.summaryModelId ??
+        settings.titleModelId ??
+        assistant?.chatModelId ??
+        settings.currentModelId;
+    if (provKey == null || mdlId == null) return;
+
+    final cfg = settings.getProviderConfig(provKey);
+
+    // Get all messages and filter user messages
+    final msgs = _chatService.getMessages(convo.id);
+    final allUserMsgs = msgs
+        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .toList();
+
+    if (allUserMsgs.isEmpty) return;
+
+    // Get previous summary (empty string if first time)
+    final previousSummary = (convo.summary ?? '').trim();
+
+    // Get only the recent user messages since last summarization
+    // Calculate how many user messages were in the last summarized state
+    final lastSummarizedMsgCount = (convo.lastSummarizedMessageCount < 0) ? 0 : convo.lastSummarizedMessageCount;
+    final msgsAtLastSummary = msgs.take(lastSummarizedMsgCount).toList();
+    final userMsgsAtLastSummary = msgsAtLastSummary
+        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .length;
+
+    // Get new user messages since last summary
+    final newUserMsgs = allUserMsgs.skip(userMsgsAtLastSummary).toList();
+    if (newUserMsgs.isEmpty) return;
+
+    final recentMessages = newUserMsgs
+        .map((m) => m.content.trim())
+        .join('\n\n');
+
+    // Truncate if too long
+    final content =
+        recentMessages.length > 2000 ? recentMessages.substring(0, 2000) : recentMessages;
+
+    final prompt = settings.summaryPrompt
+        .replaceAll('{previous_summary}', previousSummary)
+        .replaceAll('{user_messages}', content);
+
+    try {
+      final summary =
+          (await ChatApiService.generateText(config: cfg, modelId: mdlId, prompt: prompt))
+              .trim();
+
+      if (summary.isNotEmpty) {
+        await _chatService.updateConversationSummary(convo.id, summary, msgCount);
+        if (currentConversation?.id == convo.id) {
+          _chatController
+              .updateCurrentConversation(_chatService.getConversation(convo.id));
+          notifyListeners();
+        }
+      }
+    } catch (_) {
+      // Keep old summary on failure, ignore silently
     }
   }
 
