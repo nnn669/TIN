@@ -8,6 +8,7 @@ import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../utils/model_display_helper.dart';
 import 'chat_input_bar.dart';
 import 'model_icon.dart';
@@ -220,9 +221,10 @@ class ChatInputSection extends StatelessWidget {
     final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
 
     if (isGemini || isClaude || isOpenAIResponses) {
-      final ov = cfg.modelOverrides[mid] as Map?;
-      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      return list.map((e) => e.toString().toLowerCase()).contains('search');
+      final rawOv = cfg.modelOverrides[mid];
+      final ov = rawOv is Map ? rawOv : null;
+      final builtIns = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+      return builtIns.contains(BuiltInToolNames.search);
     }
     return false;
   }

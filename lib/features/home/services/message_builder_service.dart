@@ -14,6 +14,7 @@ import '../../../core/services/chat/prompt_transformer.dart';
 import '../../../core/services/instruction_injection_store.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
+import '../../../core/services/api/builtin_tools.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 
 /// Service for building API messages from conversation state.
@@ -341,8 +342,8 @@ class MessageBuilderService {
         final chats = chatService.getAllConversations();
         final relevantChats = chats
             .where((c) => c.assistantId == assistant!.id && c.id != currentConversationId)
-            .take(10)
             .where((c) => c.title.trim().isNotEmpty)
+            .take(10)
             .toList();
         if (relevantChats.isNotEmpty) {
           final sb = StringBuffer();
@@ -449,9 +450,10 @@ class MessageBuilderService {
     try {
       final cfg = settings.getProviderConfig(providerKey);
       if (cfg.providerType != ProviderKind.google) return false;
-      final ov = cfg.modelOverrides[modelId] as Map?;
-      final list = (ov?['builtInTools'] as List?) ?? const <dynamic>[];
-      return list.map((e) => e.toString().toLowerCase()).contains('search');
+      final rawOv = cfg.modelOverrides[modelId];
+      final ov = rawOv is Map ? rawOv : null;
+      final builtIns = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+      return builtIns.contains(BuiltInToolNames.search);
     } catch (_) {
       return false;
     }

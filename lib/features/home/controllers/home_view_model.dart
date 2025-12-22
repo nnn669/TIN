@@ -661,7 +661,7 @@ class HomeViewModel extends ChangeNotifier {
 
     // Get only the recent user messages since last summarization
     // Calculate how many user messages were in the last summarized state
-    final lastSummarizedMsgCount = convo.lastSummarizedMessageCount;
+    final lastSummarizedMsgCount = (convo.lastSummarizedMessageCount < 0) ? 0 : convo.lastSummarizedMessageCount;
     final msgsAtLastSummary = msgs.take(lastSummarizedMsgCount).toList();
     final userMsgsAtLastSummary = msgsAtLastSummary
         .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
