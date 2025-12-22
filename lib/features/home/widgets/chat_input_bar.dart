@@ -743,8 +743,10 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
         final toolsState = BuiltInToolsHelper.getActiveTools(cfg: cfg, modelId: currentModelId);
         final builtinSearchActive = toolsState.searchActive;
         final codeExecutionActive = toolsState.codeExecutionActive;
-        // Any built-in tool active means MCP should be hidden
-        final anyBuiltInActive = toolsState.anyMcpConflictingToolActive;
+        // Only Gemini built-in tools conflict with MCP in the input bar UX.
+        // OpenAI/Claude built-in search should not hide MCP tools.
+        final kind = (cfg != null) ? ProviderConfig.classify(cfg.id, explicitType: cfg.providerType) : null;
+        final anyBuiltInConflictsWithMcp = (kind == ProviderKind.google) && toolsState.anyMcpConflictingToolActive;
         final appSearchEnabled = settings.searchEnabled;
         final brandAsset = (() {
           if (!appSearchEnabled || builtinSearchActive) return null;
@@ -837,8 +839,8 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
           ));
         }
 
-        // MCP button (hidden when any built-in tool is active)
-        if (widget.showMcpButton && !anyBuiltInActive) {
+        // MCP button (hidden only when conflicting Gemini built-in tools are active)
+        if (widget.showMcpButton && !anyBuiltInConflictsWithMcp) {
           actions.add(_OverflowAction(
             width: normalButtonW,
             builder: () => _CompactIconButton(
