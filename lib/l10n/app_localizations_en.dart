@@ -2093,7 +2093,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+  String defaultModelPageSummaryVars(
+    String previousSummaryVar,
+    String userMessagesVar,
+  ) {
     return 'Variables: previous summary: $previousSummaryVar, new messages: $userMessagesVar';
   }
 
@@ -2244,7 +2247,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
-      'Requires OpenAI Responses API (enable "Responses API" in provider settings).';
+      'Requires OpenAI Responses API.';
 
   @override
   String get modelDetailSheetOpenaiCodeInterpreterTool => 'Code Interpreter';

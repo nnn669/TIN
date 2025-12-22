@@ -3875,6 +3875,18 @@ abstract class AppLocalizations {
   /// **'Used for summarizing conversation titles; prefer fast & cheap models'**
   String get defaultModelPageTitleModelSubtitle;
 
+  /// No description provided for @defaultModelPageSummaryModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary Model'**
+  String get defaultModelPageSummaryModelTitle;
+
+  /// No description provided for @defaultModelPageSummaryModelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for generating conversation summaries; prefer fast and cheap models'**
+  String get defaultModelPageSummaryModelSubtitle;
+
   /// No description provided for @defaultModelPageTranslateModelTitle.
   ///
   /// In en, this message translates to:
@@ -3899,18 +3911,6 @@ abstract class AppLocalizations {
   /// **'Used for extracting text and descriptions from images'**
   String get defaultModelPageOcrModelSubtitle;
 
-  /// No description provided for @defaultModelPageSummaryModelTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Summary Model'**
-  String get defaultModelPageSummaryModelTitle;
-
-  /// No description provided for @defaultModelPageSummaryModelSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Used for generating conversation summaries'**
-  String get defaultModelPageSummaryModelSubtitle;
-
   /// No description provided for @defaultModelPagePromptLabel.
   ///
   /// In en, this message translates to:
@@ -3923,6 +3923,12 @@ abstract class AppLocalizations {
   /// **'Enter prompt template for title summarization'**
   String get defaultModelPageTitlePromptHint;
 
+  /// No description provided for @defaultModelPageSummaryPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter prompt template for summary generation'**
+  String get defaultModelPageSummaryPromptHint;
+
   /// No description provided for @defaultModelPageTranslatePromptHint.
   ///
   /// In en, this message translates to:
@@ -3934,12 +3940,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter prompt template for OCR image understanding'**
   String get defaultModelPageOcrPromptHint;
-
-  /// No description provided for @defaultModelPageSummaryPromptHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter prompt template for summary generation'**
-  String get defaultModelPageSummaryPromptHint;
 
   /// No description provided for @defaultModelPageResetDefault.
   ///
@@ -3959,17 +3959,20 @@ abstract class AppLocalizations {
   /// **'Vars: content: {contentVar}, locale: {localeVar}'**
   String defaultModelPageTitleVars(String contentVar, String localeVar);
 
+  /// No description provided for @defaultModelPageSummaryVars.
+  ///
+  /// In en, this message translates to:
+  /// **'Variables: previous summary: {previousSummaryVar}, new messages: {userMessagesVar}'**
+  String defaultModelPageSummaryVars(
+    String previousSummaryVar,
+    String userMessagesVar,
+  );
+
   /// No description provided for @defaultModelPageTranslateVars.
   ///
   /// In en, this message translates to:
   /// **'Variables: source text: {sourceVar}, target language: {targetVar}'**
   String defaultModelPageTranslateVars(String sourceVar, String targetVar);
-
-  /// No description provided for @defaultModelPageSummaryVars.
-  ///
-  /// In en, this message translates to:
-  /// **'Variables: previous summary: {previousSummaryVar}, new messages: {userMessagesVar}'**
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar);
 
   /// No description provided for @defaultModelPageUseCurrentModel.
   ///
@@ -4232,7 +4235,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint.
   ///
   /// In en, this message translates to:
-  /// **'Requires OpenAI Responses API (enable "Responses API" in provider settings).'**
+  /// **'Requires OpenAI Responses API.'**
   String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint;
 
   /// No description provided for @modelDetailSheetOpenaiCodeInterpreterTool.
@@ -6971,26 +6974,38 @@ abstract class AppLocalizations {
   /// **'Open Logs Folder'**
   String get logViewerOpenFolder;
 
+  /// No description provided for @assistantEditManageSummariesTitle.
+  ///
   /// In en, this message translates to:
   /// **'Manage Summaries'**
   String get assistantEditManageSummariesTitle;
 
+  /// No description provided for @assistantEditSummaryEmpty.
+  ///
   /// In en, this message translates to:
   /// **'No summaries yet'**
   String get assistantEditSummaryEmpty;
 
+  /// No description provided for @assistantEditSummaryDialogTitle.
+  ///
   /// In en, this message translates to:
   /// **'Edit Summary'**
   String get assistantEditSummaryDialogTitle;
 
+  /// No description provided for @assistantEditSummaryDialogHint.
+  ///
   /// In en, this message translates to:
   /// **'Enter summary content'**
   String get assistantEditSummaryDialogHint;
 
+  /// No description provided for @assistantEditDeleteSummaryTitle.
+  ///
   /// In en, this message translates to:
   /// **'Clear Summary'**
   String get assistantEditDeleteSummaryTitle;
 
+  /// No description provided for @assistantEditDeleteSummaryContent.
+  ///
   /// In en, this message translates to:
   /// **'Are you sure you want to clear this summary?'**
   String get assistantEditDeleteSummaryContent;

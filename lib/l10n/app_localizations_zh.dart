@@ -2023,7 +2023,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+  String defaultModelPageSummaryVars(
+    String previousSummaryVar,
+    String userMessagesVar,
+  ) {
     return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
@@ -2132,8 +2135,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelDetailSheetAddBody => '添加 Body';
 
   @override
-  String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅支持官方 API。';
+  String get modelDetailSheetBuiltinToolsDescription => '内置工具仅支持官方 API。';
 
   @override
   String get modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint =>
@@ -2169,7 +2171,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
-      '需要启用 OpenAI Responses API（请在供应商设置中开启「Responses API」）。';
+      '需要启用 OpenAI Responses API。';
 
   @override
   String get modelDetailSheetOpenaiCodeInterpreterTool => '代码解释器';
@@ -2182,8 +2184,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelDetailSheetOpenaiImageGenerationTool => '图像生成';
 
   @override
-  String get modelDetailSheetOpenaiImageGenerationToolDescription =>
-      '启用图像生成工具';
+  String get modelDetailSheetOpenaiImageGenerationToolDescription => '启用图像生成工具';
 
   @override
   String get modelDetailSheetCancelButton => '取消';
@@ -5575,12 +5576,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
-  String get defaultModelPageSummaryModelTitle => '摘要模型';
-
-  @override
-  String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
-
-  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -5600,9 +5595,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitlePromptHint => '输入用于标题总结的提示词模板';
 
   @override
-  String get defaultModelPageSummaryPromptHint => '输入用于生成摘要的提示词模板';
-
-  @override
   String get defaultModelPageTranslatePromptHint => '输入用于翻译的提示词模板';
 
   @override
@@ -5617,11 +5609,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String defaultModelPageTitleVars(String contentVar, String localeVar) {
     return '变量: 对话内容: $contentVar, 语言: $localeVar';
-  }
-
-  @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
-    return '变量：旧摘要：$previousSummaryVar，新消息：$userMessagesVar';
   }
 
   @override
@@ -5658,6 +5645,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetAdvancedTab => '高级设置';
+
+  @override
+  String get modelDetailSheetBuiltinToolsTab => '内置工具';
 
   @override
   String get modelDetailSheetModelIdLabel => '模型 ID';
@@ -5726,8 +5716,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get modelDetailSheetAddBody => '添加 Body';
 
   @override
-  String get modelDetailSheetBuiltinToolsDescription =>
-      '内置工具仅支持官方 API。';
+  String get modelDetailSheetBuiltinToolsDescription => '内置工具仅支持官方 API。';
 
   @override
   String get modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint =>
@@ -5760,6 +5749,23 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get modelDetailSheetYoutubeToolDescription =>
       '启用 YouTube 链接读取（自动识别提示词中的链接）';
+
+  @override
+  String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
+      '需要启用 OpenAI Responses API。';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterTool => '代码解释器';
+
+  @override
+  String get modelDetailSheetOpenaiCodeInterpreterToolDescription =>
+      '启用代码解释器工具（容器自动，内存上限 4g）';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationTool => '图像生成';
+
+  @override
+  String get modelDetailSheetOpenaiImageGenerationToolDescription => '启用图像生成工具';
 
   @override
   String get modelDetailSheetCancelButton => '取消';
@@ -9132,10 +9138,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用於總結對話標題的模型，推薦使用快速且便宜的模型';
 
   @override
-    String get defaultModelPageSummaryModelTitle => '摘要模型';
+  String get defaultModelPageSummaryModelTitle => '摘要模型';
 
   @override
-    String get defaultModelPageSummaryModelSubtitle => '用於生成對話摘要的模型，推薦使用快速且便宜的模型';
+  String get defaultModelPageSummaryModelSubtitle => '用於生成對話摘要的模型，推薦使用快速且便宜的模型';
 
   @override
   String get defaultModelPageTranslateModelTitle => '翻譯模型';
@@ -9177,7 +9183,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String defaultModelPageSummaryVars(String previousSummaryVar, String userMessagesVar) {
+  String defaultModelPageSummaryVars(
+    String previousSummaryVar,
+    String userMessagesVar,
+  ) {
     return '變數：舊摘要：$previousSummaryVar，新訊息：$userMessagesVar';
   }
 
@@ -9286,8 +9295,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get modelDetailSheetAddBody => '新增 Body';
 
   @override
-  String get modelDetailSheetBuiltinToolsDescription =>
-      '內建工具僅支援官方 API。';
+  String get modelDetailSheetBuiltinToolsDescription => '內建工具僅支援官方 API。';
 
   @override
   String get modelDetailSheetGeminiCodeExecutionMutuallyExclusiveHint =>
@@ -9323,7 +9331,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get modelDetailSheetOpenaiBuiltinToolsResponsesOnlyHint =>
-      '需要啟用 OpenAI Responses API（請在供應商設定中開啟「Responses API」）。';
+      '需要啟用 OpenAI Responses API。';
 
   @override
   String get modelDetailSheetOpenaiCodeInterpreterTool => '程式碼解譯器';
@@ -9336,8 +9344,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get modelDetailSheetOpenaiImageGenerationTool => '圖像生成';
 
   @override
-  String get modelDetailSheetOpenaiImageGenerationToolDescription =>
-      '啟用圖像生成工具';
+  String get modelDetailSheetOpenaiImageGenerationToolDescription => '啟用圖像生成工具';
 
   @override
   String get modelDetailSheetCancelButton => '取消';
