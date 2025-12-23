@@ -55,10 +55,21 @@ class PromptTransformer {
   }) {
     final date = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    return template
-        .replaceAll('{{ role }}', role)
-        .replaceAll('{{ message }}', message)
-        .replaceAll('{{ time }}', time)
-        .replaceAll('{{ date }}', date);
+    final vars = <String, String>{
+      'role': role,
+      'message': message,
+      'time': time,
+      'date': date,
+    };
+
+    return template.replaceAllMapped(
+      RegExp(r'{{\s*(\w+)\s*}}'),
+      (match) {
+        final key = match.group(1);
+        return key != null && vars.containsKey(key)
+            ? vars[key]!
+            : match.group(0) ?? '';
+      },
+    );
   }
 }
