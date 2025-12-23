@@ -1522,7 +1522,7 @@ class ChatApiService {
     // Ask for usage in streaming for chat-completions compatible hosts (when supported)
     if (stream && config.useResponseApi != true) {
       final h = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
-      if (!h.contains('mistral.ai')) {
+      if (!h.contains('mistral.ai') && !h.contains('openrouter')) {
         (body as Map<String, dynamic>)['stream_options'] = {'include_usage': true};
       }
     }
@@ -1929,7 +1929,7 @@ class ChatApiService {
               }
 
               // Ask for usage in streaming (when supported)
-              if (!host.contains('mistral.ai')) {
+              if (!host.contains('mistral.ai') && !host.contains('openrouter')) {
                 body2['stream_options'] = {'include_usage': true};
               }
 
@@ -2928,7 +2928,7 @@ class ChatApiService {
                   body2.remove('reasoning_budget');
                 }
               }
-              if (!host.contains('mistral.ai')) {
+              if (!host.contains('mistral.ai') && !host.contains('openrouter')) {
                 body2['stream_options'] = {'include_usage': true};
               }
               if (extraBodyCfg.isNotEmpty) {
@@ -3321,7 +3321,7 @@ class ChatApiService {
                       body2.remove('reasoning_budget');
                     }
                   }
-                  if (!host.contains('mistral.ai')) {
+                  if (!host.contains('mistral.ai') && !host.contains('openrouter')) {
                     body2['stream_options'] = {'include_usage': true};
                   }
                   if (extraBodyCfg.isNotEmpty) {
