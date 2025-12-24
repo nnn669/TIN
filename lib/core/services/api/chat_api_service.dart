@@ -4681,8 +4681,16 @@ class ChatApiService {
         if (isReasoning)
           'thinkingConfig': () {
             // Match gemini-3-pro or gemini-3-pro-preview (and similar variants)
+            final isGemini3ProImage = modelId.contains(RegExp(r'gemini-3-pro-image(-preview)?', caseSensitive: false));
             final isGemini3Pro = modelId.contains(RegExp(r'gemini-3-pro(-preview)?', caseSensitive: false));
             final isGemini3Flash = modelId.contains(RegExp(r'gemini-3-flash(-preview)?', caseSensitive: false));
+            if (isGemini3ProImage) {
+              return {
+                'includeThoughts': true,
+                if (thinkingBudget != null && thinkingBudget >= 0)
+                  'thinkingBudget': thinkingBudget,
+              };
+            }
             // Gemini 3 Pro: supports 'low' and 'high' only (no off)
             if (isGemini3Pro) {
               String level = 'high';
