@@ -43,6 +43,7 @@ import '../widgets/selection_toolbar.dart';
 import '../widgets/message_list_view.dart';
 import '../widgets/chat_input_section.dart';
 import '../utils/model_display_helper.dart';
+import '../utils/chat_layout_constants.dart';
 import '../controllers/home_page_controller.dart';
 import 'home_mobile_layout.dart';
 import 'home_desktop_layout.dart';
@@ -381,48 +382,45 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       children: [
         Padding(
           padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.paddingOf(context).top),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 860),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: FadeTransition(
-                      opacity: _controller.convoFade,
-                      child: KeyedSubtree(
-                        key: ValueKey<String>(_controller.currentConversation?.id ?? 'none'),
-                        child: _buildMessageListView(
-                          context,
-                          dividerPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        ),
-                      ).animate(key: ValueKey('tab_body_'+(_controller.currentConversation?.id ?? 'none')))
-                       .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: FadeTransition(
+                  opacity: _controller.convoFade,
+                  child: KeyedSubtree(
+                    key: ValueKey<String>(_controller.currentConversation?.id ?? 'none'),
+                    child: _buildMessageListView(
+                      context,
+                      dividerPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                     ),
-                  ),
-                  NotificationListener<SizeChangedLayoutNotification>(
-                    onNotification: (n) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _controller.measureInputBar());
-                      return false;
-                    },
-                    child: SizeChangedLayoutNotifier(
-                      child: Builder(
-                        builder: (context) {
-                          Widget input = _buildChatInputBar(context, isTablet: true);
-                          input = Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 800),
-                              child: input,
-                            ),
-                          );
-                          return input;
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+                  ).animate(key: ValueKey('tab_body_'+(_controller.currentConversation?.id ?? 'none')))
+                   .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic),
+                ),
               ),
-            ),
+              NotificationListener<SizeChangedLayoutNotification>(
+                onNotification: (n) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _controller.measureInputBar());
+                  return false;
+                },
+                child: SizeChangedLayoutNotifier(
+                  child: Builder(
+                    builder: (context) {
+                      Widget input = _buildChatInputBar(context, isTablet: true);
+                      input = Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: ChatLayoutConstants.maxInputWidth,
+                          ),
+                          child: input,
+                        ),
+                      );
+                      return input;
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         _buildSelectionToolbarOverlay(),
