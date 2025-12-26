@@ -196,10 +196,6 @@ class GoogleProvider extends BaseProvider {
       return 'https://aiplatform.googleapis.com/v1/projects/$proj/locations/$loc/publishers/google/models';
     }
     final base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1) : cfg.baseUrl;
-    final key = ProviderManager._effectiveApiKey(cfg);
-    if (key.isNotEmpty) {
-      return '$base/models?key=${Uri.encodeQueryComponent(key)}';
-    }
     return '$base/models';
   }
 
@@ -224,6 +220,11 @@ class GoogleProvider extends BaseProvider {
             // Fallback: treat apiKey as a bearer token if user pasted one
             headers['Authorization'] = 'Bearer $key';
           }
+        }
+      } else {
+        final key = ProviderManager._effectiveApiKey(cfg);
+        if (key.isNotEmpty) {
+          headers['x-goog-api-key'] = key;
         }
       }
       final res = await client.get(Uri.parse(url), headers: headers);
@@ -441,9 +442,6 @@ class ProviderManager {
         } else {
           final base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1) : cfg.baseUrl;
           url = '$base/models/$upstreamId:$endpoint';
-          if (cfg.apiKey.isNotEmpty) {
-            url = '$url?key=${Uri.encodeQueryComponent(cfg.apiKey)}';
-          }
         }
         // Determine if model outputs images (override wins; otherwise inference)
         bool wantsImageOutput = false;
@@ -477,6 +475,10 @@ class ProviderManager {
             } catch (_) {}
           } else if (cfg.apiKey.isNotEmpty) {
             headers['Authorization'] = 'Bearer ${cfg.apiKey}';
+          }
+        } else {
+          if (cfg.apiKey.isNotEmpty) {
+            headers['x-goog-api-key'] = cfg.apiKey;
           }
         }
         headers.addAll(_customHeaders(cfg, modelId));

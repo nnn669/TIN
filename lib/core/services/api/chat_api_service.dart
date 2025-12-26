@@ -844,7 +844,7 @@ class ChatApiService {
           final base = config.baseUrl.endsWith('/')
               ? config.baseUrl.substring(0, config.baseUrl.length - 1)
               : config.baseUrl;
-          url = '$base/models/$upstreamModelId:generateContent?key=${Uri.encodeComponent(_apiKeyForRequest(config, modelId))}';
+          url = '$base/models/$upstreamModelId:generateContent';
         }
         final body = {
           'contents': [
@@ -878,6 +878,13 @@ class ChatApiService {
           }
         }
         final headers = <String, String>{'Content-Type': 'application/json'};
+        // Add API Key header for non-Vertex
+        if (!(config.vertexAI == true)) {
+          final apiKey = _apiKeyForRequest(config, modelId);
+          if (apiKey.isNotEmpty) {
+            headers['x-goog-api-key'] = apiKey;
+          }
+        }
         // Add Bearer for Vertex via service account JSON
         if (config.vertexAI == true) {
           final token = await _maybeVertexAccessToken(config);
@@ -4265,8 +4272,7 @@ class ChatApiService {
       if (isVertex && (config.projectId?.isNotEmpty == true) && (config.location?.isNotEmpty == true)) {
         url = 'https://aiplatform.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/publishers/google/models/$modelId:generateContent';
       } else {
-        final key = Uri.encodeComponent(_effectiveApiKey(config));
-        url = '$base/models/$modelId:generateContent?key=$key';
+        url = '$base/models/$modelId:generateContent';
       }
 
       // Convert messages to contents
@@ -4386,6 +4392,11 @@ class ChatApiService {
       if (isVertex) {
         final token = await GoogleServiceAccountAuth.getAccessTokenFromJson(config.serviceAccountJson ?? '');
         headers['Authorization'] = 'Bearer $token';
+      } else {
+        final apiKey = _effectiveApiKey(config);
+        if (apiKey.isNotEmpty) {
+          headers['x-goog-api-key'] = apiKey;
+        }
       }
 
       // Built-in tools and function_declarations (MCP) are mutually exclusive in Gemini API
@@ -4486,13 +4497,9 @@ class ChatApiService {
       baseUrl = '$base/models/$modelId:streamGenerateContent';
     }
 
-    // Build query with key (for non-Vertex) and alt=sse
+    // Build query with alt=sse
     final uriBase = Uri.parse(baseUrl);
     final qp = Map<String, String>.from(uriBase.queryParameters);
-    if (!(config.vertexAI == true)) {
-      final eff = _effectiveApiKey(config);
-      if (eff.isNotEmpty) qp['key'] = eff;
-    }
     qp['alt'] = 'sse';
     final uri = uriBase.replace(queryParameters: qp);
     final isVertex = config.vertexAI == true;
@@ -4740,6 +4747,11 @@ class ChatApiService {
         }
         final proj = (config.projectId ?? '').trim();
         if (proj.isNotEmpty) headers['X-Goog-User-Project'] = proj;
+      } else {
+        final apiKey = _effectiveApiKey(config);
+        if (apiKey.isNotEmpty) {
+          headers['x-goog-api-key'] = apiKey;
+        }
       }
       headers.addAll(_customHeaders(config, modelId));
       if (extraHeaders != null && extraHeaders.isNotEmpty) headers.addAll(extraHeaders);
