@@ -1293,6 +1293,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupPageImportFromCherryStudio => 'Import from Cherry Studio';
 
   @override
+  String get backupPageImportFromChatbox => 'Import from Chatbox';
+
+  @override
   String get chatHistoryPageTitle => 'Chat History';
 
   @override

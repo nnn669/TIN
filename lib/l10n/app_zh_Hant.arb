@@ -416,6 +416,7 @@
   "backupPageBackupNow": "立即備份",
   "backupPageLocalBackup": "本機備份",
   "backupPageImportFromCherryStudio": "從 Cherry Studio 匯入",
+  "backupPageImportFromChatbox": "從 Chatbox 匯入",
   "homePageClearContext": "清空上下文",
   "homePageClearContextWithCount": "清空上下文 ({actual}/{configured})",
   "homePageDefaultAssistant": "預設助理",
