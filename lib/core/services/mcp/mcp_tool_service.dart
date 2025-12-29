@@ -6,6 +6,10 @@ import '../../providers/mcp_provider.dart';
 import '../chat/chat_service.dart';
 import '../../providers/assistant_provider.dart';
 
+/// Markers for embedding base64 images in tool results
+const String kMcpImageMarkerStart = '__MCP_IMG__';
+const String kMcpImageMarkerEnd = '__MCP_IMG_END__';
+
 class McpToolService extends ChangeNotifier {
   McpToolService();
 
@@ -106,9 +110,17 @@ class McpToolService extends ChangeNotifier {
           continue;
         }
         if (c is mcp.ImageContent) {
-          final url = (c.url ?? '').toString();
-          final mime = (c.mimeType ?? '').toString();
-          buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+          final data = (c.data ?? '').toString();
+          final mime = (c.mimeType ?? 'image/png').toString();
+          if (data.isNotEmpty) {
+            // base64 image: embed with special marker for UI extraction
+            buf.writeln('[image:generated]');
+            buf.writeln('$kMcpImageMarkerStart$mime;base64,$data$kMcpImageMarkerEnd');
+          } else {
+            // URL fallback
+            final url = (c.url ?? '').toString();
+            buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+          }
           continue;
         }
         // Try dynamic accessors that some adapters may expose
@@ -189,9 +201,17 @@ class McpToolService extends ChangeNotifier {
               continue;
             }
             if (c is mcp.ImageContent) {
-              final url = (c.url ?? '').toString();
-              final mime = (c.mimeType ?? '').toString();
-              buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+              final data = (c.data ?? '').toString();
+              final mime = (c.mimeType ?? 'image/png').toString();
+              if (data.isNotEmpty) {
+                // base64 image: embed with special marker for UI extraction
+                buf.writeln('[image:generated]');
+                buf.writeln('$kMcpImageMarkerStart$mime;base64,$data$kMcpImageMarkerEnd');
+              } else {
+                // URL fallback
+                final url = (c.url ?? '').toString();
+                buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+              }
               continue;
             }
             final dyn = c as dynamic;
