@@ -151,7 +151,7 @@ class McpToolService extends ChangeNotifier {
           if (data.isNotEmpty) {
             // base64 image: embed with special marker for UI extraction
             buf.writeln('[image:generated]');
-            buf.writeln('$kMcpImageMarkerStart$mime;base64,$data$kMcpImageMarkerEnd');
+            buf.writeln('${kMcpImageMarkerStart}data:$mime;base64,$data$kMcpImageMarkerEnd');
           } else {
             // URL fallback
             final url = (c.url ?? '').toString();
@@ -242,7 +242,7 @@ class McpToolService extends ChangeNotifier {
               if (data.isNotEmpty) {
                 // base64 image: embed with special marker for UI extraction
                 buf.writeln('[image:generated]');
-                buf.writeln('$kMcpImageMarkerStart$mime;base64,$data$kMcpImageMarkerEnd');
+                buf.writeln('${kMcpImageMarkerStart}data:$mime;base64,$data$kMcpImageMarkerEnd');
               } else {
                 // URL fallback
                 final url = (c.url ?? '').toString();
