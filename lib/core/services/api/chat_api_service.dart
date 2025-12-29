@@ -2364,7 +2364,7 @@ class ChatApiService {
                   final args = (m['__args'] as Map<String, dynamic>);
                   final res = await onToolCall(nm, args) ?? '';
                   resultsInfo.add(ToolResultInfo(id: id2, name: nm, arguments: args, content: res));
-                  followUpOutputs.add({'type': 'function_call_output', 'call_id': id2, 'output': res});
+                  followUpOutputs.add({'type': 'function_call_output', 'call_id': id2, 'output': stripMcpImageData(res)});
                 }
                 if (resultsInfo.isNotEmpty) {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo);
@@ -2528,7 +2528,7 @@ class ChatApiService {
                     final args2 = (m['__args'] as Map<String, dynamic>);
                     final res2 = await onToolCall(nm, args2) ?? '';
                     resultsInfo2.add(ToolResultInfo(id: id2, name: nm, arguments: args2, content: res2));
-                    followUpOutputs2.add({'type': 'function_call_output', 'call_id': id2, 'output': res2});
+                    followUpOutputs2.add({'type': 'function_call_output', 'call_id': id2, 'output': stripMcpImageData(res2)});
                   }
                   if (resultsInfo2.isNotEmpty) {
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
@@ -3918,7 +3918,7 @@ class ChatApiService {
             final name = (e.value['name'] ?? '').toString();
             final args = (e.value['args'] as Map<String, dynamic>);
             final res = await onToolCall(name, args) ?? '';
-            results.add({'type': 'tool_result', 'tool_use_id': e.key, 'content': res});
+            results.add({'type': 'tool_result', 'tool_use_id': e.key, 'content': stripMcpImageData(res)});
             resultsInfo.add(ToolResultInfo(id: e.key, name: name, arguments: args, content: res));
           }
           if (resultsInfo.isNotEmpty) {
@@ -4238,10 +4238,11 @@ class ChatApiService {
         if (res.isEmpty && onToolCall != null) {
           res = await onToolCall(name, args) ?? '';
         }
+        final strippedRes = stripMcpImageData(res);
         toolResultsBlocks.add({
           'type': 'tool_result',
           'tool_use_id': id,
-          if (res.isNotEmpty) 'content': res,
+          if (strippedRes.isNotEmpty) 'content': strippedRes,
         });
       }
 
@@ -4468,7 +4469,7 @@ class ChatApiService {
           currentContents = [
             ...currentContents,
             {'role': 'model', 'parts': parts},
-            {'role': 'user', 'parts': [ {'functionResponse': {'name': name, 'response': {'result': res}}} ]},
+            {'role': 'user', 'parts': [ {'functionResponse': {'name': name, 'response': {'result': stripMcpImageData(res)}}} ]},
           ];
           continue;
         }
@@ -5108,13 +5109,14 @@ class ChatApiService {
         }
 
         convo.add({'role': 'model', 'parts': [part]});
-        // Prepare JSON response object
+        // Prepare JSON response object (strip MCP image data before sending to LLM)
+        final strippedResText = stripMcpImageData(resText);
         Map<String, dynamic> responseObj;
         try {
-          responseObj = (jsonDecode(resText) as Map).cast<String, dynamic>();
+          responseObj = (jsonDecode(strippedResText) as Map).cast<String, dynamic>();
         } catch (_) {
           // Wrap plain text result
-          responseObj = {'result': resText};
+          responseObj = {'result': strippedResText};
         }
         // Add user's functionResponse turn
         convo.add({'role': 'user', 'parts': [

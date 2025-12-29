@@ -2140,9 +2140,67 @@ class ReasoningSegment {
   });
 }
 
-class _ToolCallItem extends StatelessWidget {
+class _ToolCallItem extends StatefulWidget {
   const _ToolCallItem({required this.part});
   final ToolUIPart part;
+
+  @override
+  State<_ToolCallItem> createState() => _ToolCallItemState();
+}
+
+class _ToolCallItemState extends State<_ToolCallItem> {
+  // Cache decoded images to prevent flickering during streaming updates
+  List<String> _cachedDataUrls = const [];
+  List<Uint8List> _decodedImages = const [];
+  String? _lastContent;
+
+  void _updateImageCache() {
+    final content = widget.part.content;
+    if (content == _lastContent) return;
+    _lastContent = content;
+
+    final (_, images) = parseMcpImageContent(content);
+    if (images.isEmpty) {
+      _cachedDataUrls = const [];
+      _decodedImages = const [];
+      return;
+    }
+
+    // Only decode new images, reuse existing ones
+    final newDecodedImages = <Uint8List>[];
+    for (int i = 0; i < images.length; i++) {
+      final dataUrl = images[i];
+      // Check if this image was already decoded
+      final existingIdx = _cachedDataUrls.indexOf(dataUrl);
+      if (existingIdx >= 0 && existingIdx < _decodedImages.length) {
+        newDecodedImages.add(_decodedImages[existingIdx]);
+      } else {
+        // Decode new image
+        try {
+          final data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
+          newDecodedImages.add(base64Decode(data));
+        } catch (_) {
+          // Skip invalid images
+        }
+      }
+    }
+    _cachedDataUrls = images;
+    _decodedImages = newDecodedImages;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _updateImageCache();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ToolCallItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.part.content != widget.part.content) {
+      _updateImageCache();
+    }
+  }
 
   IconData _iconFor(String name) {
     switch (name) {
@@ -2186,8 +2244,7 @@ class _ToolCallItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withOpacity(isDark ? 0.25 : 0.30);
-    final (_, images) = parseMcpImageContent(part.content);
-    final hasImages = images.isNotEmpty;
+    final hasImages = _decodedImages.isNotEmpty;
 
     return IosCardPress(
       borderRadius: BorderRadius.circular(16),
@@ -2202,7 +2259,7 @@ class _ToolCallItem extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              part.loading
+              widget.part.loading
                   ? SizedBox(
                       width: 18,
                       height: 18,
@@ -2215,7 +2272,7 @@ class _ToolCallItem extends StatelessWidget {
                       width: 18,
                       height: 18,
                       child: Center(
-                        child: Icon(_iconFor(part.toolName), size: 18, color: cs.secondary),
+                        child: Icon(_iconFor(widget.part.toolName), size: 18, color: cs.secondary),
                       ),
                     ),
               const SizedBox(width: 10),
@@ -2224,7 +2281,7 @@ class _ToolCallItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _titleFor(context, part.toolName, part.arguments, isResult: !part.loading),
+                      _titleFor(context, widget.part.toolName, widget.part.arguments, isResult: !widget.part.loading),
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.secondary),
                     ),
                   ],
@@ -2232,23 +2289,22 @@ class _ToolCallItem extends StatelessWidget {
               ),
             ],
           ),
-          // Show image thumbnails if available
+          // Show image thumbnails if available (using cached decoded images)
           if (hasImages) ...[
             const SizedBox(height: 10),
             SizedBox(
               height: 180,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: images.length,
+                itemCount: _decodedImages.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (ctx, i) {
-                  final dataUrl = images[i];
                   return GestureDetector(
-                    onTap: () => _showFullImage(context, dataUrl),
+                    onTap: () => _showFullImage(context, _cachedDataUrls[i]),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.memory(
-                        _decodeDataUrl(dataUrl),
+                        _decodedImages[i],
                         height: 180,
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => Container(
@@ -2272,8 +2328,8 @@ class _ToolCallItem extends StatelessWidget {
   void _showDetail(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final argsPretty = const JsonEncoder.withIndent('  ').convert(part.arguments);
-    final (cleanText, images) = parseMcpImageContent(part.content);
+    final argsPretty = const JsonEncoder.withIndent('  ').convert(widget.part.arguments);
+    final (cleanText, images) = parseMcpImageContent(widget.part.content);
     final resultText = cleanText.isNotEmpty ? cleanText : l10n.chatMessageWidgetNoResultYet;
 
     final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
@@ -2303,11 +2359,11 @@ class _ToolCallItem extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                         child: Row(
                           children: [
-                            Icon(_iconFor(part.toolName), size: 18, color: cs.primary),
+                            Icon(_iconFor(widget.part.toolName), size: 18, color: cs.primary),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                _titleFor(context, part.toolName, part.arguments, isResult: !part.loading),
+                                _titleFor(context, widget.part.toolName, widget.part.arguments, isResult: !widget.part.loading),
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -2423,11 +2479,11 @@ class _ToolCallItem extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(_iconFor(part.toolName), size: 18, color: cs.primary),
+                        Icon(_iconFor(widget.part.toolName), size: 18, color: cs.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _titleFor(context, part.toolName, part.arguments, isResult: !part.loading),
+                            _titleFor(context, widget.part.toolName, widget.part.arguments, isResult: !widget.part.loading),
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                           ),
                         ),
