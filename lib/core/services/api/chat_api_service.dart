@@ -15,6 +15,7 @@ import 'package:Kelivo/secrets/fallback.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../utils/unicode_sanitizer.dart';
 import 'builtin_tools.dart';
+import '../mcp/mcp_tool_service.dart' show stripMcpImageData;
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
@@ -1697,7 +1698,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              next.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+              next.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
             }
             final reqBody = Map<String, dynamic>.from(body);
             reqBody['messages'] = next;
@@ -1837,7 +1838,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
             }
 
             // Follow-up request(s) with multi-round tool calls
@@ -2161,7 +2162,7 @@ class ChatApiService {
                       'role': 'tool',
                       'tool_call_id': r['tool_call_id'],
                       'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                      'content': r['content'],
+                      'content': stripMcpImageData(r['content'] ?? ''),
                     },
                 ];
                 // Continue loop
@@ -2841,7 +2842,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
             }
             // Continue streaming with follow-up request
             var currentMessages = mm2;
@@ -3170,7 +3171,7 @@ class ChatApiService {
                       'role': 'tool',
                       'tool_call_id': r['tool_call_id'],
                       'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                      'content': r['content'],
+                      'content': stripMcpImageData(r['content'] ?? ''),
                     },
                 ];
                 continue;
@@ -3241,7 +3242,7 @@ class ChatApiService {
                 for (final r in results) {
                   final id = r['tool_call_id'];
                   final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-                  mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+                  mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
                 }
                 // Continue streaming with follow-up request - reuse existing multi-round logic from [DONE] handler
                 var currentMessages = mm2;
@@ -3544,7 +3545,7 @@ class ChatApiService {
                           'role': 'tool',
                           'tool_call_id': r['tool_call_id'],
                           'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                          'content': r['content'],
+                          'content': stripMcpImageData(r['content'] ?? ''),
                         },
                     ];
                     continue;
@@ -3629,7 +3630,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
             }
 
             final Map<String, dynamic> body2 = {

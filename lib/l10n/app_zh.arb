@@ -512,6 +512,7 @@
   "chatMessageWidgetNoResultYet": "（暂无结果）",
   "chatMessageWidgetArguments": "参数",
   "chatMessageWidgetResult": "结果",
+  "chatMessageWidgetImages": "图片",
   "chatMessageWidgetCitationsCount": "共{count}条引用",
   "messageExportSheetAssistant": "助手",
   "messageExportSheetDefaultTitle": "新对话",

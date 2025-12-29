@@ -10,6 +10,42 @@ import '../../providers/assistant_provider.dart';
 const String kMcpImageMarkerStart = '__MCP_IMG__';
 const String kMcpImageMarkerEnd = '__MCP_IMG_END__';
 
+/// Strip MCP image data from content, keeping only text markers like [image:generated].
+/// Use this before sending tool results to LLM.
+/// Fast path: returns original content if no image markers present.
+String stripMcpImageData(String content) {
+  // Fast path: no markers, return as-is
+  if (!content.contains(kMcpImageMarkerStart)) return content;
+
+  var result = content;
+  while (true) {
+    final startIdx = result.indexOf(kMcpImageMarkerStart);
+    if (startIdx < 0) break;
+    final endIdx = result.indexOf(kMcpImageMarkerEnd, startIdx);
+    if (endIdx < 0) break;
+    result = result.substring(0, startIdx) + result.substring(endIdx + kMcpImageMarkerEnd.length);
+  }
+  return result.trim();
+}
+
+/// Parse content to extract clean text and base64 image data URLs.
+/// Returns (cleanText, imageDataUrls). Use for UI display.
+(String, List<String>) parseMcpImageContent(String? content) {
+  if (content == null || content.isEmpty) return ('', const []);
+  final images = <String>[];
+  var text = content;
+  while (true) {
+    final startIdx = text.indexOf(kMcpImageMarkerStart);
+    if (startIdx < 0) break;
+    final endIdx = text.indexOf(kMcpImageMarkerEnd, startIdx);
+    if (endIdx < 0) break;
+    final dataUrl = text.substring(startIdx + kMcpImageMarkerStart.length, endIdx).trim();
+    if (dataUrl.isNotEmpty) images.add(dataUrl);
+    text = text.substring(0, startIdx) + text.substring(endIdx + kMcpImageMarkerEnd.length);
+  }
+  return (text.trim(), images);
+}
+
 class McpToolService extends ChangeNotifier {
   McpToolService();
 

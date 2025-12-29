@@ -1530,6 +1530,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatMessageWidgetResult => '结果';
 
   @override
+  String get chatMessageWidgetImages => '图片';
+
+  @override
   String chatMessageWidgetCitationsCount(int count) {
     return '共$count条引用';
   }
@@ -5131,6 +5134,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get chatMessageWidgetResult => '结果';
 
   @override
+  String get chatMessageWidgetImages => '图片';
+
+  @override
   String chatMessageWidgetCitationsCount(int count) {
     return '共$count条引用';
   }
@@ -8694,6 +8700,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get chatMessageWidgetResult => '結果';
+
+  @override
+  String get chatMessageWidgetImages => '圖片';
 
   @override
   String chatMessageWidgetCitationsCount(int count) {

@@ -1574,6 +1574,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatMessageWidgetResult => 'Result';
 
   @override
+  String get chatMessageWidgetImages => 'Images';
+
+  @override
   String chatMessageWidgetCitationsCount(int count) {
     return 'Citations ($count)';
   }

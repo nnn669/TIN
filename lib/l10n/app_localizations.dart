@@ -3023,6 +3023,12 @@ abstract class AppLocalizations {
   /// **'Result'**
   String get chatMessageWidgetResult;
 
+  /// No description provided for @chatMessageWidgetImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get chatMessageWidgetImages;
+
   /// No description provided for @chatMessageWidgetCitationsCount.
   ///
   /// In en, this message translates to:

@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:open_filex/open_filex.dart';
 // import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:characters/characters.dart';
 import '../pages/image_viewer_page.dart';
 import '../../../core/models/chat_message.dart';
@@ -36,6 +37,7 @@ import '../../../shared/widgets/ios_tactile.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
+import '../../../core/services/mcp/mcp_tool_service.dart' show parseMcpImageContent;
 
 class ChatMessageWidget extends StatefulWidget {
   final ChatMessage message;
@@ -2142,29 +2144,6 @@ class _ToolCallItem extends StatelessWidget {
   const _ToolCallItem({required this.part});
   final ToolUIPart part;
 
-  /// Markers for MCP base64 images (must match mcp_tool_service.dart)
-  static const String _imgStart = '__MCP_IMG__';
-  static const String _imgEnd = '__MCP_IMG_END__';
-
-  /// Parse content to extract text (for LLM) and base64 images (for UI).
-  /// Returns (cleanText, imageDataUrls).
-  static (String, List<String>) _parseContentImages(String? content) {
-    if (content == null || content.isEmpty) return ('', const []);
-    final images = <String>[];
-    var text = content;
-    // Extract all __MCP_IMG__...__MCP_IMG_END__ blocks
-    while (true) {
-      final startIdx = text.indexOf(_imgStart);
-      if (startIdx < 0) break;
-      final endIdx = text.indexOf(_imgEnd, startIdx);
-      if (endIdx < 0) break;
-      final dataUrl = text.substring(startIdx + _imgStart.length, endIdx).trim();
-      if (dataUrl.isNotEmpty) images.add(dataUrl);
-      text = text.substring(0, startIdx) + text.substring(endIdx + _imgEnd.length);
-    }
-    return (text.trim(), images);
-  }
-
   IconData _iconFor(String name) {
     switch (name) {
       case 'create_memory':
@@ -2207,7 +2186,7 @@ class _ToolCallItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withOpacity(isDark ? 0.25 : 0.30);
-    final (_, images) = _parseContentImages(part.content);
+    final (_, images) = parseMcpImageContent(part.content);
     final hasImages = images.isNotEmpty;
 
     return IosCardPress(
@@ -2264,18 +2243,20 @@ class _ToolCallItem extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (ctx, i) {
                   final dataUrl = images[i];
-                  final base64Data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(
-                      base64Decode(base64Data),
-                      height: 180,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 120,
+                  return GestureDetector(
+                    onTap: () => _showFullImage(context, dataUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        _decodeDataUrl(dataUrl),
                         height: 180,
-                        color: cs.surfaceContainerHighest,
-                        child: Icon(Lucide.ImageOff, size: 24, color: cs.onSurface.withOpacity(0.5)),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 120,
+                          height: 180,
+                          color: cs.surfaceContainerHighest,
+                          child: Icon(Lucide.ImageOff, size: 24, color: cs.onSurface.withOpacity(0.5)),
+                        ),
                       ),
                     ),
                   );
@@ -2292,7 +2273,7 @@ class _ToolCallItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final argsPretty = const JsonEncoder.withIndent('  ').convert(part.arguments);
-    final (cleanText, images) = _parseContentImages(part.content);
+    final (cleanText, images) = parseMcpImageContent(part.content);
     final resultText = cleanText.isNotEmpty ? cleanText : l10n.chatMessageWidgetNoResultYet;
 
     final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
@@ -2379,19 +2360,18 @@ class _ToolCallItem extends StatelessWidget {
                                 // Show images if available
                                 if (images.isNotEmpty) ...[
                                   const SizedBox(height: 12),
-                                  Text('Images', style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
+                                  Text(l10n.chatMessageWidgetImages, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
                                   const SizedBox(height: 6),
                                   Wrap(
                                     spacing: 8,
                                     runSpacing: 8,
                                     children: images.map((dataUrl) {
-                                      final base64Data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
                                       return GestureDetector(
-                                        onTap: () => _showFullImage(context, base64Data),
+                                        onTap: () => _showFullImage(context, dataUrl),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
                                           child: Image.memory(
-                                            base64Decode(base64Data),
+                                            _decodeDataUrl(dataUrl),
                                             height: 280,
                                             fit: BoxFit.contain,
                                             errorBuilder: (_, __, ___) => Container(
@@ -2482,19 +2462,18 @@ class _ToolCallItem extends StatelessWidget {
                     // Show images if available
                     if (images.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      Text('Images', style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
+                      Text(l10n.chatMessageWidgetImages, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: images.map((dataUrl) {
-                          final base64Data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
                           return GestureDetector(
-                            onTap: () => _showFullImage(context, base64Data),
+                            onTap: () => _showFullImage(context, dataUrl),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.memory(
-                                base64Decode(base64Data),
+                                _decodeDataUrl(dataUrl),
                                 height: 240,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, __, ___) => Container(
@@ -2519,53 +2498,39 @@ class _ToolCallItem extends StatelessWidget {
     );
   }
 
-  /// Show full-size image in a dialog.
-  void _showFullImage(BuildContext context, String base64Data) {
-    final cs = Theme.of(context).colorScheme;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
-          child: Stack(
-            alignment: Alignment.topRight,
-            children: [
-              InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(
-                    base64Decode(base64Data),
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Lucide.ImageOff, size: 48, color: cs.onSurface.withOpacity(0.5)),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: cs.surface.withOpacity(0.8),
-                  ),
-                  icon: Icon(Lucide.X, size: 20, color: cs.onSurface),
-                  onPressed: () => Navigator.of(ctx).maybePop(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  /// Decode base64 from data URL format "data:image/xxx;base64,xxx".
+  Uint8List _decodeDataUrl(String dataUrl) {
+    final data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
+    return base64Decode(data);
+  }
+
+  /// Show full-size image using ImageViewerPage for save/share/copy support.
+  /// [dataUrl] should be in "data:image/xxx;base64,xxx" format.
+  void _showFullImage(BuildContext context, String dataUrl) {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        pageBuilder: (_, __, ___) => ImageViewerPage(images: [dataUrl]),
+        transitionDuration: const Duration(milliseconds: 360),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        transitionsBuilder: (context, anim, sec, child) {
+          final curved = CurvedAnimation(
+            parent: anim,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.02),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 }

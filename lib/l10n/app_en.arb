@@ -691,6 +691,7 @@
   "chatMessageWidgetNoResultYet": "(No result yet)",
   "chatMessageWidgetArguments": "Arguments",
   "chatMessageWidgetResult": "Result",
+  "chatMessageWidgetImages": "Images",
   "chatMessageWidgetCitationsCount": "Citations ({count})",
   "@chatMessageWidgetCitationsCount": {
     "placeholders": {

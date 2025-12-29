@@ -510,6 +510,7 @@
   "chatMessageWidgetNoResultYet": "（暫無結果）",
   "chatMessageWidgetArguments": "參數",
   "chatMessageWidgetResult": "結果",
+  "chatMessageWidgetImages": "圖片",
   "chatMessageWidgetCitationsCount": "共{count}條引用",
   "messageExportSheetAssistant": "助理",
   "messageExportSheetDefaultTitle": "新對話",
