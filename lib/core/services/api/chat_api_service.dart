@@ -15,7 +15,6 @@ import 'package:Kelivo/secrets/fallback.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../../../utils/unicode_sanitizer.dart';
 import 'builtin_tools.dart';
-import '../mcp/mcp_tool_service.dart' show stripMcpImageData;
 
 class ChatApiService {
   static const String _aihubmixAppCode = 'ZKRT3588';
@@ -209,46 +208,6 @@ class ChatApiService {
     r'<!--\s*gemini_thought_signatures:(.*?)-->',
     dotAll: true,
   );
-
-  // Get file extension from MIME type
-  static String _extFromMime(String mime) {
-    switch (mime.toLowerCase()) {
-      case 'image/jpeg':
-      case 'image/jpg':
-        return 'jpg';
-      case 'image/webp':
-        return 'webp';
-      case 'image/gif':
-        return 'gif';
-      case 'image/png':
-      default:
-        return 'png';
-    }
-  }
-
-  // Save base64 image data to file and return the path
-  static Future<String?> _saveInlineImageToFile(String mime, String data) async {
-    try {
-      final dir = await AppDirectories.getImagesDirectory();
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-      final cleaned = data.replaceAll(RegExp(r'\s'), '');
-      List<int> bytes;
-      try {
-        bytes = base64Decode(cleaned);
-      } catch (_) {
-        bytes = base64Url.decode(cleaned);
-      }
-      final ext = _extFromMime(mime);
-      final path = '${dir.path}/img_${DateTime.now().microsecondsSinceEpoch}.$ext';
-      final f = File(path);
-      await f.writeAsBytes(bytes, flush: true);
-      return path;
-    } catch (_) {
-      return null;
-    }
-  }
 
   // YouTube URL regex: watch, shorts, embed, youtu.be (with optional timestamps)
   static final RegExp _youtubeUrlRegex = RegExp(
@@ -1698,7 +1657,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              next.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
+              next.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
             }
             final reqBody = Map<String, dynamic>.from(body);
             reqBody['messages'] = next;
@@ -1838,7 +1797,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
             }
 
             // Follow-up request(s) with multi-round tool calls
@@ -2162,7 +2121,7 @@ class ChatApiService {
                       'role': 'tool',
                       'tool_call_id': r['tool_call_id'],
                       'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                      'content': stripMcpImageData(r['content'] ?? ''),
+                      'content': r['content'],
                     },
                 ];
                 // Continue loop
@@ -2298,7 +2257,7 @@ class ChatApiService {
                       // it['result'] is directly the base64 image data
                       final b64 = (it['result'] ?? '').toString();
                       if (b64.isNotEmpty) {
-                        final savedPath = await _saveInlineImageToFile('image/png', b64);
+                        final savedPath = await AppDirectories.saveBase64Image('image/png', b64);
                         if (savedPath != null && savedPath.isNotEmpty) {
                           final mdImg = '\n![Generated Image]($savedPath)\n';
                           yield ChatStreamChunk(
@@ -2364,7 +2323,7 @@ class ChatApiService {
                   final args = (m['__args'] as Map<String, dynamic>);
                   final res = await onToolCall(nm, args) ?? '';
                   resultsInfo.add(ToolResultInfo(id: id2, name: nm, arguments: args, content: res));
-                  followUpOutputs.add({'type': 'function_call_output', 'call_id': id2, 'output': stripMcpImageData(res)});
+                  followUpOutputs.add({'type': 'function_call_output', 'call_id': id2, 'output': res});
                 }
                 if (resultsInfo.isNotEmpty) {
                   yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo);
@@ -2528,7 +2487,7 @@ class ChatApiService {
                     final args2 = (m['__args'] as Map<String, dynamic>);
                     final res2 = await onToolCall(nm, args2) ?? '';
                     resultsInfo2.add(ToolResultInfo(id: id2, name: nm, arguments: args2, content: res2));
-                    followUpOutputs2.add({'type': 'function_call_output', 'call_id': id2, 'output': stripMcpImageData(res2)});
+                    followUpOutputs2.add({'type': 'function_call_output', 'call_id': id2, 'output': res2});
                   }
                   if (resultsInfo2.isNotEmpty) {
                     yield ChatStreamChunk(content: '', isDone: false, totalTokens: usage?.totalTokens ?? 0, usage: usage, toolResults: resultsInfo2);
@@ -2842,7 +2801,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
             }
             // Continue streaming with follow-up request
             var currentMessages = mm2;
@@ -3171,7 +3130,7 @@ class ChatApiService {
                       'role': 'tool',
                       'tool_call_id': r['tool_call_id'],
                       'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                      'content': stripMcpImageData(r['content'] ?? ''),
+                      'content': r['content'],
                     },
                 ];
                 continue;
@@ -3242,7 +3201,7 @@ class ChatApiService {
                 for (final r in results) {
                   final id = r['tool_call_id'];
                   final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-                  mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
+                  mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
                 }
                 // Continue streaming with follow-up request - reuse existing multi-round logic from [DONE] handler
                 var currentMessages = mm2;
@@ -3545,7 +3504,7 @@ class ChatApiService {
                           'role': 'tool',
                           'tool_call_id': r['tool_call_id'],
                           'name': calls2.firstWhere((c) => c['id'] == r['tool_call_id'], orElse: () => const {'function': {'name': ''}})['function']['name'],
-                          'content': stripMcpImageData(r['content'] ?? ''),
+                          'content': r['content'],
                         },
                     ];
                     continue;
@@ -3630,7 +3589,7 @@ class ChatApiService {
             for (final r in results) {
               final id = r['tool_call_id'];
               final name = calls.firstWhere((c) => c['id'] == id, orElse: () => const {'function': {'name': ''}})['function']['name'];
-              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': stripMcpImageData(r['content'] ?? '')});
+              mm2.add({'role': 'tool', 'tool_call_id': id, 'name': name, 'content': r['content']});
             }
 
             final Map<String, dynamic> body2 = {
@@ -3918,7 +3877,7 @@ class ChatApiService {
             final name = (e.value['name'] ?? '').toString();
             final args = (e.value['args'] as Map<String, dynamic>);
             final res = await onToolCall(name, args) ?? '';
-            results.add({'type': 'tool_result', 'tool_use_id': e.key, 'content': stripMcpImageData(res)});
+            results.add({'type': 'tool_result', 'tool_use_id': e.key, 'content': res});
             resultsInfo.add(ToolResultInfo(id: e.key, name: name, arguments: args, content: res));
           }
           if (resultsInfo.isNotEmpty) {
@@ -4238,11 +4197,10 @@ class ChatApiService {
         if (res.isEmpty && onToolCall != null) {
           res = await onToolCall(name, args) ?? '';
         }
-        final strippedRes = stripMcpImageData(res);
         toolResultsBlocks.add({
           'type': 'tool_result',
           'tool_use_id': id,
-          if (strippedRes.isNotEmpty) 'content': strippedRes,
+          if (res.isNotEmpty) 'content': res,
         });
       }
 
@@ -4469,7 +4427,7 @@ class ChatApiService {
           currentContents = [
             ...currentContents,
             {'role': 'model', 'parts': parts},
-            {'role': 'user', 'parts': [ {'functionResponse': {'name': name, 'response': {'result': stripMcpImageData(res)}}} ]},
+            {'role': 'user', 'parts': [ {'functionResponse': {'name': name, 'response': {'result': res}}} ]},
           ];
           continue;
         }
@@ -4838,7 +4796,7 @@ class ChatApiService {
       Future<String> _takeBufferedImageMarkdown() async {
         if (!_bufferingInlineImage || _pendingImageData.isEmpty) return '';
         final trailing = _pendingImageTrailingText;
-        final path = await _saveInlineImageToFile(_imageMime, _pendingImageData);
+        final path = await AppDirectories.saveBase64Image(_imageMime, _pendingImageData);
         _bufferingInlineImage = false;
         _pendingImageData = '';
         _pendingImageTrailingText = '';
@@ -5109,14 +5067,13 @@ class ChatApiService {
         }
 
         convo.add({'role': 'model', 'parts': [part]});
-        // Prepare JSON response object (strip MCP image data before sending to LLM)
-        final strippedResText = stripMcpImageData(resText);
+        // Prepare JSON response object
         Map<String, dynamic> responseObj;
         try {
-          responseObj = (jsonDecode(strippedResText) as Map).cast<String, dynamic>();
+          responseObj = (jsonDecode(resText) as Map).cast<String, dynamic>();
         } catch (_) {
           // Wrap plain text result
-          responseObj = {'result': strippedResText};
+          responseObj = {'result': resText};
         }
         // Add user's functionResponse turn
         convo.add({'role': 'user', 'parts': [

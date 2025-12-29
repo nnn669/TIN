@@ -37,7 +37,26 @@ import '../../../shared/widgets/ios_tactile.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
-import '../../../core/services/mcp/mcp_tool_service.dart' show parseMcpImageContent;
+
+/// Extract image paths from tool result content.
+/// Returns (cleanText, imagePaths). Supports local file paths and HTTP URLs.
+(String, List<String>) _parseMcpImagePaths(String? content) {
+  if (content == null || content.isEmpty) return ('', const []);
+
+  final images = <String>[];
+  final imgRe = RegExp(r'\[image:(.+?)\]');
+
+  final cleanText = content.replaceAllMapped(imgRe, (m) {
+    final path = m.group(1)!;
+    // Filter invalid values
+    if (path.isNotEmpty && path != 'generated') {
+      images.add(path);
+    }
+    return '';
+  });
+
+  return (cleanText.trim(), images);
+}
 
 class ChatMessageWidget extends StatefulWidget {
   final ChatMessage message;
@@ -2149,9 +2168,8 @@ class _ToolCallItem extends StatefulWidget {
 }
 
 class _ToolCallItemState extends State<_ToolCallItem> {
-  // Cache decoded images to prevent flickering during streaming updates
-  List<String> _cachedDataUrls = const [];
-  List<Uint8List> _decodedImages = const [];
+  // Cache image paths (local file or URL)
+  List<String> _imagePaths = const [];
   String? _lastContent;
 
   void _updateImageCache() {
@@ -2159,33 +2177,37 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     if (content == _lastContent) return;
     _lastContent = content;
 
-    final (_, images) = parseMcpImageContent(content);
-    if (images.isEmpty) {
-      _cachedDataUrls = const [];
-      _decodedImages = const [];
-      return;
-    }
+    final (_, paths) = _parseMcpImagePaths(content);
+    _imagePaths = paths;
+  }
 
-    // Only decode new images, reuse existing ones
-    final newDecodedImages = <Uint8List>[];
-    for (int i = 0; i < images.length; i++) {
-      final dataUrl = images[i];
-      // Check if this image was already decoded
-      final existingIdx = _cachedDataUrls.indexOf(dataUrl);
-      if (existingIdx >= 0 && existingIdx < _decodedImages.length) {
-        newDecodedImages.add(_decodedImages[existingIdx]);
-      } else {
-        // Decode new image
-        try {
-          final data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
-          newDecodedImages.add(base64Decode(data));
-        } catch (_) {
-          // Skip invalid images
-        }
-      }
+  /// Build image widget from path (supports local file and HTTP URL)
+  Widget _buildImageFromPath(String path, {double? height, BoxFit fit = BoxFit.contain}) {
+    final cs = Theme.of(context).colorScheme;
+    Widget errorWidget() => Container(
+      width: height != null ? height * 0.67 : 120,
+      height: height ?? 180,
+      color: cs.surfaceContainerHighest,
+      child: Icon(Lucide.ImageOff, size: 24, color: cs.onSurface.withOpacity(0.5)),
+    );
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      // HTTP URL
+      return Image.network(
+        path,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => errorWidget(),
+      );
+    } else {
+      // Local file path
+      return Image.file(
+        File(path),
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => errorWidget(),
+      );
     }
-    _cachedDataUrls = images;
-    _decodedImages = newDecodedImages;
   }
 
   @override
@@ -2244,7 +2266,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withOpacity(isDark ? 0.25 : 0.30);
-    final hasImages = _decodedImages.isNotEmpty;
+    final hasImages = _imagePaths.isNotEmpty;
 
     return IosCardPress(
       borderRadius: BorderRadius.circular(16),
@@ -2289,31 +2311,22 @@ class _ToolCallItemState extends State<_ToolCallItem> {
               ),
             ],
           ),
-          // Show image thumbnails if available (using cached decoded images)
+          // Show image thumbnails if available
           if (hasImages) ...[
             const SizedBox(height: 10),
             SizedBox(
               height: 180,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: _decodedImages.length,
+                itemCount: _imagePaths.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (ctx, i) {
+                  final path = _imagePaths[i];
                   return GestureDetector(
-                    onTap: () => _showFullImage(context, _cachedDataUrls[i]),
+                    onTap: () => _showFullImage(context, path),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        _decodedImages[i],
-                        height: 180,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 120,
-                          height: 180,
-                          color: cs.surfaceContainerHighest,
-                          child: Icon(Lucide.ImageOff, size: 24, color: cs.onSurface.withOpacity(0.5)),
-                        ),
-                      ),
+                      child: _buildImageFromPath(path, height: 180),
                     ),
                   );
                 },
@@ -2329,7 +2342,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final argsPretty = const JsonEncoder.withIndent('  ').convert(widget.part.arguments);
-    final (cleanText, images) = parseMcpImageContent(widget.part.content);
+    final (cleanText, images) = _parseMcpImagePaths(widget.part.content);
     final resultText = cleanText.isNotEmpty ? cleanText : l10n.chatMessageWidgetNoResultYet;
 
     final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
@@ -2421,22 +2434,12 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                                   Wrap(
                                     spacing: 8,
                                     runSpacing: 8,
-                                    children: images.map((dataUrl) {
+                                    children: images.map((path) {
                                       return GestureDetector(
-                                        onTap: () => _showFullImage(context, dataUrl),
+                                        onTap: () => _showFullImage(context, path),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
-                                          child: Image.memory(
-                                            _decodeDataUrl(dataUrl),
-                                            height: 280,
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) => Container(
-                                              width: 180,
-                                              height: 280,
-                                              color: cs.surfaceContainerHighest,
-                                              child: Icon(Lucide.ImageOff, size: 32, color: cs.onSurface.withOpacity(0.5)),
-                                            ),
-                                          ),
+                                          child: _buildImageFromPath(path, height: 280),
                                         ),
                                       );
                                     }).toList(),
@@ -2523,22 +2526,12 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: images.map((dataUrl) {
+                        children: images.map((path) {
                           return GestureDetector(
-                            onTap: () => _showFullImage(context, dataUrl),
+                            onTap: () => _showFullImage(context, path),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.memory(
-                                _decodeDataUrl(dataUrl),
-                                height: 240,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 160,
-                                  height: 240,
-                                  color: cs.surfaceContainerHighest,
-                                  child: Icon(Lucide.ImageOff, size: 28, color: cs.onSurface.withOpacity(0.5)),
-                                ),
-                              ),
+                              child: _buildImageFromPath(path, height: 240),
                             ),
                           );
                         }).toList(),
@@ -2554,19 +2547,13 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     );
   }
 
-  /// Decode base64 from data URL format "data:image/xxx;base64,xxx".
-  Uint8List _decodeDataUrl(String dataUrl) {
-    final data = dataUrl.contains(',') ? dataUrl.split(',').last : dataUrl;
-    return base64Decode(data);
-  }
-
   /// Show full-size image using ImageViewerPage for save/share/copy support.
-  /// [dataUrl] should be in "data:image/xxx;base64,xxx" format.
-  void _showFullImage(BuildContext context, String dataUrl) {
+  /// [path] can be a local file path or HTTP URL.
+  void _showFullImage(BuildContext context, String path) {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque: false,
-        pageBuilder: (_, __, ___) => ImageViewerPage(images: [dataUrl]),
+        pageBuilder: (_, __, ___) => ImageViewerPage(images: [path]),
         transitionDuration: const Duration(milliseconds: 360),
         reverseTransitionDuration: const Duration(milliseconds: 280),
         transitionsBuilder: (context, anim, sec, child) {

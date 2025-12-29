@@ -5,46 +5,7 @@ import 'package:mcp_client/mcp_client.dart' as mcp;
 import '../../providers/mcp_provider.dart';
 import '../chat/chat_service.dart';
 import '../../providers/assistant_provider.dart';
-
-/// Markers for embedding base64 images in tool results
-const String kMcpImageMarkerStart = '__MCP_IMG__';
-const String kMcpImageMarkerEnd = '__MCP_IMG_END__';
-
-/// Strip MCP image data from content, keeping only text markers like [image:generated].
-/// Use this before sending tool results to LLM.
-/// Fast path: returns original content if no image markers present.
-String stripMcpImageData(String content) {
-  // Fast path: no markers, return as-is
-  if (!content.contains(kMcpImageMarkerStart)) return content;
-
-  var result = content;
-  while (true) {
-    final startIdx = result.indexOf(kMcpImageMarkerStart);
-    if (startIdx < 0) break;
-    final endIdx = result.indexOf(kMcpImageMarkerEnd, startIdx);
-    if (endIdx < 0) break;
-    result = result.substring(0, startIdx) + result.substring(endIdx + kMcpImageMarkerEnd.length);
-  }
-  return result.trim();
-}
-
-/// Parse content to extract clean text and base64 image data URLs.
-/// Returns (cleanText, imageDataUrls). Use for UI display.
-(String, List<String>) parseMcpImageContent(String? content) {
-  if (content == null || content.isEmpty) return ('', const []);
-  final images = <String>[];
-  var text = content;
-  while (true) {
-    final startIdx = text.indexOf(kMcpImageMarkerStart);
-    if (startIdx < 0) break;
-    final endIdx = text.indexOf(kMcpImageMarkerEnd, startIdx);
-    if (endIdx < 0) break;
-    final dataUrl = text.substring(startIdx + kMcpImageMarkerStart.length, endIdx).trim();
-    if (dataUrl.isNotEmpty) images.add(dataUrl);
-    text = text.substring(0, startIdx) + text.substring(endIdx + kMcpImageMarkerEnd.length);
-  }
-  return (text.trim(), images);
-}
+import '../../../utils/app_directories.dart';
 
 class McpToolService extends ChangeNotifier {
   McpToolService();
@@ -149,13 +110,13 @@ class McpToolService extends ChangeNotifier {
           final data = (c.data ?? '').toString();
           final mime = (c.mimeType ?? 'image/png').toString();
           if (data.isNotEmpty) {
-            // base64 image: embed with special marker for UI extraction
-            buf.writeln('[image:generated]');
-            buf.writeln('${kMcpImageMarkerStart}data:$mime;base64,$data$kMcpImageMarkerEnd');
+            final savedPath = await AppDirectories.saveBase64Image(mime, data, prefix: 'mcp_img');
+            if (savedPath != null) {
+              buf.writeln('[image:$savedPath]');
+            }
           } else {
-            // URL fallback
             final url = (c.url ?? '').toString();
-            buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+            if (url.isNotEmpty) buf.writeln('[image:$url]');
           }
           continue;
         }
@@ -240,13 +201,13 @@ class McpToolService extends ChangeNotifier {
               final data = (c.data ?? '').toString();
               final mime = (c.mimeType ?? 'image/png').toString();
               if (data.isNotEmpty) {
-                // base64 image: embed with special marker for UI extraction
-                buf.writeln('[image:generated]');
-                buf.writeln('${kMcpImageMarkerStart}data:$mime;base64,$data$kMcpImageMarkerEnd');
+                final savedPath = await AppDirectories.saveBase64Image(mime, data, prefix: 'mcp_img');
+                if (savedPath != null) {
+                  buf.writeln('[image:$savedPath]');
+                }
               } else {
-                // URL fallback
                 final url = (c.url ?? '').toString();
-                buf.writeln('[image:${url.isNotEmpty ? url : mime}]');
+                if (url.isNotEmpty) buf.writeln('[image:$url]');
               }
               continue;
             }
