@@ -2964,6 +2964,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageNewChatOnLaunchTitle => 'New Chat on Launch';
 
   @override
+  String get displaySettingsPageEnterToSendTitle => 'Enter Key to Send';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle =>
       'Auto switch to Topics';
 

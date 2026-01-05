@@ -932,6 +932,7 @@
   "displaySettingsPageNewChatAfterDeleteTitle": "删除话题后新建对话",
   "displaySettingsPageNewChatOnAssistantSwitchTitle": "切换助手时新建对话",
   "displaySettingsPageNewChatOnLaunchTitle": "启动时新建对话",
+  "displaySettingsPageEnterToSendTitle": "回车键发送消息",
   "displaySettingsPageAutoSwitchTopicsTitle": "自动切换话题",
   "desktopDisplaySettingsTopicPositionTitle": "话题位置",
   "desktopDisplaySettingsTopicPositionLeft": "左侧",

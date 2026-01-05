@@ -1238,6 +1238,7 @@
   "displaySettingsPageNewChatAfterDeleteTitle": "New chat after deleting topic",
   "displaySettingsPageNewChatOnAssistantSwitchTitle": "New chat when switching assistants",
   "displaySettingsPageNewChatOnLaunchTitle": "New Chat on Launch",
+  "displaySettingsPageEnterToSendTitle": "Enter Key to Send",
   "displaySettingsPageAutoSwitchTopicsTitle": "Auto switch to Topics",
   "desktopDisplaySettingsTopicPositionTitle": "Topic position",
   "desktopDisplaySettingsTopicPositionLeft": "Left",

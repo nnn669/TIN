@@ -1381,6 +1381,7 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
                           //   );
                           // }
 
+                            final enterToSend = context.watch<SettingsProvider>().enterToSendOnMobile;
                             return GestureDetector(
                               behavior: HitTestBehavior.deferToChild,
                               // onSecondaryTapDown: (details) {
@@ -1392,11 +1393,11 @@ class _ChatInputBarState extends State<ChatInputBar> with WidgetsBindingObserver
                                 onChanged: _onTextChanged,
                                 minLines: 1,
                                 maxLines: _isExpanded ? 25 : 5,
-                                // On iOS, show "Send" on the return key and submit on tap.
+                                // On mobile, optionally show "Send" on the return key and submit on tap.
                                 // Still keep multiline so pasted text preserves line breaks.
                                 keyboardType: TextInputType.multiline,
-                                textInputAction: Platform.isIOS ? TextInputAction.send : TextInputAction.newline,
-                                onSubmitted: Platform.isIOS ? (_) => _handleSend() : null,
+                                textInputAction: enterToSend ? TextInputAction.send : TextInputAction.newline,
+                                onSubmitted: enterToSend ? (_) => _handleSend() : null,
                                 // Custom context menu: use instance method to avoid flickering
                                 // caused by recreating the callback on every build.
                                 // See: https://github.com/flutter/flutter/issues/150551

@@ -5570,6 +5570,12 @@ abstract class AppLocalizations {
   /// **'New Chat on Launch'**
   String get displaySettingsPageNewChatOnLaunchTitle;
 
+  /// No description provided for @displaySettingsPageEnterToSendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Key to Send'**
+  String get displaySettingsPageEnterToSendTitle;
+
   /// No description provided for @displaySettingsPageAutoSwitchTopicsTitle.
   ///
   /// In en, this message translates to:

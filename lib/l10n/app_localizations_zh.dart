@@ -2855,6 +2855,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
+  String get displaySettingsPageEnterToSendTitle => '回车键发送消息';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
@@ -6439,6 +6442,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageNewChatOnLaunchTitle => '启动时新建对话';
 
   @override
+  String get displaySettingsPageEnterToSendTitle => '回车键发送消息';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
@@ -10018,6 +10024,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageNewChatOnLaunchTitle => '啟動時新建對話';
+
+  @override
+  String get displaySettingsPageEnterToSendTitle => '回車鍵發送訊息';
 
   @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自動切換話題';
