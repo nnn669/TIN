@@ -2967,6 +2967,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageEnterToSendTitle => 'Enter Key to Send';
 
   @override
+  String get displaySettingsPageSendShortcutTitle => 'Send Shortcut';
+
+  @override
+  String get displaySettingsPageSendShortcutEnter => 'Enter';
+
+  @override
+  String get displaySettingsPageSendShortcutCtrlEnter => 'Ctrl/Cmd + Enter';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle =>
       'Auto switch to Topics';
 

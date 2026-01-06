@@ -2858,6 +2858,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageEnterToSendTitle => '回车键发送消息';
 
   @override
+  String get displaySettingsPageSendShortcutTitle => '发送快捷键';
+
+  @override
+  String get displaySettingsPageSendShortcutEnter => 'Enter';
+
+  @override
+  String get displaySettingsPageSendShortcutCtrlEnter => 'Ctrl/Cmd + Enter';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
@@ -6445,6 +6454,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageEnterToSendTitle => '回车键发送消息';
 
   @override
+  String get displaySettingsPageSendShortcutTitle => '发送快捷键';
+
+  @override
+  String get displaySettingsPageSendShortcutEnter => 'Enter';
+
+  @override
+  String get displaySettingsPageSendShortcutCtrlEnter => 'Ctrl/Cmd + Enter';
+
+  @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自动切换话题';
 
   @override
@@ -10027,6 +10045,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageEnterToSendTitle => '回車鍵發送訊息';
+
+  @override
+  String get displaySettingsPageSendShortcutTitle => '發送快捷鍵';
+
+  @override
+  String get displaySettingsPageSendShortcutEnter => 'Enter';
+
+  @override
+  String get displaySettingsPageSendShortcutCtrlEnter => 'Ctrl/Cmd + Enter';
 
   @override
   String get displaySettingsPageAutoSwitchTopicsTitle => '自動切換話題';

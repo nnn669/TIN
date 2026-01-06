@@ -20,6 +20,9 @@ import '../../utils/avatar_cache.dart';
 // Desktop: topic list position
 enum DesktopTopicPosition { left, right }
 
+// Desktop: send message shortcut
+enum DesktopSendShortcut { enter, ctrlEnter }
+
 class SettingsProvider extends ChangeNotifier {
   static const String _providersOrderKey = 'providers_order_v1';
   static const String _themeModeKey = 'theme_mode_v1';
@@ -58,6 +61,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayNewChatOnLaunchKey = 'display_new_chat_on_launch_v1';
   static const String _displayNewChatAfterDeleteKey = 'display_new_chat_after_delete_v1';
   static const String _displayEnterToSendOnMobileKey = 'display_enter_to_send_on_mobile_v1';
+  static const String _desktopSendShortcutKey = 'desktop_send_shortcut_v1';
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
   static const String _displayAutoScrollEnabledKey = 'display_auto_scroll_enabled_v1';
   static const String _displayAutoScrollIdleSecondsKey = 'display_auto_scroll_idle_seconds_v1';
@@ -358,6 +362,16 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.setBool(_displayEnterToSendOnMobileKey, _enterToSendOnMobile);
     } else {
       _enterToSendOnMobile = enterToSendPref;
+    }
+    // Desktop send shortcut: Enter (default) or Ctrl/Cmd+Enter
+    final sendShortcutStr = prefs.getString(_desktopSendShortcutKey);
+    switch (sendShortcutStr) {
+      case 'ctrlEnter':
+        _desktopSendShortcut = DesktopSendShortcut.ctrlEnter;
+        break;
+      case 'enter':
+      default:
+        _desktopSendShortcut = DesktopSendShortcut.enter;
     }
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
@@ -1753,6 +1767,18 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_displayEnterToSendOnMobileKey, v);
+  }
+
+  // Desktop: send shortcut (Enter or Ctrl/Cmd+Enter)
+  DesktopSendShortcut _desktopSendShortcut = DesktopSendShortcut.enter;
+  DesktopSendShortcut get desktopSendShortcut => _desktopSendShortcut;
+  Future<void> setDesktopSendShortcut(DesktopSendShortcut v) async {
+    if (_desktopSendShortcut == v) return;
+    _desktopSendShortcut = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final str = v == DesktopSendShortcut.ctrlEnter ? 'ctrlEnter' : 'enter';
+    await prefs.setString(_desktopSendShortcutKey, str);
   }
 
   // Display: chat font scale (0.5 - 1.5, default 1.0)

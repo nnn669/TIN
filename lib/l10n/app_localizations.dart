@@ -5576,6 +5576,24 @@ abstract class AppLocalizations {
   /// **'Enter Key to Send'**
   String get displaySettingsPageEnterToSendTitle;
 
+  /// No description provided for @displaySettingsPageSendShortcutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Shortcut'**
+  String get displaySettingsPageSendShortcutTitle;
+
+  /// No description provided for @displaySettingsPageSendShortcutEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter'**
+  String get displaySettingsPageSendShortcutEnter;
+
+  /// No description provided for @displaySettingsPageSendShortcutCtrlEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Ctrl/Cmd + Enter'**
+  String get displaySettingsPageSendShortcutCtrlEnter;
+
   /// No description provided for @displaySettingsPageAutoSwitchTopicsTitle.
   ///
   /// In en, this message translates to:
