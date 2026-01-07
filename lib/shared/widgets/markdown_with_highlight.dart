@@ -777,15 +777,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     );
     out = out.replaceAllMapped(atxEnum, (m) => "${m[1]}.\u200C${m[2]}${m[3]}");
 
-    // 7) Auto-close an unmatched opening code fence at EOF
-    final fenceAtBol = RegExp(r"^\s*```", multiLine: true);
-    final count = fenceAtBol.allMatches(out).length;
-    if (count % 2 == 1) {
-      if (!out.endsWith('\n')) out += '\n';
-      out += '```';
-    }
-
-    // 8) Fix: when multiple markdown links are placed on separate lines using
+    // 7) Fix: when multiple markdown links are placed on separate lines using
     //    trailing double-spaces (hard line breaks), gpt_markdown may treat them
     //    as a single paragraph and only render the first link correctly.
     //    To avoid this, convert such lines into separate paragraphs by
@@ -1959,15 +1951,20 @@ class SoftHrLine extends BlockMd {
 // Robust fenced code block that takes precedence over other blocks
 class FencedCodeBlockMd extends BlockMd {
   @override
-  // Match ```lang\n...\n``` at line starts. Non-greedy to stop at first closing fence.
-  String get expString => (r"^\s*```([^\n`]*)\s*\n([\s\S]*?)\n```$");
+  // CommonMark-style fences:
+  // - fence length is variable (>= 3)
+  // - closing fence must use the same marker and be >= opening length
+  // - supports both ``` and ~~~
+  String get expString =>
+      (r"[ \t]*(([`~])\2{2,})[ \t]*([^\n]*?)\n"
+          r"(?:(?:([\s\S]*?)^[ \t]*\1\2*[ \t]*)|([\s\S]*))");
 
   @override
   Widget build(BuildContext context, String text, GptMarkdownConfig config) {
     final m = exp.firstMatch(text);
     if (m == null) return const SizedBox.shrink();
-    final lang = (m.group(1) ?? '').trim();
-    final code = (m.group(2) ?? '');
+    final lang = (m.group(3) ?? '').trim();
+    final code = (m.group(4) ?? m.group(5) ?? '');
     final langLower = lang.toLowerCase();
     if (langLower == 'mermaid') {
       return _MermaidBlock(code: code);
