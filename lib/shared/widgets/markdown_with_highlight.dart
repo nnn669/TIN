@@ -706,26 +706,32 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     final Map<String, String> codeMap = {};
     int codeCount = 0;
 
-    // Match fenced code blocks (```...``` or ~~~...~~~) and inline code (`...`)
-    // Order matters: match fenced blocks first (longer pattern) to avoid partial matches
+    // Match fenced code blocks and inline code (`...`)
+    // Fenced: CommonMark-style variable-length fences (>= 3 backticks or tildes)
+    // Group 1: entire fenced block, Group 2: opening fence, Group 3: fence char
+    // Closing fence must use same char and be >= opening length
     final codeRegex = RegExp(
-      r'(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`)',
+      r'([ \t]*(([`~])\3{2,})[ \t]*[^\n]*\n(?:[\s\S]*?^[ \t]*\2\3*[ \t]*$|[\s\S]*))'
+      r'|(`[^`\n]+`)',
       multiLine: true,
     );
 
     out = out.replaceAllMapped(codeRegex, (match) {
       final key = '__CODE_MASK_${codeCount++}__';
       var codeContent = match.group(0)!;
-      
+
       // For inline code (`...`), escape dollar signs to prevent LaTeX interpretation
-      // Replace $ with a placeholder that won't trigger LaTeX regex
-      if (codeContent.startsWith('`') && codeContent.endsWith('`') && !codeContent.startsWith('```')) {
+      // Inline code is single-line and delimited by single backticks (not fenced)
+      final isInlineCode = !codeContent.contains('\n') &&
+          codeContent.startsWith('`') &&
+          codeContent.endsWith('`');
+      if (isInlineCode) {
         codeContent = codeContent.replaceAllMapped(
           RegExp(r'\$'),
           (m) => '___CODE_DOLLAR_MASK___',
         );
       }
-      
+
       codeMap[key] = codeContent;
       return key;
     });
