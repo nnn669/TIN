@@ -2950,7 +2950,7 @@ class _ReasoningSectionState extends State<_ReasoningSection> with SingleTickerP
     }
 
     // Enable long-press text selection in reasoning body
-    // body = SelectionArea(child: body);
+    body = SelectionArea(child: body);
 
 
     return AnimatedSize(
