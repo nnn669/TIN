@@ -3602,6 +3602,58 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logViewerOpenFolder => '打开日志目录';
 
   @override
+  String logViewerRequestsCount(int count) {
+    return '$count 条请求';
+  }
+
+  @override
+  String get logViewerFieldId => 'ID';
+
+  @override
+  String get logViewerFieldMethod => '方法';
+
+  @override
+  String get logViewerFieldStatus => '状态';
+
+  @override
+  String get logViewerFieldStarted => '开始';
+
+  @override
+  String get logViewerFieldEnded => '结束';
+
+  @override
+  String get logViewerFieldDuration => '耗时';
+
+  @override
+  String get logViewerSectionSummary => '概览';
+
+  @override
+  String get logViewerSectionParameters => '参数';
+
+  @override
+  String get logViewerSectionRequestHeaders => '请求头';
+
+  @override
+  String get logViewerSectionRequestBody => '请求体';
+
+  @override
+  String get logViewerSectionResponseHeaders => '响应头';
+
+  @override
+  String get logViewerSectionResponseBody => '响应体';
+
+  @override
+  String get logViewerSectionWarnings => '警告';
+
+  @override
+  String get logViewerErrorTitle => '错误';
+
+  @override
+  String logViewerMoreCount(int count) {
+    return '+$count 条更多';
+  }
+
+  @override
   String get assistantEditManageSummariesTitle => '管理摘要';
 
   @override
@@ -7199,6 +7251,58 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get logViewerOpenFolder => '打开日志目录';
+
+  @override
+  String logViewerRequestsCount(int count) {
+    return '$count 条请求';
+  }
+
+  @override
+  String get logViewerFieldId => 'ID';
+
+  @override
+  String get logViewerFieldMethod => '方法';
+
+  @override
+  String get logViewerFieldStatus => '状态';
+
+  @override
+  String get logViewerFieldStarted => '开始';
+
+  @override
+  String get logViewerFieldEnded => '结束';
+
+  @override
+  String get logViewerFieldDuration => '耗时';
+
+  @override
+  String get logViewerSectionSummary => '概览';
+
+  @override
+  String get logViewerSectionParameters => '参数';
+
+  @override
+  String get logViewerSectionRequestHeaders => '请求头';
+
+  @override
+  String get logViewerSectionRequestBody => '请求体';
+
+  @override
+  String get logViewerSectionResponseHeaders => '响应头';
+
+  @override
+  String get logViewerSectionResponseBody => '响应体';
+
+  @override
+  String get logViewerSectionWarnings => '警告';
+
+  @override
+  String get logViewerErrorTitle => '错误';
+
+  @override
+  String logViewerMoreCount(int count) {
+    return '+$count 条更多';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -10797,6 +10901,58 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get logViewerOpenFolder => '開啟日誌目錄';
+
+  @override
+  String logViewerRequestsCount(int count) {
+    return '$count 個請求';
+  }
+
+  @override
+  String get logViewerFieldId => 'ID';
+
+  @override
+  String get logViewerFieldMethod => '方法';
+
+  @override
+  String get logViewerFieldStatus => '狀態';
+
+  @override
+  String get logViewerFieldStarted => '開始';
+
+  @override
+  String get logViewerFieldEnded => '結束';
+
+  @override
+  String get logViewerFieldDuration => '耗時';
+
+  @override
+  String get logViewerSectionSummary => '概覽';
+
+  @override
+  String get logViewerSectionParameters => '參數';
+
+  @override
+  String get logViewerSectionRequestHeaders => '請求標頭';
+
+  @override
+  String get logViewerSectionRequestBody => '請求本文';
+
+  @override
+  String get logViewerSectionResponseHeaders => '回應標頭';
+
+  @override
+  String get logViewerSectionResponseBody => '回應本文';
+
+  @override
+  String get logViewerSectionWarnings => '警告';
+
+  @override
+  String get logViewerErrorTitle => '錯誤';
+
+  @override
+  String logViewerMoreCount(int count) {
+    return '+$count 條更多';
+  }
 
   @override
   String get assistantEditManageSummariesTitle => '管理摘要';

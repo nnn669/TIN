@@ -1532,6 +1532,36 @@
   "logViewerCurrentLog": "Current Log",
   "logViewerExport": "Export",
   "logViewerOpenFolder": "Open Logs Folder",
+  "logViewerRequestsCount": "{count} requests",
+  "@logViewerRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logViewerFieldId": "ID",
+  "logViewerFieldMethod": "Method",
+  "logViewerFieldStatus": "Status",
+  "logViewerFieldStarted": "Started",
+  "logViewerFieldEnded": "Ended",
+  "logViewerFieldDuration": "Duration",
+  "logViewerSectionSummary": "Summary",
+  "logViewerSectionParameters": "Parameters",
+  "logViewerSectionRequestHeaders": "Request Headers",
+  "logViewerSectionRequestBody": "Request Body",
+  "logViewerSectionResponseHeaders": "Response Headers",
+  "logViewerSectionResponseBody": "Response Body",
+  "logViewerSectionWarnings": "Warnings",
+  "logViewerErrorTitle": "Error",
+  "logViewerMoreCount": "+{count} more",
+  "@logViewerMoreCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "assistantEditManageSummariesTitle": "Manage Summaries",
   "assistantEditSummaryEmpty": "No summaries yet",
   "assistantEditSummaryDialogTitle": "Edit Summary",

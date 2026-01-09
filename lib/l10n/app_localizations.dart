@@ -7010,6 +7010,102 @@ abstract class AppLocalizations {
   /// **'Open Logs Folder'**
   String get logViewerOpenFolder;
 
+  /// No description provided for @logViewerRequestsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} requests'**
+  String logViewerRequestsCount(int count);
+
+  /// No description provided for @logViewerFieldId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID'**
+  String get logViewerFieldId;
+
+  /// No description provided for @logViewerFieldMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get logViewerFieldMethod;
+
+  /// No description provided for @logViewerFieldStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get logViewerFieldStatus;
+
+  /// No description provided for @logViewerFieldStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started'**
+  String get logViewerFieldStarted;
+
+  /// No description provided for @logViewerFieldEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get logViewerFieldEnded;
+
+  /// No description provided for @logViewerFieldDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get logViewerFieldDuration;
+
+  /// No description provided for @logViewerSectionSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get logViewerSectionSummary;
+
+  /// No description provided for @logViewerSectionParameters.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameters'**
+  String get logViewerSectionParameters;
+
+  /// No description provided for @logViewerSectionRequestHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Headers'**
+  String get logViewerSectionRequestHeaders;
+
+  /// No description provided for @logViewerSectionRequestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Body'**
+  String get logViewerSectionRequestBody;
+
+  /// No description provided for @logViewerSectionResponseHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Response Headers'**
+  String get logViewerSectionResponseHeaders;
+
+  /// No description provided for @logViewerSectionResponseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Response Body'**
+  String get logViewerSectionResponseBody;
+
+  /// No description provided for @logViewerSectionWarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get logViewerSectionWarnings;
+
+  /// No description provided for @logViewerErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get logViewerErrorTitle;
+
+  /// No description provided for @logViewerMoreCount.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String logViewerMoreCount(int count);
+
   /// No description provided for @assistantEditManageSummariesTitle.
   ///
   /// In en, this message translates to:
