@@ -5048,7 +5048,14 @@ class ChatApiService {
         if (allTools.isNotEmpty) 'tool_choice': {'type': 'auto'},
         if (isReasoning)
           'thinking': {
-            'type': (thinkingBudget == 0) ? 'disabled' : 'enabled',
+            'type': thinkingBudget == 0
+                ? 'disabled'
+                : (thinkingBudget == null || thinkingBudget == -1) &&
+                        RegExp(r'claude-(?:opus|sonnet)-4-6',
+                                caseSensitive: false)
+                            .hasMatch(upstreamModelId)
+                    ? 'adaptive'
+                    : 'enabled',
             if (thinkingBudget != null && thinkingBudget > 0)
               'budget_tokens': thinkingBudget,
           },
