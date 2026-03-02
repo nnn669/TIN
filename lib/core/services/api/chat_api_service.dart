@@ -1187,7 +1187,8 @@ class ChatApiService {
     final bool needsReasoningEcho =
         (host.contains('deepseek') ||
             modelLower.contains('deepseek') ||
-            isMimo) &&
+            isMimo||
+            modelLower.contains('kimi-k2.5')) &&
         isReasoning;
     // OpenRouter reasoning models require preserving `reasoning_details` across tool-calling turns.
     final bool preserveReasoningDetails =
