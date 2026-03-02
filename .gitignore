@@ -59,3 +59,4 @@ internationalization.md
 /desiredFileName.txt
 /lib/secrets/fallback.dart
 .claude/settings.local.json
+/.codex/
