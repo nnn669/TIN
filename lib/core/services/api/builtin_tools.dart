@@ -48,6 +48,30 @@ abstract class BuiltInToolNames {
     return out;
   }
 
+  /// Parse built-in tools from a per-model override map.
+  ///
+  /// Supports:
+  /// - `builtInTools`: List<String> (current format)
+  /// - `built_in_tools`: List<String> (legacy format)
+  /// - `tools`: Map<String, bool> (legacy boolean flags, e.g. urlContext=true)
+  static Set<String> parseFromOverride(Object? rawOverride) {
+    final ov = rawOverride is Map ? rawOverride : null;
+    final builtInSet = parseAndNormalize(
+      ov?['builtInTools'] ?? ov?['built_in_tools'],
+    );
+
+    final legacyTools = ov?['tools'];
+    if (legacyTools is Map) {
+      for (final entry in legacyTools.entries) {
+        if (entry.value == true) {
+          final v = normalize(entry.key.toString());
+          if (v.isNotEmpty) builtInSet.add(v);
+        }
+      }
+    }
+    return builtInSet;
+  }
+
   /// Stable ordering for persisting tool lists (keeps UI diffs minimal).
   static List<String> orderedForStorage(Iterable<String> tools) {
     final remaining = Set<String>.from(tools);
@@ -105,8 +129,7 @@ abstract class BuiltInToolsHelper {
 
     final kind = ProviderConfig.classify(cfg.id, explicitType: cfg.providerType);
     final rawOv = cfg.modelOverrides[modelId];
-    final ov = rawOv is Map ? rawOv : null;
-    final builtInSet = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+    final builtInSet = BuiltInToolNames.parseFromOverride(rawOv);
 
     bool searchActive = builtInSet.contains(BuiltInToolNames.search);
     bool codeExecutionActive = false;

@@ -78,13 +78,7 @@ class ChatApiService {
   // Stored under ProviderConfig.modelOverrides[modelId].builtInTools.
   static Set<String> _builtInTools(ProviderConfig cfg, String modelId) {
     try {
-      final ov = cfg.modelOverrides[modelId];
-      if (ov is Map<String, dynamic>) {
-        final raw = ov['builtInTools'];
-        if (raw is List) {
-          return BuiltInToolNames.parseAndNormalize(raw);
-        }
-      }
+      return BuiltInToolNames.parseFromOverride(cfg.modelOverrides[modelId]);
     } catch (_) {}
     return const <String>{};
   }
