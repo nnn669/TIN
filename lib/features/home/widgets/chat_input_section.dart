@@ -130,7 +130,7 @@ class ChatInputSection extends StatelessWidget {
       onOpenMcp: onOpenMcp,
       onLongPressMcp: onLongPressMcp,
       onStop: onStop,
-      modelIcon: (settings.showModelIcon && pk != null && mid != null)
+      modelIcon: (pk != null && mid != null)
           ? CurrentModelIcon(
               providerKey: pk,
               modelId: mid,
