@@ -273,9 +273,6 @@ class MessageListView extends StatelessWidget {
     final total = vers.length;
     if (selectedIdx < 0) selectedIdx = 0;
     if (total > 0 && selectedIdx > total - 1) selectedIdx = total - 1;
-    final showMsgNav = context.watch<SettingsProvider>().showMessageNavButtons;
-    final effectiveTotal = showMsgNav ? total : 1;
-    final effectiveIndex = showMsgNav ? selectedIdx : 0;
 
     // Check if this is a streaming message that should use ValueListenableBuilder
     final isStreaming = message.isStreaming &&
@@ -325,12 +322,9 @@ class MessageListView extends StatelessWidget {
                               t: t,
                               useAssist: useAssist,
                               assistant: assistant,
-                              showMsgNav: showMsgNav,
                               gid: gid,
                               selectedIdx: selectedIdx,
                               total: total,
-                              effectiveIndex: effectiveIndex,
-                              effectiveTotal: effectiveTotal,
                               isProcessingFiles: isProcessingFiles,
                             )
                           : _buildChatMessageWidget(
@@ -343,12 +337,9 @@ class MessageListView extends StatelessWidget {
                               t: t,
                               useAssist: useAssist,
                               assistant: assistant,
-                              showMsgNav: showMsgNav,
                               gid: gid,
                               selectedIdx: selectedIdx,
                               total: total,
-                              effectiveIndex: effectiveIndex,
-                              effectiveTotal: effectiveTotal,
                               isProcessingFiles: isProcessingFiles,
                             ),
                     );
@@ -391,12 +382,9 @@ class MessageListView extends StatelessWidget {
     required TranslationUiState? t,
     required bool useAssist,
     required dynamic assistant,
-    required bool showMsgNav,
     required String gid,
     required int selectedIdx,
     required int total,
-    required int effectiveIndex,
-    required int effectiveTotal,
     required bool isProcessingFiles,
   }) {
     return ValueListenableBuilder<StreamingContentData>(
@@ -447,12 +435,9 @@ class MessageListView extends StatelessWidget {
             t: t,
             useAssist: useAssist,
             assistant: assistant,
-            showMsgNav: showMsgNav,
             gid: gid,
             selectedIdx: selectedIdx,
             total: total,
-            effectiveIndex: effectiveIndex,
-            effectiveTotal: effectiveTotal,
             isProcessingFiles: isProcessingFiles,
           ),
         );
@@ -471,22 +456,19 @@ class MessageListView extends StatelessWidget {
     required TranslationUiState? t,
     required bool useAssist,
     required dynamic assistant,
-    required bool showMsgNav,
     required String gid,
     required int selectedIdx,
     required int total,
-    required int effectiveIndex,
-    required int effectiveTotal,
     required bool isProcessingFiles,
   }) {
     return ChatMessageWidget(
       message: message,
-      versionIndex: effectiveIndex,
-      versionCount: effectiveTotal,
-      onPrevVersion: (showMsgNav && selectedIdx > 0)
+      versionIndex: selectedIdx,
+      versionCount: total > 0 ? total : 1,
+      onPrevVersion: (selectedIdx > 0)
           ? () => onVersionChange?.call(gid, selectedIdx - 1)
           : null,
-      onNextVersion: (showMsgNav && selectedIdx < total - 1)
+      onNextVersion: (selectedIdx < total - 1)
           ? () => onVersionChange?.call(gid, selectedIdx + 1)
           : null,
       modelIcon: (!useAssist && message.role == 'assistant' && message.providerId != null && message.modelId != null)
