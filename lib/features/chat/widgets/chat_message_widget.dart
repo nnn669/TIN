@@ -1165,7 +1165,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final bool isTranslating = translationText == l10n.chatMessageWidgetTranslating;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
