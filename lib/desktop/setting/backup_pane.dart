@@ -165,7 +165,51 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-              // WebDAV settings card with left label right input/switch, realtime save
+              // Backup management (applies to WebDAV and local import/export)
+              SliverToBoxAdapter(
+                child: _sectionCard(children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.backupPageBackupManagement,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.95)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _ItemRow(
+                    label: l10n.backupPageChatsLabel,
+                    vpad: 2,
+                    trailing: IosSwitch(
+                      value: _includeChats,
+                      onChanged: busy ? null : (v) async {
+                        setState(() => _includeChats = v);
+                        await _applyPartial(includeChats: v);
+                      },
+                    ),
+                  ),
+                  _rowDivider(context),
+                  _ItemRow(
+                    label: l10n.backupPageFilesLabel,
+                    vpad: 2,
+                    trailing: IosSwitch(
+                      value: _includeFiles,
+                      onChanged: busy ? null : (v) async {
+                        setState(() => _includeFiles = v);
+                        await _applyPartial(includeFiles: v);
+                      },
+                    ),
+                  ),
+                ]),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+              // WebDAV settings card with left label right input, realtime save
               SliverToBoxAdapter(
                 child: _sectionCard(children: [
                   Padding(
@@ -239,31 +283,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                   ),
                   _rowDivider(context),
                   _ItemRow(
-                    label: l10n.backupPageChatsLabel,
-                    vpad: 2,
-                    trailing: IosSwitch(
-                      value: _includeChats,
-                      onChanged: busy ? null : (v) async {
-                        setState(() => _includeChats = v);
-                        await _applyPartial(includeChats: v);
-                      },
-                    ),
-                  ),
-                  _rowDivider(context),
-                  _ItemRow(
-                    label: l10n.backupPageFilesLabel,
-                    vpad: 2,
-                    trailing: IosSwitch(
-                      value: _includeFiles,
-                      onChanged: busy ? null : (v) async {
-                        setState(() => _includeFiles = v);
-                        await _applyPartial(includeFiles: v);
-                      },
-                    ),
-                  ),
-                  _rowDivider(context),
-                  _ItemRow(
-                    label: l10n.backupPageBackupManagement,
+                    label: l10n.backupPageWebDavBackup,
                     trailing: Wrap(spacing: 8, children: [
                       _DeskIosButton(
                         label: l10n.backupPageTestConnection,
