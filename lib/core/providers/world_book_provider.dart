@@ -123,6 +123,28 @@ class WorldBookProvider with ChangeNotifier {
     await WorldBookStore.save(_books);
   }
 
+  Future<void> reorderEntries({
+    required String bookId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final bookIndex = _books.indexWhere((e) => e.id == bookId);
+    if (bookIndex == -1) return;
+    final book = _books[bookIndex];
+    final entries = List<WorldBookEntry>.from(book.entries);
+    if (entries.isEmpty) return;
+    if (oldIndex < 0 || oldIndex >= entries.length) return;
+    if (newIndex < 0 || newIndex >= entries.length) return;
+    final item = entries.removeAt(oldIndex);
+    entries.insert(newIndex, item);
+    final nextBook = book.copyWith(entries: entries);
+    final nextBooks = List<WorldBook>.from(_books);
+    nextBooks[bookIndex] = nextBook;
+    _books = nextBooks;
+    notifyListeners();
+    await WorldBookStore.save(_books);
+  }
+
   Future<void> setBookCollapsed(String id, bool collapsed) async {
     final key = id.trim();
     if (key.isEmpty) return;

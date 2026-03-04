@@ -327,6 +327,10 @@ class _WorldBookPageState extends State<WorldBookPage> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop =
+        Theme.of(context).platform == TargetPlatform.macOS ||
+        Theme.of(context).platform == TargetPlatform.windows ||
+        Theme.of(context).platform == TargetPlatform.linux;
 
     final provider = context.watch<WorldBookProvider>();
     final books = provider.books;
@@ -394,42 +398,69 @@ class _WorldBookPageState extends State<WorldBookPage> {
                 ],
               ),
             )
-          : ListView(
+          : ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              children: [
-                for (int index = 0; index < books.length; index++)
-                  Padding(
-                    key: ValueKey('mobile-world-book-${books[index].id}'),
+              itemCount: books.length,
+              buildDefaultDragHandles: false,
+              proxyDecorator: (child, index, animation) {
+                // No elevation/shadow; just subtle scale.
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, _) {
+                    final t = Curves.easeOutCubic.transform(animation.value);
+                    return Transform.scale(
+                      scale: 0.985 + 0.015 * t,
+                      child: child,
+                    );
+                  },
+                );
+              },
+              onReorder: (oldIndex, newIndex) async {
+                if (newIndex > oldIndex) newIndex -= 1;
+                Haptics.light();
+                await context.read<WorldBookProvider>().reorderBooks(
+                  oldIndex: oldIndex,
+                  newIndex: newIndex,
+                );
+              },
+              itemBuilder: (context, index) {
+                final book = books[index];
+
+                return KeyedSubtree(
+                  key: ValueKey('world-book-${book.id}'),
+                  child: Padding(
                     padding: EdgeInsets.only(
                       bottom: index == books.length - 1 ? 0 : 14,
                     ),
                     child: _WorldBookSection(
-                      book: books[index],
-                      collapsed: provider.isBookCollapsed(books[index].id),
+                      book: book,
+                      bookIndex: index,
+                      canReorderBooks: books.length > 1,
+                      collapsed: provider.isBookCollapsed(book.id),
                       onToggleCollapsed: () {
                         Haptics.light();
                         context.read<WorldBookProvider>().toggleBookCollapsed(
-                          books[index].id,
+                          book.id,
                         );
                       },
                       onAddEntry: () async {
                         Haptics.light();
                         final edited = await _showEntryEditSheet();
                         if (edited == null) return;
-                        final next = books[index].copyWith(
-                          entries: [...books[index].entries, edited],
+                        final next = book.copyWith(
+                          entries: [...book.entries, edited],
                         );
-                        await context.read<WorldBookProvider>().updateBook(next);
+                        await context.read<WorldBookProvider>().updateBook(
+                          next,
+                        );
                       },
                       onExport: () async {
                         Haptics.light();
-                        await _exportBook(books[index]);
+                        await _exportBook(book);
                       },
                       onConfig: () async {
                         Haptics.light();
-                        final updated = await _showBookConfigSheet(
-                          book: books[index],
-                        );
+                        final updated = await _showBookConfigSheet(book: book);
                         if (updated == null) return;
                         await context.read<WorldBookProvider>().updateBook(
                           updated,
@@ -437,35 +468,46 @@ class _WorldBookPageState extends State<WorldBookPage> {
                       },
                       onDelete: () async {
                         Haptics.light();
-                        final confirm = await _confirmDeleteBook(books[index]);
+                        final confirm = await _confirmDeleteBook(book);
                         if (!confirm) return;
                         await context.read<WorldBookProvider>().deleteBook(
-                          books[index].id,
+                          book.id,
                         );
                       },
                       onEditEntry: (entry) async {
                         Haptics.light();
                         final edited = await _showEntryEditSheet(entry: entry);
                         if (edited == null) return;
-                        final nextEntries = books[index].entries
+                        final nextEntries = book.entries
                             .map((e) => e.id == entry.id ? edited : e)
                             .toList(growable: false);
                         await context.read<WorldBookProvider>().updateBook(
-                          books[index].copyWith(entries: nextEntries),
+                          book.copyWith(entries: nextEntries),
                         );
                       },
                       onDeleteEntry: (entry) async {
                         Haptics.light();
-                        final nextEntries = books[index].entries
+                        final nextEntries = book.entries
                             .where((e) => e.id != entry.id)
                             .toList(growable: false);
                         await context.read<WorldBookProvider>().updateBook(
-                          books[index].copyWith(entries: nextEntries),
+                          book.copyWith(entries: nextEntries),
                         );
                       },
+                      onReorderEntries: (oldEntryIndex, newEntryIndex) async {
+                        if (newEntryIndex > oldEntryIndex) newEntryIndex -= 1;
+                        Haptics.light();
+                        await context.read<WorldBookProvider>().reorderEntries(
+                          bookId: book.id,
+                          oldIndex: oldEntryIndex,
+                          newIndex: newEntryIndex,
+                        );
+                      },
+                      isDesktop: isDesktop,
                     ),
                   ),
-              ],
+                );
+              },
             ),
       backgroundColor: isDark ? cs.surface : cs.surface,
     );
@@ -475,6 +517,9 @@ class _WorldBookPageState extends State<WorldBookPage> {
 class _WorldBookSection extends StatelessWidget {
   const _WorldBookSection({
     required this.book,
+    required this.bookIndex,
+    required this.canReorderBooks,
+    required this.isDesktop,
     required this.collapsed,
     required this.onToggleCollapsed,
     required this.onAddEntry,
@@ -483,9 +528,13 @@ class _WorldBookSection extends StatelessWidget {
     required this.onDelete,
     required this.onEditEntry,
     required this.onDeleteEntry,
+    required this.onReorderEntries,
   });
 
   final WorldBook book;
+  final int bookIndex;
+  final bool canReorderBooks;
+  final bool isDesktop;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
   final VoidCallback onAddEntry;
@@ -494,6 +543,7 @@ class _WorldBookSection extends StatelessWidget {
   final VoidCallback onDelete;
   final Future<void> Function(WorldBookEntry entry) onEditEntry;
   final Future<void> Function(WorldBookEntry entry) onDeleteEntry;
+  final Future<void> Function(int oldIndex, int newIndex) onReorderEntries;
 
   @override
   Widget build(BuildContext context) {
@@ -622,78 +672,90 @@ class _WorldBookSection extends StatelessWidget {
       }
     }
 
+    Widget wrapBookReorder(Widget child) {
+      if (!canReorderBooks) return child;
+      final wrapped = isDesktop
+          ? ReorderableDragStartListener(index: bookIndex, child: child)
+          : ReorderableDelayedDragStartListener(index: bookIndex, child: child);
+      return isDesktop
+          ? MouseRegion(cursor: SystemMouseCursors.grab, child: wrapped)
+          : wrapped;
+    }
+
     final header = Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Row(
         children: [
           Expanded(
-            child: IosCardPress(
-              baseColor: Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              pressedBlendStrength: 0.04,
-              pressedScale: 1.0,
-              haptics: false,
-              onTap: onToggleCollapsed,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 4,
-                ),
-                child: Row(
-                  children: [
-                    AnimatedRotation(
-                      turns: collapsed ? 0.0 : 0.25,
-                      duration: const Duration(milliseconds: 240),
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        Lucide.ChevronRight,
-                        size: 16,
-                        color: cs.onSurface.withOpacity(0.62),
+            child: wrapBookReorder(
+              IosCardPress(
+                baseColor: Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                pressedBlendStrength: 0.04,
+                pressedScale: 1.0,
+                haptics: false,
+                onTap: onToggleCollapsed,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedRotation(
+                        turns: collapsed ? 0.0 : 0.25,
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(
+                          Lucide.ChevronRight,
+                          size: 16,
+                          color: cs.onSurface.withOpacity(0.62),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (!book.enabled) ...[
-                                const SizedBox(width: 8),
-                                _TagPill(
-                                  text: l10n.worldBookDisabledTag,
-                                  color: cs.error,
-                                ),
+                                if (!book.enabled) ...[
+                                  const SizedBox(width: 8),
+                                  _TagPill(
+                                    text: l10n.worldBookDisabledTag,
+                                    color: cs.error,
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                          if (subtitle.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: cs.onSurface.withOpacity(0.65),
-                              ),
                             ),
+                            if (subtitle.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: cs.onSurface.withOpacity(0.65),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -726,35 +788,82 @@ class _WorldBookSection extends StatelessWidget {
     final children = <Widget>[];
     if (entries.isEmpty) {
       children.add(
-        _IosListRow(icon: Lucide.ListTree, label: l10n.worldBookNoEntriesHint),
+        _IosEntryRow(icon: Lucide.ListTree, label: l10n.worldBookNoEntriesHint),
       );
     } else {
-      for (int i = 0; i < entries.length; i++) {
-        final entry = entries[i];
-        final entryTitle = entry.name.trim().isEmpty
-            ? l10n.worldBookUnnamedEntry
-            : entry.name.trim();
-        final detail = !entry.enabled
-            ? l10n.worldBookDisabledTag
-            : (entry.constantActive ? l10n.worldBookAlwaysOnTag : null);
-        children.add(
-          _IosListRow(
-            icon: Lucide.Bookmark,
-            label: entryTitle,
-            detailText: detail,
-            enabled: entry.enabled,
-            onTap: () {
-              onEditEntry(entry);
-            },
-            onLongPress: () {
-              showEntryActions(entry);
-            },
-          ),
-        );
-        if (i != entries.length - 1) {
-          children.add(_iosDivider(context));
-        }
-      }
+      children.add(
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: entries.length,
+          buildDefaultDragHandles: false,
+          proxyDecorator: (child, index, animation) {
+            // No shadow; slight scale and higher opacity.
+            return AnimatedBuilder(
+              animation: animation,
+              builder: (context, _) {
+                final t = Curves.easeOutCubic.transform(animation.value);
+                return Opacity(
+                  opacity: 0.98,
+                  child: Transform.scale(
+                    scale: 0.992 + 0.008 * t,
+                    child: child,
+                  ),
+                );
+              },
+            );
+          },
+          onReorder: (oldIndex, newIndex) async {
+            await onReorderEntries(oldIndex, newIndex);
+          },
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            final entryTitle = entry.name.trim().isEmpty
+                ? l10n.worldBookUnnamedEntry
+                : entry.name.trim();
+            final detail = !entry.enabled
+                ? l10n.worldBookDisabledTag
+                : (entry.constantActive ? l10n.worldBookAlwaysOnTag : null);
+            final canReorder = entries.length > 1;
+
+            final row = _IosEntryRow(
+              label: entryTitle,
+              detailText: detail,
+              enabled: entry.enabled,
+              icon: Lucide.Bookmark,
+              onTap: () => onEditEntry(entry),
+              onLongPress: () => showEntryActions(entry),
+              leadingBuilder: (color) {
+                final icon = Icon(Lucide.Bookmark, size: 20, color: color);
+                if (!canReorder) return icon;
+                final handle = isDesktop
+                    ? ReorderableDragStartListener(index: index, child: icon)
+                    : ReorderableDelayedDragStartListener(
+                        index: index,
+                        child: icon,
+                      );
+                return isDesktop
+                    ? MouseRegion(
+                        cursor: SystemMouseCursors.grab,
+                        child: handle,
+                      )
+                    : handle;
+              },
+            );
+
+            return KeyedSubtree(
+              key: ValueKey('world-book-entry-${book.id}-${entry.id}'),
+              child: Column(
+                children: [
+                  row,
+                  if (index != entries.length - 1) _iosDivider(context),
+                ],
+              ),
+            );
+          },
+        ),
+      );
     }
 
     return Column(
@@ -778,6 +887,81 @@ class _WorldBookSection extends StatelessWidget {
 }
 
 enum _EntryAction { edit, delete, cancel }
+
+class _IosEntryRow extends StatelessWidget {
+  const _IosEntryRow({
+    required this.icon,
+    required this.label,
+    this.detailText,
+    this.enabled = true,
+    this.onTap,
+    this.onLongPress,
+    this.leadingBuilder,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? detailText;
+  final bool enabled;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final Widget Function(Color color)? leadingBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final opacity = enabled ? 1.0 : 0.55;
+    final baseColor = cs.onSurface.withOpacity(0.9 * opacity);
+    final interactive = onTap != null || onLongPress != null;
+    final leading = leadingBuilder == null
+        ? Icon(icon, size: 20, color: baseColor)
+        : leadingBuilder!(baseColor);
+
+    return IosCardPress(
+      baseColor: Colors.transparent,
+      borderRadius: BorderRadius.zero,
+      pressedBlendStrength: 0,
+      pressedScale: 1.0,
+      haptics: interactive,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(
+          children: [
+            SizedBox(width: 36, child: leading),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: baseColor,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (detailText != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Text(
+                  detailText!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: cs.onSurface.withOpacity(0.6 * opacity),
+                  ),
+                ),
+              ),
+            if (onTap != null)
+              Icon(Lucide.ChevronRight, size: 16, color: baseColor),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _IosSectionCard extends StatelessWidget {
   const _IosSectionCard({required this.children});
@@ -817,76 +1001,6 @@ Widget _iosDivider(BuildContext context) {
     endIndent: 12,
     color: cs.outlineVariant.withOpacity(0.18),
   );
-}
-
-class _IosListRow extends StatelessWidget {
-  const _IosListRow({
-    required this.icon,
-    required this.label,
-    this.detailText,
-    this.enabled = true,
-    this.onTap,
-    this.onLongPress,
-  });
-
-  final IconData icon;
-  final String label;
-  final String? detailText;
-  final bool enabled;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final opacity = enabled ? 1.0 : 0.55;
-    final baseColor = cs.onSurface.withOpacity(0.9 * opacity);
-    final interactive = onTap != null || onLongPress != null;
-
-    return IosCardPress(
-      baseColor: Colors.transparent,
-      borderRadius: BorderRadius.zero,
-      pressedBlendStrength: 0,
-      pressedScale: 1.0,
-      haptics: interactive,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        child: Row(
-          children: [
-            SizedBox(width: 36, child: Icon(icon, size: 20, color: baseColor)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: baseColor,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (detailText != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Text(
-                  detailText!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: cs.onSurface.withOpacity(0.6 * opacity),
-                  ),
-                ),
-              ),
-            if (onTap != null)
-              Icon(Lucide.ChevronRight, size: 16, color: baseColor),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _HeaderIconButton extends StatelessWidget {
