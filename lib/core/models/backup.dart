@@ -74,6 +74,101 @@ class WebDavConfig {
   String toJsonString() => jsonEncode(toJson());
 }
 
+class S3Config {
+  final String endpoint; // e.g. https://s3.amazonaws.com or https://<accountid>.r2.cloudflarestorage.com
+  final String region; // e.g. us-east-1 / auto (for some S3-compatible providers)
+  final String bucket;
+  final String accessKeyId;
+  final String secretAccessKey;
+  final String sessionToken; // optional
+  final String prefix; // object key prefix/folder
+  final bool pathStyle; // safer for custom endpoints (no bucket subdomain TLS mismatch)
+  final bool includeChats;
+  final bool includeFiles;
+
+  const S3Config({
+    this.endpoint = '',
+    this.region = 'us-east-1',
+    this.bucket = '',
+    this.accessKeyId = '',
+    this.secretAccessKey = '',
+    this.sessionToken = '',
+    this.prefix = 'kelivo_backups',
+    this.pathStyle = true,
+    this.includeChats = true,
+    this.includeFiles = true,
+  });
+
+  S3Config copyWith({
+    String? endpoint,
+    String? region,
+    String? bucket,
+    String? accessKeyId,
+    String? secretAccessKey,
+    String? sessionToken,
+    String? prefix,
+    bool? pathStyle,
+    bool? includeChats,
+    bool? includeFiles,
+  }) {
+    return S3Config(
+      endpoint: endpoint ?? this.endpoint,
+      region: region ?? this.region,
+      bucket: bucket ?? this.bucket,
+      accessKeyId: accessKeyId ?? this.accessKeyId,
+      secretAccessKey: secretAccessKey ?? this.secretAccessKey,
+      sessionToken: sessionToken ?? this.sessionToken,
+      prefix: prefix ?? this.prefix,
+      pathStyle: pathStyle ?? this.pathStyle,
+      includeChats: includeChats ?? this.includeChats,
+      includeFiles: includeFiles ?? this.includeFiles,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'endpoint': endpoint,
+        'region': region,
+        'bucket': bucket,
+        'accessKeyId': accessKeyId,
+        'secretAccessKey': secretAccessKey,
+        'sessionToken': sessionToken,
+        'prefix': prefix,
+        'pathStyle': pathStyle,
+        'includeChats': includeChats,
+        'includeFiles': includeFiles,
+      };
+
+  static S3Config fromJson(Map<String, dynamic> json) {
+    return S3Config(
+      endpoint: (json['endpoint'] as String?)?.trim() ?? '',
+      region: (json['region'] as String?)?.trim().isNotEmpty == true
+          ? (json['region'] as String).trim()
+          : 'us-east-1',
+      bucket: (json['bucket'] as String?)?.trim() ?? '',
+      accessKeyId: (json['accessKeyId'] as String?)?.trim() ?? '',
+      secretAccessKey: (json['secretAccessKey'] as String?) ?? '',
+      sessionToken: (json['sessionToken'] as String?) ?? '',
+      prefix: (json['prefix'] as String?)?.trim().isNotEmpty == true
+          ? (json['prefix'] as String).trim()
+          : 'kelivo_backups',
+      pathStyle: json['pathStyle'] as bool? ?? true,
+      includeChats: json['includeChats'] as bool? ?? true,
+      includeFiles: json['includeFiles'] as bool? ?? true,
+    );
+  }
+
+  static S3Config fromJsonString(String s) {
+    try {
+      final map = jsonDecode(s) as Map<String, dynamic>;
+      return S3Config.fromJson(map);
+    } catch (_) {
+      return const S3Config();
+    }
+  }
+
+  String toJsonString() => jsonEncode(toJson());
+}
+
 class BackupFileItem {
   final Uri href; // absolute
   final String displayName;
@@ -86,4 +181,3 @@ class BackupFileItem {
     required this.lastModified,
   });
 }
-

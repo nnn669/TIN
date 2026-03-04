@@ -1264,6 +1264,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupPageWebDavServerSettings => 'WebDAV 服务器设置';
 
   @override
+  String get backupPageS3Backup => 'S3 备份';
+
+  @override
+  String get backupPageS3ServerSettings => 'S3 服务器设置';
+
+  @override
+  String get backupPageS3Endpoint => 'Endpoint（地址）';
+
+  @override
+  String get backupPageS3Region => 'Region（区域）';
+
+  @override
+  String get backupPageS3Bucket => 'Bucket';
+
+  @override
+  String get backupPageS3AccessKeyId => 'Access Key ID';
+
+  @override
+  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+
+  @override
+  String get backupPageS3SessionToken => 'Session Token（可选）';
+
+  @override
+  String get backupPageS3Prefix => '前缀（目录）';
+
+  @override
+  String get backupPageS3PathStyle => '路径风格（Path-style）';
+
+  @override
   String get backupPageSave => '保存';
 
   @override
@@ -5306,6 +5336,36 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get backupPageWebDavServerSettings => 'WebDAV 服务器设置';
 
   @override
+  String get backupPageS3Backup => 'S3 备份';
+
+  @override
+  String get backupPageS3ServerSettings => 'S3 服务器设置';
+
+  @override
+  String get backupPageS3Endpoint => 'Endpoint（地址）';
+
+  @override
+  String get backupPageS3Region => 'Region（区域）';
+
+  @override
+  String get backupPageS3Bucket => 'Bucket';
+
+  @override
+  String get backupPageS3AccessKeyId => 'Access Key ID';
+
+  @override
+  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+
+  @override
+  String get backupPageS3SessionToken => 'Session Token（可选）';
+
+  @override
+  String get backupPageS3Prefix => '前缀（目录）';
+
+  @override
+  String get backupPageS3PathStyle => '路径风格（Path-style）';
+
+  @override
   String get backupPageSave => '保存';
 
   @override
@@ -9294,6 +9354,36 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get backupPageWebDavServerSettings => 'WebDAV 伺服器設定';
+
+  @override
+  String get backupPageS3Backup => 'S3 備份';
+
+  @override
+  String get backupPageS3ServerSettings => 'S3 伺服器設定';
+
+  @override
+  String get backupPageS3Endpoint => 'Endpoint（地址）';
+
+  @override
+  String get backupPageS3Region => 'Region（區域）';
+
+  @override
+  String get backupPageS3Bucket => 'Bucket';
+
+  @override
+  String get backupPageS3AccessKeyId => 'Access Key ID';
+
+  @override
+  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+
+  @override
+  String get backupPageS3SessionToken => 'Session Token（可選）';
+
+  @override
+  String get backupPageS3Prefix => '前綴（目錄）';
+
+  @override
+  String get backupPageS3PathStyle => '路徑風格（Path-style）';
 
   @override
   String get backupPageSave => '儲存';

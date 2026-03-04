@@ -2525,6 +2525,66 @@ abstract class AppLocalizations {
   /// **'WebDAV Server Settings'**
   String get backupPageWebDavServerSettings;
 
+  /// No description provided for @backupPageS3Backup.
+  ///
+  /// In en, this message translates to:
+  /// **'S3 Backup'**
+  String get backupPageS3Backup;
+
+  /// No description provided for @backupPageS3ServerSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'S3 Settings'**
+  String get backupPageS3ServerSettings;
+
+  /// No description provided for @backupPageS3Endpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint'**
+  String get backupPageS3Endpoint;
+
+  /// No description provided for @backupPageS3Region.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get backupPageS3Region;
+
+  /// No description provided for @backupPageS3Bucket.
+  ///
+  /// In en, this message translates to:
+  /// **'Bucket'**
+  String get backupPageS3Bucket;
+
+  /// No description provided for @backupPageS3AccessKeyId.
+  ///
+  /// In en, this message translates to:
+  /// **'Access Key ID'**
+  String get backupPageS3AccessKeyId;
+
+  /// No description provided for @backupPageS3SecretAccessKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret Access Key'**
+  String get backupPageS3SecretAccessKey;
+
+  /// No description provided for @backupPageS3SessionToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Token (Optional)'**
+  String get backupPageS3SessionToken;
+
+  /// No description provided for @backupPageS3Prefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefix'**
+  String get backupPageS3Prefix;
+
+  /// No description provided for @backupPageS3PathStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Path-style addressing'**
+  String get backupPageS3PathStyle;
+
   /// No description provided for @backupPageSave.
   ///
   /// In en, this message translates to:

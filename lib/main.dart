@@ -30,6 +30,7 @@ import 'core/providers/instruction_injection_group_provider.dart';
 import 'core/providers/world_book_provider.dart';
 import 'core/providers/memory_provider.dart';
 import 'core/providers/backup_provider.dart';
+import 'core/providers/s3_backup_provider.dart';
 import 'core/providers/hotkey_provider.dart';
 import 'core/services/chat/chat_service.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
@@ -140,6 +141,12 @@ class MyApp extends StatelessWidget {
           create: (ctx) => BackupProvider(
             chatService: ctx.read<ChatService>(),
             initialConfig: ctx.read<SettingsProvider>().webDavConfig,
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) => S3BackupProvider(
+            chatService: ctx.read<ChatService>(),
+            initialConfig: ctx.read<SettingsProvider>().s3Config,
           ),
         ),
       ],

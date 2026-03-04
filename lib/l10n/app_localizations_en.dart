@@ -1298,6 +1298,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupPageWebDavServerSettings => 'WebDAV Server Settings';
 
   @override
+  String get backupPageS3Backup => 'S3 Backup';
+
+  @override
+  String get backupPageS3ServerSettings => 'S3 Settings';
+
+  @override
+  String get backupPageS3Endpoint => 'Endpoint';
+
+  @override
+  String get backupPageS3Region => 'Region';
+
+  @override
+  String get backupPageS3Bucket => 'Bucket';
+
+  @override
+  String get backupPageS3AccessKeyId => 'Access Key ID';
+
+  @override
+  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+
+  @override
+  String get backupPageS3SessionToken => 'Session Token (Optional)';
+
+  @override
+  String get backupPageS3Prefix => 'Prefix';
+
+  @override
+  String get backupPageS3PathStyle => 'Path-style addressing';
+
+  @override
   String get backupPageSave => 'Save';
 
   @override
