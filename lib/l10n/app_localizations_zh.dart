@@ -1270,19 +1270,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupPageS3ServerSettings => 'S3 服务器设置';
 
   @override
-  String get backupPageS3Endpoint => 'Endpoint（地址）';
+  String get backupPageS3Endpoint => '端点';
 
   @override
-  String get backupPageS3Region => 'Region（区域）';
+  String get backupPageS3Region => '区域';
 
   @override
   String get backupPageS3Bucket => 'Bucket';
 
   @override
-  String get backupPageS3AccessKeyId => 'Access Key ID';
+  String get backupPageS3AccessKeyId => '访问密钥 ID';
 
   @override
-  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+  String get backupPageS3SecretAccessKey => '秘密访问密钥';
 
   @override
   String get backupPageS3SessionToken => 'Session Token（可选）';
@@ -5342,19 +5342,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get backupPageS3ServerSettings => 'S3 服务器设置';
 
   @override
-  String get backupPageS3Endpoint => 'Endpoint（地址）';
+  String get backupPageS3Endpoint => '端点';
 
   @override
-  String get backupPageS3Region => 'Region（区域）';
+  String get backupPageS3Region => '区域';
 
   @override
   String get backupPageS3Bucket => 'Bucket';
 
   @override
-  String get backupPageS3AccessKeyId => 'Access Key ID';
+  String get backupPageS3AccessKeyId => '访问密钥 ID';
 
   @override
-  String get backupPageS3SecretAccessKey => 'Secret Access Key';
+  String get backupPageS3SecretAccessKey => '秘密访问密钥';
 
   @override
   String get backupPageS3SessionToken => 'Session Token（可选）';

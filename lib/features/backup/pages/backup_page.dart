@@ -517,17 +517,45 @@ class _BackupPageState extends State<BackupPage> {
                                   if (!mounted) return;
                                   final mode = await _chooseImportModeDialog(context);
                                   if (mode == null) return;
-                                  await _runWithImportingOverlay(context, () => vm.restoreFromItem(item, mode: mode));
+                                  try {
+                                    await _runWithImportingOverlay(
+                                      context,
+                                      () => vm.restoreFromItem(item, mode: mode),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    showAppSnackBar(
+                                      context,
+                                      message: e.toString(),
+                                      type: NotificationType.error,
+                                    );
+                                    return;
+                                  }
                                   if (!mounted) return;
+                                  final msg = vm.message;
+                                  if (msg != null && msg != 'Restored') {
+                                    showAppSnackBar(
+                                      context,
+                                      message: msg,
+                                      type: NotificationType.error,
+                                    );
+                                    return;
+                                  }
                                   await showDialog(
                                     context: context,
+                                    barrierDismissible: false,
                                     builder: (dctx) => AlertDialog(
                                       title: Text(l10n.backupPageRestartRequired),
                                       content: Text(l10n.backupPageRestartContent),
-                                      actions: [TextButton(onPressed: () async {
-                                        Navigator.of(dctx).pop();
-                                        PlatformUtils.restartApp();
-                                      }, child: Text(l10n.backupPageOK))],
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.of(dctx).pop();
+                                            PlatformUtils.restartApp();
+                                          },
+                                          child: Text(l10n.backupPageOK),
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
@@ -554,18 +582,44 @@ class _BackupPageState extends State<BackupPage> {
 
                           if (mode == null) return;
 
-                          await _runWithImportingOverlay(context, () => vm.restoreFromItem(item, mode: mode));
+                          try {
+                            await _runWithImportingOverlay(
+                              context,
+                              () => vm.restoreFromItem(item, mode: mode),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            showAppSnackBar(
+                              context,
+                              message: e.toString(),
+                              type: NotificationType.error,
+                            );
+                            return;
+                          }
                           if (!mounted) return;
+                          final msg = vm.message;
+                          if (msg != null && msg != 'Restored') {
+                            showAppSnackBar(
+                              context,
+                              message: msg,
+                              type: NotificationType.error,
+                            );
+                            return;
+                          }
                           await showDialog(
                             context: context,
+                            barrierDismissible: false,
                             builder: (dctx) => AlertDialog(
                               title: Text(l10n.backupPageRestartRequired),
                               content: Text(l10n.backupPageRestartContent),
                               actions: [
-                                TextButton(onPressed: () async {
-                                  Navigator.of(dctx).pop();
-                                  PlatformUtils.restartApp();
-                                }, child: Text(l10n.backupPageOK)),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.of(dctx).pop();
+                                    PlatformUtils.restartApp();
+                                  },
+                                  child: Text(l10n.backupPageOK),
+                                ),
                               ],
                             ),
                           );
@@ -754,17 +808,45 @@ class _BackupPageState extends State<BackupPage> {
                                   if (!mounted) return;
                                   final mode = await _chooseImportModeDialog(context);
                                   if (mode == null) return;
-                                  await _runWithImportingOverlay(context, () => s3Vm.restoreFromItem(item, mode: mode));
+                                  try {
+                                    await _runWithImportingOverlay(
+                                      context,
+                                      () => s3Vm.restoreFromItem(item, mode: mode),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    showAppSnackBar(
+                                      context,
+                                      message: e.toString(),
+                                      type: NotificationType.error,
+                                    );
+                                    return;
+                                  }
                                   if (!mounted) return;
+                                  final msg = s3Vm.message;
+                                  if (msg != null && msg != 'Restored') {
+                                    showAppSnackBar(
+                                      context,
+                                      message: msg,
+                                      type: NotificationType.error,
+                                    );
+                                    return;
+                                  }
                                   await showDialog(
                                     context: context,
+                                    barrierDismissible: false,
                                     builder: (dctx) => AlertDialog(
                                       title: Text(l10n.backupPageRestartRequired),
                                       content: Text(l10n.backupPageRestartContent),
-                                      actions: [TextButton(onPressed: () async {
-                                        Navigator.of(dctx).pop();
-                                        PlatformUtils.restartApp();
-                                      }, child: Text(l10n.backupPageOK))],
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.of(dctx).pop();
+                                            PlatformUtils.restartApp();
+                                          },
+                                          child: Text(l10n.backupPageOK),
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
@@ -790,18 +872,44 @@ class _BackupPageState extends State<BackupPage> {
                           final mode = await _chooseImportModeDialog(context);
                           if (mode == null) return;
 
-                          await _runWithImportingOverlay(context, () => s3Vm.restoreFromItem(item, mode: mode));
+                          try {
+                            await _runWithImportingOverlay(
+                              context,
+                              () => s3Vm.restoreFromItem(item, mode: mode),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            showAppSnackBar(
+                              context,
+                              message: e.toString(),
+                              type: NotificationType.error,
+                            );
+                            return;
+                          }
                           if (!mounted) return;
+                          final msg = s3Vm.message;
+                          if (msg != null && msg != 'Restored') {
+                            showAppSnackBar(
+                              context,
+                              message: msg,
+                              type: NotificationType.error,
+                            );
+                            return;
+                          }
                           await showDialog(
                             context: context,
+                            barrierDismissible: false,
                             builder: (dctx) => AlertDialog(
                               title: Text(l10n.backupPageRestartRequired),
                               content: Text(l10n.backupPageRestartContent),
                               actions: [
-                                TextButton(onPressed: () async {
-                                  Navigator.of(dctx).pop();
-                                  PlatformUtils.restartApp();
-                                }, child: Text(l10n.backupPageOK)),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.of(dctx).pop();
+                                    PlatformUtils.restartApp();
+                                  },
+                                  child: Text(l10n.backupPageOK),
+                                ),
                               ],
                             ),
                           );

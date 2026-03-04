@@ -183,10 +183,22 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
       builder: (ctx) => _RestoreModeDialog(),
     );
     if (mode == null) return;
-    await action(mode);
+    try {
+      await action(mode);
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        message: e.toString(),
+        type: NotificationType.error,
+      );
+      return;
+    }
+    if (!mounted) return;
     // Inform restart requirement
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -394,7 +406,14 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                             context,
                             title: '${l10n.backupPageRemoteBackups} (WebDAV)',
                             listRemote: () => context.read<BackupProvider>().listRemote(),
-                            restoreFromItem: (it, mode) => context.read<BackupProvider>().restoreFromItem(it, mode: mode),
+                            restoreFromItem: (it, mode) async {
+                              final vm = context.read<BackupProvider>();
+                              await vm.restoreFromItem(it, mode: mode);
+                              final msg = vm.message;
+                              if (msg != null && msg != 'Restored') {
+                                throw Exception(msg);
+                              }
+                            },
                             deleteAndReload: (it) => context.read<BackupProvider>().deleteAndReload(it),
                           );
                         },
@@ -583,7 +602,14 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                             context,
                             title: '${l10n.backupPageRemoteBackups} (S3)',
                             listRemote: () => context.read<S3BackupProvider>().listRemote(),
-                            restoreFromItem: (it, mode) => context.read<S3BackupProvider>().restoreFromItem(it, mode: mode),
+                            restoreFromItem: (it, mode) async {
+                              final vm = context.read<S3BackupProvider>();
+                              await vm.restoreFromItem(it, mode: mode);
+                              final msg = vm.message;
+                              if (msg != null && msg != 'Restored') {
+                                throw Exception(msg);
+                              }
+                            },
                             deleteAndReload: (it) => context.read<S3BackupProvider>().deleteAndReload(it),
                           );
                         },
@@ -850,21 +876,45 @@ class _RemoteBackupsDialogState extends State<_RemoteBackupsDialog> {
   }
 
   Future<void> _chooseRestoreModeAndRun(Future<void> Function(RestoreMode) action) async {
+    // Use a stable context so we can still show a restart prompt even if this
+    // dialog is closed while the restore task is running.
+    final rootCtx = Navigator.of(context, rootNavigator: true).context;
     final mode = await showDialog<RestoreMode>(context: context, builder: (_) => _RestoreModeDialog());
     if (mode == null) return;
-    await action(mode);
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    await showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: cs.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(l10n.backupPageRestartRequired),
-      content: Text(l10n.backupPageRestartContent),
-      actions: [TextButton(onPressed: () async {
-        Navigator.of(context).pop();
-        PlatformUtils.restartApp();
-      }, child: Text(l10n.backupPageOK))],
-    ));
+    setState(() => _loading = true);
+    try {
+      await action(mode);
+    } catch (e) {
+      showAppSnackBar(
+        rootCtx,
+        message: e.toString(),
+        type: NotificationType.error,
+      );
+      return;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+    final l10n = AppLocalizations.of(rootCtx)!;
+    final cs = Theme.of(rootCtx).colorScheme;
+    await showDialog(
+      context: rootCtx,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l10n.backupPageRestartRequired),
+        content: Text(l10n.backupPageRestartContent),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              PlatformUtils.restartApp();
+            },
+            child: Text(l10n.backupPageOK),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
