@@ -899,7 +899,7 @@ class _RemoteBackupsDialogState extends State<_RemoteBackupsDialog> {
     await showDialog(
       context: rootCtx,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dctx) => AlertDialog(
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(l10n.backupPageRestartRequired),
@@ -907,7 +907,7 @@ class _RemoteBackupsDialogState extends State<_RemoteBackupsDialog> {
         actions: [
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              Navigator.of(dctx).pop();
               PlatformUtils.restartApp();
             },
             child: Text(l10n.backupPageOK),
