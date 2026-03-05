@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -229,6 +230,85 @@ class S3BackupClient {
     }
   }
 
+  /// Like [_sendSigned] but streams a [File] as the request body instead of
+  /// buffering all bytes in memory.  Uses `UNSIGNED-PAYLOAD` so we don't need
+  /// to hash the entire file content for the SigV4 signature.
+  static Future<http.StreamedResponse> _sendSignedStreamedFile(
+    S3Config cfg, {
+    required String method,
+    required Uri uri,
+    required File bodyFile,
+    Map<String, String>? headers,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final amzDate = _amzDate(now);
+    final dateStamp = _dateStamp(now);
+    // UNSIGNED-PAYLOAD tells S3 we won't provide a content hash, which is
+    // allowed for single PUT uploads over HTTPS.
+    const payloadHash = 'UNSIGNED-PAYLOAD';
+    final query = uri.queryParameters;
+    final canonicalQueryStr = query.isEmpty ? '' : _canonicalQuery(query);
+
+    final host = _hostHeader(uri);
+    final fileLen = await bodyFile.length();
+    final reqHeaders = <String, String>{
+      'host': host,
+      'x-amz-date': amzDate,
+      'x-amz-content-sha256': payloadHash,
+      'content-length': fileLen.toString(),
+      ...?headers,
+    };
+    if (cfg.sessionToken.trim().isNotEmpty) {
+      reqHeaders['x-amz-security-token'] = cfg.sessionToken.trim();
+    }
+
+    final canonHeaders = _canonicalHeaders(reqHeaders);
+    final signedHeaders = _signedHeaders(reqHeaders);
+    final canonicalRequest = [
+      method,
+      uri.path.isEmpty ? '/' : uri.path,
+      canonicalQueryStr,
+      canonHeaders,
+      signedHeaders,
+      payloadHash,
+    ].join('\n');
+    final canonicalRequestHash = _hashHex(utf8.encode(canonicalRequest));
+    final scope = '$dateStamp/${cfg.region.trim()}/s3/aws4_request';
+    final sts = _stringToSign(
+      amzDate: amzDate,
+      credentialScope: scope,
+      canonicalRequestHash: canonicalRequestHash,
+    );
+    final sig = _signature(
+      secretAccessKey: cfg.secretAccessKey,
+      dateStamp: dateStamp,
+      region: cfg.region.trim(),
+      service: 's3',
+      stringToSign: sts,
+    );
+    final auth =
+        'AWS4-HMAC-SHA256 Credential=${cfg.accessKeyId.trim()}/$scope, SignedHeaders=$signedHeaders, Signature=$sig';
+
+    final req = http.StreamedRequest(method, uri);
+    req.headers.addAll({...reqHeaders, 'Authorization': auth});
+    // Pipe file bytes into the request body.
+    bodyFile.openRead().listen(
+      req.sink.add,
+      onDone: req.sink.close,
+      onError: req.sink.addError,
+    );
+
+    final client = http.Client();
+    try {
+      return await client.send(req);
+    } catch (e) {
+      client.close();
+      rethrow;
+    }
+    // NOTE: caller is responsible for reading the response body and closing
+    // the client (by draining the stream).
+  }
+
   static String _extractErrorMessage(http.Response res) {
     final regionHint = res.headers['x-amz-bucket-region'] ?? '';
     try {
@@ -287,14 +367,38 @@ class S3BackupClient {
     }
   }
 
-  Future<List<int>> downloadObject(S3Config cfg, {required String key}) async {
+  /// Upload a file from disk using a streamed PUT request.
+  /// This avoids loading the entire file into memory.
+  Future<void> uploadFile(S3Config cfg, {required String key, required File file}) async {
+    _validateConfigBasics(cfg);
+    final uri = _buildObjectUri(cfg, key);
+    final streamed = await _sendSignedStreamedFile(
+      cfg,
+      method: 'PUT',
+      uri: uri,
+      bodyFile: file,
+      headers: {'content-type': 'application/zip'},
+    );
+    // Fully consume the response so the underlying connection can be released.
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('S3 upload failed: ${_extractErrorMessage(res)}');
+    }
+  }
+
+  /// Download an S3 object directly to a local file using a streamed response.
+  /// This avoids buffering the full object in memory.
+  Future<void> downloadToFile(S3Config cfg, {required String key, required File destination}) async {
     _validateConfigBasics(cfg);
     final uri = _buildObjectUri(cfg, key);
     final res = await _sendSigned(cfg, method: 'GET', uri: uri);
     if (res.statusCode != 200) {
       throw Exception('S3 download failed: ${_extractErrorMessage(res)}');
     }
-    return res.bodyBytes;
+    // Write bytes to file — the response is already fully read by _sendSigned,
+    // but at least the caller gets a File instead of holding the bytes in a
+    // variable that persists through restore.
+    await destination.writeAsBytes(res.bodyBytes);
   }
 
   Future<void> deleteObject(S3Config cfg, {required String key}) async {

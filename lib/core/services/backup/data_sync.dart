@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:archive/archive.dart';
@@ -106,94 +107,146 @@ class DataSync {
   Future<File> prepareBackupFile(WebDavConfig cfg) async {
     final tmp = await _ensureTempDir();
     final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final outFile = File(p.join(tmp.path, 'kelivo_backup_$timestamp.zip'));
+    final outPath = p.join(tmp.path, 'kelivo_backup_$timestamp.zip');
+    final outFile = File(outPath);
     if (await outFile.exists()) await outFile.delete();
 
-    // Use Archive instead of ZipFileEncoder for better control
-    final archive = Archive();
-
+    // --- Step 1: Prepare temp files that need ChatService (main isolate) ---
     // settings.json
     final settingsJson = await _exportSettingsJson();
-    final settingsBytes = utf8.encode(settingsJson);
-    final settingsArchiveFile = ArchiveFile('settings.json', settingsBytes.length, settingsBytes);
-    archive.addFile(settingsArchiveFile);
+    final settingsTmp = await _writeTempText('_bk_settings.json', settingsJson);
 
-    // chats
+    // chats.json — stream to file to avoid huge string in memory
+    File? chatsTmp;
     if (cfg.includeChats) {
-      final chatsJson = await _exportChatsJson();
-      final chatsBytes = utf8.encode(chatsJson);
-      final chatsArchiveFile = ArchiveFile('chats.json', chatsBytes.length, chatsBytes);
-      archive.addFile(chatsArchiveFile);
+      chatsTmp = await _exportChatsToFile();
+    }
+
+    // Resolve directory paths (need AppDirectories on main isolate)
+    final uploadDirPath = (await _getUploadDir()).path;
+    final avatarsDirPath = (await _getAvatarsDir()).path;
+    final imagesDirPath = (await _getImagesDir()).path;
+
+    // --- Step 2: Run CPU-heavy ZIP packing in a separate isolate ---
+    await Isolate.run(() {
+      _packZipSync(
+        outPath: outPath,
+        settingsPath: settingsTmp.path,
+        chatsPath: chatsTmp?.path,
+        includeFiles: cfg.includeFiles,
+        uploadDirPath: uploadDirPath,
+        avatarsDirPath: avatarsDirPath,
+        imagesDirPath: imagesDirPath,
+      );
+    });
+
+    // Cleanup temp intermediate files
+    try { await settingsTmp.delete(); } catch (_) {}
+    try { if (chatsTmp != null) await chatsTmp.delete(); } catch (_) {}
+
+    return outFile;
+  }
+
+  /// Synchronous ZIP packing — runs inside an Isolate.
+  static void _packZipSync({
+    required String outPath,
+    required String settingsPath,
+    String? chatsPath,
+    required bool includeFiles,
+    required String uploadDirPath,
+    required String avatarsDirPath,
+    required String imagesDirPath,
+  }) {
+    final encoder = ZipFileEncoder();
+    encoder.create(outPath);
+
+    // settings.json
+    encoder.addFileSync(File(settingsPath), 'settings.json');
+
+    // chats.json
+    if (chatsPath != null) {
+      encoder.addFileSync(File(chatsPath), 'chats.json');
     }
 
     // files under upload/, images/, and avatars/
-    if (cfg.includeFiles) {
-      // Export upload directory
-      final uploadDir = await _getUploadDir();
-      if (await uploadDir.exists()) {
-        final entries = uploadDir.listSync(recursive: true, followLinks: false);
-        for (final ent in entries) {
-          if (ent is File) {
-            final rel = p.relative(ent.path, from: uploadDir.path);
-            // ZIP entries must use forward slashes regardless of platform
-            final relPosix = rel.replaceAll('\\', '/');
-            final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile('upload/$relPosix', fileBytes.length, fileBytes);
-            archive.addFile(archiveFile);
-          }
-        }
-      }
-
-      // Export avatars directory
-      final avatarsDir = await _getAvatarsDir();
-      if (await avatarsDir.exists()) {
-        final entries = avatarsDir.listSync(recursive: true, followLinks: false);
-        for (final ent in entries) {
-          if (ent is File) {
-            final rel = p.relative(ent.path, from: avatarsDir.path);
-            final relPosix = rel.replaceAll('\\', '/');
-            final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile('avatars/$relPosix', fileBytes.length, fileBytes);
-            archive.addFile(archiveFile);
-          }
-        }
-      }
-
-      // Export images directory
-      final imagesDir = await _getImagesDir();
-      if (await imagesDir.exists()) {
-        final entries = imagesDir.listSync(recursive: true, followLinks: false);
-        for (final ent in entries) {
-          if (ent is File) {
-            final rel = p.relative(ent.path, from: imagesDir.path);
-            final relPosix = rel.replaceAll('\\', '/');
-            final fileBytes = await ent.readAsBytes();
-            final archiveFile = ArchiveFile('images/$relPosix', fileBytes.length, fileBytes);
-            archive.addFile(archiveFile);
-          }
-        }
-      }
+    if (includeFiles) {
+      _addDirectoryToZip(encoder, uploadDirPath, 'upload');
+      _addDirectoryToZip(encoder, avatarsDirPath, 'avatars');
+      _addDirectoryToZip(encoder, imagesDirPath, 'images');
     }
 
-    // Encode archive to ZIP
-    final zipEncoder = ZipEncoder();
-    final zipBytes = zipEncoder.encode(archive)!;
-    await outFile.writeAsBytes(zipBytes);
-    
-    return outFile;
+    encoder.closeSync();
+  }
+
+  /// Add all files from [srcDirPath] into the zip under [zipPrefix].
+  static void _addDirectoryToZip(ZipFileEncoder encoder, String srcDirPath, String zipPrefix) {
+    final dir = Directory(srcDirPath);
+    if (!dir.existsSync()) return;
+    final entries = dir.listSync(recursive: true, followLinks: false);
+    for (final ent in entries) {
+      if (ent is File) {
+        final rel = p.relative(ent.path, from: srcDirPath);
+        // ZIP entries must use forward slashes regardless of platform
+        final relPosix = rel.replaceAll('\\', '/');
+        encoder.addFileSync(ent, '$zipPrefix/$relPosix');
+      }
+    }
+  }
+
+  /// Synchronous ZIP extraction — runs inside an Isolate.
+  /// Uses InputFileStream so the ZIP bytes are read from disk on demand rather
+  /// than loading the entire archive into a single byte array.
+  static void _extractZipSync(String zipPath, String extractDirPath) {
+    final inputStream = InputFileStream(zipPath);
+    try {
+      final archive = ZipDecoder().decodeStream(inputStream);
+      for (final entry in archive) {
+        // Normalize entry name to use forward slashes and remove traversal
+        final normalized = entry.name.replaceAll('\\', '/');
+        final parts = normalized
+            .split('/')
+            .where((seg) => seg.isNotEmpty && seg != '.' && seg != '..')
+            .toList();
+        if (parts.isEmpty) continue;
+        final outPath = p.joinAll([extractDirPath, ...parts]);
+        if (entry.isFile) {
+          final outFile = File(outPath)..createSync(recursive: true);
+          outFile.writeAsBytesSync(entry.content as List<int>);
+        } else {
+          Directory(outPath).createSync(recursive: true);
+        }
+      }
+    } finally {
+      inputStream.close();
+    }
   }
 
   Future<void> backupToWebDav(WebDavConfig cfg) async {
     final file = await prepareBackupFile(cfg);
     await _ensureCollection(cfg);
     final target = _fileUri(cfg, p.basename(file.path));
-    final bytes = await file.readAsBytes();
-    final res = await http.put(target, headers: {
+    final fileLen = await file.length();
+    // Use a streamed request so we don't load the entire file into RAM.
+    final req = http.StreamedRequest('PUT', target);
+    req.headers.addAll({
       'content-type': 'application/zip',
+      'content-length': fileLen.toString(),
       ..._authHeaders(cfg),
-    }, body: bytes);
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Upload failed: ${res.statusCode}');
+    });
+    // Pipe the file stream into the request body.
+    file.openRead().listen(
+      req.sink.add,
+      onDone: req.sink.close,
+      onError: req.sink.addError,
+    );
+    final client = http.Client();
+    try {
+      final res = await client.send(req).then(http.Response.fromStream);
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception('Upload failed: ${res.statusCode}');
+      }
+    } finally {
+      client.close();
     }
   }
 
@@ -268,15 +321,26 @@ class DataSync {
   }
 
   Future<void> restoreFromWebDav(WebDavConfig cfg, BackupFileItem item, {RestoreMode mode = RestoreMode.overwrite}) async {
-    final res = await http.get(item.href, headers: _authHeaders(cfg));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Download failed: ${res.statusCode}');
+    // Stream the download to a file instead of buffering in memory.
+    final client = http.Client();
+    try {
+      final req = http.Request('GET', item.href);
+      req.headers.addAll(_authHeaders(cfg));
+      final streamed = await client.send(req);
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        // Drain the response body to allow the client to close cleanly.
+        await streamed.stream.drain<void>();
+        throw Exception('Download failed: ${streamed.statusCode}');
+      }
+      final tmpDir = await _ensureTempDir();
+      final file = File(p.join(tmpDir.path, item.displayName));
+      final sink = file.openWrite();
+      await streamed.stream.pipe(sink);
+      await _restoreFromBackupFile(file, cfg, mode: mode);
+      try { await file.delete(); } catch (_) {}
+    } finally {
+      client.close();
     }
-    final tmpDir = await _ensureTempDir();
-    final file = File(p.join(tmpDir.path, item.displayName));
-    await file.writeAsBytes(res.bodyBytes);
-    await _restoreFromBackupFile(file, cfg, mode: mode);
-    try { await file.delete(); } catch (_) {}
   }
 
   Future<void> deleteWebDavBackupFile(WebDavConfig cfg, BackupFileItem item) async {
@@ -333,58 +397,83 @@ class DataSync {
     return jsonEncode(map);
   }
 
-  Future<String> _exportChatsJson() async {
+  /// Stream chat data to a temporary JSON file instead of building a huge
+  /// in-memory String.  Uses IOSink for low memory overhead.
+  Future<File> _exportChatsToFile() async {
     if (!chatService.initialized) {
       await chatService.init();
     }
     final conversations = chatService.getAllConversations();
-    final allMsgs = <ChatMessage>[];
-    final toolEvents = <String, List<Map<String, dynamic>>>{};
-    final geminiThoughtSigs = <String, String>{};
-    for (final c in conversations) {
-      final msgs = chatService.getMessages(c.id);
-      allMsgs.addAll(msgs);
-      for (final m in msgs) {
-        if (m.role == 'assistant') {
-          final ev = chatService.getToolEvents(m.id);
-          if (ev.isNotEmpty) toolEvents[m.id] = ev;
-          final sig = chatService.getGeminiThoughtSignature(m.id);
-          if (sig != null && sig.isNotEmpty) geminiThoughtSigs[m.id] = sig;
-        }
+    final tmp = await _ensureTempDir();
+    final file = File(p.join(tmp.path, '_bk_chats.json'));
+    final sink = file.openWrite();
+
+    try {
+      sink.write('{"version":1,');
+
+      // --- conversations ---
+      sink.write('"conversations":[');
+      for (int i = 0; i < conversations.length; i++) {
+        if (i > 0) sink.write(',');
+        sink.write(jsonEncode(conversations[i].toJson()));
+        // Yield periodically so the main isolate can process UI frames
+        if (i % 50 == 0) await Future<void>.delayed(Duration.zero);
       }
+      sink.write('],');
+
+      // --- messages, toolEvents, geminiThoughtSigs ---
+      sink.write('"messages":[');
+      final toolEvents = <String, List<Map<String, dynamic>>>{};
+      final geminiThoughtSigs = <String, String>{};
+      bool firstMsg = true;
+      for (final c in conversations) {
+        final msgs = chatService.getMessages(c.id);
+        for (final m in msgs) {
+          if (!firstMsg) sink.write(',');
+          firstMsg = false;
+          sink.write(jsonEncode(m.toJson()));
+          if (m.role == 'assistant') {
+            final ev = chatService.getToolEvents(m.id);
+            if (ev.isNotEmpty) toolEvents[m.id] = ev;
+            final sig = chatService.getGeminiThoughtSignature(m.id);
+            if (sig != null && sig.isNotEmpty) geminiThoughtSigs[m.id] = sig;
+          }
+        }
+        // Yield after each conversation
+        await Future<void>.delayed(Duration.zero);
+      }
+      sink.write('],');
+
+      // --- toolEvents ---
+      sink.write('"toolEvents":');
+      sink.write(jsonEncode(toolEvents));
+      sink.write(',');
+
+      // --- geminiThoughtSigs ---
+      sink.write('"geminiThoughtSigs":');
+      sink.write(jsonEncode(geminiThoughtSigs));
+
+      sink.write('}');
+    } finally {
+      await sink.flush();
+      await sink.close();
     }
-    final obj = {
-      'version': 1,
-      'conversations': conversations.map((c) => c.toJson()).toList(),
-      'messages': allMsgs.map((m) => m.toJson()).toList(),
-      'toolEvents': toolEvents,
-      'geminiThoughtSigs': geminiThoughtSigs,
-    };
-    return jsonEncode(obj);
+
+    return file;
   }
 
   Future<void> _restoreFromBackupFile(File file, WebDavConfig cfg, {RestoreMode mode = RestoreMode.overwrite}) async {
-    // Extract to temp
+    // Extract to temp using file-stream decoding to avoid loading the full ZIP
+    // into RAM (the old approach called file.readAsBytes() which for a 600-800 MB
+    // file would allocate a contiguous byte array of the same size).
     final tmp = await _ensureTempDir();
     final extractDir = Directory(p.join(tmp.path, 'restore_${DateTime.now().millisecondsSinceEpoch}'));
     await extractDir.create(recursive: true);
-    final bytes = await file.readAsBytes();
-    final archive = ZipDecoder().decodeBytes(bytes);
-    for (final entry in archive) {
-      // Normalize entry name to use forward slashes and remove traversal
-      final normalized = entry.name.replaceAll('\\', '/');
-      final parts = normalized
-          .split('/')
-          .where((seg) => seg.isNotEmpty && seg != '.' && seg != '..')
-          .toList();
-      final outPath = p.joinAll([extractDir.path, ...parts]);
-      if (entry.isFile) {
-        final outFile = File(outPath)..createSync(recursive: true);
-        outFile.writeAsBytesSync(entry.content as List<int>);
-      } else {
-        Directory(outPath).createSync(recursive: true);
-      }
-    }
+
+    // Run ZIP extraction in an isolate to keep the UI responsive.
+    await Isolate.run(() {
+      _extractZipSync(file.path, extractDir.path);
+    });
 
     // Restore settings
     final settingsFile = File(p.join(extractDir.path, 'settings.json'));

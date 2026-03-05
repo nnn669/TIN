@@ -1093,13 +1093,31 @@ class _BackupPageState extends State<BackupPage> {
     final file = await _runWithExportingOverlay(context, () => vm.exportToFile());
     if (!mounted) return;
 
-    await FilePicker.platform.saveFile(
-      dialogTitle: l10n.backupPageExportToFile,
-      fileName: file.uri.pathSegments.last,
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-      bytes: await file.readAsBytes(),
-    );
+    // On Android & iOS, FilePicker.saveFile requires bytes.
+    // On desktop, use the path-based approach to avoid loading the ZIP into RAM.
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    if (isMobile) {
+      await FilePicker.platform.saveFile(
+        dialogTitle: l10n.backupPageExportToFile,
+        fileName: file.uri.pathSegments.last,
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+        bytes: await file.readAsBytes(),
+      );
+    } else {
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: l10n.backupPageExportToFile,
+        fileName: file.uri.pathSegments.last,
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+      if (savePath != null) {
+        try {
+          await File(savePath).parent.create(recursive: true);
+          await file.copy(savePath);
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _doImportLocal(BuildContext context, BackupProvider vm) async {

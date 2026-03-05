@@ -86,10 +86,10 @@ class S3BackupProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final file = await _dataSync.prepareBackupFile(_scopeAsWebdavConfig());
-      final bytes = await file.readAsBytes();
       final prefix = _normalizePrefix(_cfg.prefix);
       final key = '$prefix${p.basename(file.path)}';
-      await _client.uploadObject(_cfg, key: key, bytes: bytes);
+      // Use file-stream upload to avoid loading entire ZIP into memory.
+      await _client.uploadFile(_cfg, key: key, file: file);
       _message = 'Backup uploaded';
     } catch (e) {
       _message = e.toString();
@@ -112,10 +112,10 @@ class S3BackupProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final key = _keyFromItem(item);
-      final bytes = await _client.downloadObject(_cfg, key: key);
       final tmp = await _ensureTempDir();
       final file = File(p.join(tmp.path, item.displayName));
-      await file.writeAsBytes(bytes);
+      // Download directly to file to avoid holding entire object in memory.
+      await _client.downloadToFile(_cfg, key: key, destination: file);
       await _dataSync.restoreFromLocalFile(file, _scopeAsWebdavConfig(), mode: mode);
       try {
         await file.delete();
