@@ -638,7 +638,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assistantEditUseAssistantAvatarSubtitle =>
-      'Use assistant avatar/name instead of model';
+      'Use assistant avatar instead of model avatar';
+
+  @override
+  String get assistantEditUseAssistantNameTitle => 'Use Assistant Name';
 
   @override
   String get assistantEditChatModelTitle => 'Chat Model';

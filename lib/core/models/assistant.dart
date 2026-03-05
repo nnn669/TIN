@@ -7,6 +7,7 @@ class Assistant {
   final String name;
   final String? avatar; // path/url/base64, null for initial-letter avatar
   final bool useAssistantAvatar; // replace model icon in chat with assistant avatar
+  final bool useAssistantName; // replace model name in chat with assistant name
   final String? chatModelProvider; // null -> use global default
   final String? chatModelId; // null -> use global default
   final double? temperature; // null to disable; else 0.0 - 2.0
@@ -37,6 +38,7 @@ class Assistant {
     required this.name,
     this.avatar,
     this.useAssistantAvatar = false,
+    this.useAssistantName = false,
     this.chatModelProvider,
     this.chatModelId,
     this.temperature,
@@ -64,6 +66,7 @@ class Assistant {
     String? name,
     String? avatar,
     bool? useAssistantAvatar,
+    bool? useAssistantName,
     String? chatModelProvider,
     String? chatModelId,
     double? temperature,
@@ -97,6 +100,7 @@ class Assistant {
       name: name ?? this.name,
       avatar: clearAvatar ? null : (avatar ?? this.avatar),
       useAssistantAvatar: useAssistantAvatar ?? this.useAssistantAvatar,
+      useAssistantName: useAssistantName ?? this.useAssistantName,
       chatModelProvider: clearChatModel ? null : (chatModelProvider ?? this.chatModelProvider),
       chatModelId: clearChatModel ? null : (chatModelId ?? this.chatModelId),
       temperature: clearTemperature ? null : (temperature ?? this.temperature),
@@ -126,6 +130,7 @@ class Assistant {
         'name': name,
         'avatar': avatar,
         'useAssistantAvatar': useAssistantAvatar,
+        'useAssistantName': useAssistantName,
         'chatModelProvider': chatModelProvider,
         'chatModelId': chatModelId,
         'temperature': temperature,
@@ -153,6 +158,7 @@ class Assistant {
         name: (json['name'] as String?) ?? '',
         avatar: json['avatar'] as String?,
         useAssistantAvatar: json['useAssistantAvatar'] as bool? ?? false,
+        useAssistantName: json['useAssistantName'] as bool? ?? false,
         chatModelProvider: json['chatModelProvider'] as String?,
         chatModelId: json['chatModelId'] as String?,
         temperature: (json['temperature'] as num?)?.toDouble(),

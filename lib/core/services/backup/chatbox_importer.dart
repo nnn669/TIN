@@ -335,6 +335,7 @@ class ChatboxImporter {
         'name': name,
         'avatar': avatar.isNotEmpty ? avatar : null,
         'useAssistantAvatar': false,
+        'useAssistantName': false,
         'chatModelProvider': (provider.isEmpty || provider == 'chatbox-ai') ? null : provider,
         'chatModelId': (provider.isEmpty || provider == 'chatbox-ai' || modelId.isEmpty) ? null : modelId,
         'temperature': temperature,

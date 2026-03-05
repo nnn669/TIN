@@ -1274,8 +1274,14 @@ abstract class AppLocalizations {
   /// No description provided for @assistantEditUseAssistantAvatarSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Use assistant avatar/name instead of model'**
+  /// **'Use assistant avatar instead of model avatar'**
   String get assistantEditUseAssistantAvatarSubtitle;
+
+  /// No description provided for @assistantEditUseAssistantNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Assistant Name'**
+  String get assistantEditUseAssistantNameTitle;
 
   /// No description provided for @assistantEditChatModelTitle.
   ///

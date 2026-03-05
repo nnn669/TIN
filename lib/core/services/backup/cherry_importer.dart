@@ -472,6 +472,7 @@ class CherryImporter {
         'name': name,
         'avatar': null,
         'useAssistantAvatar': false,
+        'useAssistantName': false,
         'chatModelProvider': model?['provider']?.toString(),
         'chatModelId': model?['id']?.toString(),
         'temperature': temperature,

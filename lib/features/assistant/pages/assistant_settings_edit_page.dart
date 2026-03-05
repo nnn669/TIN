@@ -1820,6 +1820,14 @@ class _DesktopAssistantBasicPaneState
                   ),
                   sectionDivider(),
                   simpleSwitchRow(
+                    label: l10n.assistantEditUseAssistantNameTitle,
+                    value: a.useAssistantName,
+                    onChanged: (v) => context
+                        .read<AssistantProvider>()
+                        .updateAssistant(a.copyWith(useAssistantName: v)),
+                  ),
+                  sectionDivider(),
+                  simpleSwitchRow(
                     label: l10n.assistantEditStreamOutputTitle,
                     value: a.streamOutput,
                     onChanged: (v) => context

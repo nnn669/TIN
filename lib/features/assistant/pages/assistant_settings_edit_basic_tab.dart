@@ -266,6 +266,16 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                     .updateAssistant(a.copyWith(useAssistantAvatar: v)),
               ),
               _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.CaseSensitive,
+                label: l10n.assistantEditUseAssistantNameTitle,
+                value: a.useAssistantName,
+                onChanged: (v) => context
+                    .read<AssistantProvider>()
+                    .updateAssistant(a.copyWith(useAssistantName: v)),
+              ),
+              _iosDivider(context),
               // Stream output
               _iosSwitchRow(
                 context,

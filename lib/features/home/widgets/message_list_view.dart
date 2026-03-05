@@ -265,7 +265,8 @@ class MessageListView extends StatelessWidget {
     final t = translations[message.id];
     final chatScale = context.watch<SettingsProvider>().chatFontScale;
     final assistant = context.watch<AssistantProvider>().currentAssistant;
-    final useAssist = assistant?.useAssistantAvatar == true;
+    final useAssistAvatar = assistant?.useAssistantAvatar == true;
+    final useAssistName = assistant?.useAssistantName == true;
     final showDivider = truncCollapsed >= 0 && index == truncCollapsed;
     final gid = (message.groupId ?? message.id);
     final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()..sort((a, b) => a.version.compareTo(b.version));
@@ -320,7 +321,8 @@ class MessageListView extends StatelessWidget {
                               byGroup: byGroup,
                               r: r,
                               t: t,
-                              useAssist: useAssist,
+                              useAssistAvatar: useAssistAvatar,
+                              useAssistName: useAssistName,
                               assistant: assistant,
                               gid: gid,
                               selectedIdx: selectedIdx,
@@ -335,7 +337,8 @@ class MessageListView extends StatelessWidget {
                               byGroup: byGroup,
                               r: r,
                               t: t,
-                              useAssist: useAssist,
+                              useAssistAvatar: useAssistAvatar,
+                              useAssistName: useAssistName,
                               assistant: assistant,
                               gid: gid,
                               selectedIdx: selectedIdx,
@@ -380,7 +383,8 @@ class MessageListView extends StatelessWidget {
     required Map<String, List<ChatMessage>> byGroup,
     required stream_ctrl.ReasoningData? r,
     required TranslationUiState? t,
-    required bool useAssist,
+    required bool useAssistAvatar,
+    required bool useAssistName,
     required dynamic assistant,
     required String gid,
     required int selectedIdx,
@@ -433,7 +437,8 @@ class MessageListView extends StatelessWidget {
             byGroup: byGroup,
             r: streamingReasoning,
             t: t,
-            useAssist: useAssist,
+            useAssistAvatar: useAssistAvatar,
+            useAssistName: useAssistName,
             assistant: assistant,
             gid: gid,
             selectedIdx: selectedIdx,
@@ -454,7 +459,8 @@ class MessageListView extends StatelessWidget {
     required Map<String, List<ChatMessage>> byGroup,
     required stream_ctrl.ReasoningData? r,
     required TranslationUiState? t,
-    required bool useAssist,
+    required bool useAssistAvatar,
+    required bool useAssistName,
     required dynamic assistant,
     required String gid,
     required int selectedIdx,
@@ -471,13 +477,14 @@ class MessageListView extends StatelessWidget {
       onNextVersion: (selectedIdx < total - 1)
           ? () => onVersionChange?.call(gid, selectedIdx + 1)
           : null,
-      modelIcon: (!useAssist && message.role == 'assistant' && message.providerId != null && message.modelId != null)
+      modelIcon: (!useAssistAvatar && message.role == 'assistant' && message.providerId != null && message.modelId != null)
           ? CurrentModelIcon(providerKey: message.providerId, modelId: message.modelId, size: 30)
           : null,
-      showModelIcon: useAssist ? false : context.watch<SettingsProvider>().showModelIcon,
-      useAssistantAvatar: useAssist && message.role == 'assistant',
-      assistantName: useAssist ? (assistant?.name ?? 'Assistant') : null,
-      assistantAvatar: useAssist ? (assistant?.avatar ?? '') : null,
+      showModelIcon: useAssistAvatar ? false : context.watch<SettingsProvider>().showModelIcon,
+      useAssistantAvatar: useAssistAvatar && message.role == 'assistant',
+      useAssistantName: useAssistName && message.role == 'assistant',
+      assistantName: (useAssistAvatar || useAssistName) ? (assistant?.name ?? 'Assistant') : null,
+      assistantAvatar: useAssistAvatar ? (assistant?.avatar ?? '') : null,
       showUserAvatar: context.watch<SettingsProvider>().showUserAvatar,
       showTokenStats: context.watch<SettingsProvider>().showTokenStats,
       hideStreamingIndicator: isProcessingFiles || (isPinnedIndicatorActive && (message.id == pinnedStreamingMessageId)),

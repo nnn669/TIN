@@ -626,8 +626,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistantEditUseAssistantAvatarTitle => '使用助手头像';
 
   @override
-  String get assistantEditUseAssistantAvatarSubtitle =>
-      '在聊天中使用助手头像和名字而不是模型头像和名字';
+  String get assistantEditUseAssistantAvatarSubtitle => '在聊天中使用助手头像替代模型头像';
+
+  @override
+  String get assistantEditUseAssistantNameTitle => '使用助手名字';
 
   @override
   String get assistantEditChatModelTitle => '聊天模型';
@@ -4698,8 +4700,10 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get assistantEditUseAssistantAvatarTitle => '使用助手头像';
 
   @override
-  String get assistantEditUseAssistantAvatarSubtitle =>
-      '在聊天中使用助手头像和名字而不是模型头像和名字';
+  String get assistantEditUseAssistantAvatarSubtitle => '在聊天中使用助手头像替代模型头像';
+
+  @override
+  String get assistantEditUseAssistantNameTitle => '使用助手名字';
 
   @override
   String get assistantEditChatModelTitle => '聊天模型';
@@ -8718,8 +8722,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get assistantEditUseAssistantAvatarTitle => '使用助理頭像';
 
   @override
-  String get assistantEditUseAssistantAvatarSubtitle =>
-      '在聊天中使用助理頭像和名字而不是模型頭像和名字';
+  String get assistantEditUseAssistantAvatarSubtitle => '在聊天中使用助理頭像取代模型頭像';
+
+  @override
+  String get assistantEditUseAssistantNameTitle => '使用助理名字';
 
   @override
   String get assistantEditChatModelTitle => '聊天模型';

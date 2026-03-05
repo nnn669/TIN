@@ -65,6 +65,7 @@ class ChatMessageWidget extends StatefulWidget {
   final bool showModelIcon;
   // Assistant identity override
   final bool useAssistantAvatar;
+  final bool useAssistantName;
   final String? assistantName;
   final String? assistantAvatar; // path/url/emoji; null => use initial
   final bool showUserAvatar;
@@ -107,6 +108,7 @@ class ChatMessageWidget extends StatefulWidget {
     this.modelIcon,
     this.showModelIcon = true,
     this.useAssistantAvatar = false,
+    this.useAssistantName = false,
     this.assistantName,
     this.assistantAvatar,
     this.showUserAvatar = true,
@@ -296,8 +298,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   String _resolveModelDisplayName(SettingsProvider settings) {
     final modelId = widget.message.modelId;
     if (modelId == null || modelId.trim().isEmpty) {
-      // Prefer assistant's name when model id is missing (e.g., preset assistant messages)
-      return _assistantNameFallback();
+      // Model metadata can be missing for legacy/preset messages.
+      return AppLocalizations.of(context)?.messageExportSheetAssistant ?? 'Assistant';
     }
 
     final providerId = widget.message.providerId;
@@ -1192,8 +1194,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 children: [
                   if (settings.showModelNameTimestamp)
                     Text(
-                      widget.useAssistantAvatar
-                          ? (widget.assistantName?.trim().isNotEmpty == true ? widget.assistantName!.trim() : 'Assistant')
+                      widget.useAssistantName
+                          ? (widget.assistantName?.trim().isNotEmpty == true ? widget.assistantName!.trim() : _assistantNameFallback())
                           : _resolveModelDisplayName(settings),
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
