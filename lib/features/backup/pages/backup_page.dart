@@ -15,6 +15,7 @@ import '../../../core/providers/backup_provider.dart';
 import '../../../core/providers/s3_backup_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
+import '../../../core/services/native_file_save.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/backup/cherry_importer.dart';
 import '../../../core/services/backup/chatbox_importer.dart';
@@ -1093,17 +1094,21 @@ class _BackupPageState extends State<BackupPage> {
     final file = await _runWithExportingOverlay(context, () => vm.exportToFile());
     if (!mounted) return;
 
-    // On Android & iOS, FilePicker.saveFile requires bytes.
-    // On desktop, use the path-based approach to avoid loading the ZIP into RAM.
     final isMobile = Platform.isAndroid || Platform.isIOS;
     if (isMobile) {
-      await FilePicker.platform.saveFile(
-        dialogTitle: l10n.backupPageExportToFile,
-        fileName: file.uri.pathSegments.last,
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
-        bytes: await file.readAsBytes(),
-      );
+      try {
+        await NativeFileSave.saveFileFromPath(
+          sourcePath: file.path,
+          fileName: file.uri.pathSegments.last,
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+        showAppSnackBar(
+          context,
+          message: e.toString(),
+          type: NotificationType.error,
+        );
+      }
     } else {
       final savePath = await FilePicker.platform.saveFile(
         dialogTitle: l10n.backupPageExportToFile,
