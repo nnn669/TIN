@@ -8,6 +8,7 @@ import '../../providers/model_provider.dart';
 import '../../models/token_usage.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/app_directories.dart';
+import '../../utils/openai_model_compat.dart';
 import '../network/dio_http_client.dart';
 import 'google_service_account_auth.dart';
 import '../../services/api_key_manager.dart';
@@ -51,8 +52,7 @@ class ChatApiService {
   static String _apiModelId(ProviderConfig cfg, String modelId) {
     try {
       final ov = _modelOverride(cfg, modelId);
-      final raw = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
-      if (raw != null && raw.isNotEmpty) return raw;
+      return resolveApiModelIdOverride(ov, modelId);
     } catch (_) {}
     return modelId;
   }

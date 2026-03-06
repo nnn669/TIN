@@ -18,6 +18,7 @@ import '../services/haptics.dart';
 import '../../utils/app_directories.dart';
 import '../../utils/sandbox_path_resolver.dart';
 import '../../utils/avatar_cache.dart';
+import '../utils/openai_model_compat.dart';
 import '../../utils/provider_grouping_logic.dart';
 
 // Desktop: topic list position
@@ -325,10 +326,7 @@ class SettingsProvider extends ChangeNotifier {
     if (kind != ProviderKind.openai) return modelId;
     final rawOv = cfg.modelOverrides[modelId];
     final ov = rawOv is Map ? rawOv.cast<String, dynamic>() : null;
-    final apiModelId = (ov?['apiModelId'] is String)
-        ? (ov?['apiModelId'] as String).trim()
-        : '';
-    return apiModelId.isNotEmpty ? apiModelId : modelId;
+    return resolveApiModelIdOverride(ov, modelId);
   }
 
   bool supportsOpenAIXhighReasoning(String providerKey, String modelId) {
@@ -339,14 +337,7 @@ class SettingsProvider extends ChangeNotifier {
     );
     if (kind != ProviderKind.openai) return false;
     final modelForCheck = resolveOpenAIUpstreamModelId(providerKey, modelId);
-    final minor = int.tryParse(
-      RegExp(
-            r'gpt-5\.(\d+)',
-            caseSensitive: false,
-          ).firstMatch(modelForCheck)?.group(1) ??
-          '',
-    );
-    return minor != null && minor >= 2;
+    return openAISupportsXhighReasoning(modelForCheck);
   }
 
   // Explicitly ensure a provider config exists in memory (without persisting to storage).

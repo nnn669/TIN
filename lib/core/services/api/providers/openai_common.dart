@@ -1,38 +1,12 @@
 part of '../chat_api_service.dart';
 
 String _openAIEffortForBudget(int? budget, String upstreamModelId) {
-  final effort = _effortForBudget(budget);
-  // GPT-5.2+ uses "none" (not "off") for lowest reasoning effort.
-  // Source: https://developers.openai.com/api/docs/guides/latest-model#gpt-54-parameter-compatibility
-  if (effort == 'off' && _supportsOpenAINone(upstreamModelId)) {
-    return 'none';
-  }
-  if (effort != 'high') return effort;
-  if (budget != null &&
-      budget >= 64000 &&
-      _supportsOpenAIXhigh(upstreamModelId)) {
-    return 'xhigh';
-  }
-  return 'high';
-}
-
-bool _supportsOpenAIXhigh(String modelId) {
-  final minor = _gpt5MinorVersion(modelId);
-  return minor != null && minor >= 2;
-}
-
-bool _supportsOpenAINone(String modelId) {
-  final minor = _gpt5MinorVersion(modelId);
-  return minor != null && minor >= 2;
-}
-
-int? _gpt5MinorVersion(String modelId) {
-  final m = RegExp(r'gpt-5\.(\d+)', caseSensitive: false).firstMatch(modelId);
-  return int.tryParse(m?.group(1) ?? '');
-}
-
-bool _isGpt5FamilyModel(String modelId) {
-  return RegExp(r'gpt-5(?=$|[-.])', caseSensitive: false).hasMatch(modelId);
+  final baseEffort = _effortForBudget(budget);
+  final requestedEffort =
+      baseEffort == 'high' && budget != null && budget >= 64000
+      ? 'xhigh'
+      : baseEffort;
+  return openAINormalizeReasoningEffort(requestedEffort, upstreamModelId);
 }
 
 String _effectiveOpenAIEffort(
@@ -61,13 +35,9 @@ bool _allowsSamplingParamsForOpenAIModel(
   required String effort,
 }) {
   // Source: https://developers.openai.com/api/docs/guides/latest-model#gpt-54-parameter-compatibility
-  // GPT-5.2/GPT-5.4 accept temperature/top_p/logprobs only when effort is
-  // none-like. Other GPT-5 variants reject these sampling params.
-  if (!_isGpt5FamilyModel(upstreamModelId)) return true;
-  final minor = _gpt5MinorVersion(upstreamModelId);
-  final supportsSampling = minor == 2 || minor == 4;
-  if (!supportsSampling) return false;
-  return effort == 'none' || effort == 'off' || effort == 'auto';
+  // Only the documented GPT-5.2 / GPT-5.4 base-model compatibility rules are
+  // enforced here; other GPT-5 variants keep their request body unchanged.
+  return openAIAllowsSamplingParams(upstreamModelId, effort: effort);
 }
 
 void _sanitizeOpenAIGpt5SamplingParams(
