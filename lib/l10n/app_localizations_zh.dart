@@ -2106,6 +2106,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultModelPageSummaryModelSubtitle => '用于生成对话摘要的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get assistantEditRecentChatsSummaryFrequencyTitle => '摘要更新频率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyDescription =>
+      '累计达到所选条数的新消息后，会更新历史聊天摘要。';
+
+  @override
+  String assistantEditRecentChatsSummaryFrequencyOption(int count) {
+    return '每 $count 条';
+  }
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomButton => '自定义';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomTitle => '自定义摘要频率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomDescription =>
+      '输入累计多少条新消息后再更新历史聊天摘要。';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomLabel => '新消息条数';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomHint =>
+      '请输入大于 0 的整数';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomInvalid =>
+      '请输入大于 0 的整数';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -6180,6 +6213,39 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get defaultModelPageTitleModelSubtitle => '用于总结对话标题的模型，推荐使用快速且便宜的模型';
 
   @override
+  String get assistantEditRecentChatsSummaryFrequencyTitle => '摘要更新频率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyDescription =>
+      '累计达到所选条数的新消息后，会更新历史聊天摘要。';
+
+  @override
+  String assistantEditRecentChatsSummaryFrequencyOption(int count) {
+    return '每 $count 条';
+  }
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomButton => '自定义';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomTitle => '自定义摘要频率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomDescription =>
+      '输入累计多少条新消息后再更新历史聊天摘要。';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomLabel => '新消息条数';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomHint =>
+      '请输入大于 0 的整数';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomInvalid =>
+      '请输入大于 0 的整数';
+
+  @override
   String get defaultModelPageTranslateModelTitle => '翻译模型';
 
   @override
@@ -10211,6 +10277,39 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get defaultModelPageSummaryModelSubtitle => '用於生成對話摘要的模型，推薦使用快速且便宜的模型';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyTitle => '摘要更新頻率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyDescription =>
+      '累計達到所選條數的新訊息後，會更新歷史聊天摘要。';
+
+  @override
+  String assistantEditRecentChatsSummaryFrequencyOption(int count) {
+    return '每 $count 則';
+  }
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomButton => '自訂';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomTitle => '自訂摘要頻率';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomDescription =>
+      '輸入累計多少則新訊息後再更新歷史聊天摘要。';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomLabel => '新訊息數量';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomHint =>
+      '請輸入大於 0 的整數';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomInvalid =>
+      '請輸入大於 0 的整數';
 
   @override
   String get defaultModelPageTranslateModelTitle => '翻譯模型';

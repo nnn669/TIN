@@ -2173,6 +2173,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used for generating conversation summaries; prefer fast and cheap models';
 
   @override
+  String get assistantEditRecentChatsSummaryFrequencyTitle =>
+      'Summary Refresh Frequency';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyDescription =>
+      'Refresh recent-chat summaries after the selected number of new messages.';
+
+  @override
+  String assistantEditRecentChatsSummaryFrequencyOption(int count) {
+    return 'Every $count';
+  }
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomButton => 'Custom';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomTitle =>
+      'Custom Summary Frequency';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomDescription =>
+      'Enter how many new messages should accumulate before refreshing the recent-chat summary.';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomLabel =>
+      'New message count';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomHint =>
+      'Enter a number greater than 0';
+
+  @override
+  String get assistantEditRecentChatsSummaryFrequencyCustomInvalid =>
+      'Please enter a whole number greater than 0';
+
+  @override
   String get defaultModelPageTranslateModelTitle => 'Translation Model';
 
   @override

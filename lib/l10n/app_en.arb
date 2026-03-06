@@ -953,6 +953,22 @@
   "defaultModelPageTitleModelSubtitle": "Used for summarizing conversation titles; prefer fast & cheap models",
   "defaultModelPageSummaryModelTitle": "Summary Model",
   "defaultModelPageSummaryModelSubtitle": "Used for generating conversation summaries; prefer fast and cheap models",
+  "assistantEditRecentChatsSummaryFrequencyTitle": "Summary Refresh Frequency",
+  "assistantEditRecentChatsSummaryFrequencyDescription": "Refresh recent-chat summaries after the selected number of new messages.",
+  "assistantEditRecentChatsSummaryFrequencyOption": "Every {count}",
+  "@assistantEditRecentChatsSummaryFrequencyOption": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantEditRecentChatsSummaryFrequencyCustomButton": "Custom",
+  "assistantEditRecentChatsSummaryFrequencyCustomTitle": "Custom Summary Frequency",
+  "assistantEditRecentChatsSummaryFrequencyCustomDescription": "Enter how many new messages should accumulate before refreshing the recent-chat summary.",
+  "assistantEditRecentChatsSummaryFrequencyCustomLabel": "New message count",
+  "assistantEditRecentChatsSummaryFrequencyCustomHint": "Enter a number greater than 0",
+  "assistantEditRecentChatsSummaryFrequencyCustomInvalid": "Please enter a whole number greater than 0",
   "defaultModelPageTranslateModelTitle": "Translation Model",
   "defaultModelPageTranslateModelSubtitle": "Used for translating message content; prefer fast & accurate models",
   "defaultModelPageOcrModelTitle": "OCR Model",

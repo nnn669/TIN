@@ -4121,6 +4121,60 @@ abstract class AppLocalizations {
   /// **'Used for generating conversation summaries; prefer fast and cheap models'**
   String get defaultModelPageSummaryModelSubtitle;
 
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary Refresh Frequency'**
+  String get assistantEditRecentChatsSummaryFrequencyTitle;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh recent-chat summaries after the selected number of new messages.'**
+  String get assistantEditRecentChatsSummaryFrequencyDescription;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count}'**
+  String assistantEditRecentChatsSummaryFrequencyOption(int count);
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomButton;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Summary Frequency'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomTitle;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter how many new messages should accumulate before refreshing the recent-chat summary.'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomDescription;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New message count'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomLabel;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number greater than 0'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomHint;
+
+  /// No description provided for @assistantEditRecentChatsSummaryFrequencyCustomInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a whole number greater than 0'**
+  String get assistantEditRecentChatsSummaryFrequencyCustomInvalid;
+
   /// No description provided for @defaultModelPageTranslateModelTitle.
   ///
   /// In en, this message translates to:

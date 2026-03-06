@@ -677,6 +677,22 @@
   "defaultModelPageTitleModelSubtitle": "用於總結對話標題的模型，推薦使用快速且便宜的模型",
   "defaultModelPageSummaryModelTitle": "摘要模型",
   "defaultModelPageSummaryModelSubtitle": "用於生成對話摘要的模型，推薦使用快速且便宜的模型",
+  "assistantEditRecentChatsSummaryFrequencyTitle": "摘要更新頻率",
+  "assistantEditRecentChatsSummaryFrequencyDescription": "累計達到所選條數的新訊息後，會更新歷史聊天摘要。",
+  "assistantEditRecentChatsSummaryFrequencyOption": "每 {count} 則",
+  "@assistantEditRecentChatsSummaryFrequencyOption": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantEditRecentChatsSummaryFrequencyCustomButton": "自訂",
+  "assistantEditRecentChatsSummaryFrequencyCustomTitle": "自訂摘要頻率",
+  "assistantEditRecentChatsSummaryFrequencyCustomDescription": "輸入累計多少則新訊息後再更新歷史聊天摘要。",
+  "assistantEditRecentChatsSummaryFrequencyCustomLabel": "新訊息數量",
+  "assistantEditRecentChatsSummaryFrequencyCustomHint": "請輸入大於 0 的整數",
+  "assistantEditRecentChatsSummaryFrequencyCustomInvalid": "請輸入大於 0 的整數",
   "defaultModelPageTranslateModelTitle": "翻譯模型",
   "defaultModelPageTranslateModelSubtitle": "用於翻譯訊息內容的模型，推薦使用快速且準確的模型",
   "defaultModelPageOcrModelTitle": "OCR 模型",
