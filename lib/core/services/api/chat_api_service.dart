@@ -20,6 +20,7 @@ import 'gemini_tool_config.dart';
 import '../logging/flutter_logger.dart';
 import '../model_override_resolver.dart';
 import '../model_override_payload_parser.dart';
+import 'provider_request_headers.dart';
 
 part 'chat_api_service_shims.dart';
 part 'providers/openai_common.dart';
@@ -108,7 +109,10 @@ class ChatApiService {
     String modelId,
   ) {
     final ov = _modelOverride(cfg, modelId);
-    final out = ModelOverridePayloadParser.customHeaders(ov);
+    final out = <String, String>{
+      ...providerDefaultHeaders(cfg),
+      ...ModelOverridePayloadParser.customHeaders(ov),
+    };
     // AIhubmix promo header (opt-in per-provider)
     if (_isAihubmix(cfg) && cfg.aihubmixAppCodeEnabled == true) {
       out.putIfAbsent('APP-Code', () => _aihubmixAppCode);

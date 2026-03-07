@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'settings_provider.dart';
 import '../services/network/dio_http_client.dart';
 import '../services/api_key_manager.dart';
+import '../services/api/provider_request_headers.dart';
 import '../services/model_override_payload_parser.dart';
 import 'package:Kelivo/secrets/fallback.dart';
 import '../services/api/google_service_account_auth.dart';
@@ -324,7 +325,10 @@ class ProviderManager {
     String modelId,
   ) {
     final ov = _modelOverride(cfg, modelId);
-    return ModelOverridePayloadParser.customHeaders(ov);
+    return <String, String>{
+      ...providerDefaultHeaders(cfg),
+      ...ModelOverridePayloadParser.customHeaders(ov),
+    };
   }
 
   static Map<String, dynamic> _customBody(ProviderConfig cfg, String modelId) {
