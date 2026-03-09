@@ -1272,6 +1272,7 @@
   "searchServicesPageConfiguredStatus": "Configured",
   "miniMapTitle": "Minimap",
   "miniMapTooltip": "Minimap",
+  "miniMapScrollToBottomTooltip": "Scroll to bottom",
   "searchServicesPageApiKeyRequiredStatus": "API Key Required",
   "searchServicesPageUrlRequiredStatus": "URL Required",
   "searchServicesAddDialogTitle": "Add Search Service",

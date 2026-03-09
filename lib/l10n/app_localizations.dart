@@ -5588,6 +5588,12 @@ abstract class AppLocalizations {
   /// **'Minimap'**
   String get miniMapTooltip;
 
+  /// No description provided for @miniMapScrollToBottomTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll to bottom'**
+  String get miniMapScrollToBottomTooltip;
+
   /// No description provided for @searchServicesPageApiKeyRequiredStatus.
   ///
   /// In en, this message translates to:

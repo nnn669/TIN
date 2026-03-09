@@ -146,7 +146,7 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: Icon(Lucide.ChevronsDown, size: 18, color: cs.onSurface),
-                        tooltip: 'Scroll to bottom',
+                        tooltip: AppLocalizations.of(context)!.miniMapScrollToBottomTooltip,
                         onPressed: () {
                           if (controller.hasClients && controller.position.maxScrollExtent > 0) {
                             controller.jumpTo(controller.position.maxScrollExtent);

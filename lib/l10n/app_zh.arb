@@ -947,6 +947,7 @@
   "searchServicesPageConfiguredStatus": "已配置",
   "miniMapTitle": "迷你地图",
   "miniMapTooltip": "迷你地图",
+  "miniMapScrollToBottomTooltip": "滚动到底部",
   "searchServicesPageApiKeyRequiredStatus": "需要 API Key",
   "searchServicesPageUrlRequiredStatus": "需要 URL",
   "searchServicesAddDialogTitle": "添加搜索服务",

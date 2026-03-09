@@ -2872,6 +2872,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get miniMapTooltip => '迷你地图';
 
   @override
+  String get miniMapScrollToBottomTooltip => '滚动到底部';
+
+  @override
   String get searchServicesPageApiKeyRequiredStatus => '需要 API Key';
 
   @override
@@ -6981,6 +6984,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get miniMapTooltip => '迷你地图';
+
+  @override
+  String get miniMapScrollToBottomTooltip => '滚动到底部';
 
   @override
   String get searchServicesPageApiKeyRequiredStatus => '需要 API Key';
@@ -11097,6 +11103,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get miniMapTooltip => '迷你地圖';
+
+  @override
+  String get miniMapScrollToBottomTooltip => '捲動到底部';
 
   @override
   String get searchServicesPageApiKeyRequiredStatus => '需要 API Key';

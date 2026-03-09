@@ -2969,6 +2969,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get miniMapTooltip => 'Minimap';
 
   @override
+  String get miniMapScrollToBottomTooltip => 'Scroll to bottom';
+
+  @override
   String get searchServicesPageApiKeyRequiredStatus => 'API Key Required';
 
   @override
