@@ -699,6 +699,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopNavStorageTooltip => '存储';
 
   @override
+  String get desktopNavGlobalSearchTooltip => '全局搜索';
+
+  @override
   String get desktopNavThemeToggleTooltip => '主题切换';
 
   @override
@@ -1818,10 +1821,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sideDrawerDateFullPattern => 'yyyy年M月d日';
 
   @override
-  String get sideDrawerSearchHint => '搜索聊天记录';
+  String get sideDrawerSearchHint => '搜索当前助手';
 
   @override
   String get sideDrawerSearchAssistantsHint => '搜索助手';
+
+  @override
+  String get sideDrawerTopicSearchModeLabel => '话题模式';
+
+  @override
+  String get sideDrawerGlobalSearchModeLabel => '全局模式';
+
+  @override
+  String get sideDrawerSearchModeSwipeToTopicHint => '左/右滑搜索栏切换到话题搜索';
+
+  @override
+  String get sideDrawerSearchModeSwipeToGlobalHint => '左/右滑搜索栏切换到全局搜索';
+
+  @override
+  String get sideDrawerGlobalSearchHint => '搜索全部会话';
+
+  @override
+  String get sideDrawerGlobalSearchEmptyHint => '在标题和消息中全局搜索';
+
+  @override
+  String get sideDrawerGlobalSearchNoResults => '没有匹配的会话';
+
+  @override
+  String sideDrawerGlobalSearchResultCount(int count) {
+    return '共 $count 条结果';
+  }
 
   @override
   String sideDrawerUpdateTitle(String version) {
@@ -4812,6 +4841,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopNavStorageTooltip => '存储';
 
   @override
+  String get desktopNavGlobalSearchTooltip => '全局搜索';
+
+  @override
   String get desktopNavThemeToggleTooltip => '主题切换';
 
   @override
@@ -5931,10 +5963,36 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sideDrawerDateFullPattern => 'yyyy年M月d日';
 
   @override
-  String get sideDrawerSearchHint => '搜索聊天记录';
+  String get sideDrawerSearchHint => '搜索当前助手';
 
   @override
   String get sideDrawerSearchAssistantsHint => '搜索助手';
+
+  @override
+  String get sideDrawerTopicSearchModeLabel => '话题模式';
+
+  @override
+  String get sideDrawerGlobalSearchModeLabel => '全局模式';
+
+  @override
+  String get sideDrawerSearchModeSwipeToTopicHint => '左/右滑搜索栏切换到话题搜索';
+
+  @override
+  String get sideDrawerSearchModeSwipeToGlobalHint => '左/右滑搜索栏切换到全局搜索';
+
+  @override
+  String get sideDrawerGlobalSearchHint => '搜索全部会话';
+
+  @override
+  String get sideDrawerGlobalSearchEmptyHint => '在标题和消息中全局搜索';
+
+  @override
+  String get sideDrawerGlobalSearchNoResults => '没有匹配的会话';
+
+  @override
+  String sideDrawerGlobalSearchResultCount(int count) {
+    return '共 $count 条结果';
+  }
 
   @override
   String sideDrawerUpdateTitle(String version) {
@@ -8873,6 +8931,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get desktopNavStorageTooltip => '儲存';
 
   @override
+  String get desktopNavGlobalSearchTooltip => '全域搜尋';
+
+  @override
   String get desktopNavThemeToggleTooltip => '主題切換';
 
   @override
@@ -9991,10 +10052,36 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sideDrawerDateFullPattern => 'yyyy年M月d日';
 
   @override
-  String get sideDrawerSearchHint => '搜尋聊天記錄';
+  String get sideDrawerSearchHint => '搜尋當前助理';
 
   @override
   String get sideDrawerSearchAssistantsHint => '搜尋助理';
+
+  @override
+  String get sideDrawerTopicSearchModeLabel => '話題模式';
+
+  @override
+  String get sideDrawerGlobalSearchModeLabel => '全域模式';
+
+  @override
+  String get sideDrawerSearchModeSwipeToTopicHint => '左/右滑搜尋欄切換到話題搜尋';
+
+  @override
+  String get sideDrawerSearchModeSwipeToGlobalHint => '左/右滑搜尋欄切換到全域搜尋';
+
+  @override
+  String get sideDrawerGlobalSearchHint => '搜尋全部會話';
+
+  @override
+  String get sideDrawerGlobalSearchEmptyHint => '在標題與訊息中全域搜尋';
+
+  @override
+  String get sideDrawerGlobalSearchNoResults => '沒有匹配的會話';
+
+  @override
+  String sideDrawerGlobalSearchResultCount(int count) {
+    return '共 $count 筆結果';
+  }
 
   @override
   String sideDrawerUpdateTitle(String version) {

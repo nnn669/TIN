@@ -43,6 +43,7 @@ import '../../assistant/widgets/tags_manager_dialog.dart';
 import '../../assistant/widgets/assistant_select_sheet.dart';
 import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import 'dart:async';
+import '../../../features/search/services/global_session_search_service.dart';
 
 class SideDrawer extends StatefulWidget {
   const SideDrawer({
@@ -59,6 +60,12 @@ class SideDrawer extends StatefulWidget {
     this.useDesktopTabs = false,
     this.desktopAssistantsOnly = false,
     this.desktopTopicsOnly = false,
+    this.globalSearchMode = false,
+    this.globalSearchQuery = '',
+    this.onGlobalSearchQueryChanged,
+    this.onEnterGlobalSearch,
+    this.onExitGlobalSearch,
+    this.onOpenGlobalSearchResult,
   });
 
   final String userName;
@@ -74,6 +81,14 @@ class SideDrawer extends StatefulWidget {
   final bool desktopAssistantsOnly; // desktop-only: show only assistants list
   final bool desktopTopicsOnly; // desktop-only: show only topics list
 
+  // Global search mode
+  final bool globalSearchMode;
+  final String globalSearchQuery;
+  final ValueChanged<String>? onGlobalSearchQueryChanged;
+  final VoidCallback? onEnterGlobalSearch;
+  final VoidCallback? onExitGlobalSearch;
+  final Future<void> Function(String conversationId, String messageId)? onOpenGlobalSearchResult;
+
   @override
   State<SideDrawer> createState() => _SideDrawerState();
 }
@@ -88,8 +103,18 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
   bool _assistantsExpanded = false;
   final ScrollController _listController = ScrollController();
   bool _assistantHeaderHovered = false;
+  double _mobileSearchSwipeDx = 0;
+  bool _mobileSearchSwipeHandled = false;
+  final FocusNode _mobileSearchFocusNode = FocusNode();
+  bool _showMobileSearchTip = false;
   TabController? _tabController; // desktop tabs
   StreamSubscription<int>? _tabBusSub;
+
+  // Global search state
+  List<GlobalSessionSearchResult> _globalSearchResults = const [];
+  String? _selectedResultConversationId;
+  String? _hoveredResultConversationId;
+  bool _globalSearchHasRun = false;
 
   // Assistant avatar renderer shared across drawer views
   Widget _assistantAvatar(BuildContext context, Assistant? a, {double size = 28, VoidCallback? onTap}) {
@@ -213,11 +238,36 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _attachCloseTicker(widget.closePickerTicker);
-    _searchController.addListener(() {
-      if (_query != _searchController.text) {
-        setState(() => _query = _searchController.text);
+    _mobileSearchFocusNode.addListener(() {
+      if (_isDesktop) return;
+      final visible = _mobileSearchFocusNode.hasFocus;
+      if (_showMobileSearchTip != visible) {
+        setState(() => _showMobileSearchTip = visible);
       }
     });
+    _searchController.addListener(() {
+      final next = _searchController.text;
+      if (_query == next) return;
+      setState(() => _query = next);
+      if (widget.globalSearchMode) {
+        widget.onGlobalSearchQueryChanged?.call(next);
+        if (!_isDesktop) {
+          if (next.trim().isEmpty) {
+            _clearGlobalSearchState(clearText: false);
+          } else {
+            setState(() {
+              _globalSearchResults = const [];
+              _globalSearchHasRun = false;
+            });
+          }
+        }
+      }
+    });
+    // Sync initial globalSearchQuery text into the controller when entering global search
+    if (widget.globalSearchMode && widget.globalSearchQuery.isNotEmpty) {
+      _searchController.text = widget.globalSearchQuery;
+      _query = widget.globalSearchQuery;
+    }
     // Update check moved to app startup (main.dart)
     // Prepare desktop tabs controller (available when useDesktopTabs)
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
@@ -620,6 +670,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     _assistantPickerEntry?.remove();
     _assistantPickerEntry = null;
     _closeTicker?.removeListener(_handleCloseTick);
+    _mobileSearchFocusNode.dispose();
     _searchController.dispose();
     _listController.dispose();
     _tabController?.removeListener(_onDesktopTabChanged);
@@ -640,6 +691,235 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     if (oldWidget.closePickerTicker != widget.closePickerTicker) {
       _attachCloseTicker(widget.closePickerTicker);
     }
+    // Sync search text when global search query changes externally.
+    // Use copyWith to preserve the user's cursor position instead of
+    // resetting it to position 0 (which happens when assigning .text directly).
+    if (widget.globalSearchMode && widget.globalSearchQuery != _searchController.text) {
+      _searchController.value = _searchController.value.copyWith(text: widget.globalSearchQuery);
+      _query = widget.globalSearchQuery;
+    }
+    // Reset results state when exiting global search mode
+    if (oldWidget.globalSearchMode && !widget.globalSearchMode) {
+      _clearGlobalSearchState(clearText: true);
+    }
+  }
+
+  void _runGlobalSearch() {
+    if (_query.trim().isEmpty) {
+      _clearGlobalSearchState(clearText: false);
+      return;
+    }
+    final chatService = context.read<ChatService>();
+    final results = GlobalSessionSearchService.search(
+      chatService: chatService,
+      query: _query,
+    );
+    setState(() {
+      _globalSearchResults = results;
+      _globalSearchHasRun = true;
+    });
+  }
+
+  void _submitMobileGlobalSearch() {
+    if (!widget.globalSearchMode) return;
+    widget.onGlobalSearchQueryChanged?.call(_searchController.text);
+    _runGlobalSearch();
+    if (_showMobileSearchTip) {
+      setState(() => _showMobileSearchTip = false);
+    }
+    FocusScope.of(context).unfocus();
+  }
+
+  void _clearGlobalSearchState({bool clearText = false}) {
+    if (clearText && _searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
+    setState(() {
+      _query = clearText ? '' : _searchController.text;
+      _globalSearchResults = const [];
+      _globalSearchHasRun = false;
+      _selectedResultConversationId = null;
+      _hoveredResultConversationId = null;
+    });
+  }
+
+  void _toggleGlobalSearchMode() {
+    if (widget.globalSearchMode) {
+      _clearGlobalSearchState(clearText: true);
+      widget.onExitGlobalSearch?.call();
+      return;
+    }
+    _clearGlobalSearchState(clearText: true);
+    widget.onEnterGlobalSearch?.call();
+  }
+
+  String _mobileModeTip() {
+    final l10n = AppLocalizations.of(context)!;
+    return widget.globalSearchMode
+        ? l10n.sideDrawerSearchModeSwipeToTopicHint
+        : l10n.sideDrawerSearchModeSwipeToGlobalHint;
+  }
+
+  String _mobileSearchHint() {
+    final l10n = AppLocalizations.of(context)!;
+    return widget.globalSearchMode
+        ? l10n.sideDrawerGlobalSearchHint
+        : l10n.sideDrawerSearchHint;
+  }
+
+  Widget _mobileModeSearchIcon(Color color, {Key? key}) {
+    return Icon(
+      widget.globalSearchMode ? Lucide.Database : Lucide.botMessageSquare,
+      key: key,
+      size: 16,
+      color: color,
+    );
+  }
+
+  List<TextSpan> _highlightText(String text, List<String> tokens, TextStyle base, TextStyle highlight) {
+    if (tokens.isEmpty || text.isEmpty) return [TextSpan(text: text, style: base)];
+    final spans = <TextSpan>[];
+    final lower = text.toLowerCase();
+    int pos = 0;
+    while (pos < text.length) {
+      int earliest = -1;
+      int earliestLen = 0;
+      for (final t in tokens) {
+        final idx = lower.indexOf(t, pos);
+        if (idx >= 0 && (earliest < 0 || idx < earliest)) {
+          earliest = idx;
+          earliestLen = t.length;
+        }
+      }
+      if (earliest < 0) {
+        spans.add(TextSpan(text: text.substring(pos), style: base));
+        break;
+      }
+      if (earliest > pos) {
+        spans.add(TextSpan(text: text.substring(pos, earliest), style: base));
+      }
+      spans.add(TextSpan(text: text.substring(earliest, earliest + earliestLen), style: highlight));
+      pos = earliest + earliestLen;
+    }
+    return spans;
+  }
+
+  Widget _buildGlobalSearchResultsList(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : Colors.black;
+    final tokens = _query.trim().toLowerCase().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final highlightColor = isDark ? const Color(0xFFB8860B).withOpacity(0.55) : const Color(0xFFFFD700).withOpacity(0.55);
+
+    if (!_globalSearchHasRun) {
+      if (!_isDesktop) {
+        return const SizedBox.shrink();
+      }
+      // Pre-search: top-aligned hint
+      return Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+          child: Text(
+            l10n.sideDrawerGlobalSearchEmptyHint,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: textBase.withOpacity(0.45)),
+          ),
+        ),
+      );
+    }
+
+    if (_globalSearchResults.isEmpty) {
+      return Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+          child: Text(
+            l10n.sideDrawerGlobalSearchNoResults,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: textBase.withOpacity(0.45)),
+          ),
+        ),
+      );
+    }
+
+    final resultCount = _globalSearchResults.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Result count label
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: Text(
+            l10n.sideDrawerGlobalSearchResultCount(resultCount),
+            style: TextStyle(fontSize: 12, color: textBase.withOpacity(0.5), fontWeight: FontWeight.w500),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+            itemCount: resultCount,
+            itemBuilder: (context, index) {
+              final result = _globalSearchResults[index];
+              final isSelected = _selectedResultConversationId == result.conversationId;
+              final isHovered = _hoveredResultConversationId == result.conversationId;
+              final Color tileBg = isSelected
+                  ? cs.primary.withOpacity(0.16)
+                  : (isHovered ? cs.primary.withOpacity(0.10) : Colors.transparent);
+              final titleStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textBase);
+              final titleHighlight = TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textBase, backgroundColor: highlightColor);
+              final snippetStyle = TextStyle(fontSize: 12.5, color: textBase.withOpacity(0.65), height: 1.4);
+              final snippetHighlight = TextStyle(fontSize: 12.5, color: textBase.withOpacity(0.85), height: 1.4, backgroundColor: highlightColor);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onEnter: (_) => setState(() => _hoveredResultConversationId = result.conversationId),
+                  onExit: (_) {
+                    if (_hoveredResultConversationId == result.conversationId) {
+                      setState(() => _hoveredResultConversationId = null);
+                    }
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () async {
+                      setState(() => _selectedResultConversationId = result.conversationId);
+                      await widget.onOpenGlobalSearchResult?.call(result.conversationId, result.firstMatchedMessageId);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      decoration: BoxDecoration(color: tileBg, borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RichText(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            text: TextSpan(children: _highlightText(result.conversationTitle, tokens, titleStyle, titleHighlight)),
+                          ),
+                          if (result.snippet.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            RichText(
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(children: _highlightText(result.snippet, tokens, snippetStyle, snippetHighlight)),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   void _attachCloseTicker(ValueNotifier<int>? ticker) {
@@ -849,6 +1129,9 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                         child: Row(
                           key: ValueKey<String>((() {
                             final l10n = AppLocalizations.of(context)!;
+                            if (widget.globalSearchMode && widget.embedded) {
+                              return l10n.sideDrawerGlobalSearchHint;
+                            }
                             String hint;
                             if (_useTabs) {
                               hint = ((_tabController?.index ?? 0) == 0)
@@ -865,9 +1148,13 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                           Expanded(
                             child: TextField(
                               controller: _searchController,
+                              onSubmitted: widget.globalSearchMode && widget.embedded ? (_) => _runGlobalSearch() : null,
                               decoration: InputDecoration(
                                 hintText: (() {
                                   final l10n = AppLocalizations.of(context)!;
+                                  if (widget.globalSearchMode && widget.embedded) {
+                                    return l10n.sideDrawerGlobalSearchHint;
+                                  }
                                   if (_useTabs) {
                                     return ((_tabController?.index ?? 0) == 0)
                                         ? l10n.sideDrawerSearchAssistantsHint
@@ -889,23 +1176,60 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                                // 右侧（话题列表）不需要历史入口（左侧已有）；左侧或默认仍保留
-                                suffixIcon: _topicsOnly ? null : Padding(
-                                  padding: const EdgeInsets.only(right: 6),
-                                  child: IosIconButton(
-                                    size: 16,
-                                    color: textBase,
-                                    icon: Lucide.History,
-                                    padding: const EdgeInsets.all(4),
-                                    onTap: () async {
-                                      final selectedId = await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId);
-                                      if (selectedId != null && selectedId.isNotEmpty) {
-                                        final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
-                                        widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
-                                      }
-                                    },
-                                  ),
-                                ),
+                                suffixIcon: widget.globalSearchMode && widget.embedded
+                                    // Global search mode: search (submit), history, cancel
+                                    ? Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IosIconButton(size: 16, color: textBase, icon: Lucide.Search, padding: const EdgeInsets.all(4), onTap: _runGlobalSearch),
+                                            IosIconButton(size: 16, color: textBase, icon: Lucide.History, padding: const EdgeInsets.all(4), onTap: () async {
+                                              final selectedId = await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId);
+                                              if (selectedId != null && selectedId.isNotEmpty) {
+                                                final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                                                widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
+                                              }
+                                            }),
+                                            IosIconButton(
+                                              size: 16,
+                                              color: textBase,
+                                              icon: Lucide.X,
+                                              padding: const EdgeInsets.all(4),
+                                              onTap: () {
+                                                if (_searchController.text.isNotEmpty) {
+                                                  _searchController.clear();
+                                                }
+                                                setState(() {
+                                                  _query = '';
+                                                  _globalSearchResults = const [];
+                                                  _globalSearchHasRun = false;
+                                                  _selectedResultConversationId = null;
+                                                  _hoveredResultConversationId = null;
+                                                });
+                                                widget.onExitGlobalSearch?.call();
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    // Normal mode: history icon (skip for topics-only)
+                                    : _topicsOnly ? null : Padding(
+                                        padding: const EdgeInsets.only(right: 6),
+                                        child: IosIconButton(
+                                          size: 16,
+                                          color: textBase,
+                                          icon: Lucide.History,
+                                          padding: const EdgeInsets.all(4),
+                                          onTap: () async {
+                                            final selectedId = await showChatHistoryDesktopDialog(context, assistantId: currentAssistantId);
+                                            if (selectedId != null && selectedId.isNotEmpty) {
+                                              final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                                              widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
+                                            }
+                                          },
+                                        ),
+                                      ),
                                 suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 14,
@@ -933,142 +1257,290 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
                       ),
                     )
                   else
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: AppLocalizations.of(context)!.sideDrawerSearchHint,
-                              filled: true,
-                              fillColor: isDark ? Colors.white10 : Colors.grey.shade200.withOpacity(0.80),
-                              isDense: true,
-                              isCollapsed: true,
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 10, right: 4),
-                                child: Icon(
-                                  Lucide.Search,
-                                  size: 16,
-                                  color: textBase.withOpacity(0.6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Builder(builder: (context) {
+                                final canSwipeSwitch = _searchController.text.trim().isEmpty;
+                                final centerCaption = _searchController.text.trim().isEmpty;
+                                return GestureDetector(
+                                  behavior: HitTestBehavior.translucent,
+                                  onHorizontalDragStart: canSwipeSwitch
+                                      ? (_) {
+                                          _mobileSearchSwipeDx = 0;
+                                          _mobileSearchSwipeHandled = false;
+                                        }
+                                      : null,
+                                  onHorizontalDragUpdate: canSwipeSwitch
+                                      ? (details) {
+                                          if (_mobileSearchSwipeHandled) return;
+                                          _mobileSearchSwipeDx += details.delta.dx;
+                                          if (_mobileSearchSwipeDx.abs() >= 18) {
+                                            _mobileSearchSwipeDx = 0;
+                                            _mobileSearchSwipeHandled = true;
+                                            _toggleGlobalSearchMode();
+                                            Haptics.light();
+                                          }
+                                        }
+                                      : null,
+                                  onHorizontalDragEnd: canSwipeSwitch
+                                      ? (_) {
+                                          _mobileSearchSwipeDx = 0;
+                                          _mobileSearchSwipeHandled = false;
+                                        }
+                                      : null,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      TextField(
+                                        focusNode: _mobileSearchFocusNode,
+                                        controller: _searchController,
+                                        textInputAction: widget.globalSearchMode
+                                            ? TextInputAction.search
+                                            : TextInputAction.done,
+                                        onSubmitted: widget.globalSearchMode
+                                            ? (_) => _submitMobileGlobalSearch()
+                                            : null,
+                                        decoration: InputDecoration(
+                                          hintText: centerCaption ? '' : _mobileSearchHint(),
+                                          filled: true,
+                                          fillColor: isDark
+                                              ? Colors.white10
+                                              : Colors.grey.shade200.withOpacity(0.80),
+                                          isDense: true,
+                                          isCollapsed: true,
+                                          prefixIcon: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 6,
+                                              right: 2,
+                                            ),
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () {
+                                                _toggleGlobalSearchMode();
+                                                Haptics.light();
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(6),
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(milliseconds: 210),
+                                                  switchInCurve: Curves.easeOutBack,
+                                                  switchOutCurve: Curves.easeIn,
+                                                  transitionBuilder: (child, animation) {
+                                                    return FadeTransition(
+                                                      opacity: animation,
+                                                      child: ScaleTransition(scale: animation, child: child),
+                                                    );
+                                                  },
+                                                  child: _mobileModeSearchIcon(
+                                                    textBase.withOpacity(0.72),
+                                                    key: ValueKey<bool>(widget.globalSearchMode),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          prefixIconConstraints: const BoxConstraints(
+                                            minWidth: 0,
+                                            minHeight: 0,
+                                          ),
+                                          suffixIcon: _searchController.text.isNotEmpty
+                                              ? Padding(
+                                                  padding: const EdgeInsets.only(right: 6),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      if (widget.globalSearchMode)
+                                                        GestureDetector(
+                                                          behavior: HitTestBehavior.opaque,
+                                                          onTap: () {
+                                                            Haptics.light();
+                                                            _submitMobileGlobalSearch();
+                                                          },
+                                                          child: Padding(
+                                                            padding: const EdgeInsets.all(4),
+                                                            child: Icon(
+                                                              Lucide.Search,
+                                                              size: 16,
+                                                              color: textBase.withOpacity(0.75),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                )
+                                              : null,
+                                          suffixIconConstraints: const BoxConstraints(
+                                            minWidth: 0,
+                                            minHeight: 0,
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: Colors.transparent),
+                                          ),
+                                        ),
+                                        textAlignVertical: TextAlignVertical.center,
+                                        style: TextStyle(color: textBase, fontSize: 14),
+                                      ),
+                                      if (centerCaption)
+                                        IgnorePointer(
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 40),
+                                            child: Text(
+                                              _mobileSearchHint(),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: textBase.withOpacity(0.55),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(width: 4),
+                            // 历史按钮（圆形，无水波纹）
+                            SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: Center(
+                                child: IosIconButton(
+                                  size: 20,
+                                  color: textBase,
+                                  icon: Lucide.History,
+                                  padding: const EdgeInsets.all(8),
+                                  onTap: () async {
+                                    final selectedId = await Navigator.of(context).push<String>(
+                                      MaterialPageRoute(builder: (_) => ChatHistoryPage(assistantId: currentAssistantId)),
+                                    );
+                                    if (selectedId != null && selectedId.isNotEmpty) {
+                                      final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
+                                      widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
+                                    }
+                                  },
                                 ),
                               ),
-                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Colors.transparent),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Colors.transparent),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: Colors.transparent),
-                              ),
                             ),
-                            textAlignVertical: TextAlignVertical.center,
-                            style: TextStyle(color: textBase, fontSize: 14),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        // 历史按钮（圆形，无水波纹）
-                        SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: IosIconButton(
-                              size: 20,
-                              color: textBase,
-                              icon: Lucide.History,
-                              padding: const EdgeInsets.all(8),
-                              onTap: () async {
-                                final selectedId = await Navigator.of(context).push<String>(
-                                  MaterialPageRoute(builder: (_) => ChatHistoryPage(assistantId: currentAssistantId)),
-                                );
-                                if (selectedId != null && selectedId.isNotEmpty) {
-                                  final closeDrawer = !context.read<SettingsProvider>().keepSidebarOpenOnTopicTap;
-                                  widget.onSelectConversation?.call(selectedId, closeDrawer: closeDrawer);
-                                }
-                              },
-                            ),
-                          ),
+                        const SizedBox(height: 6),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 140),
+                          curve: Curves.easeOutCubic,
+                          child: _showMobileSearchTip
+                              ? Padding(
+                                  padding: const EdgeInsets.only(left: 4, right: 4),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      _mobileModeTip(),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: textBase.withOpacity(0.52),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ],
                     ),
 
-                  SizedBox(height: _isDesktop ? 8 : 12),
-                  
-                  // 桌面端：替换为 Tab（助手 / 话题）
-                  if (_useTabs)
-                    _DesktopSidebarTabs(textColor: textBase, controller: _tabController!)
-                  else if (!_assistOnly && !_topicsOnly)
-                    // 当前助手区域（固定）
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: KeyedSubtree(
-                        key: _assistantTileKey,
-                        child: MouseRegion(
-                          onEnter: (_) { if (_isDesktop) setState(() => _assistantHeaderHovered = true); },
-                          onExit: (_) { if (_isDesktop) setState(() => _assistantHeaderHovered = false); },
-                          cursor: _isDesktop ? SystemMouseCursors.click : SystemMouseCursors.basic,
-                          child: IosCardPress(
-                            baseColor: (() {
-                              final embedded = widget.embedded;
-                              final base = embedded ? Colors.transparent : cs.surface;
-                              if (_isDesktop && _assistantHeaderHovered) {
-                                return embedded ? cs.primary.withOpacity(0.08) : cs.surface.withOpacity(0.9);
-                              }
-                              return base;
-                            })(),
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: _toggleAssistantPicker,
-                            onLongPress: _isDesktop ? null : () {
-                              _closeAssistantPicker();
-                              final id = context.read<AssistantProvider>().currentAssistantId;
-                              if (id != null) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => AssistantSettingsEditPage(assistantId: id)),
-                                );
-                              }
-                            },
-                            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
-                            child: Row(
-                              children: [
-                                _assistantAvatar(
-                                  context,
-                                  ap.currentAssistant,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    (ap.currentAssistant?.name ?? widget.assistantName),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: _isDesktop ? 14 : 15, fontWeight: FontWeight.w500, color: textBase),
+                  if (!widget.globalSearchMode) ...[
+                    SizedBox(height: _isDesktop ? 8 : 12),
+
+                    // 桌面端：替换为 Tab（助手 / 话题）
+                    if (_useTabs)
+                      _DesktopSidebarTabs(textColor: textBase, controller: _tabController!)
+                    else if (!_assistOnly && !_topicsOnly)
+                      // 当前助手区域（固定）
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: KeyedSubtree(
+                          key: _assistantTileKey,
+                          child: MouseRegion(
+                            onEnter: (_) { if (_isDesktop) setState(() => _assistantHeaderHovered = true); },
+                            onExit: (_) { if (_isDesktop) setState(() => _assistantHeaderHovered = false); },
+                            cursor: _isDesktop ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                            child: IosCardPress(
+                              baseColor: (() {
+                                final embedded = widget.embedded;
+                                final base = embedded ? Colors.transparent : cs.surface;
+                                if (_isDesktop && _assistantHeaderHovered) {
+                                  return embedded ? cs.primary.withOpacity(0.08) : cs.surface.withOpacity(0.9);
+                                }
+                                return base;
+                              })(),
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: _toggleAssistantPicker,
+                              onLongPress: _isDesktop ? null : () {
+                                _closeAssistantPicker();
+                                final id = context.read<AssistantProvider>().currentAssistantId;
+                                if (id != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => AssistantSettingsEditPage(assistantId: id)),
+                                  );
+                                }
+                              },
+                              padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+                              child: Row(
+                                children: [
+                                  _assistantAvatar(
+                                    context,
+                                    ap.currentAssistant,
+                                    size: 32,
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                AnimatedRotation(
-                                  turns: _assistantsExpanded ? 0.5 : 0.0,
-                                  duration: const Duration(milliseconds: 350),
-                                  curve: Curves.easeOutCubic,
-                                  child: Icon(
-                                    Lucide.ChevronDown,
-                                    size: 18,
-                                    color: textBase.withOpacity(0.7),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      (ap.currentAssistant?.name ?? widget.assistantName),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: _isDesktop ? 14 : 15, fontWeight: FontWeight.w500, color: textBase),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  AnimatedRotation(
+                                    turns: _assistantsExpanded ? 0.5 : 0.0,
+                                    duration: const Duration(milliseconds: 350),
+                                    curve: Curves.easeOutCubic,
+                                    child: Icon(
+                                      Lucide.ChevronDown,
+                                      size: 18,
+                                      color: textBase.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                  ],
 
                   // 注意：内联助手列表已移动至下方可滚动区域
                 ],
@@ -1078,6 +1550,10 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
             // Scrollable area below header
             Expanded(
               child: () {
+                // Global search mode replaces the list area
+                if (widget.globalSearchMode) {
+                  return _buildGlobalSearchResultsList(context);
+                }
                 if (_useTabs) {
                   return _DesktopTabViews(
                     controller: _tabController!,

@@ -717,6 +717,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopNavStorageTooltip => 'Storage';
 
   @override
+  String get desktopNavGlobalSearchTooltip => 'Global Search';
+
+  @override
   String get desktopNavThemeToggleTooltip => 'Theme';
 
   @override
@@ -1878,10 +1881,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sideDrawerDateFullPattern => 'MMM d, yyyy';
 
   @override
-  String get sideDrawerSearchHint => 'Search chat history';
+  String get sideDrawerSearchHint => 'Search current assistant';
 
   @override
   String get sideDrawerSearchAssistantsHint => 'Search assistants';
+
+  @override
+  String get sideDrawerTopicSearchModeLabel => 'Topic mode';
+
+  @override
+  String get sideDrawerGlobalSearchModeLabel => 'Global mode';
+
+  @override
+  String get sideDrawerSearchModeSwipeToTopicHint =>
+      'Swipe the search bar for topic search';
+
+  @override
+  String get sideDrawerSearchModeSwipeToGlobalHint =>
+      'Swipe the search bar for global search';
+
+  @override
+  String get sideDrawerGlobalSearchHint => 'Search all sessions';
+
+  @override
+  String get sideDrawerGlobalSearchEmptyHint =>
+      'Search across titles and messages';
+
+  @override
+  String get sideDrawerGlobalSearchNoResults => 'No matching sessions';
+
+  @override
+  String sideDrawerGlobalSearchResultCount(int count) {
+    return '$count results';
+  }
 
   @override
   String sideDrawerUpdateTitle(String version) {
