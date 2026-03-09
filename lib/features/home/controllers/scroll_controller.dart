@@ -335,6 +335,8 @@ class ChatScrollController {
       if (!_scrollController.hasClients) return;
       if (messages.isEmpty) return;
 
+      revealNavButtons();
+
       // Build an id->index map for quick lookup
       final Map<String, int> idxById = <String, int>{};
       for (int i = 0; i < messages.length; i++) {
