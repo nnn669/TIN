@@ -4,7 +4,10 @@ import '../features/chat/models/message_edit_result.dart';
 import '../l10n/app_localizations.dart';
 import '../icons/lucide_adapter.dart';
 
-Future<MessageEditResult?> showMessageEditDesktopDialog(BuildContext context, {required ChatMessage message}) async {
+Future<MessageEditResult?> showMessageEditDesktopDialog(
+  BuildContext context, {
+  required ChatMessage message,
+}) async {
   return showDialog<MessageEditResult?>(
     context: context,
     barrierDismissible: true,
@@ -17,7 +20,8 @@ class _MessageEditDesktopDialog extends StatefulWidget {
   final ChatMessage message;
 
   @override
-  State<_MessageEditDesktopDialog> createState() => _MessageEditDesktopDialogState();
+  State<_MessageEditDesktopDialog> createState() =>
+      _MessageEditDesktopDialogState();
 }
 
 class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
@@ -45,7 +49,11 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 520, maxWidth: 720, maxHeight: 680),
+        constraints: const BoxConstraints(
+          minWidth: 520,
+          maxWidth: 720,
+          maxHeight: 680,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Material(
@@ -58,7 +66,13 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                   child: Row(
                     children: [
-                      Text(l10n.messageEditPageTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.messageEditPageTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: () {
@@ -67,8 +81,18 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
                             MessageEditResult(content: text, shouldSend: true),
                           );
                         },
-                        icon: Icon(Lucide.MessageCirclePlus, size: 18, color: cs.primary),
-                        label: Text(l10n.messageEditPageSaveAndSend, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+                        icon: Icon(
+                          Lucide.MessageCirclePlus,
+                          size: 18,
+                          color: cs.primary,
+                        ),
+                        label: Text(
+                          l10n.messageEditPageSaveAndSend,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 4),
                       TextButton.icon(
@@ -79,12 +103,22 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
                           );
                         },
                         icon: Icon(Lucide.Check, size: 18, color: cs.primary),
-                        label: Text(l10n.messageEditPageSave, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+                        label: Text(
+                          l10n.messageEditPageSave,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       IconButton(
                         tooltip: l10n.mcpPageClose,
                         onPressed: () => Navigator.of(context).maybePop(),
-                        icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                        icon: Icon(
+                          Lucide.X,
+                          size: 18,
+                          color: cs.onSurface.withOpacity(0.75),
+                        ),
                       ),
                     ],
                   ),
@@ -103,20 +137,34 @@ class _MessageEditDesktopDialogState extends State<_MessageEditDesktopDialog> {
                       decoration: InputDecoration(
                         hintText: l10n.messageEditPageHint,
                         filled: true,
-                        fillColor: isDark ? Colors.white10 : const Color(0xFFF7F7F9),
+                        fillColor: isDark
+                            ? Colors.white10
+                            : const Color(0xFFF7F7F9),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.18), width: 0.6),
+                          borderSide: BorderSide(
+                            color: cs.outlineVariant.withOpacity(0.18),
+                            width: 0.6,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.18), width: 0.6),
+                          borderSide: BorderSide(
+                            color: cs.outlineVariant.withOpacity(0.18),
+                            width: 0.6,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: cs.primary.withOpacity(0.35), width: 0.8),
+                          borderSide: BorderSide(
+                            color: cs.primary.withOpacity(0.35),
+                            width: 0.8,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),

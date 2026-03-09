@@ -28,8 +28,14 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
           decoration: InputDecoration(hintText: l10n.providerGroupsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerGroupsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.providerGroupsCreateDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerGroupsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.providerGroupsCreateDialogOk),
+          ),
         ],
       ),
     );
@@ -38,12 +44,20 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
       if (name.isEmpty) return;
       final id = await context.read<SettingsProvider>().createGroup(name);
       if (id.isEmpty && mounted) {
-        showAppSnackBar(context, message: l10n.providerGroupsCreateFailedToast, type: NotificationType.error);
+        showAppSnackBar(
+          context,
+          message: l10n.providerGroupsCreateFailedToast,
+          type: NotificationType.error,
+        );
       }
     }
   }
 
-  Future<void> _renameGroup(BuildContext context, String groupId, String oldName) async {
+  Future<void> _renameGroup(
+    BuildContext context,
+    String groupId,
+    String oldName,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final TextEditingController c = TextEditingController(text: oldName);
     final ok = await showDialog<bool>(
@@ -56,8 +70,14 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
           decoration: InputDecoration(hintText: l10n.providerGroupsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerGroupsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.sideDrawerSave)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerGroupsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.sideDrawerSave),
+          ),
         ],
       ),
     );
@@ -76,10 +96,16 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
         title: Text(l10n.providerGroupsDeleteConfirmTitle),
         content: Text(l10n.providerGroupsDeleteConfirmContent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerGroupsDeleteConfirmCancel)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerGroupsDeleteConfirmCancel),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.providerGroupsDeleteConfirmOk, style: const TextStyle(color: Colors.red)),
+            child: Text(
+              l10n.providerGroupsDeleteConfirmOk,
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -87,7 +113,11 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
     if (ok == true) {
       await context.read<SettingsProvider>().deleteGroup(groupId);
       if (mounted) {
-        showAppSnackBar(context, message: l10n.providerGroupsDeletedToast, type: NotificationType.success);
+        showAppSnackBar(
+          context,
+          message: l10n.providerGroupsDeletedToast,
+          type: NotificationType.success,
+        );
       }
     }
   }
@@ -133,7 +163,11 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
           ? Center(
               child: Text(
                 l10n.providerGroupsEmptyState,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.7),
+                ),
               ),
             )
           : ReorderableListView.builder(
@@ -141,11 +175,20 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
               itemCount: groups.length,
               buildDefaultDragHandles: false,
               proxyDecorator: (child, index, animation) {
-                return ScaleTransition(scale: Tween<double>(begin: 1.0, end: 1.02).animate(animation), child: child);
+                return ScaleTransition(
+                  scale: Tween<double>(
+                    begin: 1.0,
+                    end: 1.02,
+                  ).animate(animation),
+                  child: child,
+                );
               },
               onReorder: (oldIndex, newIndex) async {
                 if (newIndex > oldIndex) newIndex -= 1;
-                await context.read<SettingsProvider>().reorderProviderGroups(oldIndex, newIndex);
+                await context.read<SettingsProvider>().reorderProviderGroups(
+                  oldIndex,
+                  newIndex,
+                );
               },
               itemBuilder: (ctx, i) {
                 final g = groups[i];
@@ -238,10 +281,17 @@ class _CountPill extends StatelessWidget {
     final bg = cs.primary.withOpacity(0.12);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         '$count',
-        style: TextStyle(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 12,
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

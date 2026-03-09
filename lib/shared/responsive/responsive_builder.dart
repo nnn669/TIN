@@ -11,4 +11,3 @@ class ResponsiveBuilder extends StatelessWidget {
     return builder(context, type);
   }
 }
-

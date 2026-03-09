@@ -34,7 +34,12 @@ Future<void> showDesktopContextMenuAt(
 
   const double minMenuWidth = 160;
   const double maxMenuWidth = 360;
-  final double menuWidth = _estimateMenuWidth(context, items, minMenuWidth, maxMenuWidth);
+  final double menuWidth = _estimateMenuWidth(
+    context,
+    items,
+    minMenuWidth,
+    maxMenuWidth,
+  );
   final screen = overlayBox.size;
   final double menuMaxHeight = screen.height * 0.5; // scroll if exceeds
   final double estMenuHeight = (items.length * 44.0).clamp(44.0, menuMaxHeight);
@@ -52,7 +57,8 @@ Future<void> showDesktopContextMenuAt(
   // Decide above/below based on available space
   final availableBelow = screen.height - padding.bottom - local.dy - 8;
   final availableAbove = local.dy - padding.top - 8;
-  final placeAbove = availableBelow < estMenuHeight && availableAbove > availableBelow;
+  final placeAbove =
+      availableBelow < estMenuHeight && availableAbove > availableBelow;
   double y = placeAbove
       ? (local.dy - gap - estMenuHeight).clamp(minY, maxY)
       : (local.dy + gap).clamp(minY, maxY);
@@ -65,50 +71,61 @@ Future<void> showDesktopContextMenuAt(
     pageBuilder: (ctx, _, __) {
       return Material(
         type: MaterialType.transparency,
-        child: Stack(children: [
-          Positioned(
-            left: x,
-            top: y,
-            child: _AnimatedFade(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: menuWidth, maxWidth: menuWidth),
-                child: IntrinsicWidth(
-                  child: DecoratedBox(
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: isDark ? Colors.white.withOpacity(0.08) : cs.outlineVariant.withOpacity(0.2),
-                          width: 1,
+        child: Stack(
+          children: [
+            Positioned(
+              left: x,
+              top: y,
+              child: _AnimatedFade(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: menuWidth,
+                    maxWidth: menuWidth,
+                  ),
+                  child: IntrinsicWidth(
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : cs.outlineVariant.withOpacity(0.2),
+                            width: 1,
+                          ),
                         ),
                       ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: BackdropFilter(
-                        filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1C1C1E).withOpacity(0.66) : Colors.white.withOpacity(0.66),
-                          ),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxHeight: menuMaxHeight),
-                            child: SingleChildScrollView(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  for (final it in items)
-                                    _GlassMenuItem(
-                                      icon: it.icon,
-                                      svgAsset: it.svgAsset,
-                                      label: it.label,
-                                      danger: it.danger,
-                                      onTap: () {
-                                        Navigator.of(ctx).pop();
-                                        it.onTap?.call();
-                                      },
-                                    ),
-                                ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1C1C1E).withOpacity(0.66)
+                                  : Colors.white.withOpacity(0.66),
+                            ),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: menuMaxHeight,
+                              ),
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    for (final it in items)
+                                      _GlassMenuItem(
+                                        icon: it.icon,
+                                        svgAsset: it.svgAsset,
+                                        label: it.label,
+                                        danger: it.danger,
+                                        onTap: () {
+                                          Navigator.of(ctx).pop();
+                                          it.onTap?.call();
+                                        },
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -119,8 +136,8 @@ Future<void> showDesktopContextMenuAt(
                 ),
               ),
             ),
-          ),
-        ]),
+          ],
+        ),
       );
     },
   );
@@ -170,7 +187,12 @@ Future<void> showDesktopAnchoredMenu(
   const double minMenuWidth = 160;
   const double maxMenuWidth = 360;
   const double gap = 8; // should match showDesktopContextMenuAt gap
-  final double menuWidth = _estimateMenuWidth(context, items, minMenuWidth, maxMenuWidth);
+  final double menuWidth = _estimateMenuWidth(
+    context,
+    items,
+    minMenuWidth,
+    maxMenuWidth,
+  );
   final anchorBottomCenter = topLeft + Offset(size.width / 2, size.height);
   final adjusted = anchorBottomCenter - Offset(menuWidth / 2 + gap, 0);
   await showDesktopContextMenuAt(
@@ -197,6 +219,7 @@ class _AnimatedFadeState extends State<_AnimatedFade> {
       setState(() => _opacity = 1);
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedOpacity(
@@ -209,7 +232,13 @@ class _AnimatedFadeState extends State<_AnimatedFade> {
 }
 
 class _GlassMenuItem extends StatefulWidget {
-  const _GlassMenuItem({this.icon, this.svgAsset, required this.label, this.onTap, this.danger = false});
+  const _GlassMenuItem({
+    this.icon,
+    this.svgAsset,
+    required this.label,
+    this.onTap,
+    this.danger = false,
+  });
   final IconData? icon;
   final String? svgAsset;
   final String label;
@@ -227,8 +256,14 @@ class _GlassMenuItemState extends State<_GlassMenuItem> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = widget.danger ? Colors.red.shade600 : cs.onSurface;
-    final ic = widget.danger ? Colors.red.shade600 : cs.onSurface.withOpacity(0.9);
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final ic = widget.danger
+        ? Colors.red.shade600
+        : cs.onSurface.withOpacity(0.9);
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -237,7 +272,9 @@ class _GlassMenuItemState extends State<_GlassMenuItem> {
         borderRadius: BorderRadius.zero,
         baseColor: Colors.transparent,
         onTap: () {
-          try { Haptics.light(); } catch (_) {}
+          try {
+            Haptics.light();
+          } catch (_) {}
           widget.onTap?.call();
         },
         child: Container(
@@ -259,7 +296,16 @@ class _GlassMenuItemState extends State<_GlassMenuItem> {
                   ),
                 const SizedBox(width: 10),
               ],
-              Expanded(child: Text(widget.label, style: TextStyle(fontSize: 14.5, color: fg, decoration: TextDecoration.none))),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: fg,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

@@ -17,7 +17,9 @@ class TokenUsage {
     // - completion tokens: take max (grows as response streams)
     // - cached tokens: take max (usually set once)
     final prompt = other.promptTokens > 0 ? other.promptTokens : promptTokens;
-    final completion = other.completionTokens > 0 ? other.completionTokens : completionTokens;
+    final completion = other.completionTokens > 0
+        ? other.completionTokens
+        : completionTokens;
     final cached = other.cachedTokens > 0 ? other.cachedTokens : cachedTokens;
     final total = prompt + completion;
     return TokenUsage(
@@ -28,4 +30,3 @@ class TokenUsage {
     );
   }
 }
-

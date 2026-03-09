@@ -40,7 +40,10 @@ import '../../../utils/avatar_cache.dart';
 import 'chat_message_widget.dart' show ToolUIPart;
 
 // Regular expression to extract thinking content from message
-final RegExp thinkingRegex = RegExp(r"<think>([\s\S]*?)(?:</think>|$)", dotAll: true);
+final RegExp thinkingRegex = RegExp(
+  r"<think>([\s\S]*?)(?:</think>|$)",
+  dotAll: true,
+);
 
 // Shared helpers
 String _guessImageMime(String path) {
@@ -68,7 +71,9 @@ String? _modelDisplayName(BuildContext context, ChatMessage msg) {
         if (overrideName != null && overrideName.isNotEmpty) {
           name = overrideName;
         }
-        final apiId = (ov['apiModelId'] ?? ov['api_model_id'])?.toString().trim();
+        final apiId = (ov['apiModelId'] ?? ov['api_model_id'])
+            ?.toString()
+            .trim();
         if (apiId != null && apiId.isNotEmpty) {
           baseId = apiId;
         }
@@ -78,11 +83,12 @@ String? _modelDisplayName(BuildContext context, ChatMessage msg) {
     }
   }
 
-  final inferred = ModelRegistry.infer(ModelInfo(id: baseId, displayName: baseId));
+  final inferred = ModelRegistry.infer(
+    ModelInfo(id: baseId, displayName: baseId),
+  );
   final fallback = inferred.displayName.trim();
   return name ?? (fallback.isNotEmpty ? fallback : baseId);
 }
-
 
 String _getRoleName(BuildContext context, ChatMessage msg) {
   final l10n = AppLocalizations.of(context)!;
@@ -92,7 +98,9 @@ String _getRoleName(BuildContext context, ChatMessage msg) {
   } else if (msg.role == 'assistant') {
     // Check if using assistant name override
     final assistant = context.read<AssistantProvider>().currentAssistant;
-    if (assistant != null && assistant.useAssistantName == true && assistant.name.trim().isNotEmpty) {
+    if (assistant != null &&
+        assistant.useAssistantName == true &&
+        assistant.name.trim().isNotEmpty) {
       return assistant.name.trim();
     }
     // Otherwise use model display name
@@ -114,7 +122,7 @@ _Parsed _parseContent(String raw) {
   int idx = 0;
   while (idx < raw.length) {
     // Fast path: only try to parse when current char is '['
-    if (raw.codeUnitAt(idx) == 0x5B /* '[' */) {
+    if (raw.codeUnitAt(idx) == 0x5B /* '[' */ ) {
       final sub = raw.substring(idx);
       // [image:...]
       final mImg = RegExp(r"^\[image:([^\]]+)\]").firstMatch(sub);
@@ -125,11 +133,17 @@ _Parsed _parseContent(String raw) {
         continue;
       }
       // [file:path|name|mime]
-      final mFile = RegExp(r"^\[file:([^|\]]+)\|([^|\]]+)\|([^\]]+)\]").firstMatch(sub);
+      final mFile = RegExp(
+        r"^\[file:([^|\]]+)\|([^|\]]+)\|([^\]]+)\]",
+      ).firstMatch(sub);
       if (mFile != null) {
-        final path = (mFile.groupCount >= 1 ? mFile.group(1) : null)?.trim() ?? '';
-        final name = (mFile.groupCount >= 2 ? mFile.group(2) : null)?.trim() ?? 'file';
-        final mime = (mFile.groupCount >= 3 ? mFile.group(3) : null)?.trim() ?? 'text/plain';
+        final path =
+            (mFile.groupCount >= 1 ? mFile.group(1) : null)?.trim() ?? '';
+        final name =
+            (mFile.groupCount >= 2 ? mFile.group(2) : null)?.trim() ?? 'file';
+        final mime =
+            (mFile.groupCount >= 3 ? mFile.group(3) : null)?.trim() ??
+            'text/plain';
         docs.add(_DocRef(path: path, fileName: name, mime: mime));
         idx += mFile.group(0)!.length;
         continue;
@@ -222,7 +236,10 @@ _ThinkingExportData _thinkingExportDataForMessage(ChatMessage message) {
     if (rt.isNotEmpty) thinkingTexts.add(rt);
   }
 
-  return _ThinkingExportData(cleanedContent: cleanedContent, thinkingTexts: thinkingTexts);
+  return _ThinkingExportData(
+    cleanedContent: cleanedContent,
+    thinkingTexts: thinkingTexts,
+  );
 }
 
 String _formatExportTime(BuildContext context, DateTime time) {
@@ -301,7 +318,9 @@ Future<void> exportChatMessagesMarkdown(
       type: NotificationType.info,
     );
 
-    final title = (conversation.title.trim().isNotEmpty) ? conversation.title : l10n.messageExportSheetDefaultTitle;
+    final title = (conversation.title.trim().isNotEmpty)
+        ? conversation.title
+        : l10n.messageExportSheetDefaultTitle;
     final includeThinking = showThinkingAndToolCards && expandThinkingContent;
 
     final buf = StringBuffer();
@@ -313,7 +332,9 @@ Future<void> exportChatMessagesMarkdown(
       buf.writeln('> $time · ${_getRoleName(context, msg)}');
       buf.writeln('');
 
-      final exportData = (msg.role == 'assistant') ? _thinkingExportDataForMessage(msg) : null;
+      final exportData = (msg.role == 'assistant')
+          ? _thinkingExportDataForMessage(msg)
+          : null;
       final contentForExport = exportData?.cleanedContent ?? msg.content;
 
       final parsed = _parseContent(contentForExport);
@@ -344,7 +365,9 @@ Future<void> exportChatMessagesMarkdown(
         buf.writeln('- ${d.fileName}  `(${d.mime})`');
       }
 
-      if (includeThinking && exportData != null && exportData.thinkingTexts.isNotEmpty) {
+      if (includeThinking &&
+          exportData != null &&
+          exportData.thinkingTexts.isNotEmpty) {
         final t = exportData.thinkingTexts.join('\n\n').trim();
         if (t.isNotEmpty) {
           buf.writeln('');
@@ -392,7 +415,9 @@ Future<void> exportChatMessagesTxt(
       type: NotificationType.info,
     );
 
-    final title = (conversation.title.trim().isNotEmpty) ? conversation.title : l10n.messageExportSheetDefaultTitle;
+    final title = (conversation.title.trim().isNotEmpty)
+        ? conversation.title
+        : l10n.messageExportSheetDefaultTitle;
     final includeThinking = showThinkingAndToolCards && expandThinkingContent;
 
     final buf = StringBuffer();
@@ -404,7 +429,9 @@ Future<void> exportChatMessagesTxt(
       buf.writeln('$time · ${_getRoleName(context, msg)}');
       buf.writeln('');
 
-      final exportData = (msg.role == 'assistant') ? _thinkingExportDataForMessage(msg) : null;
+      final exportData = (msg.role == 'assistant')
+          ? _thinkingExportDataForMessage(msg)
+          : null;
       final contentForExport = exportData?.cleanedContent ?? msg.content;
 
       final parsed = _parseContent(contentForExport);
@@ -417,7 +444,9 @@ Future<void> exportChatMessagesTxt(
         buf.writeln('- ${d.fileName} (${d.mime})');
       }
 
-      if (includeThinking && exportData != null && exportData.thinkingTexts.isNotEmpty) {
+      if (includeThinking &&
+          exportData != null &&
+          exportData.thinkingTexts.isNotEmpty) {
         final t = exportData.thinkingTexts.join('\n\n').trim();
         if (t.isNotEmpty) {
           buf.writeln('');
@@ -492,18 +521,24 @@ Future<File?> _renderAndSaveMessageImage(
   } catch (_) {}
 
   // Desktop uses larger width and lower pixel ratio for better proportions
-  final bool isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final bool isDesktop =
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   final content = ExportCaptureScope(
     enabled: true,
     child: _ExportedMessageCard(
-    message: message,
-    title: context.read<ChatService>().getConversation(message.conversationId)?.title ?? l10n.messageExportSheetDefaultTitle,
-    cs: cs,
-    chatFontScale: settings.chatFontScale,
-    showThinkingAndToolCards: showThinkingAndToolCards,
-    expandThinkingContent: expandThinkingContent,
-    isDesktop: isDesktop,
+      message: message,
+      title:
+          context
+              .read<ChatService>()
+              .getConversation(message.conversationId)
+              ?.title ??
+          l10n.messageExportSheetDefaultTitle,
+      cs: cs,
+      chatFontScale: settings.chatFontScale,
+      showThinkingAndToolCards: showThinkingAndToolCards,
+      expandThinkingContent: expandThinkingContent,
+      isDesktop: isDesktop,
     ),
   );
   return _renderWidgetDirectly(
@@ -517,7 +552,10 @@ Future<File?> _renderAndSaveMessageImage(
 Rect _shareAnchorRect(BuildContext context) {
   try {
     final box = context.findRenderObject() as RenderBox?;
-    if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+    if (box != null &&
+        box.hasSize &&
+        box.size.width > 0 &&
+        box.size.height > 0) {
       final offset = box.localToGlobal(Offset.zero);
       return offset & box.size;
     }
@@ -547,19 +585,22 @@ Future<File?> _renderAndSaveChatImage(
   } catch (_) {}
 
   // Desktop uses larger width and lower pixel ratio for better proportions
-  final bool isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final bool isDesktop =
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   final content = ExportCaptureScope(
     enabled: true,
     child: _ExportedChatImage(
-    conversationTitle: (conversation.title.trim().isNotEmpty) ? conversation.title : l10n.messageExportSheetDefaultTitle,
-    cs: cs,
-    chatFontScale: settings.chatFontScale,
-    messages: messages,
-    timestamp: conversation.updatedAt,
-    showThinkingAndToolCards: showThinkingAndToolCards,
-    expandThinkingContent: expandThinkingContent,
-    isDesktop: isDesktop,
+      conversationTitle: (conversation.title.trim().isNotEmpty)
+          ? conversation.title
+          : l10n.messageExportSheetDefaultTitle,
+      cs: cs,
+      chatFontScale: settings.chatFontScale,
+      messages: messages,
+      timestamp: conversation.updatedAt,
+      showThinkingAndToolCards: showThinkingAndToolCards,
+      expandThinkingContent: expandThinkingContent,
+      isDesktop: isDesktop,
     ),
   );
   return _renderWidgetDirectly(
@@ -579,53 +620,55 @@ Future<File?> _renderWidgetDirectly(
 }) async {
   final overlay = Overlay.of(context);
   if (overlay == null) return null;
-  
+
   final boundaryKey = GlobalKey();
   final completer = Completer<void>();
-  
+
   late OverlayEntry entry;
-  entry = OverlayEntry(builder: (ctx) {
-    // Schedule the completion after multiple frames to ensure rendering
-    int frameCount = 0;
-    void scheduleCompletion() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        frameCount++;
-        if (frameCount < 3) {
-          // Wait for 3 frames to ensure complete rendering
-          scheduleCompletion();
-        } else if (!completer.isCompleted) {
-          completer.complete();
-        }
-      });
-    }
-    scheduleCompletion();
-    
-    return Positioned(
-      left: -10000, // Position far offscreen
-      top: -10000,
-      child: RepaintBoundary(
-        key: boundaryKey,
-        child: Container(
-          width: width,
-          color: Theme.of(ctx).colorScheme.background,
-          child: Material(
-            type: MaterialType.transparency,
-            child: content,
+  entry = OverlayEntry(
+    builder: (ctx) {
+      // Schedule the completion after multiple frames to ensure rendering
+      int frameCount = 0;
+      void scheduleCompletion() {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          frameCount++;
+          if (frameCount < 3) {
+            // Wait for 3 frames to ensure complete rendering
+            scheduleCompletion();
+          } else if (!completer.isCompleted) {
+            completer.complete();
+          }
+        });
+      }
+
+      scheduleCompletion();
+
+      return Positioned(
+        left: -10000, // Position far offscreen
+        top: -10000,
+        child: RepaintBoundary(
+          key: boundaryKey,
+          child: Container(
+            width: width,
+            color: Theme.of(ctx).colorScheme.background,
+            child: Material(type: MaterialType.transparency, child: content),
           ),
         ),
-      ),
-    );
-  });
-  
+      );
+    },
+  );
+
   overlay.insert(entry);
-  
+
   try {
     // Wait for the widget to be ready
     await completer.future;
     // Additional delay to ensure everything is painted
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    
-    final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+    final boundary =
+        boundaryKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
     if (boundary == null) return null;
 
     // Try to capture the image with retries
@@ -643,18 +686,20 @@ Future<File?> _renderWidgetDirectly(
         await Future<void>.delayed(const Duration(milliseconds: 200));
       }
     }
-    
+
     if (image == null) return null;
-    
+
     // Convert to PNG
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) return null;
-    
+
     // Save to file
     final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/chat-export-${DateTime.now().millisecondsSinceEpoch}.png');
+    final file = File(
+      '${dir.path}/chat-export-${DateTime.now().millisecondsSinceEpoch}.png',
+    );
     await file.writeAsBytes(data.buffer.asUint8List());
-    
+
     return file;
   } finally {
     entry.remove();
@@ -674,73 +719,77 @@ Future<File?> _renderAndSavePagedOld(
   final boundaryKey = GlobalKey();
   final contentKey = GlobalKey();
   final controller = ScrollController();
-  
+
   // Create a completer to signal when the widget is ready
   final completer = Completer<void>();
-  
+
   late OverlayEntry entry;
-  entry = OverlayEntry(builder: (ctx) {
-    // Schedule a callback after the frame is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!completer.isCompleted) {
-        completer.complete();
-      }
-    });
-    
-    return Material(
-      type: MaterialType.transparency,
-      child: IgnorePointer(
-        ignoring: true,
-        child: Opacity(
-          opacity: 0.001,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: RepaintBoundary(
-              key: boundaryKey,
-              child: SizedBox(
-                width: width,
-                height: pageHeight,
-                child: SingleChildScrollView(
-                  controller: controller,
-                  child: KeyedSubtree(key: contentKey, child: content),
+  entry = OverlayEntry(
+    builder: (ctx) {
+      // Schedule a callback after the frame is built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      });
+
+      return Material(
+        type: MaterialType.transparency,
+        child: IgnorePointer(
+          ignoring: true,
+          child: Opacity(
+            opacity: 0.001,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: RepaintBoundary(
+                key: boundaryKey,
+                child: SizedBox(
+                  width: width,
+                  height: pageHeight,
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    child: KeyedSubtree(key: contentKey, child: content),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  });
-  
+      );
+    },
+  );
+
   overlay.insert(entry);
-  
+
   try {
     // Wait for the initial frame to be ready
     await completer.future;
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    
+
     final contentSize = contentKey.currentContext?.size;
     if (contentSize == null) return null;
-    
+
     final totalHeight = contentSize.height;
     final pages = (totalHeight / pageHeight).ceil().clamp(1, 200);
     final images = <ui.Image>[];
     final drawHeights = <int>[];
-    
+
     for (int i = 0; i < pages; i++) {
       final offset = i * pageHeight;
       controller.jumpTo(offset);
-      
+
       // Wait for the scroll to complete and the new content to render
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      
+
       // Force a frame
       SchedulerBinding.instance.scheduleFrameCallback((_) {});
       await SchedulerBinding.instance.endOfFrame;
-      
-      final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+      final boundary =
+          boundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) break;
-      
+
       // Capture with retry logic
       ui.Image? img;
       for (int retry = 0; retry < 5; retry++) {
@@ -754,24 +803,24 @@ Future<File?> _renderAndSavePagedOld(
           await SchedulerBinding.instance.endOfFrame;
         }
       }
-      
+
       if (img == null) continue;
-      
+
       images.add(img);
       final drawn = drawHeights.fold<int>(0, (a, b) => a + b);
       final remaining = (totalHeight * pixelRatio).round() - drawn;
       final h = remaining <= 0 ? 0 : math.min(img.height, remaining);
       drawHeights.add(h);
     }
-    
+
     if (images.isEmpty) return null;
-    
+
     final composedHeightPx = drawHeights.fold<int>(0, (a, b) => a + b);
     final widthPx = (width * pixelRatio).round();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     double y = 0;
-    
+
     for (int i = 0; i < images.length; i++) {
       final ui.Image page = images[i];
       final int drawH = drawHeights[i];
@@ -781,14 +830,16 @@ Future<File?> _renderAndSavePagedOld(
       canvas.drawImageRect(page, src, dst, Paint());
       y += drawH.toDouble();
     }
-    
+
     final pic = recorder.endRecording();
     final img = await pic.toImage(widthPx, composedHeightPx);
     final data = await img.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) return null;
-    
+
     final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/chat-export-${DateTime.now().millisecondsSinceEpoch}.png');
+    final file = File(
+      '${dir.path}/chat-export-${DateTime.now().millisecondsSinceEpoch}.png',
+    );
     await file.writeAsBytes(data.buffer.asUint8List());
     return file;
   } finally {
@@ -796,8 +847,10 @@ Future<File?> _renderAndSavePagedOld(
   }
 }
 
-
-Future<void> showMessageExportSheet(BuildContext context, ChatMessage message) async {
+Future<void> showMessageExportSheet(
+  BuildContext context,
+  ChatMessage message,
+) async {
   final cs = Theme.of(context).colorScheme;
   try {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -807,8 +860,13 @@ Future<void> showMessageExportSheet(BuildContext context, ChatMessage message) a
         barrierDismissible: true,
         builder: (ctx) => Dialog(
           elevation: 12,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: _ExportDialog(message: message, parentContext: context),
         ),
       );
@@ -848,9 +906,18 @@ Future<void> showChatExportSheet(
         barrierDismissible: true,
         builder: (ctx) => Dialog(
           elevation: 12,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: _BatchExportDialog(conversation: conversation, messages: selectedMessages, parentContext: context),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: _BatchExportDialog(
+            conversation: conversation,
+            messages: selectedMessages,
+            parentContext: context,
+          ),
         ),
       );
       return;
@@ -868,7 +935,11 @@ Future<void> showChatExportSheet(
     builder: (ctx) {
       return SafeArea(
         top: false,
-        child: _BatchExportSheet(conversation: conversation, messages: selectedMessages, parentContext: context),
+        child: _BatchExportSheet(
+          conversation: conversation,
+          messages: selectedMessages,
+          parentContext: context,
+        ),
       );
     },
   );
@@ -904,7 +975,8 @@ class _ExportDialogState extends State<_ExportDialog> {
       final msg = widget.message;
       final service = pctx.read<ChatService>();
       final convo = service.getConversation(msg.conversationId);
-      final effectiveConvo = convo ?? Conversation(id: msg.conversationId, title: '');
+      final effectiveConvo =
+          convo ?? Conversation(id: msg.conversationId, title: '');
       await exportChatMessagesMarkdown(
         pctx,
         conversation: effectiveConvo,
@@ -932,7 +1004,8 @@ class _ExportDialogState extends State<_ExportDialog> {
       final msg = widget.message;
       final service = pctx.read<ChatService>();
       final convo = service.getConversation(msg.conversationId);
-      final effectiveConvo = convo ?? Conversation(id: msg.conversationId, title: '');
+      final effectiveConvo =
+          convo ?? Conversation(id: msg.conversationId, title: '');
       await exportChatMessagesTxt(
         pctx,
         conversation: effectiveConvo,
@@ -983,7 +1056,11 @@ class _ExportDialogState extends State<_ExportDialog> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 420, maxWidth: 640, maxHeight: 640),
+      constraints: const BoxConstraints(
+        minWidth: 420,
+        maxWidth: 640,
+        maxHeight: 640,
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Material(
@@ -996,10 +1073,24 @@ class _ExportDialogState extends State<_ExportDialog> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                 child: Row(
                   children: [
-                    Expanded(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        l10n.messageExportSheetFormatTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     IconButton(
                       tooltip: l10n.mcpPageClose,
-                      icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                      icon: Icon(
+                        Lucide.X,
+                        size: 18,
+                        color: cs.onSurface.withOpacity(0.75),
+                      ),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                   ],
@@ -1016,7 +1107,8 @@ class _ExportDialogState extends State<_ExportDialog> {
                         _ExportOptionTile(
                           icon: Lucide.BookOpenText,
                           title: l10n.messageExportSheetMarkdown,
-                          subtitle: l10n.messageExportSheetSingleMarkdownSubtitle,
+                          subtitle:
+                              l10n.messageExportSheetSingleMarkdownSubtitle,
                           onTap: _exporting ? null : _onExportMarkdown,
                         ),
                         _ExportOptionTile(
@@ -1028,7 +1120,8 @@ class _ExportDialogState extends State<_ExportDialog> {
                         _ExportOptionTile(
                           icon: Lucide.Image,
                           title: l10n.messageExportSheetExportImage,
-                          subtitle: l10n.messageExportSheetSingleExportImageSubtitle,
+                          subtitle:
+                              l10n.messageExportSheetSingleExportImageSubtitle,
                           onTap: _exporting ? null : _onExportImage,
                         ),
                         const SizedBox(height: 8),
@@ -1038,7 +1131,8 @@ class _ExportDialogState extends State<_ExportDialog> {
                             children: [
                               _buildSwitchRow(
                                 context,
-                                title: l10n.messageExportSheetShowThinkingAndToolCards,
+                                title: l10n
+                                    .messageExportSheetShowThinkingAndToolCards,
                                 value: _showThinkingAndToolCards,
                                 onChanged: (v) {
                                   setState(() {
@@ -1049,10 +1143,13 @@ class _ExportDialogState extends State<_ExportDialog> {
                               ),
                               _buildSwitchRow(
                                 context,
-                                title: l10n.messageExportSheetShowThinkingContent,
+                                title:
+                                    l10n.messageExportSheetShowThinkingContent,
                                 value: _expandThinkingContent,
                                 onChanged: _showThinkingAndToolCards
-                                    ? (v) => setState(() => _expandThinkingContent = v)
+                                    ? (v) => setState(
+                                        () => _expandThinkingContent = v,
+                                      )
                                     : null,
                               ),
                             ],
@@ -1070,7 +1167,8 @@ class _ExportDialogState extends State<_ExportDialog> {
     );
   }
 
-  Widget _buildSwitchRow(BuildContext context, {
+  Widget _buildSwitchRow(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool>? onChanged,
@@ -1103,7 +1201,11 @@ class _ExportDialogState extends State<_ExportDialog> {
 
 // Desktop dialog: batch export
 class _BatchExportDialog extends StatefulWidget {
-  const _BatchExportDialog({required this.conversation, required this.messages, required this.parentContext});
+  const _BatchExportDialog({
+    required this.conversation,
+    required this.messages,
+    required this.parentContext,
+  });
   final Conversation conversation;
   final List<ChatMessage> messages;
   final BuildContext parentContext;
@@ -1182,7 +1284,11 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 480, maxWidth: 720, maxHeight: 460),
+      constraints: const BoxConstraints(
+        minWidth: 480,
+        maxWidth: 720,
+        maxHeight: 460,
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Material(
@@ -1195,10 +1301,24 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                 child: Row(
                   children: [
-                    Expanded(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        l10n.messageExportSheetFormatTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     IconButton(
                       tooltip: l10n.mcpPageClose,
-                      icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                      icon: Icon(
+                        Lucide.X,
+                        size: 18,
+                        color: cs.onSurface.withOpacity(0.75),
+                      ),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                   ],
@@ -1215,7 +1335,8 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                         _ExportOptionTile(
                           icon: Lucide.BookOpenText,
                           title: l10n.messageExportSheetMarkdown,
-                          subtitle: l10n.messageExportSheetBatchMarkdownSubtitle,
+                          subtitle:
+                              l10n.messageExportSheetBatchMarkdownSubtitle,
                           onTap: _exporting ? null : _onExportMarkdown,
                         ),
                         _ExportOptionTile(
@@ -1227,7 +1348,8 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                         _ExportOptionTile(
                           icon: Lucide.Image,
                           title: l10n.messageExportSheetExportImage,
-                          subtitle: l10n.messageExportSheetBatchExportImageSubtitle,
+                          subtitle:
+                              l10n.messageExportSheetBatchExportImageSubtitle,
                           onTap: _exporting ? null : _onExportImage,
                         ),
                         const SizedBox(height: 8),
@@ -1237,7 +1359,8 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                             children: [
                               _buildSwitchRow(
                                 context,
-                                title: l10n.messageExportSheetShowThinkingAndToolCards,
+                                title: l10n
+                                    .messageExportSheetShowThinkingAndToolCards,
                                 value: _showThinkingAndToolCards,
                                 onChanged: (v) {
                                   setState(() {
@@ -1248,10 +1371,13 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
                               ),
                               _buildSwitchRow(
                                 context,
-                                title: l10n.messageExportSheetShowThinkingContent,
+                                title:
+                                    l10n.messageExportSheetShowThinkingContent,
                                 value: _expandThinkingContent,
                                 onChanged: _showThinkingAndToolCards
-                                    ? (v) => setState(() => _expandThinkingContent = v)
+                                    ? (v) => setState(
+                                        () => _expandThinkingContent = v,
+                                      )
                                     : null,
                               ),
                             ],
@@ -1269,7 +1395,8 @@ class _BatchExportDialogState extends State<_BatchExportDialog> {
     );
   }
 
-  Widget _buildSwitchRow(BuildContext context, {
+  Widget _buildSwitchRow(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool>? onChanged,
@@ -1310,7 +1437,11 @@ class _ExportSheet extends StatefulWidget {
 }
 
 class _BatchExportSheet extends StatefulWidget {
-  const _BatchExportSheet({required this.conversation, required this.messages, required this.parentContext});
+  const _BatchExportSheet({
+    required this.conversation,
+    required this.messages,
+    required this.parentContext,
+  });
   final Conversation conversation;
   final List<ChatMessage> messages;
   final BuildContext parentContext;
@@ -1414,10 +1545,25 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
-            Center(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+            Center(
+              child: Text(
+                l10n.messageExportSheetFormatTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
@@ -1427,25 +1573,31 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
                     icon: Lucide.BookOpenText,
                     title: l10n.messageExportSheetMarkdown,
                     subtitle: l10n.messageExportSheetBatchMarkdownSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportMarkdown();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportMarkdown();
+                          },
                   ),
                   _ExportOptionTile(
                     icon: Lucide.FileText,
                     title: l10n.messageExportSheetPlainText,
                     subtitle: l10n.messageExportSheetBatchTxtSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportTxt();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportTxt();
+                          },
                   ),
                   _ExportOptionTile(
                     icon: Lucide.Image,
                     title: l10n.messageExportSheetExportImage,
                     subtitle: l10n.messageExportSheetBatchExportImageSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportImage();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportImage();
+                          },
                   ),
                   const SizedBox(height: 8),
                   // Image export options
@@ -1455,7 +1607,8 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
                       children: [
                         _buildSwitchRow(
                           context,
-                          title: l10n.messageExportSheetShowThinkingAndToolCards,
+                          title:
+                              l10n.messageExportSheetShowThinkingAndToolCards,
                           value: _showThinkingAndToolCards,
                           onChanged: (v) {
                             setState(() {
@@ -1470,11 +1623,13 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
                           context,
                           title: l10n.messageExportSheetShowThinkingContent,
                           value: _expandThinkingContent,
-                          onChanged: _showThinkingAndToolCards ? (v) {
-                            setState(() {
-                              _expandThinkingContent = v;
-                            });
-                          } : null,
+                          onChanged: _showThinkingAndToolCards
+                              ? (v) {
+                                  setState(() {
+                                    _expandThinkingContent = v;
+                                  });
+                                }
+                              : null,
                         ),
                       ],
                     ),
@@ -1488,7 +1643,8 @@ class _BatchExportSheetState extends State<_BatchExportSheet> {
     );
   }
 
-  Widget _buildSwitchRow(BuildContext context, {
+  Widget _buildSwitchRow(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool>? onChanged,
@@ -1545,7 +1701,8 @@ class _ExportSheetState extends State<_ExportSheet> {
       final msg = widget.message;
       final service = pctx.read<ChatService>();
       final convo = service.getConversation(msg.conversationId);
-      final effectiveConvo = convo ?? Conversation(id: msg.conversationId, title: '');
+      final effectiveConvo =
+          convo ?? Conversation(id: msg.conversationId, title: '');
       await exportChatMessagesMarkdown(
         pctx,
         conversation: effectiveConvo,
@@ -1575,7 +1732,8 @@ class _ExportSheetState extends State<_ExportSheet> {
       final msg = widget.message;
       final service = pctx.read<ChatService>();
       final convo = service.getConversation(msg.conversationId);
-      final effectiveConvo = convo ?? Conversation(id: msg.conversationId, title: '');
+      final effectiveConvo =
+          convo ?? Conversation(id: msg.conversationId, title: '');
       await exportChatMessagesTxt(
         pctx,
         conversation: effectiveConvo,
@@ -1642,10 +1800,25 @@ class _ExportSheetState extends State<_ExportSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
-            Center(child: Text(l10n.messageExportSheetFormatTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+            Center(
+              child: Text(
+                l10n.messageExportSheetFormatTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
@@ -1655,25 +1828,31 @@ class _ExportSheetState extends State<_ExportSheet> {
                     icon: Lucide.BookOpenText,
                     title: l10n.messageExportSheetMarkdown,
                     subtitle: l10n.messageExportSheetSingleMarkdownSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportMarkdown();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportMarkdown();
+                          },
                   ),
                   _ExportOptionTile(
                     icon: Lucide.FileText,
                     title: l10n.messageExportSheetPlainText,
                     subtitle: l10n.messageExportSheetSingleTxtSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportTxt();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportTxt();
+                          },
                   ),
                   _ExportOptionTile(
                     icon: Lucide.Image,
                     title: l10n.messageExportSheetExportImage,
                     subtitle: l10n.messageExportSheetSingleExportImageSubtitle,
-                    onTap: _exporting ? null : () {
-                      _onExportImage();
-                    },
+                    onTap: _exporting
+                        ? null
+                        : () {
+                            _onExportImage();
+                          },
                   ),
                   const SizedBox(height: 8),
                   // Image export options
@@ -1683,7 +1862,8 @@ class _ExportSheetState extends State<_ExportSheet> {
                       children: [
                         _buildSwitchRow(
                           context,
-                          title: l10n.messageExportSheetShowThinkingAndToolCards,
+                          title:
+                              l10n.messageExportSheetShowThinkingAndToolCards,
                           value: _showThinkingAndToolCards,
                           onChanged: (v) {
                             setState(() {
@@ -1698,11 +1878,13 @@ class _ExportSheetState extends State<_ExportSheet> {
                           context,
                           title: l10n.messageExportSheetShowThinkingContent,
                           value: _expandThinkingContent,
-                          onChanged: _showThinkingAndToolCards ? (v) {
-                            setState(() {
-                              _expandThinkingContent = v;
-                            });
-                          } : null,
+                          onChanged: _showThinkingAndToolCards
+                              ? (v) {
+                                  setState(() {
+                                    _expandThinkingContent = v;
+                                  });
+                                }
+                              : null,
                         ),
                       ],
                     ),
@@ -1716,7 +1898,8 @@ class _ExportSheetState extends State<_ExportSheet> {
     );
   }
 
-  Widget _buildSwitchRow(BuildContext context, {
+  Widget _buildSwitchRow(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool>? onChanged,
@@ -1793,21 +1976,30 @@ class _ExportedMessageCard extends StatelessWidget {
         final events = chatService.getToolEvents(message.id);
         if (events.isNotEmpty) {
           toolParts = events
-              .map((e) => ToolUIPart(
-                    id: (e['id'] ?? '').toString(),
-                    toolName: (e['name'] ?? '').toString(),
-                    arguments: (e['arguments'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{},
-                    content: (e['content']?.toString().isNotEmpty == true) ? e['content'].toString() : null,
-                    loading: !(e['content']?.toString().isNotEmpty == true),
-                  ))
+              .map(
+                (e) => ToolUIPart(
+                  id: (e['id'] ?? '').toString(),
+                  toolName: (e['name'] ?? '').toString(),
+                  arguments:
+                      (e['arguments'] as Map?)?.cast<String, dynamic>() ??
+                      const <String, dynamic>{},
+                  content: (e['content']?.toString().isNotEmpty == true)
+                      ? e['content'].toString()
+                      : null,
+                  loading: !(e['content']?.toString().isNotEmpty == true),
+                ),
+              )
               .toList();
         }
       } catch (_) {}
 
       // Check if message has reasoningSegmentsJson (multiple thinking segments with toolStartIndex)
-      if (message.reasoningSegmentsJson != null && message.reasoningSegmentsJson!.isNotEmpty) {
+      if (message.reasoningSegmentsJson != null &&
+          message.reasoningSegmentsJson!.isNotEmpty) {
         try {
-          final segments = _deserializeReasoningSegments(message.reasoningSegmentsJson!);
+          final segments = _deserializeReasoningSegments(
+            message.reasoningSegmentsJson!,
+          );
           reasoningSegments = segments;
         } catch (_) {}
       }
@@ -1832,7 +2024,8 @@ class _ExportedMessageCard extends StatelessWidget {
           messageContent = message.content.replaceAll(thinkingRegex, '').trim();
         }
         // Also check reasoningText field
-        else if (message.reasoningText != null && message.reasoningText!.isNotEmpty) {
+        else if (message.reasoningText != null &&
+            message.reasoningText!.isNotEmpty) {
           reasoningSegments.add({
             'text': message.reasoningText!,
             'toolStartIndex': 0,
@@ -1882,13 +2075,23 @@ class _ExportedMessageCard extends StatelessWidget {
             // Title (no icon, no bordered container)
             Text(
               title,
-              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: headerFg.withOpacity(0.95)),
+              style: TextStyle(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w700,
+                color: headerFg.withOpacity(0.95),
+              ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
             const SizedBox(height: 2),
             // Timestamp under title, aligned with title
-            Text(time, style: TextStyle(fontSize: timeFontSize, color: headerFg.withOpacity(0.6))),
+            Text(
+              time,
+              style: TextStyle(
+                fontSize: timeFontSize,
+                color: headerFg.withOpacity(0.6),
+              ),
+            ),
             SizedBox(height: isDesktop ? 10.0 : 12.0),
             // Message body styled like chat
             if (isAssistant) ...[
@@ -1904,19 +2107,23 @@ class _ExportedMessageCard extends StatelessWidget {
 
                     // Add the reasoning segment (if any text)
                     if (text.isNotEmpty) {
-                      mixedContent.add(_ExportThinkingCard(
-                        thinkingText: text,
-                        cs: cs,
-                        expanded: expandThinkingContent,
-                        isDesktop: isDesktop,
-                      ));
+                      mixedContent.add(
+                        _ExportThinkingCard(
+                          thinkingText: text,
+                          cs: cs,
+                          expanded: expandThinkingContent,
+                          isDesktop: isDesktop,
+                        ),
+                      );
                       mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                     }
 
                     // Determine tool range mapped to this segment: [start, end)
                     int start = (seg['toolStartIndex'] as int?) ?? 0;
                     final int end = (i < reasoningSegments.length - 1)
-                        ? (reasoningSegments[i + 1]['toolStartIndex'] as int?) ?? toolParts.length
+                        ? (reasoningSegments[i + 1]['toolStartIndex']
+                                  as int?) ??
+                              toolParts.length
                         : toolParts.length;
 
                     // Clamp to bounds and ensure non-decreasing
@@ -1927,7 +2134,13 @@ class _ExportedMessageCard extends StatelessWidget {
                     for (int k = start; k < clampedEnd; k++) {
                       // Hide builtin_search tool cards
                       if (toolParts[k].toolName == 'builtin_search') continue;
-                      mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop));
+                      mixedContent.add(
+                        _ExportToolCard(
+                          part: toolParts[k],
+                          cs: cs,
+                          isDesktop: isDesktop,
+                        ),
+                      );
                       mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                     }
                   }
@@ -1935,7 +2148,13 @@ class _ExportedMessageCard extends StatelessWidget {
                   // No reasoning segments but have tool cards - show all tool cards
                   for (final toolPart in toolParts) {
                     if (toolPart.toolName == 'builtin_search') continue;
-                    mixedContent.add(_ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop));
+                    mixedContent.add(
+                      _ExportToolCard(
+                        part: toolPart,
+                        cs: cs,
+                        isDesktop: isDesktop,
+                      ),
+                    );
                     mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
                   }
                 }
@@ -1946,12 +2165,16 @@ class _ExportedMessageCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: isDesktop ? 600.0 : 680.0),
+                  constraints: BoxConstraints(
+                    maxWidth: isDesktop ? 600.0 : 680.0,
+                  ),
                   child: Container(
                     padding: EdgeInsets.all(isDesktop ? 10.0 : 12.0),
                     decoration: BoxDecoration(
                       color: bubbleBg,
-                      borderRadius: BorderRadius.circular(isDesktop ? 12.0 : 16.0),
+                      borderRadius: BorderRadius.circular(
+                        isDesktop ? 12.0 : 16.0,
+                      ),
                     ),
                     child: contentWidget,
                   ),
@@ -2023,32 +2246,39 @@ class _ExportedChatImage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-            // Title (no icon, no bordered container)
-            Text(
-              conversationTitle,
-              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: cs.onSurface.withOpacity(0.95)),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-            const SizedBox(height: 2),
-            // Timestamp under title, aligned with title
-            Text(
-              DateFormat('yyyy-MM-dd HH:mm').format(timestamp),
-              style: TextStyle(fontSize: timeFontSize, color: cs.onSurface.withOpacity(0.6)),
-            ),
-            SizedBox(height: isDesktop ? 10.0 : 12.0),
-            for (final m in messages) ...[
-              _ExportedBubble(
-                message: m,
-                cs: cs,
-                showThinkingAndToolCards: showThinkingAndToolCards,
-                expandThinkingContent: expandThinkingContent,
-                isDesktop: isDesktop,
+              // Title (no icon, no bordered container)
+              Text(
+                conversationTitle,
+                style: TextStyle(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface.withOpacity(0.95),
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-              SizedBox(height: isDesktop ? 6.0 : 8.0),
-            ],
-            SizedBox(height: isDesktop ? 10.0 : 12.0),
-            _ExportDisclaimer(isDesktop: isDesktop),
+              const SizedBox(height: 2),
+              // Timestamp under title, aligned with title
+              Text(
+                DateFormat('yyyy-MM-dd HH:mm').format(timestamp),
+                style: TextStyle(
+                  fontSize: timeFontSize,
+                  color: cs.onSurface.withOpacity(0.6),
+                ),
+              ),
+              SizedBox(height: isDesktop ? 10.0 : 12.0),
+              for (final m in messages) ...[
+                _ExportedBubble(
+                  message: m,
+                  cs: cs,
+                  showThinkingAndToolCards: showThinkingAndToolCards,
+                  expandThinkingContent: expandThinkingContent,
+                  isDesktop: isDesktop,
+                ),
+                SizedBox(height: isDesktop ? 6.0 : 8.0),
+              ],
+              SizedBox(height: isDesktop ? 10.0 : 12.0),
+              _ExportDisclaimer(isDesktop: isDesktop),
             ],
           ),
         ),
@@ -2092,21 +2322,30 @@ class _ExportedBubble extends StatelessWidget {
         final events = chatService.getToolEvents(message.id);
         if (events.isNotEmpty) {
           toolParts = events
-              .map((e) => ToolUIPart(
-                    id: (e['id'] ?? '').toString(),
-                    toolName: (e['name'] ?? '').toString(),
-                    arguments: (e['arguments'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{},
-                    content: (e['content']?.toString().isNotEmpty == true) ? e['content'].toString() : null,
-                    loading: !(e['content']?.toString().isNotEmpty == true),
-                  ))
+              .map(
+                (e) => ToolUIPart(
+                  id: (e['id'] ?? '').toString(),
+                  toolName: (e['name'] ?? '').toString(),
+                  arguments:
+                      (e['arguments'] as Map?)?.cast<String, dynamic>() ??
+                      const <String, dynamic>{},
+                  content: (e['content']?.toString().isNotEmpty == true)
+                      ? e['content'].toString()
+                      : null,
+                  loading: !(e['content']?.toString().isNotEmpty == true),
+                ),
+              )
               .toList();
         }
       } catch (_) {}
 
       // Check if message has reasoningSegmentsJson (multiple thinking segments with toolStartIndex)
-      if (message.reasoningSegmentsJson != null && message.reasoningSegmentsJson!.isNotEmpty) {
+      if (message.reasoningSegmentsJson != null &&
+          message.reasoningSegmentsJson!.isNotEmpty) {
         try {
-          final segments = _deserializeReasoningSegments(message.reasoningSegmentsJson!);
+          final segments = _deserializeReasoningSegments(
+            message.reasoningSegmentsJson!,
+          );
           reasoningSegments = segments;
         } catch (_) {}
       }
@@ -2131,7 +2370,8 @@ class _ExportedBubble extends StatelessWidget {
           messageContent = message.content.replaceAll(thinkingRegex, '').trim();
         }
         // Also check reasoningText field
-        else if (message.reasoningText != null && message.reasoningText!.isNotEmpty) {
+        else if (message.reasoningText != null &&
+            message.reasoningText!.isNotEmpty) {
           reasoningSegments.add({
             'text': message.reasoningText!,
             'toolStartIndex': 0,
@@ -2167,19 +2407,22 @@ class _ExportedBubble extends StatelessWidget {
 
           // Add the reasoning segment (if any text)
           if (text.isNotEmpty) {
-            mixedContent.add(_ExportThinkingCard(
-              thinkingText: text,
-              cs: cs,
-              expanded: expandThinkingContent,
-              isDesktop: isDesktop,
-            ));
+            mixedContent.add(
+              _ExportThinkingCard(
+                thinkingText: text,
+                cs: cs,
+                expanded: expandThinkingContent,
+                isDesktop: isDesktop,
+              ),
+            );
             mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
           }
 
           // Determine tool range mapped to this segment: [start, end)
           int start = (seg['toolStartIndex'] as int?) ?? 0;
           final int end = (i < reasoningSegments.length - 1)
-              ? (reasoningSegments[i + 1]['toolStartIndex'] as int?) ?? toolParts.length
+              ? (reasoningSegments[i + 1]['toolStartIndex'] as int?) ??
+                    toolParts.length
               : toolParts.length;
 
           // Clamp to bounds and ensure non-decreasing
@@ -2190,7 +2433,9 @@ class _ExportedBubble extends StatelessWidget {
           for (int k = start; k < clampedEnd; k++) {
             // Hide builtin_search tool cards
             if (toolParts[k].toolName == 'builtin_search') continue;
-            mixedContent.add(_ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop));
+            mixedContent.add(
+              _ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop),
+            );
             mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
           }
         }
@@ -2198,7 +2443,9 @@ class _ExportedBubble extends StatelessWidget {
         // No reasoning segments but have tool cards - show all tool cards
         for (final toolPart in toolParts) {
           if (toolPart.toolName == 'builtin_search') continue;
-          mixedContent.add(_ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop));
+          mixedContent.add(
+            _ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop),
+          );
           mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
         }
       }
@@ -2263,7 +2510,8 @@ class _AssistantHeader extends StatelessWidget {
       if (useAssistName && (assistant?.name.trim().isNotEmpty ?? false)) {
         return assistant!.name.trim();
       }
-      return _modelDisplayName(context, message) ?? AppLocalizations.of(context)!.messageExportSheetAssistant;
+      return _modelDisplayName(context, message) ??
+          AppLocalizations.of(context)!.messageExportSheetAssistant;
     }();
 
     // Desktop uses smaller icon sizes
@@ -2272,7 +2520,11 @@ class _AssistantHeader extends StatelessWidget {
 
     final Widget leading = useAssistAvatar
         ? _AssistantAvatarSmall(assistant: assistant, size: iconSize)
-        : _ModelIconSmall(providerKey: message.providerId, modelId: message.modelId, size: iconSize);
+        : _ModelIconSmall(
+            providerKey: message.providerId,
+            modelId: message.modelId,
+            size: iconSize,
+          );
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -2281,7 +2533,11 @@ class _AssistantHeader extends StatelessWidget {
         SizedBox(width: isDesktop ? 6.0 : 8.0),
         Text(
           name,
-          style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.w500, color: cs.onSurface.withOpacity(0.7)),
+          style: TextStyle(
+            fontSize: nameFontSize,
+            fontWeight: FontWeight.w500,
+            color: cs.onSurface.withOpacity(0.7),
+          ),
         ),
       ],
     );
@@ -2289,7 +2545,11 @@ class _AssistantHeader extends StatelessWidget {
 }
 
 class _ModelIconSmall extends StatelessWidget {
-  const _ModelIconSmall({required this.providerKey, required this.modelId, this.size = 28.0});
+  const _ModelIconSmall({
+    required this.providerKey,
+    required this.modelId,
+    this.size = 28.0,
+  });
   final String? providerKey;
   final String? modelId;
   final double size;
@@ -2301,7 +2561,10 @@ class _ModelIconSmall extends StatelessWidget {
       return Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: cs.secondary.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.secondary.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
         child: Icon(Lucide.Bot, size: size * 0.64, color: cs.secondary),
       );
     }
@@ -2311,25 +2574,53 @@ class _ModelIconSmall extends StatelessWidget {
     if (asset != null) {
       if (asset.endsWith('.svg')) {
         final isColorful = asset.contains('color');
-        final ColorFilter? tint = (Theme.of(context).brightness == Brightness.dark && !isColorful)
+        final ColorFilter? tint =
+            (Theme.of(context).brightness == Brightness.dark && !isColorful)
             ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
             : null;
-        inner = SvgPicture.asset(asset, width: size * 0.5, height: size * 0.5, colorFilter: tint);
+        inner = SvgPicture.asset(
+          asset,
+          width: size * 0.5,
+          height: size * 0.5,
+          colorFilter: tint,
+        );
       } else {
-        inner = Image.asset(asset, width: size * 0.5, height: size * 0.5, fit: BoxFit.contain);
+        inner = Image.asset(
+          asset,
+          width: size * 0.5,
+          height: size * 0.5,
+          fit: BoxFit.contain,
+        );
       }
     } else {
       inner = Text(
         modelId!.isNotEmpty ? modelId!.characters.first.toUpperCase() : '?',
-        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.43),
+        style: TextStyle(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.43,
+        ),
       );
     }
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : cs.primary.withOpacity(0.1), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white10
+            : cs.primary.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
-      child: SizedBox(width: size * 0.64, height: size * 0.64, child: Center(child: inner is SvgPicture || inner is Image ? inner : FittedBox(child: inner))),
+      child: SizedBox(
+        width: size * 0.64,
+        height: size * 0.64,
+        child: Center(
+          child: inner is SvgPicture || inner is Image
+              ? inner
+              : FittedBox(child: inner),
+        ),
+      ),
     );
   }
 }
@@ -2350,40 +2641,79 @@ class _AssistantAvatarSmall extends StatelessWidget {
           builder: (ctx, snap) {
             final p = snap.data;
             if (p != null && File(p).existsSync()) {
-              return ClipOval(child: Image.file(File(p), width: size, height: size, fit: BoxFit.cover));
+              return ClipOval(
+                child: Image.file(
+                  File(p),
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                ),
+              );
             }
             return ClipOval(
-              child: Image.network(av, width: size, height: size, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _assistantInitial(cs, assistant?.name ?? '')),
+              child: Image.network(
+                av,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _assistantInitial(cs, assistant?.name ?? ''),
+              ),
             );
           },
         );
       }
       if (av.startsWith('/') || av.contains(':')) {
         final fixed = SandboxPathResolver.fix(av);
-        return ClipOval(child: Image.file(File(fixed), width: size, height: size, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _assistantInitial(cs, assistant?.name ?? '')));
+        return ClipOval(
+          child: Image.file(
+            File(fixed),
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                _assistantInitial(cs, assistant?.name ?? ''),
+          ),
+        );
       }
       // treat as emoji or single char label
       return Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: cs.primary.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
-        child: Text(av.characters.take(1).toString(), style: TextStyle(fontSize: size * 0.57)),
+        child: Text(
+          av.characters.take(1).toString(),
+          style: TextStyle(fontSize: size * 0.57),
+        ),
       );
     }
     return _assistantInitial(cs, assistant?.name ?? '');
   }
 
   Widget _assistantInitial(ColorScheme cs, String name) {
-    final ch = name.trim().isNotEmpty ? name.characters.first.toUpperCase() : 'A';
+    final ch = name.trim().isNotEmpty
+        ? name.characters.first.toUpperCase()
+        : 'A';
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: cs.primary.withOpacity(0.1), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: cs.primary.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
-      child: Text(ch, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.5)),
+      child: Text(
+        ch,
+        style: TextStyle(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.5,
+        ),
+      ),
     );
   }
 }
@@ -2399,10 +2729,16 @@ class _ExportDisclaimer extends StatelessWidget {
     final double fontSize = isDesktop ? 10.0 : 12.0;
     return Center(
       child: Padding(
-        padding: EdgeInsets.only(top: isDesktop ? 3.0 : 4.0, bottom: isDesktop ? 4.0 : 6.0),
+        padding: EdgeInsets.only(
+          top: isDesktop ? 3.0 : 4.0,
+          bottom: isDesktop ? 4.0 : 6.0,
+        ),
         child: Text(
           text,
-          style: TextStyle(fontSize: fontSize, color: cs.onSurface.withOpacity(0.5)),
+          style: TextStyle(
+            fontSize: fontSize,
+            color: cs.onSurface.withOpacity(0.5),
+          ),
           textAlign: TextAlign.center,
         ),
       ),
@@ -2410,7 +2746,10 @@ class _ExportDisclaimer extends StatelessWidget {
   }
 }
 
-Future<void> _runWithExportingOverlay(BuildContext context, Future<void> Function() task) async {
+Future<void> _runWithExportingOverlay(
+  BuildContext context,
+  Future<void> Function() task,
+) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   // Show overlay first
@@ -2432,7 +2771,10 @@ Future<void> _runWithExportingOverlay(BuildContext context, Future<void> Functio
               const SizedBox(height: 12),
               Text(
                 l10n.messageExportSheetExporting,
-                style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.8)),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withOpacity(0.8),
+                ),
               ),
             ],
           ),
@@ -2477,7 +2819,9 @@ class _ExportOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color base = isDark ? cs.primary.withOpacity(0.10) : cs.primary.withOpacity(0.06);
+    final Color base = isDark
+        ? cs.primary.withOpacity(0.10)
+        : cs.primary.withOpacity(0.06);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: IosCardPress(
@@ -2500,9 +2844,21 @@ class _ExportOptionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.75))),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: cs.onSurface.withOpacity(0.75),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -2566,13 +2922,19 @@ class _ExportThinkingCard extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      padding: EdgeInsets.symmetric(horizontal: isDesktop ? 8.0 : 10.0, vertical: isDesktop ? 6.0 : 8.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? 8.0 : 10.0,
+        vertical: isDesktop ? 6.0 : 8.0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: isDesktop ? 6.0 : 8.0, vertical: isDesktop ? 4.0 : 6.0),
+            padding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? 6.0 : 8.0,
+              vertical: isDesktop ? 4.0 : 6.0,
+            ),
             child: Row(
               children: [
                 SvgPicture.asset(
@@ -2596,7 +2958,12 @@ class _ExportThinkingCard extends StatelessWidget {
           // Content (if expanded)
           if (expanded)
             Padding(
-              padding: EdgeInsets.fromLTRB(isDesktop ? 6.0 : 8.0, 2, isDesktop ? 6.0 : 8.0, isDesktop ? 4.0 : 6.0),
+              padding: EdgeInsets.fromLTRB(
+                isDesktop ? 6.0 : 8.0,
+                2,
+                isDesktop ? 6.0 : 8.0,
+                isDesktop ? 4.0 : 6.0,
+              ),
               child: Text(
                 cleanedText,
                 style: TextStyle(
@@ -2623,10 +2990,13 @@ class _ExportThinkingCard extends StatelessWidget {
   }
 }
 
-
 // Tool card widget for export
 class _ExportToolCard extends StatelessWidget {
-  const _ExportToolCard({required this.part, required this.cs, this.isDesktop = false});
+  const _ExportToolCard({
+    required this.part,
+    required this.cs,
+    this.isDesktop = false,
+  });
   final ToolUIPart part;
   final ColorScheme cs;
   final bool isDesktop;
@@ -2648,7 +3018,11 @@ class _ExportToolCard extends StatelessWidget {
     }
   }
 
-  String _titleFor(BuildContext context, String name, Map<String, dynamic> args) {
+  String _titleFor(
+    BuildContext context,
+    String name,
+    Map<String, dynamic> args,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     switch (name) {
       case 'create_memory':
@@ -2682,7 +3056,12 @@ class _ExportToolCard extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      padding: EdgeInsets.fromLTRB(isDesktop ? 12.0 : 16.0, isDesktop ? 10.0 : 12.0, isDesktop ? 10.0 : 12.0, isDesktop ? 10.0 : 12.0),
+      padding: EdgeInsets.fromLTRB(
+        isDesktop ? 12.0 : 16.0,
+        isDesktop ? 10.0 : 12.0,
+        isDesktop ? 10.0 : 12.0,
+        isDesktop ? 10.0 : 12.0,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -2690,7 +3069,11 @@ class _ExportToolCard extends StatelessWidget {
             width: iconSize,
             height: iconSize,
             child: Center(
-              child: Icon(_iconFor(part.toolName), size: iconSize, color: cs.secondary),
+              child: Icon(
+                _iconFor(part.toolName),
+                size: iconSize,
+                color: cs.secondary,
+              ),
             ),
           ),
           SizedBox(width: isDesktop ? 8.0 : 10.0),

@@ -3,12 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/services/haptics.dart';
 
-enum NotificationType {
-  success,
-  error,
-  info,
-  warning,
-}
+enum NotificationType { success, error, info, warning }
 
 class AppNotification {
   final String message;
@@ -51,25 +46,21 @@ class AppSnackBarManager extends ChangeNotifier {
     );
 
     // Setup smooth entrance animations
-    entry.slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: entry.animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    entry.slideAnimation =
+        Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: entry.animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
-    entry.fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: entry.animationController,
-      curve: Curves.easeOut,
-    ));
+    entry.fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: entry.animationController, curve: Curves.easeOut),
+    );
 
     _activeToasts.insert(0, entry);
     notifyListeners();
-    
+
     entry.animationController.forward();
 
     // Auto dismiss
@@ -80,10 +71,10 @@ class AppSnackBarManager extends ChangeNotifier {
 
   void _dismiss(NotificationEntry entry) async {
     if (!_activeToasts.contains(entry)) return;
-    
+
     // Start exit animation
     await entry.animationController.reverse();
-    
+
     _activeToasts.remove(entry);
     entry.animationController.dispose();
     notifyListeners();
@@ -120,11 +111,8 @@ class NotificationEntry {
 
 class AppSnackBarOverlay extends StatefulWidget {
   final Widget child;
-  
-  const AppSnackBarOverlay({
-    super.key,
-    required this.child,
-  });
+
+  const AppSnackBarOverlay({super.key, required this.child});
 
   @override
   State<AppSnackBarOverlay> createState() => _AppSnackBarOverlayState();
@@ -164,9 +152,14 @@ class _AppSnackBarOverlayState extends State<AppSnackBarOverlay> {
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
-                  for (int i = math.min(_manager.activeToasts.length - 1, AppSnackBarManager._maxVisible - 1); 
-                       i >= 0; 
-                       i--)
+                  for (
+                    int i = math.min(
+                      _manager.activeToasts.length - 1,
+                      AppSnackBarManager._maxVisible - 1,
+                    );
+                    i >= 0;
+                    i--
+                  )
                     _buildToast(context, i),
                 ],
               ),
@@ -182,24 +175,24 @@ class _AppSnackBarOverlayState extends State<AppSnackBarOverlay> {
     final isTop = index == 0;
     final visualIndex = math.min(index, AppSnackBarManager._maxVisible - 1);
     final isVisible = index < AppSnackBarManager._maxVisible;
-    
+
     return AnimatedBuilder(
       animation: entry.animationController,
       builder: (context, child) {
         // Calculate positioning - 统一间距
         final baseOffset = visualIndex * 8.0; // 每个Toast固定间距8px
-        
+
         // Calculate scale - 统一缩放
         final scaleValue = 1.0 - (visualIndex * 0.03);
-        
+
         // Calculate opacity - 统一透明度
         final fadeValue = entry.fadeAnimation?.value ?? 1.0;
         final baseOpacity = isVisible ? 1.0 - (visualIndex * 0.2) : 0.0;
         final opacity = fadeValue * baseOpacity;
-        
+
         // Apply slide animation
         final slideValue = entry.slideAnimation?.value ?? Offset.zero;
-        
+
         return Transform.translate(
           offset: Offset(0, baseOffset + slideValue.dy * 100),
           child: Transform.scale(
@@ -240,7 +233,8 @@ class NotificationWidget extends StatefulWidget {
   State<NotificationWidget> createState() => _NotificationWidgetState();
 }
 
-class _NotificationWidgetState extends State<NotificationWidget> with SingleTickerProviderStateMixin {
+class _NotificationWidgetState extends State<NotificationWidget>
+    with SingleTickerProviderStateMixin {
   double _dragOffset = 0;
   late AnimationController _dragController;
   late Animation<double> _dragAnimation;
@@ -253,7 +247,7 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
       duration: const Duration(milliseconds: 250),
       vsync: this,
     );
-    
+
     _dragController.addListener(() {
       if (mounted) {
         setState(() {
@@ -280,21 +274,17 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
 
   void _handleDragEnd(DragEndDetails details) {
     if (!widget.isTop || _isDismissing) return;
-    
+
     final velocity = details.velocity.pixelsPerSecond.dy;
     // Dismiss if dragged up sufficiently or with enough velocity
     if (_dragOffset < -40 || velocity < -300) {
       _isDismissing = true;
-      
+
       // Animate off screen smoothly
-      _dragAnimation = Tween<double>(
-        begin: _dragOffset,
-        end: -150.0,
-      ).animate(CurvedAnimation(
-        parent: _dragController,
-        curve: Curves.easeOut,
-      ));
-      
+      _dragAnimation = Tween<double>(begin: _dragOffset, end: -150.0).animate(
+        CurvedAnimation(parent: _dragController, curve: Curves.easeOut),
+      );
+
       _dragController.forward().then((_) {
         if (mounted) {
           widget.onDismiss();
@@ -302,14 +292,10 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
       });
     } else {
       // Smoothly return to position
-      _dragAnimation = Tween<double>(
-        begin: _dragOffset,
-        end: 0.0,
-      ).animate(CurvedAnimation(
-        parent: _dragController,
-        curve: Curves.easeOutCubic,
-      ));
-      
+      _dragAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+        CurvedAnimation(parent: _dragController, curve: Curves.easeOutCubic),
+      );
+
       _dragController.forward(from: 0).then((_) {
         if (mounted) {
           setState(() {
@@ -351,10 +337,10 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // Apply interactive feedback scale
     final interactiveScale = _isDismissing ? 0.98 : 1.0;
-    
+
     return GestureDetector(
       onVerticalDragStart: (_) {
         if (_dragController.isAnimating) _dragController.stop();
@@ -377,8 +363,8 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
           constraints: const BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: isDark
-              ? const Color(0xFF1C1C1E).withValues(alpha: 0.98)
-              : Colors.white.withValues(alpha: 0.98),
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.98)
+                : Colors.white.withValues(alpha: 0.98),
             // color: cs.surface.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
@@ -395,22 +381,21 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Icon(
-                    _getIcon(),
-                    size: 22,
-                    color: _getIconColor(cs),
-                  ),
+                  Icon(_getIcon(), size: 22, color: _getIconColor(cs)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       widget.notification.message,
-                      style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurface,
-                        height: 1.3,
-                        decoration: TextDecoration.none,
-                      ),
+                      style:
+                          (Theme.of(context).textTheme.bodyMedium ??
+                                  const TextStyle())
+                              .copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: cs.onSurface,
+                                height: 1.3,
+                                decoration: TextDecoration.none,
+                              ),
                     ),
                   ),
                   if (widget.notification.actionLabel != null) ...[
@@ -422,17 +407,23 @@ class _NotificationWidgetState extends State<NotificationWidget> with SingleTick
                         widget.onDismiss();
                       },
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         minimumSize: const Size(0, 0),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
                         widget.notification.actionLabel!,
-                        style: (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: cs.primary,
-                        ),
+                        style:
+                            (Theme.of(context).textTheme.labelLarge ??
+                                    const TextStyle())
+                                .copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.primary,
+                                ),
                       ),
                     ),
                   ],

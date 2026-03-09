@@ -25,11 +25,13 @@ class KelivoFetchRequestPayload {
   final Map<String, String> headers;
 
   KelivoFetchRequestPayload({required this.url, Map<String, String>? headers})
-      : headers = headers ?? const {};
+    : headers = headers ?? const {};
 
   static KelivoFetchRequestPayload parse(Object? args) {
     if (args is! Map) {
-      throw ArgumentError('Invalid arguments: expected object with url[, headers]');
+      throw ArgumentError(
+        'Invalid arguments: expected object with url[, headers]',
+      );
     }
     final map = args.cast<String, dynamic>();
     final urlRaw = (map['url'] ?? '').toString().trim();
@@ -65,11 +67,15 @@ class KelivoFetcher {
       }
       return resp;
     } catch (e) {
-      throw Exception('Failed to fetch ${payload.url}: ${e is Exception ? e.toString() : 'Unknown error'}');
+      throw Exception(
+        'Failed to fetch ${payload.url}: ${e is Exception ? e.toString() : 'Unknown error'}',
+      );
     }
   }
 
-  static Future<Map<String, dynamic>> html(KelivoFetchRequestPayload payload) async {
+  static Future<Map<String, dynamic>> html(
+    KelivoFetchRequestPayload payload,
+  ) async {
     try {
       final resp = await _fetch(payload);
       final text = resp.body;
@@ -79,7 +85,9 @@ class KelivoFetcher {
     }
   }
 
-  static Future<Map<String, dynamic>> json(KelivoFetchRequestPayload payload) async {
+  static Future<Map<String, dynamic>> json(
+    KelivoFetchRequestPayload payload,
+  ) async {
     try {
       final resp = await _fetch(payload);
       final raw = resp.body;
@@ -90,7 +98,9 @@ class KelivoFetcher {
     }
   }
 
-  static Future<Map<String, dynamic>> txt(KelivoFetchRequestPayload payload) async {
+  static Future<Map<String, dynamic>> txt(
+    KelivoFetchRequestPayload payload,
+  ) async {
     try {
       final resp = await _fetch(payload);
       final html = resp.body;
@@ -104,7 +114,9 @@ class KelivoFetcher {
     }
   }
 
-  static Future<Map<String, dynamic>> markdown(KelivoFetchRequestPayload payload) async {
+  static Future<Map<String, dynamic>> markdown(
+    KelivoFetchRequestPayload payload,
+  ) async {
     try {
       final resp = await _fetch(payload);
       final html = resp.body;
@@ -116,20 +128,20 @@ class KelivoFetcher {
   }
 
   static Map<String, dynamic> _ok(String text) => {
-        'content': [
-          {'type': 'text', 'text': text}
-        ],
-        'isStreaming': false,
-        'isError': false,
-      };
+    'content': [
+      {'type': 'text', 'text': text},
+    ],
+    'isStreaming': false,
+    'isError': false,
+  };
 
   static Map<String, dynamic> _err(String message) => {
-        'content': [
-          {'type': 'text', 'text': message}
-        ],
-        'isStreaming': false,
-        'isError': true,
-      };
+    'content': [
+      {'type': 'text', 'text': message},
+    ],
+    'isStreaming': false,
+    'isError': true,
+  };
 }
 
 /// Minimal JSON-RPC server for MCP that serves @kelivo/fetch tools.
@@ -164,22 +176,20 @@ class KelivoFetchMcpServerEngine {
 
       switch (method) {
         case mcp.McpProtocol.methodInitialize:
-          return _ok(id, result: {
-            'serverInfo': {
-              'name': '@kelivo/fetch',
-              'version': '0.1.0',
+          return _ok(
+            id,
+            result: {
+              'serverInfo': {'name': '@kelivo/fetch', 'version': '0.1.0'},
+              'protocolVersion': mcp.McpProtocol.defaultVersion,
+              // Only tools capability is advertised for this minimal server
+              'capabilities': {
+                'tools': {'listChanged': false},
+              },
             },
-            'protocolVersion': mcp.McpProtocol.defaultVersion,
-            // Only tools capability is advertised for this minimal server
-            'capabilities': {
-              'tools': {'listChanged': false},
-            },
-          });
+          );
 
         case mcp.McpProtocol.methodListTools:
-          return _ok(id, result: {
-            'tools': _toolDefinitions(),
-          });
+          return _ok(id, result: {'tools': _toolDefinitions()});
 
         case mcp.McpProtocol.methodCallTool:
           final name = (params['name'] ?? '').toString();
@@ -225,14 +235,14 @@ class KelivoFetchMcpServerEngine {
   }
 
   Map<String, dynamic> _ok(dynamic id, {required Map<String, dynamic> result}) {
-    return {
-      'jsonrpc': '2.0',
-      if (id != null) 'id': id,
-      'result': result,
-    };
+    return {'jsonrpc': '2.0', if (id != null) 'id': id, 'result': result};
   }
 
-  Map<String, dynamic> _error(dynamic id, {required int code, required String message}) {
+  Map<String, dynamic> _error(
+    dynamic id, {
+    required int code,
+    required String message,
+  }) {
     return {
       'jsonrpc': '2.0',
       if (id != null) 'id': id,
@@ -244,13 +254,16 @@ class KelivoFetchMcpServerEngine {
 
   List<Map<String, dynamic>> _toolDefinitions() {
     Map<String, dynamic> schema() => {
+      'type': 'object',
+      'properties': {
+        'url': {'type': 'string', 'description': 'URL of the website to fetch'},
+        'headers': {
           'type': 'object',
-          'properties': {
-            'url': {'type': 'string', 'description': 'URL of the website to fetch'},
-            'headers': {'type': 'object', 'description': 'Optional headers to include in the request'},
-          },
-          'required': ['url']
-        };
+          'description': 'Optional headers to include in the request',
+        },
+      },
+      'required': ['url'],
+    };
 
     return [
       {
@@ -265,7 +278,8 @@ class KelivoFetchMcpServerEngine {
       },
       {
         'name': 'fetch_txt',
-        'description': 'Fetch a website, return the content as plain text (no HTML)',
+        'description':
+            'Fetch a website, return the content as plain text (no HTML)',
         'inputSchema': schema(),
       },
       {

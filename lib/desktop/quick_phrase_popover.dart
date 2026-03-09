@@ -21,7 +21,12 @@ Future<QuickPhrase?> showDesktopQuickPhrasePopover(
   if (box == null) return null;
   final offset = box.localToGlobal(Offset.zero);
   final size = box.size;
-  final anchorRect = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+  final anchorRect = Rect.fromLTWH(
+    offset.dx,
+    offset.dy,
+    size.width,
+    size.height,
+  );
 
   final completer = Completer<QuickPhrase?>();
   late OverlayEntry entry;
@@ -31,11 +36,15 @@ Future<QuickPhrase?> showDesktopQuickPhrasePopover(
       anchorWidth: size.width,
       phrases: phrases,
       onSelect: (p) {
-        try { entry.remove(); } catch (_) {}
+        try {
+          entry.remove();
+        } catch (_) {}
         if (!completer.isCompleted) completer.complete(p);
       },
       onClose: () {
-        try { entry.remove(); } catch (_) {}
+        try {
+          entry.remove();
+        } catch (_) {}
         if (!completer.isCompleted) completer.complete(null);
       },
     ),
@@ -73,12 +82,17 @@ class _QuickPhrasePopoverState extends State<_QuickPhrasePopover>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       setState(() => _offset = Offset.zero);
-      try { await _controller.forward(); } catch (_) {}
+      try {
+        await _controller.forward();
+      } catch (_) {}
     });
   }
 
@@ -92,7 +106,9 @@ class _QuickPhrasePopoverState extends State<_QuickPhrasePopover>
     if (_closing) return;
     _closing = true;
     setState(() => _offset = const Offset(0, 1.0));
-    try { await _controller.reverse(); } catch (_) {}
+    try {
+      await _controller.reverse();
+    } catch (_) {}
     if (mounted) widget.onClose();
   }
 
@@ -100,8 +116,11 @@ class _QuickPhrasePopoverState extends State<_QuickPhrasePopover>
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final width = (widget.anchorWidth - 16).clamp(320.0, 720.0);
-    final left = (widget.anchorRect.left + (widget.anchorRect.width - width) / 2)
-        .clamp(8.0, screen.width - width - 8.0);
+    final left =
+        (widget.anchorRect.left + (widget.anchorRect.width - width) / 2).clamp(
+          8.0,
+          screen.width - width - 8.0,
+        );
     final clipHeight = widget.anchorRect.top.clamp(0.0, screen.height);
 
     return Stack(
@@ -131,7 +150,9 @@ class _QuickPhrasePopoverState extends State<_QuickPhrasePopover>
                       curve: Curves.easeOutCubic,
                       offset: _offset,
                       child: _GlassPanel(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
                         child: _QuickPhraseList(
                           phrases: widget.phrases,
                           onSelect: (p) async {
@@ -166,17 +187,25 @@ class _GlassPanel extends StatelessWidget {
         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.28 : 0.56),
+            color: (isDark ? Colors.black : Colors.white).withOpacity(
+              isDark ? 0.28 : 0.56,
+            ),
             border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(isDark ? 0.06 : 0.18), width: 0.7),
-              left: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
-              right: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
+              top: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.06 : 0.18),
+                width: 0.7,
+              ),
+              left: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
+              right: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
             ),
           ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: child,
-          ),
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     );
@@ -217,7 +246,12 @@ class _QuickPhraseList extends StatelessWidget {
 }
 
 class _RowItem extends StatefulWidget {
-  const _RowItem({required this.title, required this.preview, required this.isGlobal, required this.onTap});
+  const _RowItem({
+    required this.title,
+    required this.preview,
+    required this.isGlobal,
+    required this.onTap,
+  });
   final String title;
   final String preview;
   final bool isGlobal;
@@ -236,7 +270,9 @@ class _RowItemState extends State<_RowItem> {
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final baseBg = Colors.transparent;
-    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.12 : 0.10);
+    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(
+      isDark ? 0.12 : 0.10,
+    );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -267,7 +303,11 @@ class _RowItemState extends State<_RowItem> {
                   widget.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, decoration: TextDecoration.none),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -279,7 +319,12 @@ class _RowItemState extends State<_RowItem> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.70), decoration: TextDecoration.none),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: cs.onSurface.withOpacity(0.70),
+                    decoration: TextDecoration.none,
+                  ),
                 ),
               ),
             ],

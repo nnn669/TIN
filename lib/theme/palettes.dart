@@ -643,9 +643,6 @@ class ThemePalettes {
   ];
 
   static ThemePalette byId(String id) {
-    return all.firstWhere(
-      (p) => p.id == id,
-      orElse: () => defaultPalette,
-    );
+    return all.firstWhere((p) => p.id == id, orElse: () => defaultPalette);
   }
 }

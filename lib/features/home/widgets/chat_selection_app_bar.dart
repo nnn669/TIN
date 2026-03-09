@@ -5,7 +5,8 @@ import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../icons/lucide_adapter.dart';
 
-class ChatSelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
+class ChatSelectionAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   const ChatSelectionAppBar({
     super.key,
     required this.selectedCount,
@@ -62,7 +63,11 @@ class ChatSelectionAppBar extends StatelessWidget implements PreferredSizeWidget
         l10n.chatSelectionSelectedCountTitle(selectedCount),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: cs.onSurface),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurface,
+        ),
       ),
       actions: [
         Padding(
@@ -74,7 +79,10 @@ class ChatSelectionAppBar extends StatelessWidget implements PreferredSizeWidget
                 behavior: HitTestBehavior.opaque,
                 onTap: onInvertSelection,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 10,
+                  ),
                   child: Text(
                     l10n.modelFetchInvertTooltip,
                     style: TextStyle(
@@ -90,7 +98,10 @@ class ChatSelectionAppBar extends StatelessWidget implements PreferredSizeWidget
                 behavior: HitTestBehavior.opaque,
                 onTap: onToggleSelectAll,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

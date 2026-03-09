@@ -72,7 +72,9 @@ class MarkdownMediaSanitizer {
       }
 
       // Replace only the URL part inside the parentheses
-      final replaced = markdown.substring(m.start, m.end).replaceFirst(dataUrl, file.path);
+      final replaced = markdown
+          .substring(m.start, m.end)
+          .replaceFirst(dataUrl, file.path);
       sb.write(replaced);
       last = m.end;
       idx++;
@@ -100,7 +102,9 @@ class MarkdownMediaSanitizer {
       final isRemote = url.startsWith('http://') || url.startsWith('https://');
       final isData = url.startsWith('data:');
       final isFileUri = url.startsWith('file://');
-      final isLikelyLocalPath = (!isRemote && !isData) && (isFileUri || url.startsWith('/') || url.contains(':'));
+      final isLikelyLocalPath =
+          (!isRemote && !isData) &&
+          (isFileUri || url.startsWith('/') || url.contains(':'));
 
       if (!isLikelyLocalPath) {
         // Keep original
@@ -116,7 +120,8 @@ class MarkdownMediaSanitizer {
           path = url.replaceFirst('file://', '');
         }
         // Read bytes and encode
-        final fixed = path; // Caller may already pass sandbox-fixed paths; avoid depending on Flutter layer here
+        final fixed =
+            path; // Caller may already pass sandbox-fixed paths; avoid depending on Flutter layer here
         final f = File(fixed);
         if (!f.existsSync()) {
           // Fallback to original if missing
@@ -128,7 +133,9 @@ class MarkdownMediaSanitizer {
         final b64 = base64Encode(bytes);
         final mime = _guessMimeFromPath(fixed);
         final dataUrl = 'data:$mime;base64,$b64';
-        final replaced = markdown.substring(m.start, m.end).replaceFirst(url, dataUrl);
+        final replaced = markdown
+            .substring(m.start, m.end)
+            .replaceFirst(url, dataUrl);
         sb.write(replaced);
       } catch (_) {
         // On failure, keep original
@@ -149,7 +156,8 @@ class MarkdownMediaSanitizer {
     return 'image/png';
   }
 
-  static List<int> _decodeBase64(String b64) => base64Decode(b64.replaceAll('\n', ''));
+  static List<int> _decodeBase64(String b64) =>
+      base64Decode(b64.replaceAll('\n', ''));
 
   static String _mimeOf(String dataUrl) {
     try {

@@ -6,4 +6,3 @@ class ChatLayoutConstants {
   /// Max width for the chat input bar area.
   static const double maxInputWidth = 860.0;
 }
-

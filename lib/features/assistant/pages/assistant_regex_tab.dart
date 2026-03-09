@@ -22,9 +22,13 @@ class AssistantRegexTab extends StatefulWidget {
 }
 
 class _AssistantRegexTabState extends State<AssistantRegexTab> {
-  List<AssistantRegexScope> _normalizeScopes(Iterable<AssistantRegexScope> scopes) {
+  List<AssistantRegexScope> _normalizeScopes(
+    Iterable<AssistantRegexScope> scopes,
+  ) {
     final set = {...scopes};
-    return AssistantRegexScope.values.where((e) => set.contains(e)).toList(growable: false);
+    return AssistantRegexScope.values
+        .where((e) => set.contains(e))
+        .toList(growable: false);
   }
 
   void _reorder(int oldIndex, int newIndex) {
@@ -54,7 +58,8 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
     final ap = context.read<AssistantProvider>();
     final assistant = ap.getById(widget.assistantId);
     if (assistant == null) return;
-    final list = List<AssistantRegex>.of(assistant.regexRules)..removeWhere((r) => r.id == rule.id);
+    final list = List<AssistantRegex>.of(assistant.regexRules)
+      ..removeWhere((r) => r.id == rule.id);
     await ap.updateAssistant(assistant.copyWith(regexRules: list));
   }
 
@@ -93,7 +98,9 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final assistant = context.watch<AssistantProvider>().getById(widget.assistantId);
+    final assistant = context.watch<AssistantProvider>().getById(
+      widget.assistantId,
+    );
     if (assistant == null) return const SizedBox.shrink();
     final rules = assistant.regexRules;
 
@@ -109,7 +116,10 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
               Text(
                 l10n.assistantEditRegexDescription,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.7)),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
               ),
               const SizedBox(height: 24),
               ConstrainedBox(
@@ -117,9 +127,14 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
                 child: IosCardPress(
                   onTap: () => _addOrEdit(),
                   borderRadius: BorderRadius.circular(12),
-                  baseColor: isDark ? Colors.white10 : cs.primary.withOpacity(0.12),
+                  baseColor: isDark
+                      ? Colors.white10
+                      : cs.primary.withOpacity(0.12),
                   pressedBlendStrength: 0.18,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
@@ -128,7 +143,10 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
                       const SizedBox(width: 8),
                       Text(
                         l10n.assistantEditAddRegexButton,
-                        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -151,10 +169,7 @@ class _AssistantRegexTabState extends State<AssistantRegexTab> {
               animation: animation,
               builder: (context, _) {
                 final t = Curves.easeOut.transform(animation.value);
-                return Transform.scale(
-                  scale: 0.98 + 0.02 * t,
-                  child: child,
-                );
+                return Transform.scale(scale: 0.98 + 0.02 * t, child: child);
               },
             );
           },
@@ -201,13 +216,18 @@ class AssistantRegexDesktopPane extends StatefulWidget {
   final String assistantId;
 
   @override
-  State<AssistantRegexDesktopPane> createState() => _AssistantRegexDesktopPaneState();
+  State<AssistantRegexDesktopPane> createState() =>
+      _AssistantRegexDesktopPaneState();
 }
 
 class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
-  List<AssistantRegexScope> _normalizeScopes(Iterable<AssistantRegexScope> scopes) {
+  List<AssistantRegexScope> _normalizeScopes(
+    Iterable<AssistantRegexScope> scopes,
+  ) {
     final set = {...scopes};
-    return AssistantRegexScope.values.where((e) => set.contains(e)).toList(growable: false);
+    return AssistantRegexScope.values
+        .where((e) => set.contains(e))
+        .toList(growable: false);
   }
 
   void _reorder(int oldIndex, int newIndex) {
@@ -237,7 +257,8 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
     final ap = context.read<AssistantProvider>();
     final assistant = ap.getById(widget.assistantId);
     if (assistant == null) return;
-    final list = List<AssistantRegex>.of(assistant.regexRules)..removeWhere((r) => r.id == rule.id);
+    final list = List<AssistantRegex>.of(assistant.regexRules)
+      ..removeWhere((r) => r.id == rule.id);
     await ap.updateAssistant(assistant.copyWith(regexRules: list));
   }
 
@@ -276,7 +297,9 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final assistant = context.watch<AssistantProvider>().getById(widget.assistantId);
+    final assistant = context.watch<AssistantProvider>().getById(
+      widget.assistantId,
+    );
     if (assistant == null) return const SizedBox.shrink();
     final rules = assistant.regexRules;
 
@@ -295,12 +318,18 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
                     children: [
                       Text(
                         l10n.assistantEditPageRegexTab,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         l10n.assistantEditRegexDescription,
-                        style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.65)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: cs.onSurface.withOpacity(0.65),
+                        ),
                       ),
                     ],
                   ),
@@ -308,8 +337,13 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
                 IosCardPress(
                   onTap: () => _addOrEdit(),
                   borderRadius: BorderRadius.circular(12),
-                  baseColor: isDark ? Colors.white10 : cs.primary.withOpacity(0.12),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  baseColor: isDark
+                      ? Colors.white10
+                      : cs.primary.withOpacity(0.12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   pressedBlendStrength: 0.18,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -318,7 +352,10 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
                       const SizedBox(width: 6),
                       Text(
                         l10n.assistantEditAddRegexButton,
-                        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -332,7 +369,10 @@ class _AssistantRegexDesktopPaneState extends State<AssistantRegexDesktopPane> {
                     child: Text(
                       l10n.assistantEditRegexDescription,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.6)),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: cs.onSurface.withOpacity(0.6),
+                      ),
                     ),
                   )
                 : ReorderableListView.builder(
@@ -408,7 +448,9 @@ class _RegexRuleCardState extends State<_RegexRuleCard> {
     final l10n = AppLocalizations.of(context)!;
     final bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
     final borderBase = cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06);
-    final borderColor = widget.desktop && _hovered ? cs.primary.withOpacity(0.55) : borderBase;
+    final borderColor = widget.desktop && _hovered
+        ? cs.primary.withOpacity(0.55)
+        : borderBase;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -434,10 +476,15 @@ class _RegexRuleCardState extends State<_RegexRuleCard> {
                   children: [
                     Expanded(
                       child: Text(
-                        widget.rule.name.isEmpty ? l10n.assistantRegexUntitled : widget.rule.name,
+                        widget.rule.name.isEmpty
+                            ? l10n.assistantRegexUntitled
+                            : widget.rule.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -462,7 +509,10 @@ class _RegexRuleCardState extends State<_RegexRuleCard> {
                       borderRadius: BorderRadius.circular(12),
                       baseColor: Colors.transparent,
                       pressedBlendStrength: 0.16,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -470,7 +520,10 @@ class _RegexRuleCardState extends State<_RegexRuleCard> {
                           const SizedBox(width: 6),
                           Text(
                             l10n.assistantRegexDeleteButton,
-                            style: TextStyle(color: cs.error, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: cs.error,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
@@ -507,7 +560,9 @@ class _RegexRuleCardState extends State<_RegexRuleCard> {
           (p) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.06) : cs.primary.withOpacity(0.10),
+              color: isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : cs.primary.withOpacity(0.10),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: cs.primary.withOpacity(0.35)),
             ),
@@ -548,9 +603,15 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final glassBase = isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.06);
-    final overlay = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-    final tileColor = _pressed ? Color.alphaBlend(overlay, glassBase) : glassBase;
+    final glassBase = isDark
+        ? Colors.black.withOpacity(0.06)
+        : Colors.white.withOpacity(0.06);
+    final overlay = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
+    final tileColor = _pressed
+        ? Color.alphaBlend(overlay, glassBase)
+        : glassBase;
     final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.10 : 0.10);
 
     final child = SizedBox(
@@ -606,21 +667,32 @@ class _RegexFormData {
   final bool replaceOnly;
 }
 
-Future<_RegexFormData?> _showRegexEditor(BuildContext context, {AssistantRegex? rule}) async {
+Future<_RegexFormData?> _showRegexEditor(
+  BuildContext context, {
+  AssistantRegex? rule,
+}) async {
   final platform = Theme.of(context).platform;
-  final isDesktop = platform == TargetPlatform.macOS || platform == TargetPlatform.linux || platform == TargetPlatform.windows;
+  final isDesktop =
+      platform == TargetPlatform.macOS ||
+      platform == TargetPlatform.linux ||
+      platform == TargetPlatform.windows;
   return isDesktop
       ? _showRegexDialog(context, rule: rule)
       : _showRegexBottomSheet(context, rule: rule);
 }
 
-Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRegex? rule}) async {
+Future<_RegexFormData?> _showRegexBottomSheet(
+  BuildContext context, {
+  AssistantRegex? rule,
+}) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   final nameCtrl = TextEditingController(text: rule?.name ?? '');
   final patternCtrl = TextEditingController(text: rule?.pattern ?? '');
   final replacementCtrl = TextEditingController(text: rule?.replacement ?? '');
-  final Set<AssistantRegexScope> scopes = {...(rule?.scopes ?? <AssistantRegexScope>[AssistantRegexScope.user])};
+  final Set<AssistantRegexScope> scopes = {
+    ...(rule?.scopes ?? <AssistantRegexScope>[AssistantRegexScope.user]),
+  };
   bool visualOnly = rule?.visualOnly ?? false;
   bool replaceOnly = rule?.replaceOnly ?? false;
 
@@ -628,7 +700,9 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (ctx) {
       return StatefulBuilder(
         builder: (ctx, setState) {
@@ -636,23 +710,33 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
             final name = nameCtrl.text.trim();
             final pattern = patternCtrl.text.trim();
             if (name.isEmpty || pattern.isEmpty || scopes.isEmpty) {
-              showAppSnackBar(ctx, message: l10n.assistantRegexValidationError, type: NotificationType.warning);
+              showAppSnackBar(
+                ctx,
+                message: l10n.assistantRegexValidationError,
+                type: NotificationType.warning,
+              );
               return;
             }
             try {
               RegExp(pattern);
             } catch (_) {
-              showAppSnackBar(ctx, message: l10n.assistantRegexInvalidPattern, type: NotificationType.warning);
+              showAppSnackBar(
+                ctx,
+                message: l10n.assistantRegexInvalidPattern,
+                type: NotificationType.warning,
+              );
               return;
             }
-            Navigator.of(ctx).pop(_RegexFormData(
-              name: name,
-              pattern: pattern,
-              replacement: replacementCtrl.text,
-              scopes: scopes.toList(),
-              visualOnly: visualOnly,
-              replaceOnly: replaceOnly,
-            ));
+            Navigator.of(ctx).pop(
+              _RegexFormData(
+                name: name,
+                pattern: pattern,
+                replacement: replacementCtrl.text,
+                scopes: scopes.toList(),
+                visualOnly: visualOnly,
+                replaceOnly: replaceOnly,
+              ),
+            );
           }
 
           final bottom = MediaQuery.of(ctx).viewInsets.bottom;
@@ -684,8 +768,13 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                             Expanded(
                               child: Center(
                                 child: Text(
-                                  rule == null ? l10n.assistantRegexAddTitle : l10n.assistantRegexEditTitle,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                  rule == null
+                                      ? l10n.assistantRegexAddTitle
+                                      : l10n.assistantRegexEditTitle,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
@@ -693,11 +782,19 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                               onTap: submit,
                               borderRadius: BorderRadius.circular(10),
                               baseColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               pressedBlendStrength: 0.1,
                               child: Text(
-                                rule == null ? l10n.assistantRegexAddAction : l10n.assistantRegexSaveAction,
-                                style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                                rule == null
+                                    ? l10n.assistantRegexAddAction
+                                    : l10n.assistantRegexSaveAction,
+                                style: TextStyle(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],
@@ -709,9 +806,16 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _RegexTextField(controller: nameCtrl, label: l10n.assistantRegexNameLabel, autofocus: true),
+                            _RegexTextField(
+                              controller: nameCtrl,
+                              label: l10n.assistantRegexNameLabel,
+                              autofocus: true,
+                            ),
                             const SizedBox(height: 12),
-                            _RegexTextField(controller: patternCtrl, label: l10n.assistantRegexPatternLabel),
+                            _RegexTextField(
+                              controller: patternCtrl,
+                              label: l10n.assistantRegexPatternLabel,
+                            ),
                             const SizedBox(height: 12),
                             _RegexTextField(
                               controller: replacementCtrl,
@@ -721,7 +825,10 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                             const SizedBox(height: 16),
                             Text(
                               l10n.assistantRegexScopeLabel,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             Wrap(
@@ -730,10 +837,14 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                               children: [
                                 _ScopeChoiceCard(
                                   label: l10n.assistantRegexScopeUser,
-                                  selected: scopes.contains(AssistantRegexScope.user),
+                                  selected: scopes.contains(
+                                    AssistantRegexScope.user,
+                                  ),
                                   onTap: () {
                                     setState(() {
-                                      if (scopes.contains(AssistantRegexScope.user)) {
+                                      if (scopes.contains(
+                                        AssistantRegexScope.user,
+                                      )) {
                                         scopes.remove(AssistantRegexScope.user);
                                       } else {
                                         scopes.add(AssistantRegexScope.user);
@@ -744,13 +855,21 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
                                 ),
                                 _ScopeChoiceCard(
                                   label: l10n.assistantRegexScopeAssistant,
-                                  selected: scopes.contains(AssistantRegexScope.assistant),
+                                  selected: scopes.contains(
+                                    AssistantRegexScope.assistant,
+                                  ),
                                   onTap: () {
                                     setState(() {
-                                      if (scopes.contains(AssistantRegexScope.assistant)) {
-                                        scopes.remove(AssistantRegexScope.assistant);
+                                      if (scopes.contains(
+                                        AssistantRegexScope.assistant,
+                                      )) {
+                                        scopes.remove(
+                                          AssistantRegexScope.assistant,
+                                        );
                                       } else {
-                                        scopes.add(AssistantRegexScope.assistant);
+                                        scopes.add(
+                                          AssistantRegexScope.assistant,
+                                        );
                                       }
                                     });
                                   },
@@ -796,13 +915,18 @@ Future<_RegexFormData?> _showRegexBottomSheet(BuildContext context, {AssistantRe
   return result;
 }
 
-Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? rule}) async {
+Future<_RegexFormData?> _showRegexDialog(
+  BuildContext context, {
+  AssistantRegex? rule,
+}) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   final nameCtrl = TextEditingController(text: rule?.name ?? '');
   final patternCtrl = TextEditingController(text: rule?.pattern ?? '');
   final replacementCtrl = TextEditingController(text: rule?.replacement ?? '');
-  final Set<AssistantRegexScope> scopes = {...(rule?.scopes ?? <AssistantRegexScope>[AssistantRegexScope.user])};
+  final Set<AssistantRegexScope> scopes = {
+    ...(rule?.scopes ?? <AssistantRegexScope>[AssistantRegexScope.user]),
+  };
   bool visualOnly = rule?.visualOnly ?? false;
   bool replaceOnly = rule?.replaceOnly ?? false;
 
@@ -820,23 +944,33 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
               final name = nameCtrl.text.trim();
               final pattern = patternCtrl.text.trim();
               if (name.isEmpty || pattern.isEmpty || scopes.isEmpty) {
-                showAppSnackBar(ctx, message: l10n.assistantRegexValidationError, type: NotificationType.warning);
+                showAppSnackBar(
+                  ctx,
+                  message: l10n.assistantRegexValidationError,
+                  type: NotificationType.warning,
+                );
                 return;
               }
               try {
                 RegExp(pattern);
               } catch (_) {
-                showAppSnackBar(ctx, message: l10n.assistantRegexInvalidPattern, type: NotificationType.warning);
+                showAppSnackBar(
+                  ctx,
+                  message: l10n.assistantRegexInvalidPattern,
+                  type: NotificationType.warning,
+                );
                 return;
               }
-              Navigator.of(ctx).pop(_RegexFormData(
-                name: name,
-                pattern: pattern,
-                replacement: replacementCtrl.text,
-                scopes: scopes.toList(),
-                visualOnly: visualOnly,
-                replaceOnly: replaceOnly,
-              ));
+              Navigator.of(ctx).pop(
+                _RegexFormData(
+                  name: name,
+                  pattern: pattern,
+                  replacement: replacementCtrl.text,
+                  scopes: scopes.toList(),
+                  visualOnly: visualOnly,
+                  replaceOnly: replaceOnly,
+                ),
+              );
             }
 
             return ConstrainedBox(
@@ -853,8 +987,13 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                           children: [
                             Expanded(
                               child: Text(
-                                rule == null ? l10n.assistantRegexAddTitle : l10n.assistantRegexEditTitle,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                rule == null
+                                    ? l10n.assistantRegexAddTitle
+                                    : l10n.assistantRegexEditTitle,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                             IosIconButton(
@@ -873,9 +1012,16 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _RegexTextField(controller: nameCtrl, label: l10n.assistantRegexNameLabel, autofocus: true),
+                            _RegexTextField(
+                              controller: nameCtrl,
+                              label: l10n.assistantRegexNameLabel,
+                              autofocus: true,
+                            ),
                             const SizedBox(height: 12),
-                            _RegexTextField(controller: patternCtrl, label: l10n.assistantRegexPatternLabel),
+                            _RegexTextField(
+                              controller: patternCtrl,
+                              label: l10n.assistantRegexPatternLabel,
+                            ),
                             const SizedBox(height: 12),
                             _RegexTextField(
                               controller: replacementCtrl,
@@ -885,7 +1031,10 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                             const SizedBox(height: 16),
                             Text(
                               l10n.assistantRegexScopeLabel,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             Wrap(
@@ -894,10 +1043,14 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                               children: [
                                 _ScopeChoiceCard(
                                   label: l10n.assistantRegexScopeUser,
-                                  selected: scopes.contains(AssistantRegexScope.user),
+                                  selected: scopes.contains(
+                                    AssistantRegexScope.user,
+                                  ),
                                   onTap: () {
                                     setState(() {
-                                      if (scopes.contains(AssistantRegexScope.user)) {
+                                      if (scopes.contains(
+                                        AssistantRegexScope.user,
+                                      )) {
                                         scopes.remove(AssistantRegexScope.user);
                                       } else {
                                         scopes.add(AssistantRegexScope.user);
@@ -908,13 +1061,21 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                                 ),
                                 _ScopeChoiceCard(
                                   label: l10n.assistantRegexScopeAssistant,
-                                  selected: scopes.contains(AssistantRegexScope.assistant),
+                                  selected: scopes.contains(
+                                    AssistantRegexScope.assistant,
+                                  ),
                                   onTap: () {
                                     setState(() {
-                                      if (scopes.contains(AssistantRegexScope.assistant)) {
-                                        scopes.remove(AssistantRegexScope.assistant);
+                                      if (scopes.contains(
+                                        AssistantRegexScope.assistant,
+                                      )) {
+                                        scopes.remove(
+                                          AssistantRegexScope.assistant,
+                                        );
                                       } else {
-                                        scopes.add(AssistantRegexScope.assistant);
+                                        scopes.add(
+                                          AssistantRegexScope.assistant,
+                                        );
                                       }
                                     });
                                   },
@@ -957,11 +1118,17 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                             onTap: () => Navigator.of(ctx).maybePop(),
                             borderRadius: BorderRadius.circular(12),
                             baseColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             pressedBlendStrength: 0.12,
                             child: Text(
                               l10n.assistantRegexCancelButton,
-                              style: TextStyle(color: cs.onSurface.withOpacity(0.8), fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                color: cs.onSurface.withOpacity(0.8),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -969,11 +1136,19 @@ Future<_RegexFormData?> _showRegexDialog(BuildContext context, {AssistantRegex? 
                             onTap: submit,
                             borderRadius: BorderRadius.circular(12),
                             baseColor: cs.primary.withOpacity(0.12),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             pressedBlendStrength: 0.16,
                             child: Text(
-                              rule == null ? l10n.assistantRegexAddAction : l10n.assistantRegexSaveAction,
-                              style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                              rule == null
+                                  ? l10n.assistantRegexAddAction
+                                  : l10n.assistantRegexSaveAction,
+                              style: TextStyle(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -1018,7 +1193,9 @@ class _RegexTextField extends StatelessWidget {
       minLines: multiline ? 1 : 1,
       maxLines: multiline ? null : 1,
       keyboardType: multiline ? TextInputType.multiline : TextInputType.text,
-      textInputAction: multiline ? TextInputAction.newline : TextInputAction.done,
+      textInputAction: multiline
+          ? TextInputAction.newline
+          : TextInputAction.done,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -1060,8 +1237,12 @@ class _ScopeChoiceCardState extends State<_ScopeChoiceCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final base = widget.selected ? cs.primary.withOpacity(0.16) : (isDark ? Colors.white10 : const Color(0xFFF2F3F5));
-    final borderBase = widget.selected ? cs.primary.withOpacity(0.55) : cs.outlineVariant.withOpacity(isDark ? 0.14 : 0.12);
+    final base = widget.selected
+        ? cs.primary.withOpacity(0.16)
+        : (isDark ? Colors.white10 : const Color(0xFFF2F3F5));
+    final borderBase = widget.selected
+        ? cs.primary.withOpacity(0.55)
+        : cs.outlineVariant.withOpacity(isDark ? 0.14 : 0.12);
     final borderColor = (widget.desktop && _hovered) ? cs.primary : borderBase;
     final fg = widget.selected ? cs.primary : cs.onSurface.withOpacity(0.8);
 

@@ -7,12 +7,13 @@ class QuickPhraseProvider with ChangeNotifier {
   bool _initialized = false;
 
   List<QuickPhrase> get phrases => List.unmodifiable(_phrases);
-  
-  List<QuickPhrase> get globalPhrases => 
+
+  List<QuickPhrase> get globalPhrases =>
       _phrases.where((p) => p.isGlobal).toList();
-  
-  List<QuickPhrase> getForAssistant(String assistantId) =>
-      _phrases.where((p) => !p.isGlobal && p.assistantId == assistantId).toList();
+
+  List<QuickPhrase> getForAssistant(String assistantId) => _phrases
+      .where((p) => !p.isGlobal && p.assistantId == assistantId)
+      .toList();
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -74,8 +75,9 @@ class QuickPhraseProvider with ChangeNotifier {
     if (newIndex < 0 || newIndex >= subsetIndices.length) return;
 
     // Extract the subset in current order
-    final List<QuickPhrase> subset =
-        subsetIndices.map((i) => _phrases[i]).toList(growable: true);
+    final List<QuickPhrase> subset = subsetIndices
+        .map((i) => _phrases[i])
+        .toList(growable: true);
 
     final item = subset.removeAt(oldIndex);
     subset.insert(newIndex, item);
@@ -102,7 +104,11 @@ class QuickPhraseProvider with ChangeNotifier {
     required int newIndex,
     String? assistantId,
   }) async {
-    _reorderInMemory(oldIndex: oldIndex, newIndex: newIndex, assistantId: assistantId);
+    _reorderInMemory(
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+      assistantId: assistantId,
+    );
     notifyListeners();
     await QuickPhraseStore.save(_phrases);
   }
@@ -114,7 +120,11 @@ class QuickPhraseProvider with ChangeNotifier {
     String? assistantId,
   }) async {
     // Immediate UI update, then persist
-    _reorderInMemory(oldIndex: oldIndex, newIndex: newIndex, assistantId: assistantId);
+    _reorderInMemory(
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+      assistantId: assistantId,
+    );
     notifyListeners();
     await QuickPhraseStore.save(_phrases);
   }

@@ -11,7 +11,10 @@ class PerplexitySearchService extends SearchService<PerplexityOptions> {
   @override
   Widget description(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Text(l10n.searchProviderPerplexityDescription, style: const TextStyle(fontSize: 12));
+    return Text(
+      l10n.searchProviderPerplexityDescription,
+      style: const TextStyle(fontSize: 12),
+    );
   }
 
   @override
@@ -26,10 +29,12 @@ class PerplexitySearchService extends SearchService<PerplexityOptions> {
         'max_results': commonOptions.resultSize.clamp(1, 20),
       };
 
-      if (serviceOptions.country != null && serviceOptions.country!.trim().isNotEmpty) {
+      if (serviceOptions.country != null &&
+          serviceOptions.country!.trim().isNotEmpty) {
         body['country'] = serviceOptions.country!.trim();
       }
-      if (serviceOptions.searchDomainFilter != null && serviceOptions.searchDomainFilter!.isNotEmpty) {
+      if (serviceOptions.searchDomainFilter != null &&
+          serviceOptions.searchDomainFilter!.isNotEmpty) {
         body['search_domain_filter'] = serviceOptions.searchDomainFilter;
       }
       if (serviceOptions.maxTokensPerPage != null) {
@@ -79,4 +84,3 @@ class PerplexitySearchService extends SearchService<PerplexityOptions> {
     }
   }
 }
-

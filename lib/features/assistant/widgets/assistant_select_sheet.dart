@@ -1,6 +1,7 @@
 import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:characters/characters.dart';
@@ -18,8 +19,12 @@ import '../../../utils/sandbox_path_resolver.dart';
 // - Mobile: bottom sheet
 // - Desktop: custom dialog
 // Returns selected assistant id, or null if cancelled.
-Future<String?> showAssistantMoveSelector(BuildContext context, {String? excludeAssistantId}) async {
-  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+Future<String?> showAssistantMoveSelector(
+  BuildContext context, {
+  String? excludeAssistantId,
+}) async {
+  final isDesktop =
+      defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux;
   final ap = context.read<AssistantProvider>();
@@ -67,7 +72,10 @@ Future<String?> showAssistantMoveSelector(BuildContext context, {String? exclude
                       child: Text(
                         l10n.sideDrawerChooseAssistantTitle,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     ...assistants.map((a) => _assistantRow(ctx, a)),
@@ -102,14 +110,20 @@ Future<String?> showAssistantMoveSelector(BuildContext context, {String? exclude
               behavior: HitTestBehavior.translucent,
               onTap: () {},
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560, minWidth: 420, maxHeight: 560),
+                constraints: const BoxConstraints(
+                  maxWidth: 560,
+                  minWidth: 420,
+                  maxHeight: 560,
+                ),
                 child: DecoratedBox(
                   decoration: ShapeDecoration(
                     color: cs.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: BorderSide(
-                        color: isDark ? Colors.white.withOpacity(0.08) : cs.outlineVariant.withOpacity(0.2),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : cs.outlineVariant.withOpacity(0.2),
                       ),
                     ),
                   ),
@@ -130,10 +144,16 @@ Future<String?> showAssistantMoveSelector(BuildContext context, {String? exclude
                                     l10n.sideDrawerChooseAssistantTitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
-                                _SmallIconBtn2(icon: Icons.close, onTap: () => Navigator.of(ctx).maybePop()),
+                                _SmallIconBtn2(
+                                  icon: Icons.close,
+                                  onTap: () => Navigator.of(ctx).maybePop(),
+                                ),
                               ],
                             ),
                           ),
@@ -185,10 +205,21 @@ Widget _assistantAvatar(BuildContext context, Assistant a, {double size = 28}) {
         builder: (ctx, snap) {
           final p = snap.data;
           if (p != null && File(p).existsSync()) {
-            return ClipOval(child: Image(image: FileImage(File(p)), width: size, height: size, fit: BoxFit.cover));
+            return ClipOval(
+              child: Image(
+                image: FileImage(File(p)),
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+              ),
+            );
           }
           return ClipOval(
-            child: Image.network(av, width: size, height: size, fit: BoxFit.cover,
+            child: Image.network(
+              av,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
               errorBuilder: (c, e, s) => _assistantInitial(cs, a.name, size),
             ),
           );
@@ -198,15 +229,29 @@ Widget _assistantAvatar(BuildContext context, Assistant a, {double size = 28}) {
       final fixed = SandboxPathResolver.fix(av);
       final f = File(fixed);
       if (f.existsSync()) {
-        return ClipOval(child: Image(image: FileImage(f), width: size, height: size, fit: BoxFit.cover));
+        return ClipOval(
+          child: Image(
+            image: FileImage(f),
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+          ),
+        );
       }
     } else {
       return Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
-        child: EmojiText((av.isNotEmpty ? av : '🙂'), fontSize: size * 0.5, optimizeEmojiAlign: true),
+        child: EmojiText(
+          (av.isNotEmpty ? av : '🙂'),
+          fontSize: size * 0.5,
+          optimizeEmojiAlign: true,
+        ),
       );
     }
   }
@@ -218,9 +263,19 @@ Widget _assistantInitial(ColorScheme cs, String name, double size) {
   return Container(
     width: size,
     height: size,
-    decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+    decoration: BoxDecoration(
+      color: cs.primary.withOpacity(0.15),
+      shape: BoxShape.circle,
+    ),
     alignment: Alignment.center,
-    child: Text(letter, style: TextStyle(color: cs.primary, fontSize: size * 0.42, fontWeight: FontWeight.w700)),
+    child: Text(
+      letter,
+      style: TextStyle(
+        color: cs.primary,
+        fontSize: size * 0.42,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
   );
 }
 
@@ -243,7 +298,15 @@ Widget _assistantRow(BuildContext context, Assistant a) {
           children: [
             _assistantAvatar(context, a, size: 24),
             const SizedBox(width: 10),
-            Expanded(child: Text(a.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+            Expanded(
+              child: Text(
+                a.name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -253,8 +316,10 @@ Widget _assistantRow(BuildContext context, Assistant a) {
 
 class _SmallIconBtn2 extends StatefulWidget {
   const _SmallIconBtn2({required this.icon, required this.onTap});
-  final IconData icon; final VoidCallback onTap;
-  @override State<_SmallIconBtn2> createState() => _SmallIconBtn2State();
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  State<_SmallIconBtn2> createState() => _SmallIconBtn2State();
 }
 
 class _SmallIconBtn2State extends State<_SmallIconBtn2> {
@@ -263,7 +328,11 @@ class _SmallIconBtn2State extends State<_SmallIconBtn2> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -271,8 +340,12 @@ class _SmallIconBtn2State extends State<_SmallIconBtn2> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          width: 28, height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: cs.onSurface),
         ),
@@ -283,8 +356,10 @@ class _SmallIconBtn2State extends State<_SmallIconBtn2> {
 
 class _DeskAssistantRow extends StatefulWidget {
   const _DeskAssistantRow({required this.assistant, required this.onTap});
-  final Assistant assistant; final void Function(String id) onTap;
-  @override State<_DeskAssistantRow> createState() => _DeskAssistantRowState();
+  final Assistant assistant;
+  final void Function(String id) onTap;
+  @override
+  State<_DeskAssistantRow> createState() => _DeskAssistantRowState();
 }
 
 class _DeskAssistantRowState extends State<_DeskAssistantRow> {
@@ -293,7 +368,11 @@ class _DeskAssistantRowState extends State<_DeskAssistantRow> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -304,7 +383,10 @@ class _DeskAssistantRowState extends State<_DeskAssistantRow> {
         child: Container(
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Row(
             children: [
@@ -315,7 +397,10 @@ class _DeskAssistantRowState extends State<_DeskAssistantRow> {
                   widget.assistant.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

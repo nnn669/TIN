@@ -30,7 +30,8 @@ class AppHotkey {
 
 /// Provider that stores hotkey assignments and registers them via hotkey_manager.
 class HotkeyProvider extends ChangeNotifier {
-  static const _prefsKeyCommands = 'desktop_hotkeys_commands_v1'; // id -> command
+  static const _prefsKeyCommands =
+      'desktop_hotkeys_commands_v1'; // id -> command
   static const _prefsKeyEnabled = 'desktop_hotkeys_enabled_v1'; // id -> bool
 
   final Map<String, AppHotkey> _items = {
@@ -105,16 +106,18 @@ class HotkeyProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Load enabled map
     final enabledMap = (prefs.getStringList(_prefsKeyEnabled) ?? [])
-        .map((e) => e.split('=')).where((p) => p.length == 2)
+        .map((e) => e.split('='))
+        .where((p) => p.length == 2)
         .map((p) => MapEntry(p[0], p[1] == '1'))
         .toList();
-    final enabled = <String, bool>{ for (final e in enabledMap) e.key: e.value };
+    final enabled = <String, bool>{for (final e in enabledMap) e.key: e.value};
     // Load commands map
     final cmdList = (prefs.getStringList(_prefsKeyCommands) ?? [])
-        .map((e) => e.split('=')).where((p) => p.length == 2)
+        .map((e) => e.split('='))
+        .where((p) => p.length == 2)
         .map((p) => MapEntry(p[0], p[1]))
         .toList();
-    final commands = <String, String>{ for (final e in cmdList) e.key: e.value };
+    final commands = <String, String>{for (final e in cmdList) e.key: e.value};
 
     // Seed defaults
     final isMac = Platform.isMacOS;
@@ -132,8 +135,12 @@ class HotkeyProvider extends ChangeNotifier {
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
-    final enabledList = _items.values.map((e) => '${e.id}=${e.enabled ? '1' : '0'}').toList();
-    final cmdList = _items.values.map((e) => '${e.id}=${e.command ?? ''}').toList();
+    final enabledList = _items.values
+        .map((e) => '${e.id}=${e.enabled ? '1' : '0'}')
+        .toList();
+    final cmdList = _items.values
+        .map((e) => '${e.id}=${e.command ?? ''}')
+        .toList();
     await prefs.setStringList(_prefsKeyEnabled, enabledList);
     await prefs.setStringList(_prefsKeyCommands, cmdList);
   }
@@ -152,7 +159,8 @@ class HotkeyProvider extends ChangeNotifier {
 
   Future<void> resetToDefault(String id) async {
     final item = _items[id]!;
-    final def = (Platform.isMacOS ? item.defaultMac : item.defaultWinLinux) ?? '';
+    final def =
+        (Platform.isMacOS ? item.defaultMac : item.defaultWinLinux) ?? '';
     item.command = def.isEmpty ? null : def;
     await _persist();
     await _rebindAll();
@@ -192,7 +200,9 @@ class HotkeyProvider extends ChangeNotifier {
     } catch (_) {
       // Fallback to unregister known ones if needed
       for (final hk in _registered.values) {
-        try { await HotKeyManager.instance.unregister(hk); } catch (_) {}
+        try {
+          await HotKeyManager.instance.unregister(hk);
+        } catch (_) {}
       }
     }
     _registered.clear();
@@ -202,7 +212,9 @@ class HotkeyProvider extends ChangeNotifier {
       if (!e.enabled) continue;
       final cmd = e.command;
       if (cmd == null || cmd.trim().isEmpty) continue;
-      final scope = (e.id == 'toggle_app_visibility') ? HotKeyScope.system : HotKeyScope.inapp;
+      final scope = (e.id == 'toggle_app_visibility')
+          ? HotKeyScope.system
+          : HotKeyScope.inapp;
       final hk = _parseCommandToHotKey(cmd, scope: scope);
       if (hk == null) continue;
 
@@ -247,10 +259,17 @@ class HotkeyProvider extends ChangeNotifier {
   // ===== Helpers for parsing/displaying hotkey strings =====
 
   // Supported commands format: 'ctrl+shift+n', 'cmd+comma', 'ctrl+bracketleft'
-  HotKey? _parseCommandToHotKey(String command, {HotKeyScope scope = HotKeyScope.inapp}) {
+  HotKey? _parseCommandToHotKey(
+    String command, {
+    HotKeyScope scope = HotKeyScope.inapp,
+  }) {
     final raw = command.trim().toLowerCase();
     if (raw.isEmpty) return null;
-    final parts = raw.split('+').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final parts = raw
+        .split('+')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     final modifiers = <HotKeyModifier>[];
     LogicalKeyboardKey? keyboardKey;
     for (final p in parts) {
@@ -302,32 +321,58 @@ class HotkeyProvider extends ChangeNotifier {
 
   LogicalKeyboardKey? _letterToLogicalKey(String ch) {
     switch (ch.toLowerCase()) {
-      case 'a': return LogicalKeyboardKey.keyA;
-      case 'b': return LogicalKeyboardKey.keyB;
-      case 'c': return LogicalKeyboardKey.keyC;
-      case 'd': return LogicalKeyboardKey.keyD;
-      case 'e': return LogicalKeyboardKey.keyE;
-      case 'f': return LogicalKeyboardKey.keyF;
-      case 'g': return LogicalKeyboardKey.keyG;
-      case 'h': return LogicalKeyboardKey.keyH;
-      case 'i': return LogicalKeyboardKey.keyI;
-      case 'j': return LogicalKeyboardKey.keyJ;
-      case 'k': return LogicalKeyboardKey.keyK;
-      case 'l': return LogicalKeyboardKey.keyL;
-      case 'm': return LogicalKeyboardKey.keyM;
-      case 'n': return LogicalKeyboardKey.keyN;
-      case 'o': return LogicalKeyboardKey.keyO;
-      case 'p': return LogicalKeyboardKey.keyP;
-      case 'q': return LogicalKeyboardKey.keyQ;
-      case 'r': return LogicalKeyboardKey.keyR;
-      case 's': return LogicalKeyboardKey.keyS;
-      case 't': return LogicalKeyboardKey.keyT;
-      case 'u': return LogicalKeyboardKey.keyU;
-      case 'v': return LogicalKeyboardKey.keyV;
-      case 'w': return LogicalKeyboardKey.keyW;
-      case 'x': return LogicalKeyboardKey.keyX;
-      case 'y': return LogicalKeyboardKey.keyY;
-      case 'z': return LogicalKeyboardKey.keyZ;
+      case 'a':
+        return LogicalKeyboardKey.keyA;
+      case 'b':
+        return LogicalKeyboardKey.keyB;
+      case 'c':
+        return LogicalKeyboardKey.keyC;
+      case 'd':
+        return LogicalKeyboardKey.keyD;
+      case 'e':
+        return LogicalKeyboardKey.keyE;
+      case 'f':
+        return LogicalKeyboardKey.keyF;
+      case 'g':
+        return LogicalKeyboardKey.keyG;
+      case 'h':
+        return LogicalKeyboardKey.keyH;
+      case 'i':
+        return LogicalKeyboardKey.keyI;
+      case 'j':
+        return LogicalKeyboardKey.keyJ;
+      case 'k':
+        return LogicalKeyboardKey.keyK;
+      case 'l':
+        return LogicalKeyboardKey.keyL;
+      case 'm':
+        return LogicalKeyboardKey.keyM;
+      case 'n':
+        return LogicalKeyboardKey.keyN;
+      case 'o':
+        return LogicalKeyboardKey.keyO;
+      case 'p':
+        return LogicalKeyboardKey.keyP;
+      case 'q':
+        return LogicalKeyboardKey.keyQ;
+      case 'r':
+        return LogicalKeyboardKey.keyR;
+      case 's':
+        return LogicalKeyboardKey.keyS;
+      case 't':
+        return LogicalKeyboardKey.keyT;
+      case 'u':
+        return LogicalKeyboardKey.keyU;
+      case 'v':
+        return LogicalKeyboardKey.keyV;
+      case 'w':
+        return LogicalKeyboardKey.keyW;
+      case 'x':
+        return LogicalKeyboardKey.keyX;
+      case 'y':
+        return LogicalKeyboardKey.keyY;
+      case 'z':
+        return LogicalKeyboardKey.keyZ;
     }
     return null;
   }

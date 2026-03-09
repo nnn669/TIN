@@ -8,18 +8,27 @@ class AndroidBackgroundManager {
   static bool _initialized = false;
 
   /// Initialize the plugin once and request needed permissions.
-  static Future<bool> ensureInitialized({String? notificationTitle, String? notificationText}) async {
+  static Future<bool> ensureInitialized({
+    String? notificationTitle,
+    String? notificationText,
+  }) async {
     if (!Platform.isAndroid) return false;
     if (_initialized) return true;
     try {
       final androidConfig = FlutterBackgroundAndroidConfig(
         notificationTitle: notificationTitle ?? 'Kelivo is running',
-        notificationText: notificationText ?? 'Keeping chat generation alive in background',
+        notificationText:
+            notificationText ?? 'Keeping chat generation alive in background',
         notificationImportance: AndroidNotificationImportance.normal,
         // Explicitly use app launcher icon from mipmap to avoid resource resolution issues
-        notificationIcon: const AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+        notificationIcon: const AndroidResource(
+          name: 'ic_launcher',
+          defType: 'mipmap',
+        ),
       );
-      final ok = await FlutterBackground.initialize(androidConfig: androidConfig);
+      final ok = await FlutterBackground.initialize(
+        androidConfig: androidConfig,
+      );
       _initialized = ok;
       return ok;
     } catch (_) {
@@ -45,7 +54,9 @@ class AndroidBackgroundManager {
         await FlutterBackground.enableBackgroundExecution();
       } else {
         // Try to disable without forcing initialization to avoid permission prompts
-        try { await FlutterBackground.disableBackgroundExecution(); } catch (_) {}
+        try {
+          await FlutterBackground.disableBackgroundExecution();
+        } catch (_) {}
       }
     } catch (_) {
       // ignore runtime errors; best effort only

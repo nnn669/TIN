@@ -27,7 +27,11 @@ class Favicon extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.contain,
-        errorBuilder: (c, e, s) => Icon(Icons.public, size: size * 0.9, color: Theme.of(context).colorScheme.primary),
+        errorBuilder: (c, e, s) => Icon(
+          Icons.public,
+          size: size * 0.9,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

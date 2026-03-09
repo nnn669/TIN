@@ -90,7 +90,11 @@ class _DesktopAboutPaneState extends State<DesktopAboutPane> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     l10n.settingsPageAbout,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: cs.onSurface.withOpacity(0.9),
+                    ),
                   ),
                 ),
               ),
@@ -108,7 +112,9 @@ class _DesktopAboutPaneState extends State<DesktopAboutPane> {
                   _DeskInfoRow(
                     icon: lucide.Lucide.Code,
                     label: l10n.aboutPageVersion,
-                    detail: _version.isEmpty ? '...' : '$_version / $_buildNumber',
+                    detail: _version.isEmpty
+                        ? '...'
+                        : '$_version / $_buildNumber',
                   ),
                   const _DeskRowDivider(),
                   _DeskInfoRow(
@@ -126,13 +132,16 @@ class _DesktopAboutPaneState extends State<DesktopAboutPane> {
                   _DeskNavRow(
                     icon: lucide.Lucide.Github,
                     label: 'GitHub',
-                    onTap: () => _openUrl('https://github.com/Chevey339/kelivo'),
+                    onTap: () =>
+                        _openUrl('https://github.com/Chevey339/kelivo'),
                   ),
                   const _DeskRowDivider(),
                   _DeskNavRow(
                     icon: lucide.Lucide.FileText,
                     label: l10n.aboutPageLicense,
-                    onTap: () => _openUrl('https://github.com/Chevey339/kelivo/blob/master/LICENSE'),
+                    onTap: () => _openUrl(
+                      'https://github.com/Chevey339/kelivo/blob/master/LICENSE',
+                    ),
                   ),
                   const _DeskRowDivider(),
                   _DeskNavRowSvg(
@@ -179,7 +188,9 @@ class _AppHeaderCardState extends State<_AppHeaderCard> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
-    final hoverBg = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04);
+    final hoverBg = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.04);
     final overlay = _hover ? hoverBg : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -201,7 +212,9 @@ class _AppHeaderCardState extends State<_AppHeaderCard> {
                 borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
                   width: 0.5,
-                  color: isDark ? Colors.white.withOpacity(0.06) : cs.outlineVariant.withOpacity(0.12),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.06)
+                      : cs.outlineVariant.withOpacity(0.12),
                 ),
               ),
             ),
@@ -214,7 +227,10 @@ class _AppHeaderCardState extends State<_AppHeaderCard> {
                     child: SizedBox(
                       width: 54,
                       height: 54,
-                      child: Image.asset('assets/app_icon.png', fit: BoxFit.cover),
+                      child: Image.asset(
+                        'assets/app_icon.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -223,11 +239,21 @@ class _AppHeaderCardState extends State<_AppHeaderCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Kelivo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        const Text(
+                          'Kelivo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           widget.description,
-                          style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.65), height: 1.2),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: cs.onSurface.withOpacity(0.65),
+                            height: 1.2,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -256,7 +282,12 @@ class _DeskCard extends StatelessWidget {
       color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(width: 0.5, color: isDark ? Colors.white.withOpacity(0.06) : cs.outlineVariant.withOpacity(0.12)),
+        side: BorderSide(
+          width: 0.5,
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : cs.outlineVariant.withOpacity(0.12),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -265,7 +296,14 @@ class _DeskCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-              child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
             ),
             ...children,
           ],
@@ -282,13 +320,23 @@ class _DeskRowDivider extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Divider(height: 1, thickness: 0.5, indent: 8, endIndent: 8, color: cs.outlineVariant.withOpacity(0.12)),
+      child: Divider(
+        height: 1,
+        thickness: 0.5,
+        indent: 8,
+        endIndent: 8,
+        color: cs.outlineVariant.withOpacity(0.12),
+      ),
     );
   }
 }
 
 class _DeskInfoRow extends StatelessWidget {
-  const _DeskInfoRow({required this.icon, required this.label, required this.detail});
+  const _DeskInfoRow({
+    required this.icon,
+    required this.label,
+    required this.detail,
+  });
   final IconData icon;
   final String label;
   final String detail;
@@ -299,13 +347,28 @@ class _DeskInfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          SizedBox(width: 26, child: Icon(icon, size: 18, color: cs.onSurface.withOpacity(0.9))),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label, style: TextStyle(fontSize: 14.5, color: cs.onSurface.withOpacity(0.92))),
+          SizedBox(
+            width: 26,
+            child: Icon(icon, size: 18, color: cs.onSurface.withOpacity(0.9)),
           ),
           const SizedBox(width: 10),
-          Text(detail, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6))),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14.5,
+                color: cs.onSurface.withOpacity(0.92),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            detail,
+            style: TextStyle(
+              fontSize: 13,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+          ),
         ],
       ),
     );
@@ -313,7 +376,11 @@ class _DeskInfoRow extends StatelessWidget {
 }
 
 class _DeskNavRow extends StatefulWidget {
-  const _DeskNavRow({required this.icon, required this.label, required this.onTap});
+  const _DeskNavRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -328,7 +395,9 @@ class _DeskNavRowState extends State<_DeskNavRow> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hoverBg = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
+    final hoverBg = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
     final bg = _hover ? hoverBg : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -350,12 +419,29 @@ class _DeskNavRowState extends State<_DeskNavRow> {
           ),
           child: Row(
             children: [
-              SizedBox(width: 26, child: Icon(widget.icon, size: 18, color: cs.onSurface.withOpacity(0.92))),
+              SizedBox(
+                width: 26,
+                child: Icon(
+                  widget.icon,
+                  size: 18,
+                  color: cs.onSurface.withOpacity(0.92),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(widget.label, style: TextStyle(fontSize: 14.5, color: cs.onSurface.withOpacity(0.92))),
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: cs.onSurface.withOpacity(0.92),
+                  ),
+                ),
               ),
-              Icon(lucide.Lucide.ChevronRight, size: 16, color: cs.onSurface.withOpacity(0.6)),
+              Icon(
+                lucide.Lucide.ChevronRight,
+                size: 16,
+                color: cs.onSurface.withOpacity(0.6),
+              ),
             ],
           ),
         ),
@@ -365,7 +451,11 @@ class _DeskNavRowState extends State<_DeskNavRow> {
 }
 
 class _DeskNavRowSvg extends StatefulWidget {
-  const _DeskNavRowSvg({required this.svgAsset, required this.label, required this.onTap});
+  const _DeskNavRowSvg({
+    required this.svgAsset,
+    required this.label,
+    required this.onTap,
+  });
   final String svgAsset;
   final String label;
   final VoidCallback onTap;
@@ -380,7 +470,9 @@ class _DeskNavRowSvgState extends State<_DeskNavRowSvg> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hoverBg = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
+    final hoverBg = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
     final bg = _hover ? hoverBg : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -396,23 +488,39 @@ class _DeskNavRowSvgState extends State<_DeskNavRowSvg> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Row(
             children: [
               SizedBox(
                 width: 26,
                 child: SvgPicture.asset(
                   widget.svgAsset,
-                  colorFilter: ColorFilter.mode(cs.onSurface.withOpacity(0.92), BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    cs.onSurface.withOpacity(0.92),
+                    BlendMode.srcIn,
+                  ),
                   width: 18,
                   height: 18,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(widget.label, style: TextStyle(fontSize: 14.5, color: cs.onSurface.withOpacity(0.92))),
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: cs.onSurface.withOpacity(0.92),
+                  ),
+                ),
               ),
-              Icon(lucide.Lucide.ChevronRight, size: 16, color: cs.onSurface.withOpacity(0.6)),
+              Icon(
+                lucide.Lucide.ChevronRight,
+                size: 16,
+                color: cs.onSurface.withOpacity(0.6),
+              ),
             ],
           ),
         ),
@@ -426,7 +534,9 @@ Future<void> _showSponsorDesktopDialog(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
   final isDark = Theme.of(context).brightness == Brightness.dark;
   const afdianUrl = 'https://afdian.com/a/kelivo';
-  final wechatQrUrl = isDark ? 'https://c.img.dasctf.com/LightPicture/2025/10/ee10ae78acbd01f3.png' : 'https://c.img.dasctf.com/LightPicture/2025/10/6ba60ac0f2f8e2b4.png';
+  final wechatQrUrl = isDark
+      ? 'https://c.img.dasctf.com/LightPicture/2025/10/ee10ae78acbd01f3.png'
+      : 'https://c.img.dasctf.com/LightPicture/2025/10/6ba60ac0f2f8e2b4.png';
 
   Future<void> open(String url) async {
     final uri = Uri.parse(url);
@@ -461,12 +571,19 @@ Future<void> _showSponsorDesktopDialog(BuildContext context) async {
                     Expanded(
                       child: Text(
                         l10n.settingsPageSponsor,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     IconButton(
                       tooltip: l10n.mcpPageClose,
-                      icon: Icon(lucide.Lucide.X, size: 18, color: cs.onSurface),
+                      icon: Icon(
+                        lucide.Lucide.X,
+                        size: 18,
+                        color: cs.onSurface,
+                      ),
                       onPressed: () => Navigator.of(ctx).maybePop(),
                     ),
                   ],
@@ -498,12 +615,19 @@ Future<void> _showSponsorDesktopDialog(BuildContext context) async {
                   title: l10n.sponsorPageWeChatTitle,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       child: Center(
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.14 : 0.18)),
+                            border: Border.all(
+                              color: cs.outlineVariant.withOpacity(
+                                isDark ? 0.14 : 0.18,
+                              ),
+                            ),
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Image.network(
@@ -516,7 +640,10 @@ Future<void> _showSponsorDesktopDialog(BuildContext context) async {
                               height: 220,
                               color: cs.surface,
                               alignment: Alignment.center,
-                              child: Icon(lucide.Lucide.ImageOff, color: cs.onSurface.withOpacity(0.5)),
+                              child: Icon(
+                                lucide.Lucide.ImageOff,
+                                color: cs.onSurface.withOpacity(0.5),
+                              ),
                             ),
                           ),
                         ),
@@ -527,7 +654,10 @@ Future<void> _showSponsorDesktopDialog(BuildContext context) async {
                       child: Center(
                         child: Text(
                           'Scan the QR code to sponsor',
-                          style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 12),
+                          style: TextStyle(
+                            color: cs.onSurface.withOpacity(0.6),
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),

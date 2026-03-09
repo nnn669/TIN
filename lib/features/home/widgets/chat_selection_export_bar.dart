@@ -35,8 +35,12 @@ class ChatSelectionExportBar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
 
-    final bg = isDark ? Colors.black.withOpacity(0.35) : cs.surface.withOpacity(0.78);
-    final shadowColor = isDark ? Colors.black.withOpacity(0.40) : Colors.black.withOpacity(0.10);
+    final bg = isDark
+        ? Colors.black.withOpacity(0.35)
+        : cs.surface.withOpacity(0.78);
+    final shadowColor = isDark
+        ? Colors.black.withOpacity(0.40)
+        : Colors.black.withOpacity(0.10);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -62,7 +66,12 @@ class ChatSelectionExportBar extends StatelessWidget {
               right: false,
               bottom: true,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, AppSpacing.sm),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.xs,
+                  AppSpacing.sm,
+                  AppSpacing.sm,
+                ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 380;
@@ -222,11 +231,15 @@ class _ToggleCard extends StatelessWidget {
 
     final Color base = selected
         ? cs.primary.withOpacity(isDark ? 0.22 : 0.14)
-        : (isDark ? Colors.white.withOpacity(0.06) : cs.surface.withOpacity(0.55));
+        : (isDark
+              ? Colors.white.withOpacity(0.06)
+              : cs.surface.withOpacity(0.55));
     final Color border = selected
         ? cs.primary.withOpacity(isDark ? 0.52 : 0.36)
         : cs.outlineVariant.withOpacity(isDark ? 0.18 : 0.14);
-    final Color fg = selected ? cs.primary : cs.onSurface.withOpacity(enabled ? 0.9 : 0.35);
+    final Color fg = selected
+        ? cs.primary
+        : cs.onSurface.withOpacity(enabled ? 0.9 : 0.35);
 
     return IosCardPress(
       onTap: enabled ? onTap : null,
@@ -256,7 +269,11 @@ class _ToggleCard extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
               ),
             ),
           ],

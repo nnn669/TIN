@@ -15,8 +15,10 @@ class MemoryStore {
       final arr = jsonDecode(raw) as List<dynamic>;
       return [
         for (final e in arr)
-          if (e is Map<String, dynamic>) AssistantMemory.fromJson(e)
-          else AssistantMemory.fromJson((e as Map).cast<String, dynamic>())
+          if (e is Map<String, dynamic>)
+            AssistantMemory.fromJson(e)
+          else
+            AssistantMemory.fromJson((e as Map).cast<String, dynamic>()),
       ];
     } catch (_) {
       return <AssistantMemory>[];
@@ -35,7 +37,9 @@ class MemoryStore {
     await prefs.setString(_memoriesKey, json);
   }
 
-  static Future<List<AssistantMemory>> getForAssistant(String assistantId) async {
+  static Future<List<AssistantMemory>> getForAssistant(
+    String assistantId,
+  ) async {
     final all = await getAll();
     return all.where((m) => m.assistantId == assistantId).toList();
   }
@@ -48,16 +52,26 @@ class MemoryStore {
     return maxId + 1;
   }
 
-  static Future<AssistantMemory> add({required String assistantId, required String content}) async {
+  static Future<AssistantMemory> add({
+    required String assistantId,
+    required String content,
+  }) async {
     final all = await getAll();
     final id = _nextId(all);
-    final mem = AssistantMemory(id: id, assistantId: assistantId, content: content);
+    final mem = AssistantMemory(
+      id: id,
+      assistantId: assistantId,
+      content: content,
+    );
     all.add(mem);
     await _saveAll(all);
     return mem;
   }
 
-  static Future<AssistantMemory?> update({required int id, required String content}) async {
+  static Future<AssistantMemory?> update({
+    required int id,
+    required String content,
+  }) async {
     final all = await getAll();
     final idx = all.indexWhere((m) => m.id == id);
     if (idx == -1) return null;
@@ -82,4 +96,3 @@ class MemoryStore {
     await _saveAll(all);
   }
 }
-

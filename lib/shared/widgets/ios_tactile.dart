@@ -19,7 +19,10 @@ class IosIconButton extends StatefulWidget {
     this.minSize,
     this.semanticLabel,
     this.enabled = true,
-  }) : assert(icon != null || builder != null, 'Either icon or builder must be provided');
+  }) : assert(
+         icon != null || builder != null,
+         'Either icon or builder must be provided',
+       );
 
   final IconData? icon;
   // Builder receives the current animated color to render custom child (e.g., SVG).
@@ -29,7 +32,8 @@ class IosIconButton extends StatefulWidget {
   final double size;
   final EdgeInsets padding;
   final Color? color; // base color; defaults to theme onSurface
-  final Color? pressedColor; // override pressed color; defaults to blend with primary
+  final Color?
+  pressedColor; // override pressed color; defaults to blend with primary
   final double? minSize; // min tap target (e.g., 44 for AppBar)
   final String? semanticLabel;
   final bool enabled;
@@ -57,9 +61,14 @@ class _IosIconButtonState extends State<IosIconButton> {
     // On press, shift icon color toward white (light theme) or black (dark theme)
     // to get a subtle lighter/gray look, unless overridden via pressedColor.
     final bool isDark = theme.brightness == Brightness.dark;
-    final Color pressTarget = widget.pressedColor ?? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.35) ?? base);
-    final Color hoverTarget = Color.lerp(base, isDark ? Colors.black : Colors.white, 0.20) ?? base;
-    final Color target = _pressed ? pressTarget : (_hovered ? hoverTarget : base);
+    final Color pressTarget =
+        widget.pressedColor ??
+        (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.35) ?? base);
+    final Color hoverTarget =
+        Color.lerp(base, isDark ? Colors.black : Colors.white, 0.20) ?? base;
+    final Color target = _pressed
+        ? pressTarget
+        : (_hovered ? hoverTarget : base);
 
     final child = TweenAnimationBuilder<Color?>(
       tween: ColorTween(end: target),
@@ -70,32 +79,55 @@ class _IosIconButtonState extends State<IosIconButton> {
         if (widget.builder != null) {
           return widget.builder!(c);
         }
-        return Icon(widget.icon, size: widget.size, color: c, semanticLabel: widget.semanticLabel);
+        return Icon(
+          widget.icon,
+          size: widget.size,
+          color: c,
+          semanticLabel: widget.semanticLabel,
+        );
       },
     );
 
     // Subtle hover background for desktop/web
     final Color bgTarget = _pressed
-        ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
+        ? (isDark
+              ? Colors.white.withOpacity(0.12)
+              : Colors.black.withOpacity(0.08))
         : (_hovered
-            ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))
-            : Colors.transparent);
+              ? (isDark
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.black.withOpacity(0.06))
+              : Colors.transparent);
 
     final content = Semantics(
       button: true,
       enabled: widget.enabled,
       label: widget.semanticLabel,
       child: MouseRegion(
-        cursor: (widget.enabled && (widget.onTap != null || widget.onLongPress != null))
+        cursor:
+            (widget.enabled &&
+                (widget.onTap != null || widget.onLongPress != null))
             ? SystemMouseCursors.click
             : MouseCursor.defer,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (widget.enabled && (widget.onTap != null || widget.onLongPress != null)) ? (_) => setState(() => _pressed = true) : null,
-          onTapUp: (widget.enabled && (widget.onTap != null || widget.onLongPress != null)) ? (_) => setState(() => _pressed = false) : null,
-          onTapCancel: (widget.enabled && (widget.onTap != null || widget.onLongPress != null)) ? () => setState(() => _pressed = false) : null,
+          onTapDown:
+              (widget.enabled &&
+                  (widget.onTap != null || widget.onLongPress != null))
+              ? (_) => setState(() => _pressed = true)
+              : null,
+          onTapUp:
+              (widget.enabled &&
+                  (widget.onTap != null || widget.onLongPress != null))
+              ? (_) => setState(() => _pressed = false)
+              : null,
+          onTapCancel:
+              (widget.enabled &&
+                  (widget.onTap != null || widget.onLongPress != null))
+              ? () => setState(() => _pressed = false)
+              : null,
           onTap: widget.enabled ? widget.onTap : null,
           onLongPress: widget.enabled ? widget.onLongPress : null,
           child: AnimatedContainer(
@@ -105,10 +137,7 @@ class _IosIconButtonState extends State<IosIconButton> {
               color: bgTarget,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Padding(
-              padding: widget.padding,
-              child: child,
-            ),
+            child: Padding(padding: widget.padding, child: child),
           ),
         ),
       ),
@@ -116,7 +145,10 @@ class _IosIconButtonState extends State<IosIconButton> {
 
     if (widget.minSize != null) {
       return ConstrainedBox(
-        constraints: BoxConstraints(minWidth: widget.minSize!, minHeight: widget.minSize!),
+        constraints: BoxConstraints(
+          minWidth: widget.minSize!,
+          minHeight: widget.minSize!,
+        ),
         child: Center(child: content),
       );
     }
@@ -168,15 +200,22 @@ class _IosCardPressState extends State<IosCardPress> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final Color base = widget.baseColor ?? (isDark ? Colors.white10 : cs.surface);
+    final Color base =
+        widget.baseColor ?? (isDark ? Colors.white10 : cs.surface);
     final double k = widget.pressedBlendStrength ?? (isDark ? 0.14 : 0.12);
-    final Color pressTarget = Color.lerp(base, isDark ? Colors.white : Colors.black, k) ?? base;
-    final Color hoverTarget = Color.lerp(base, isDark ? Colors.white : Colors.black, k * 0.7) ?? base;
-    final Color target = _pressed ? pressTarget : (_hovered ? hoverTarget : base);
+    final Color pressTarget =
+        Color.lerp(base, isDark ? Colors.white : Colors.black, k) ?? base;
+    final Color hoverTarget =
+        Color.lerp(base, isDark ? Colors.white : Colors.black, k * 0.7) ?? base;
+    final Color target = _pressed
+        ? pressTarget
+        : (_hovered ? hoverTarget : base);
     final double scale = _pressed ? (widget.pressedScale ?? 1.0) : 1.0;
     final Duration dur = widget.duration ?? const Duration(milliseconds: 200);
 
-    final content = widget.padding == null ? widget.child : Padding(padding: widget.padding!, child: widget.child);
+    final content = widget.padding == null
+        ? widget.child
+        : Padding(padding: widget.padding!, child: widget.child);
 
     return MouseRegion(
       cursor: (widget.onTap != null || widget.onLongPress != null)
@@ -186,9 +225,15 @@ class _IosCardPressState extends State<IosCardPress> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (widget.onTap != null || widget.onLongPress != null) ? (_) => setState(() => _pressed = true) : null,
-        onTapUp: (widget.onTap != null || widget.onLongPress != null) ? (_) => setState(() => _pressed = false) : null,
-        onTapCancel: (widget.onTap != null || widget.onLongPress != null) ? () => setState(() => _pressed = false) : null,
+        onTapDown: (widget.onTap != null || widget.onLongPress != null)
+            ? (_) => setState(() => _pressed = true)
+            : null,
+        onTapUp: (widget.onTap != null || widget.onLongPress != null)
+            ? (_) => setState(() => _pressed = false)
+            : null,
+        onTapCancel: (widget.onTap != null || widget.onLongPress != null)
+            ? () => setState(() => _pressed = false)
+            : null,
         onTap: widget.onTap == null
             ? null
             : () {

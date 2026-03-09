@@ -47,9 +47,13 @@ class ChatProvider extends ChangeNotifier {
     try {
       final Map<String, dynamic> map = jsonDecode(raw) as Map<String, dynamic>;
       _chats = _chats
-          .map((c) => map.containsKey(c.id)
-              ? c.copyWith(title: (map[c.id] as String?)?.toString() ?? c.title)
-              : c)
+          .map(
+            (c) => map.containsKey(c.id)
+                ? c.copyWith(
+                    title: (map[c.id] as String?)?.toString() ?? c.title,
+                  )
+                : c,
+          )
           .toList();
     } catch (_) {
       // ignore malformed
@@ -93,4 +97,3 @@ class ChatProvider extends ChangeNotifier {
     await _saveTitles();
   }
 }
-

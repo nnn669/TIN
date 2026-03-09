@@ -15,7 +15,11 @@ import '../../../shared/widgets/ios_tile_button.dart';
 import '../../../core/services/haptics.dart';
 
 class MultiKeyManagerPage extends StatefulWidget {
-  const MultiKeyManagerPage({super.key, required this.providerKey, required this.providerDisplayName});
+  const MultiKeyManagerPage({
+    super.key,
+    required this.providerKey,
+    required this.providerDisplayName,
+  });
   final String providerKey;
   final String providerDisplayName;
 
@@ -33,8 +37,13 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
-    final apiKeys = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
+    final apiKeys = List<ApiKeyConfig>.from(
+      cfg.apiKeys ?? const <ApiKeyConfig>[],
+    );
     final total = apiKeys.length;
     final normal = apiKeys.where((k) => k.status == ApiKeyStatus.active).length;
     final errors = apiKeys.where((k) => k.status == ApiKeyStatus.error).length;
@@ -68,7 +77,10 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.primary,
+                ),
               ),
             )
           else
@@ -97,33 +109,53 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          _iosSectionCard(children: [
-            _iosRow(
-              context,
-              label: l10n.multiKeyPageTotal,
-              trailing: Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Text('$total', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          _iosSectionCard(
+            children: [
+              _iosRow(
+                context,
+                label: l10n.multiKeyPageTotal,
+                trailing: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    '$total',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            _iosRow(
-              context,
-              label: l10n.multiKeyPageNormal,
-              trailing: Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Text('$normal', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              _iosRow(
+                context,
+                label: l10n.multiKeyPageNormal,
+                trailing: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    '$normal',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            _iosRow(
-              context,
-              label: l10n.multiKeyPageError,
-              trailing: Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Text('$errors', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              _iosRow(
+                context,
+                label: l10n.multiKeyPageError,
+                trailing: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    '$errors',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            _strategyRow(context, cfg),
-          ]),
+              _strategyRow(context, cfg),
+            ],
+          ),
           const SizedBox(height: 12),
           _keysList(context, apiKeys),
         ],
@@ -148,7 +180,8 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   Widget _strategyRow(BuildContext context, ProviderConfig cfg) {
     final cs = Theme.of(context).colorScheme;
-    final strategy = cfg.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
+    final strategy =
+        cfg.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
     return _TactileRow(
       pressedScale: 1.00,
       onTap: _showStrategySheet,
@@ -156,7 +189,8 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final base = cs.onSurface;
         final target = pressed
-            ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base)
+            ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ??
+                  base)
             : base;
         return TweenAnimationBuilder<Color?>(
           tween: ColorTween(end: target),
@@ -168,7 +202,12 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               child: Row(
                 children: [
-                  Expanded(child: Text(AppLocalizations.of(context)!.multiKeyPageStrategyTitle, style: TextStyle(fontSize: 15, color: c))),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)!.multiKeyPageStrategyTitle,
+                      style: TextStyle(fontSize: 15, color: c),
+                    ),
+                  ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -193,12 +232,14 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     if (keys.isEmpty) {
-      return _iosSectionCard(children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Center(child: Text(l10n.multiKeyPageNoKeys)),
-        )
-      ]);
+      return _iosSectionCard(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Center(child: Text(l10n.multiKeyPageNoKeys)),
+          ),
+        ],
+      );
     }
 
     String mask(String key) {
@@ -253,9 +294,10 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     ApiKeyConfig k,
     Color Function(ApiKeyStatus) statusColor,
     String Function(ApiKeyStatus) statusText,
-    String Function(String) mask,
-    {bool isTesting = false, VoidCallback? onTest}
-  ) {
+    String Function(String) mask, {
+    bool isTesting = false,
+    VoidCallback? onTest,
+  }) {
     final cs = Theme.of(context).colorScheme;
     final name = k.name?.isNotEmpty == true ? k.name! : mask(k.key);
     return Padding(
@@ -266,14 +308,20 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor(k.status).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     statusText(k.status),
-                    style: TextStyle(color: statusColor(k.status), fontSize: 11),
+                    style: TextStyle(
+                      color: statusColor(k.status),
+                      fontSize: 11,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -299,7 +347,14 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
           ),
           const SizedBox(width: 6),
           if (isTesting)
-            SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary))
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: cs.primary,
+              ),
+            )
           else if (onTest != null)
             _TactileIconButton(
               icon: Lucide.HeartPulse,
@@ -375,10 +430,11 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
       child: Row(
         children: [
           Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
-          if (trailing != null) DefaultTextStyle.merge(
-            style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
-            child: trailing,
-          ),
+          if (trailing != null)
+            DefaultTextStyle.merge(
+              style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
+              child: trailing,
+            ),
         ],
       ),
     );
@@ -395,36 +451,58 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   Future<void> _updateKey(ApiKeyConfig updated) async {
     final settings = context.read<SettingsProvider>();
-    final old = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final old = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
     final idx = list.indexWhere((e) => e.id == updated.id);
     if (idx >= 0) {
       list[idx] = updated;
-      await settings.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
+      await settings.setProviderConfig(
+        widget.providerKey,
+        old.copyWith(apiKeys: list),
+      );
     }
   }
 
   Future<void> _deleteKey(ApiKeyConfig k) async {
     final settings = context.read<SettingsProvider>();
-    final old = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final old = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final list = List<ApiKeyConfig>.from(old.apiKeys ?? const <ApiKeyConfig>[]);
     final idx = list.indexWhere((e) => e.id == k.id);
     if (idx < 0) return;
     final removed = list.removeAt(idx);
-    await settings.setProviderConfig(widget.providerKey, old.copyWith(apiKeys: list));
+    await settings.setProviderConfig(
+      widget.providerKey,
+      old.copyWith(apiKeys: list),
+    );
     if (!mounted) return;
     showAppSnackBar(
       context,
-      message: AppLocalizations.of(context)!.multiKeyPageDeleteSnackbarDeletedOne,
+      message: AppLocalizations.of(
+        context,
+      )!.multiKeyPageDeleteSnackbarDeletedOne,
       type: NotificationType.info,
       actionLabel: AppLocalizations.of(context)!.multiKeyPageUndo,
       onAction: () async {
         // Re-insert if user taps undo
-        final latest = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
-        final cur = List<ApiKeyConfig>.from(latest.apiKeys ?? const <ApiKeyConfig>[]);
+        final latest = settings.getProviderConfig(
+          widget.providerKey,
+          defaultName: widget.providerDisplayName,
+        );
+        final cur = List<ApiKeyConfig>.from(
+          latest.apiKeys ?? const <ApiKeyConfig>[],
+        );
         final insertIndex = idx <= cur.length ? idx : cur.length;
         cur.insert(insertIndex, removed);
-        await settings.setProviderConfig(widget.providerKey, latest.copyWith(apiKeys: cur));
+        await settings.setProviderConfig(
+          widget.providerKey,
+          latest.copyWith(apiKeys: cur),
+        );
         if (!mounted) return;
         showAppSnackBar(
           context,
@@ -441,11 +519,20 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     if (updated == null) return;
     // Optional: prevent duplicate keys if key changed
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final list = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
-    final duplicate = list.any((e) => e.id != k.id && e.key.trim() == updated.key.trim());
+    final duplicate = list.any(
+      (e) => e.id != k.id && e.key.trim() == updated.key.trim(),
+    );
     if (duplicate) {
-      showAppSnackBar(context, message: AppLocalizations.of(context)!.multiKeyPageDuplicateKeyWarning, type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: AppLocalizations.of(context)!.multiKeyPageDuplicateKeyWarning,
+        type: NotificationType.warning,
+      );
       return;
     }
     await _updateKey(updated);
@@ -456,7 +543,10 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     final added = await _showAddKeysSheet();
     if (added == null) return;
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final existing = (cfg.apiKeys ?? const <ApiKeyConfig>[]);
     final existingSet = existing.map((e) => e.key.trim()).toSet();
     final unique = <String>[];
@@ -472,9 +562,16 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
       ...existing,
       for (final s in unique) ApiKeyConfig.create(s),
     ];
-    await settings.setProviderConfig(widget.providerKey, cfg.copyWith(apiKeys: newKeys, multiKeyEnabled: true));
+    await settings.setProviderConfig(
+      widget.providerKey,
+      cfg.copyWith(apiKeys: newKeys, multiKeyEnabled: true),
+    );
     if (!mounted) return;
-    showAppSnackBar(context, message: l10n.multiKeyPageImportedSnackbar(unique.length), type: NotificationType.success);
+    showAppSnackBar(
+      context,
+      message: l10n.multiKeyPageImportedSnackbar(unique.length),
+      type: NotificationType.success,
+    );
 
     // Auto-detect imported keys
     await _detectOnly(keys: unique);
@@ -483,19 +580,28 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
   Future<void> _onTestSingleKey(ApiKeyConfig key) async {
     if (_detecting || _testingKeyId != null) return;
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final models = cfg.models;
     if (_detectModelId == null) {
       if (models.isEmpty) {
         if (!mounted) return;
-        showAppSnackBar(context, message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel,
+          type: NotificationType.warning,
+        );
         return;
       }
       _detectModelId = models.first;
     }
     setState(() => _testingKeyId = key.id);
     try {
-      final list = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
+      final list = List<ApiKeyConfig>.from(
+        cfg.apiKeys ?? const <ApiKeyConfig>[],
+      );
       final toTest = list.where((e) => e.id == key.id).toList();
       await _testKeysAndSave(list, toTest, _detectModelId!);
     } finally {
@@ -505,18 +611,29 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   List<String> _splitKeys(String raw) {
     final s = raw.replaceAll(',', ' ').trim();
-    return s.split(RegExp(r'\s+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    return s
+        .split(RegExp(r'\s+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   Future<void> _onDetect() async {
     if (_detecting) return;
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final models = cfg.models;
     if (_detectModelId == null) {
       if (models.isEmpty) {
         if (!mounted) return;
-        showAppSnackBar(context, message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel,
+          type: NotificationType.warning,
+        );
         return;
       }
       _detectModelId = models.first;
@@ -530,7 +647,10 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
   }
 
   Future<void> _onPickDetectModel() async {
-    final sel = await showModelSelector(context, limitProviderKey: widget.providerKey);
+    final sel = await showModelSelector(
+      context,
+      limitProviderKey: widget.providerKey,
+    );
     if (sel != null) {
       setState(() => _detectModelId = sel.modelId);
     }
@@ -538,9 +658,14 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   Future<void> _onDeleteAllErrorKeys() async {
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final keys = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
-    final errorKeys = keys.where((e) => e.status == ApiKeyStatus.error).toList();
+    final errorKeys = keys
+        .where((e) => e.status == ApiKeyStatus.error)
+        .toList();
     if (errorKeys.isEmpty) {
       return;
     }
@@ -568,17 +693,25 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     );
     if (ok != true) return;
     final remain = keys.where((e) => e.status != ApiKeyStatus.error).toList();
-    await settings.setProviderConfig(widget.providerKey, cfg.copyWith(apiKeys: remain));
+    await settings.setProviderConfig(
+      widget.providerKey,
+      cfg.copyWith(apiKeys: remain),
+    );
     if (!mounted) return;
     showAppSnackBar(
       context,
-      message: AppLocalizations.of(context)!.multiKeyPageDeletedErrorsSnackbar(errorKeys.length),
+      message: AppLocalizations.of(
+        context,
+      )!.multiKeyPageDeletedErrorsSnackbar(errorKeys.length),
       type: NotificationType.success,
     );
   }
 
   Future<void> _chooseDetectModel() async {
-    final sel = await showModelSelector(context, limitProviderKey: widget.providerKey);
+    final sel = await showModelSelector(
+      context,
+      limitProviderKey: widget.providerKey,
+    );
     if (sel != null) setState(() => _detectModelId = sel.modelId);
   }
 
@@ -586,8 +719,12 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final settings = context.read<SettingsProvider>();
-    final old = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
-    final current = old.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
+    final old = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
+    final current =
+        old.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
     String labelFor(LoadBalanceStrategy s) {
       switch (s) {
         case LoadBalanceStrategy.priority:
@@ -626,14 +763,25 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                 ),
                 const SizedBox(height: 12),
                 // Only show Round Robin and Random for now
-                for (final s in <LoadBalanceStrategy>[LoadBalanceStrategy.roundRobin, LoadBalanceStrategy.random])
+                for (final s in <LoadBalanceStrategy>[
+                  LoadBalanceStrategy.roundRobin,
+                  LoadBalanceStrategy.random,
+                ])
                   _TactileRow(
                     pressedScale: 1.00,
                     onTap: () => Navigator.of(ctx).pop(s),
                     builder: (pressed) {
                       final base = cs.onSurface;
-                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                      final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
+                      final isDark =
+                          Theme.of(ctx).brightness == Brightness.dark;
+                      final target = pressed
+                          ? (Color.lerp(
+                                  base,
+                                  isDark ? Colors.black : Colors.white,
+                                  0.55,
+                                ) ??
+                                base)
+                          : base;
                       return TweenAnimationBuilder<Color?>(
                         tween: ColorTween(end: target),
                         duration: const Duration(milliseconds: 200),
@@ -641,11 +789,20 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                         builder: (context, color, _) {
                           final c = color ?? base;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
                             child: Row(
                               children: [
-                                Expanded(child: Text(labelFor(s), style: TextStyle(fontSize: 15, color: c))),
-                                if (s == current) Icon(Icons.check, color: cs.primary),
+                                Expanded(
+                                  child: Text(
+                                    labelFor(s),
+                                    style: TextStyle(fontSize: 15, color: c),
+                                  ),
+                                ),
+                                if (s == current)
+                                  Icon(Icons.check, color: cs.primary),
                               ],
                             ),
                           );
@@ -660,8 +817,13 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
       },
     );
     if (selected != null && selected != current) {
-      final km = (old.keyManagement ?? const KeyManagementConfig()).copyWith(strategy: selected);
-      await settings.setProviderConfig(widget.providerKey, old.copyWith(keyManagement: km));
+      final km = (old.keyManagement ?? const KeyManagementConfig()).copyWith(
+        strategy: selected,
+      );
+      await settings.setProviderConfig(
+        widget.providerKey,
+        old.copyWith(keyManagement: km),
+      );
     }
   }
 
@@ -691,7 +853,16 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)))),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 36,
@@ -699,7 +870,13 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     children: [
                       Align(
                         alignment: Alignment.center,
-                        child: Text(l10n.multiKeyPageAdd, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          l10n.multiKeyPageAdd,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -721,10 +898,28 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     hintText: l10n.multiKeyPageAddHint,
                     filled: true,
                     fillColor: isDark ? Colors.white10 : Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.primary.withOpacity(0.5))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -734,7 +929,8 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     label: l10n.multiKeyPageAdd,
                     icon: Lucide.Plus,
                     backgroundColor: cs.primary,
-                    onTap: () => Navigator.of(ctx).pop(_splitKeys(inputCtrl.text)),
+                    onTap: () =>
+                        Navigator.of(ctx).pop(_splitKeys(inputCtrl.text)),
                   ),
                 ),
               ],
@@ -774,7 +970,16 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)))),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 36,
@@ -782,7 +987,13 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     children: [
                       Align(
                         alignment: Alignment.center,
-                        child: Text(l10n.multiKeyPageEdit, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          l10n.multiKeyPageEdit,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -802,10 +1013,28 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     hintText: l10n.multiKeyPageAlias,
                     filled: true,
                     fillColor: isDark ? Colors.white10 : Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.primary.withOpacity(0.5))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -815,10 +1044,28 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     hintText: l10n.multiKeyPageKey,
                     filled: true,
                     fillColor: isDark ? Colors.white10 : Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.primary.withOpacity(0.5))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -829,10 +1076,28 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                     hintText: l10n.multiKeyPagePriority,
                     filled: true,
                     fillColor: isDark ? Colors.white10 : Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: cs.primary.withOpacity(0.5))),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.4),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: cs.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -847,7 +1112,9 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
                       final clamped = p.clamp(1, 10) as int;
                       Navigator.of(ctx).pop(
                         k.copyWith(
-                          name: aliasCtrl.text.trim().isEmpty ? null : aliasCtrl.text.trim(),
+                          name: aliasCtrl.text.trim().isEmpty
+                              ? null
+                              : aliasCtrl.text.trim(),
                           key: keyCtrl.text.trim(),
                           priority: clamped,
                         ),
@@ -865,11 +1132,18 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
   }
 
   Future<void> _detectOnly({required List<String> keys}) async {
-    final cfg = context.read<SettingsProvider>().getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = context.read<SettingsProvider>().getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final models = cfg.models;
     if (_detectModelId == null) {
       if (models.isEmpty) {
-        showAppSnackBar(context, message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(context)!.multiKeyPagePleaseAddModel,
+          type: NotificationType.warning,
+        );
         return;
       }
       _detectModelId = models.first;
@@ -881,40 +1155,62 @@ class _MultiKeyManagerPageState extends State<MultiKeyManagerPage> {
 
   Future<void> _detectAllForModel(String modelId) async {
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final list = List<ApiKeyConfig>.from(cfg.apiKeys ?? const <ApiKeyConfig>[]);
     await _testKeysAndSave(list, list, modelId);
   }
 
-  Future<void> _testKeysAndSave(List<ApiKeyConfig> fullList, List<ApiKeyConfig> toTest, String modelId) async {
+  Future<void> _testKeysAndSave(
+    List<ApiKeyConfig> fullList,
+    List<ApiKeyConfig> toTest,
+    String modelId,
+  ) async {
     final settings = context.read<SettingsProvider>();
-    final base = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final base = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final out = List<ApiKeyConfig>.from(fullList);
     for (int i = 0; i < toTest.length; i++) {
       final k = toTest[i];
       final ok = await _testSingleKey(base, modelId, k);
       final idx = out.indexWhere((e) => e.id == k.id);
-      if (idx >= 0) out[idx] = k.copyWith(
-        status: ok ? ApiKeyStatus.active : ApiKeyStatus.error,
-        usage: k.usage.copyWith(
-          totalRequests: k.usage.totalRequests + 1,
-          successfulRequests: k.usage.successfulRequests + (ok ? 1 : 0),
-          failedRequests: k.usage.failedRequests + (ok ? 0 : 1),
-          consecutiveFailures: ok ? 0 : (k.usage.consecutiveFailures + 1),
-          lastUsed: DateTime.now().millisecondsSinceEpoch,
-        ),
-        lastError: ok ? null : 'Test failed',
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      );
+      if (idx >= 0)
+        out[idx] = k.copyWith(
+          status: ok ? ApiKeyStatus.active : ApiKeyStatus.error,
+          usage: k.usage.copyWith(
+            totalRequests: k.usage.totalRequests + 1,
+            successfulRequests: k.usage.successfulRequests + (ok ? 1 : 0),
+            failedRequests: k.usage.failedRequests + (ok ? 0 : 1),
+            consecutiveFailures: ok ? 0 : (k.usage.consecutiveFailures + 1),
+            lastUsed: DateTime.now().millisecondsSinceEpoch,
+          ),
+          lastError: ok ? null : 'Test failed',
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        );
       // Small delay between tests for UX
       await Future.delayed(const Duration(milliseconds: 120));
     }
-    await settings.setProviderConfig(widget.providerKey, base.copyWith(apiKeys: out));
+    await settings.setProviderConfig(
+      widget.providerKey,
+      base.copyWith(apiKeys: out),
+    );
   }
 
-  Future<bool> _testSingleKey(ProviderConfig baseCfg, String modelId, ApiKeyConfig key) async {
+  Future<bool> _testSingleKey(
+    ProviderConfig baseCfg,
+    String modelId,
+    ApiKeyConfig key,
+  ) async {
     try {
-      final cfg2 = baseCfg.copyWith(apiKey: key.key, multiKeyEnabled: false, apiKeys: const []);
+      final cfg2 = baseCfg.copyWith(
+        apiKey: key.key,
+        multiKeyEnabled: false,
+        apiKeys: const [],
+      );
       await ProviderManager.testConnection(cfg2, modelId);
       return true;
     } catch (_) {
@@ -950,7 +1246,8 @@ class _TactileScaleState extends State<_TactileScale> {
       onTap: widget.onTap == null
           ? null
           : () {
-              if (context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
+              if (context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
               widget.onTap!.call();
             },
       child: AnimatedScale(
@@ -992,7 +1289,12 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
   Widget build(BuildContext context) {
     final base = widget.color;
     final pressColor = base.withOpacity(0.7);
-    final icon = Icon(widget.icon, size: widget.size, color: _pressed ? pressColor : base, semanticLabel: widget.semanticLabel);
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: _pressed ? pressColor : base,
+      semanticLabel: widget.semanticLabel,
+    );
 
     return Semantics(
       button: true,
@@ -1009,7 +1311,7 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
         onLongPress: widget.onLongPress == null
             ? null
             : () {
-                 Haptics.light();
+                Haptics.light();
                 widget.onLongPress!.call();
               },
         child: AnimatedScale(
@@ -1028,7 +1330,11 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
 
 // Builder-based tactile wrapper to expose pressed state and optional scale
 class _TactileRow extends StatefulWidget {
-  const _TactileRow({required this.builder, this.onTap, this.pressedScale = 0.97});
+  const _TactileRow({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 0.97,
+  });
   final Widget Function(bool pressed) builder;
   final VoidCallback? onTap;
   final double pressedScale;

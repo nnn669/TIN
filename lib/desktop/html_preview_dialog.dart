@@ -11,10 +11,17 @@ import '../shared/widgets/snackbar.dart';
 import '../shared/widgets/ios_tactile.dart';
 import 'dart:convert';
 
-Future<void> showHtmlPreviewDesktopDialog(BuildContext context, {required String html}) async {
+Future<void> showHtmlPreviewDesktopDialog(
+  BuildContext context, {
+  required String html,
+}) async {
   if (Platform.isLinux) {
     final l10n = AppLocalizations.of(context)!;
-    showAppSnackBar(context, message: l10n.htmlPreviewNotSupportedOnLinux, type: NotificationType.warning);
+    showAppSnackBar(
+      context,
+      message: l10n.htmlPreviewNotSupportedOnLinux,
+      type: NotificationType.warning,
+    );
     return;
   }
   await showDialog(
@@ -53,7 +60,9 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
     if (Platform.isWindows) {
       final c = winweb.WebviewController();
       await c.initialize();
-      try { await c.setBackgroundColor(const Color(0x00000000)); } catch (_) {}
+      try {
+        await c.setBackgroundColor(const Color(0x00000000));
+      } catch (_) {}
       _winCtrl = c;
       // Listen to web messages (console bridge)
       _msgSub = _winCtrl!.webMessage.listen((event) {
@@ -66,7 +75,12 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
             text = (e.content?.toString() ?? e.toString());
           }
           final obj = json.decode(text) as Map<String, dynamic>;
-          _pushConsole(level: (obj['level']?.toString() ?? 'log').toUpperCase(), message: obj['message']?.toString() ?? '', source: obj['source']?.toString(), line: (obj['line'] as num?)?.toInt());
+          _pushConsole(
+            level: (obj['level']?.toString() ?? 'log').toUpperCase(),
+            message: obj['message']?.toString() ?? '',
+            source: obj['source']?.toString(),
+            line: (obj['line'] as num?)?.toInt(),
+          );
         } catch (_) {}
       });
       _ready = true;
@@ -74,14 +88,22 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
     } else {
       final c = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..addJavaScriptChannel('Console', onMessageReceived: (m) {
-          try {
-            final obj = json.decode(m.message) as Map<String, dynamic>;
-            _pushConsole(level: (obj['level']?.toString() ?? 'log').toUpperCase(), message: obj['message']?.toString() ?? '', source: obj['source']?.toString(), line: (obj['line'] as num?)?.toInt());
-          } catch (_) {
-            _pushConsole(level: 'LOG', message: m.message);
-          }
-        });
+        ..addJavaScriptChannel(
+          'Console',
+          onMessageReceived: (m) {
+            try {
+              final obj = json.decode(m.message) as Map<String, dynamic>;
+              _pushConsole(
+                level: (obj['level']?.toString() ?? 'log').toUpperCase(),
+                message: obj['message']?.toString() ?? '',
+                source: obj['source']?.toString(),
+                line: (obj['line'] as num?)?.toInt(),
+              );
+            } catch (_) {
+              _pushConsole(level: 'LOG', message: m.message);
+            }
+          },
+        );
       _flutterCtrl = c;
       _ready = true;
       if (mounted) setState(() {});
@@ -105,7 +127,9 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
 
   Future<String> _writeTempHtml(String html) async {
     final dir = await getTemporaryDirectory();
-    final file = io.File('${dir.path}/html_preview_${DateTime.now().millisecondsSinceEpoch}.html');
+    final file = io.File(
+      '${dir.path}/html_preview_${DateTime.now().millisecondsSinceEpoch}.html',
+    );
     await file.writeAsString(html, flush: true);
     return file.path;
   }
@@ -132,13 +156,19 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     // Keep content updated with theme changes
-    WidgetsBinding.instance.addPostFrameCallback((_) { _loadWithTheme(); });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWithTheme();
+    });
     return Dialog(
       elevation: 12,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 520, maxWidth: 900, maxHeight: 740),
+        constraints: const BoxConstraints(
+          minWidth: 520,
+          maxWidth: 900,
+          maxHeight: 740,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Material(
@@ -151,7 +181,13 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
                   child: Row(
                     children: [
                       // Left title
-                      Text(l10n.assistantEditPreviewTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.assistantEditPreviewTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       // Right function buttons
                       IosIconButton(
@@ -204,7 +240,9 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
 
   @override
   void dispose() {
-    try { _msgSub?.cancel(); } catch (_) {}
+    try {
+      _msgSub?.cancel();
+    } catch (_) {}
     try {
       _winCtrl?.dispose();
     } catch (_) {}
@@ -220,10 +258,22 @@ extension _ConsoleDialogExt on _HtmlPreviewDialogState {
       barrierDismissible: true,
       barrierColor: Colors.black.withOpacity(0.25),
       barrierLabel: 'console-logs',
-      pageBuilder: (ctx, _, __) => _ConsoleDialog(title: l10n.messageWebViewConsoleLogs, messages: List<_ConsoleMessage>.from(_console)),
+      pageBuilder: (ctx, _, __) => _ConsoleDialog(
+        title: l10n.messageWebViewConsoleLogs,
+        messages: List<_ConsoleMessage>.from(_console),
+      ),
       transitionBuilder: (ctx, anim, _, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
-        return FadeTransition(opacity: curved, child: ScaleTransition(scale: Tween<double>(begin: 0.98, end: 1).animate(curved), child: child));
+        final curved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+            child: child,
+          ),
+        );
       },
     );
   }
@@ -242,7 +292,11 @@ class _ConsoleDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 520, maxWidth: 700, maxHeight: 620),
+        constraints: const BoxConstraints(
+          minWidth: 520,
+          maxWidth: 700,
+          maxHeight: 620,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Material(
@@ -254,13 +308,21 @@ class _ConsoleDialog extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                   child: Row(
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       IosIconButton(
                         icon: Lucide.X,
                         size: 18,
                         minSize: 34,
-                        semanticLabel: AppLocalizations.of(context)!.mcpPageClose,
+                        semanticLabel: AppLocalizations.of(
+                          context,
+                        )!.mcpPageClose,
                         onTap: () => Navigator.of(context).maybePop(),
                       ),
                     ],
@@ -277,16 +339,23 @@ class _ConsoleDialog extends StatelessWidget {
                           final m = messages[i];
                           Color c;
                           switch (m.level) {
-                            case 'ERROR': c = cs.error; break;
+                            case 'ERROR':
+                              c = cs.error;
+                              break;
                             case 'WARN':
-                            case 'WARNING': c = cs.secondary; break;
-                            default: c = cs.onSurface; break;
+                            case 'WARNING':
+                              c = cs.secondary;
+                              break;
+                            default:
+                              c = cs.onSurface;
+                              break;
                           }
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               '${m.level}: ${m.message}\nSource: ${m.source ?? ''}${m.line != null ? ':${m.line}' : ''}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: c, fontFamily: 'monospace'),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: c, fontFamily: 'monospace'),
                             ),
                           );
                         },
@@ -304,7 +373,12 @@ class _ConsoleDialog extends StatelessWidget {
 }
 
 class _ConsoleMessage {
-  _ConsoleMessage({required this.level, required this.message, this.source, this.line});
+  _ConsoleMessage({
+    required this.level,
+    required this.message,
+    this.source,
+    this.line,
+  });
   final String level;
   final String message;
   final String? source;
@@ -312,10 +386,22 @@ class _ConsoleMessage {
 }
 
 extension on _HtmlPreviewDialogState {
-  void _pushConsole({required String level, required String message, String? source, int? line}) {
+  void _pushConsole({
+    required String level,
+    required String message,
+    String? source,
+    int? line,
+  }) {
     if (!mounted) return;
     setState(() {
-      _console.add(_ConsoleMessage(level: level, message: message, source: source, line: line));
+      _console.add(
+        _ConsoleMessage(
+          level: level,
+          message: message,
+          source: source,
+          line: line,
+        ),
+      );
       if (_console.length > 128) {
         _console.removeRange(0, _console.length - 128);
       }

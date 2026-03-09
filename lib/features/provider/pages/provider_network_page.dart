@@ -6,7 +6,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
 
 class ProviderNetworkPage extends StatefulWidget {
-  const ProviderNetworkPage({super.key, required this.providerKey, required this.providerDisplayName});
+  const ProviderNetworkPage({
+    super.key,
+    required this.providerKey,
+    required this.providerDisplayName,
+  });
   final String providerKey;
   final String providerDisplayName;
 
@@ -25,7 +29,10 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
   void initState() {
     super.initState();
     final settings = context.read<SettingsProvider>();
-    final cfg = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final cfg = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     _proxyEnabled = cfg.proxyEnabled ?? false;
     _proxyHostCtrl.text = cfg.proxyHost ?? '';
     _proxyPortCtrl.text = cfg.proxyPort ?? '8080';
@@ -103,7 +110,11 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
     );
   }
 
-  Widget _switchRow({required String title, required bool value, required ValueChanged<bool> onChanged}) {
+  Widget _switchRow({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
     final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
@@ -113,13 +124,23 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
     );
   }
 
-  Widget _inputRow(BuildContext context, {required String label, required TextEditingController controller, String? hint, bool obscure = false, ValueChanged<String>? onChanged}) {
+  Widget _inputRow(
+    BuildContext context, {
+    required String label,
+    required TextEditingController controller,
+    String? hint,
+    bool obscure = false,
+    ValueChanged<String>? onChanged,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.8))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.8)),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -129,9 +150,18 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
             hintText: hint,
             filled: true,
             fillColor: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cs.primary.withOpacity(0.4))),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.transparent),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.transparent),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
+            ),
           ),
         ),
       ],
@@ -140,7 +170,10 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
 
   Future<void> _saveNetwork() async {
     final settings = context.read<SettingsProvider>();
-    final old = settings.getProviderConfig(widget.providerKey, defaultName: widget.providerDisplayName);
+    final old = settings.getProviderConfig(
+      widget.providerKey,
+      defaultName: widget.providerDisplayName,
+    );
     final cfg = old.copyWith(
       proxyEnabled: _proxyEnabled,
       proxyHost: _proxyHostCtrl.text.trim(),

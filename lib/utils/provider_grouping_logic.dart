@@ -30,15 +30,15 @@ class ProviderGroupingMoveIntent {
   });
 
   final String providerKey;
+
   /// groupId or `__ungrouped__`
   final String targetGroupKey;
+
   /// Position within the target group's visible provider segment (0-based).
   final int targetPos;
 }
 
-enum ProviderGroupingReorderBlockedReason {
-  targetGroupCollapsed,
-}
+enum ProviderGroupingReorderBlockedReason { targetGroupCollapsed }
 
 class ProviderGroupingReorderAnalysis {
   final ProviderGroupingMoveIntent? intent;
@@ -46,9 +46,13 @@ class ProviderGroupingReorderAnalysis {
 
   const ProviderGroupingReorderAnalysis._({this.intent, this.blockedReason});
 
-  const ProviderGroupingReorderAnalysis.allowed(ProviderGroupingMoveIntent intent) : this._(intent: intent);
+  const ProviderGroupingReorderAnalysis.allowed(
+    ProviderGroupingMoveIntent intent,
+  ) : this._(intent: intent);
 
-  const ProviderGroupingReorderAnalysis.blocked(ProviderGroupingReorderBlockedReason reason) : this._(blockedReason: reason);
+  const ProviderGroupingReorderAnalysis.blocked(
+    ProviderGroupingReorderBlockedReason reason,
+  ) : this._(blockedReason: reason);
 
   const ProviderGroupingReorderAnalysis.invalid() : this._();
 
@@ -66,16 +70,19 @@ ProviderGroupingReorderAnalysis analyzeProviderGroupingReorder({
   bool disallowCrossGroupIntoCollapsedEmpty = true,
 }) {
   if (rows.isEmpty) return const ProviderGroupingReorderAnalysis.invalid();
-  if (oldIndex < 0 || oldIndex >= rows.length) return const ProviderGroupingReorderAnalysis.invalid();
+  if (oldIndex < 0 || oldIndex >= rows.length)
+    return const ProviderGroupingReorderAnalysis.invalid();
 
   // Normalize newIndex because Flutter passes the index after removal.
   if (newIndex > oldIndex) newIndex -= 1;
   newIndex = newIndex.clamp(0, rows.length);
   if (disallowInsertBeforeFirstHeader && newIndex == 0) newIndex = 1;
-  if (newIndex == oldIndex) return const ProviderGroupingReorderAnalysis.invalid();
+  if (newIndex == oldIndex)
+    return const ProviderGroupingReorderAnalysis.invalid();
 
   final moved = rows[oldIndex];
-  if (moved is! ProviderGroupingProviderVM) return const ProviderGroupingReorderAnalysis.invalid();
+  if (moved is! ProviderGroupingProviderVM)
+    return const ProviderGroupingReorderAnalysis.invalid();
   final oldGroupKey = moved.groupKey;
 
   final sim = List<ProviderGroupingRowVM>.from(rows);
@@ -93,23 +100,30 @@ ProviderGroupingReorderAnalysis analyzeProviderGroupingReorder({
   }
   if (headerIndex < 0) return const ProviderGroupingReorderAnalysis.invalid();
 
-  final targetGroupKey = (sim[headerIndex] as ProviderGroupingHeaderVM).groupKey;
+  final targetGroupKey =
+      (sim[headerIndex] as ProviderGroupingHeaderVM).groupKey;
 
   if (disallowCrossGroupIntoCollapsedEmpty) {
     final isCrossGroup = oldGroupKey != targetGroupKey;
-    final targetVisibleCount =
-        rows
-            .whereType<ProviderGroupingProviderVM>()
-            .where((e) => e.groupKey == targetGroupKey && !isGroupCollapsed(e.groupKey))
-            .length;
-    if (isCrossGroup && isGroupCollapsed(targetGroupKey) && targetVisibleCount == 0) {
-      return const ProviderGroupingReorderAnalysis.blocked(ProviderGroupingReorderBlockedReason.targetGroupCollapsed);
+    final targetVisibleCount = rows
+        .whereType<ProviderGroupingProviderVM>()
+        .where(
+          (e) => e.groupKey == targetGroupKey && !isGroupCollapsed(e.groupKey),
+        )
+        .length;
+    if (isCrossGroup &&
+        isGroupCollapsed(targetGroupKey) &&
+        targetVisibleCount == 0) {
+      return const ProviderGroupingReorderAnalysis.blocked(
+        ProviderGroupingReorderBlockedReason.targetGroupCollapsed,
+      );
     }
   }
 
   int targetPos = 0;
   for (int i = headerIndex + 1; i < movedIndex; i++) {
-    if (sim[i] is ProviderGroupingProviderVM && !isGroupCollapsed((sim[i] as ProviderGroupingProviderVM).groupKey)) {
+    if (sim[i] is ProviderGroupingProviderVM &&
+        !isGroupCollapsed((sim[i] as ProviderGroupingProviderVM).groupKey)) {
       targetPos++;
     }
   }
@@ -132,6 +146,7 @@ class ProviderGroupingMoveResult {
   });
 
   final List<String> providersOrder;
+
   /// providerKey -> groupId (missing = ungrouped)
   final Map<String, String> providerGroupMap;
 }
@@ -152,7 +167,10 @@ ProviderGroupingMoveResult moveProviderInGroupedOrder({
     );
   }
 
-  final normalizedTargetGroupId = (targetGroupId != null && validGroupIds.contains(targetGroupId)) ? targetGroupId : null;
+  final normalizedTargetGroupId =
+      (targetGroupId != null && validGroupIds.contains(targetGroupId))
+      ? targetGroupId
+      : null;
 
   // Clean mapping first (best-effort) and apply providerKey update.
   final nextMap = <String, String>{};
@@ -184,7 +202,10 @@ ProviderGroupingMoveResult moveProviderInGroupedOrder({
     return (gid != null && validGroupIds.contains(gid)) ? gid : null;
   }
 
-  final targetKeys = [for (final k in nextOrder) if (groupIdFor(k) == normalizedTargetGroupId) k];
+  final targetKeys = [
+    for (final k in nextOrder)
+      if (groupIdFor(k) == normalizedTargetGroupId) k,
+  ];
   final clampedPos = targetPos.clamp(0, targetKeys.length);
 
   int insertIndex;
@@ -224,8 +245,12 @@ ProviderGroupingDeleteGroupResult deleteProviderGroup({
   required Map<String, bool> collapsed,
   required String groupId,
 }) {
-  final nextGroups = [for (final g in groups) if (g.id != groupId) g];
-  final nextMap = Map<String, String>.from(providerGroupMap)..removeWhere((_, gid) => gid == groupId);
+  final nextGroups = [
+    for (final g in groups)
+      if (g.id != groupId) g,
+  ];
+  final nextMap = Map<String, String>.from(providerGroupMap)
+    ..removeWhere((_, gid) => gid == groupId);
   final nextCollapsed = Map<String, bool>.from(collapsed)..remove(groupId);
   return ProviderGroupingDeleteGroupResult(
     groups: List<ProviderGroup>.unmodifiable(nextGroups),

@@ -55,12 +55,14 @@ class UnicodeSanitizer {
     return out?.toString() ?? input;
   }
 
-  static bool _isHighSurrogate(int codeUnit) => codeUnit >= 0xD800 && codeUnit <= 0xDBFF;
-  static bool _isLowSurrogate(int codeUnit) => codeUnit >= 0xDC00 && codeUnit <= 0xDFFF;
-  static bool _looksLikeStrippedLowSurrogate(int codeUnit) => codeUnit >= 0x0C00 && codeUnit <= 0x0FFF;
+  static bool _isHighSurrogate(int codeUnit) =>
+      codeUnit >= 0xD800 && codeUnit <= 0xDBFF;
+  static bool _isLowSurrogate(int codeUnit) =>
+      codeUnit >= 0xDC00 && codeUnit <= 0xDFFF;
+  static bool _looksLikeStrippedLowSurrogate(int codeUnit) =>
+      codeUnit >= 0x0C00 && codeUnit <= 0x0FFF;
 
   static int _codePointFromSurrogates(int high, int low) {
     return 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
   }
 }
-

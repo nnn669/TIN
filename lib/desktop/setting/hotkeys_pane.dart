@@ -39,7 +39,11 @@ class _DesktopHotkeysPaneState extends State<DesktopHotkeysPane> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             l10n.settingsPageHotkeys,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: cs.onSurface.withOpacity(0.9),
+                            ),
                           ),
                         ),
                       ),
@@ -48,7 +52,9 @@ class _DesktopHotkeysPaneState extends State<DesktopHotkeysPane> {
                         child: _SmallIconBtn(
                           icon: lucide.Lucide.RefreshCw,
                           onTap: () async {
-                            await context.read<HotkeyProvider>().resetAllToDefaults();
+                            await context
+                                .read<HotkeyProvider>()
+                                .resetAllToDefaults();
                           },
                         ),
                       ),
@@ -82,7 +88,10 @@ class _DesktopHotkeysPaneState extends State<DesktopHotkeysPane> {
         color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         // Match TTS card's lighter border when unselected
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.12 : 0.08), width: 0.6),
+        border: Border.all(
+          color: cs.outlineVariant.withOpacity(isDark ? 0.12 : 0.08),
+          width: 0.6,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -92,10 +101,10 @@ class _DesktopHotkeysPaneState extends State<DesktopHotkeysPane> {
   }
 
   Widget _rowDivider(BuildContext context) => Divider(
-        height: 1,
-        thickness: 0.5,
-        color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.25),
-      );
+    height: 1,
+    thickness: 0.5,
+    color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.25),
+  );
 }
 
 class _HotkeyRow extends StatefulWidget {
@@ -157,7 +166,11 @@ class _HotkeyRowState extends State<_HotkeyRow> {
           Expanded(
             child: Text(
               displayLabel(),
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: cs.onSurface.withOpacity(0.92)),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: cs.onSurface.withOpacity(0.92),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -177,7 +190,10 @@ class _HotkeyRowState extends State<_HotkeyRow> {
                   onCancel: () => setState(() => _recording = false),
                   onSubmit: (cmd) async {
                     // Require at least one modifier; _ShortcutEditor guarantees
-                    await context.read<HotkeyProvider>().setCommand(item.id, cmd);
+                    await context.read<HotkeyProvider>().setCommand(
+                      item.id,
+                      cmd,
+                    );
                     if (mounted) setState(() => _recording = false);
                   },
                 ),
@@ -198,7 +214,8 @@ class _HotkeyRowState extends State<_HotkeyRow> {
             message: l10n.hotkeysResetDefault,
             child: _SmallIconBtn(
               icon: lucide.Lucide.RotateCcw,
-              onTap: () async => context.read<HotkeyProvider>().resetToDefault(item.id),
+              onTap: () async =>
+                  context.read<HotkeyProvider>().resetToDefault(item.id),
             ),
           ),
           const SizedBox(width: 8),
@@ -206,13 +223,15 @@ class _HotkeyRowState extends State<_HotkeyRow> {
             message: l10n.hotkeysClearShortcut,
             child: _SmallIconBtn(
               icon: lucide.Lucide.Eraser,
-              onTap: () async => context.read<HotkeyProvider>().clearCommand(item.id),
+              onTap: () async =>
+                  context.read<HotkeyProvider>().clearCommand(item.id),
             ),
           ),
           const SizedBox(width: 12),
           IosSwitch(
             value: item.enabled,
-            onChanged: (v) => context.read<HotkeyProvider>().setEnabled(item.id, v),
+            onChanged: (v) =>
+                context.read<HotkeyProvider>().setEnabled(item.id, v),
           ),
         ],
       ),
@@ -250,11 +269,13 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final border = cs.outlineVariant.withOpacity(0.35);
-    final bg = isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03);
+    final bg = isDark
+        ? Colors.white.withOpacity(0.04)
+        : Colors.black.withOpacity(0.03);
     return RawKeyboardListener(
       focusNode: widget.focusNode,
-        onKey: (RawKeyEvent e) {
-          if (!widget.recording) return;
+      onKey: (RawKeyEvent e) {
+        if (!widget.recording) return;
         final isDown = e is RawKeyDownEvent;
         final data = e.data;
         // Logical modifiers cross-platform
@@ -281,9 +302,12 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
 
           // Map some punctuation/letters
           String? keyToken;
-          if (key == LogicalKeyboardKey.comma) keyToken = 'comma';
-          else if (key == LogicalKeyboardKey.bracketLeft) keyToken = 'bracketleft';
-          else if (key == LogicalKeyboardKey.bracketRight) keyToken = 'bracketright';
+          if (key == LogicalKeyboardKey.comma)
+            keyToken = 'comma';
+          else if (key == LogicalKeyboardKey.bracketLeft)
+            keyToken = 'bracketleft';
+          else if (key == LogicalKeyboardKey.bracketRight)
+            keyToken = 'bracketright';
           else if (key.keyLabel.length == 1) {
             final ch = key.keyLabel.toLowerCase();
             if (RegExp(r'^[a-z0-9]$').hasMatch(ch)) {
@@ -311,28 +335,30 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
         setState(() {});
       },
       child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: widget.recording ? cs.primary.withOpacity(0.5) : border),
-            ),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              widget.recording ? (_liveDisplay()) : widget.displayText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: cs.onSurface.withOpacity(0.9),
-              ),
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: widget.recording ? cs.primary.withOpacity(0.5) : border,
             ),
           ),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            widget.recording ? (_liveDisplay()) : widget.displayText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: cs.onSurface.withOpacity(0.9),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -372,12 +398,15 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
               case 'bracketright':
                 return ']';
               default:
-                if (_key!.startsWith('key') && _key!.length == 4) return _key!.substring(3).toUpperCase();
+                if (_key!.startsWith('key') && _key!.length == 4)
+                  return _key!.substring(3).toUpperCase();
                 return _key!.toUpperCase();
             }
           }();
     final parts = [...mods, if (key.isNotEmpty) key];
-    return parts.isEmpty ? AppLocalizations.of(context)!.hotkeysPressShortcut : parts.join(' + ');
+    return parts.isEmpty
+        ? AppLocalizations.of(context)!.hotkeysPressShortcut
+        : parts.join(' + ');
   }
 }
 
@@ -395,7 +424,11 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -405,9 +438,16 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
         child: Container(
           width: 28,
           height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.center,
-          child: Icon(widget.icon, size: 16, color: cs.onSurface.withOpacity(0.9)),
+          child: Icon(
+            widget.icon,
+            size: 16,
+            color: cs.onSurface.withOpacity(0.9),
+          ),
         ),
       ),
     );

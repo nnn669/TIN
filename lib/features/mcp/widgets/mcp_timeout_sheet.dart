@@ -10,8 +10,9 @@ import '../../../shared/widgets/snackbar.dart';
 Future<void> showMcpTimeoutSheet(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
   final mcp = context.read<McpProvider>();
-  final controller =
-      TextEditingController(text: mcp.requestTimeoutSeconds.toString());
+  final controller = TextEditingController(
+    text: mcp.requestTimeoutSeconds.toString(),
+  );
 
   await showModalBottomSheet<void>(
     context: context,
@@ -37,9 +38,9 @@ Future<void> showMcpTimeoutSheet(BuildContext context) async {
           );
           return;
         }
-        await ctx
-            .read<McpProvider>()
-            .updateRequestTimeout(Duration(seconds: seconds));
+        await ctx.read<McpProvider>().updateRequestTimeout(
+          Duration(seconds: seconds),
+        );
         if (ctx.mounted) Navigator.of(ctx).maybePop();
       }
 
@@ -85,18 +86,24 @@ Future<void> showMcpTimeoutSheet(BuildContext context) async {
                 fillColor: isDark ? Colors.white10 : Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: cs.primary.withOpacity(0.5)),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
               ),
               onSubmitted: (_) => handleSave(),
             ),

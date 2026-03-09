@@ -35,7 +35,9 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
   String _type = 'http';
   bool _enabled = false;
 
-  final TextEditingController _testUrlCtl = TextEditingController(text: 'https://www.google.com');
+  final TextEditingController _testUrlCtl = TextEditingController(
+    text: 'https://www.google.com',
+  );
   bool _testing = false;
   String? _testErr;
   bool? _ok;
@@ -51,11 +53,21 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
     _userCtl = TextEditingController(text: sp.globalProxyUsername);
     _passCtl = TextEditingController(text: sp.globalProxyPassword);
     _bypassCtl = TextEditingController(text: sp.globalProxyBypass);
-    _hostFn.addListener(() { if (!_hostFn.hasFocus) sp.setGlobalProxyHost(_hostCtl.text); });
-    _portFn.addListener(() { if (!_portFn.hasFocus) sp.setGlobalProxyPort(_portCtl.text); });
-    _userFn.addListener(() { if (!_userFn.hasFocus) sp.setGlobalProxyUsername(_userCtl.text); });
-    _passFn.addListener(() { if (!_passFn.hasFocus) sp.setGlobalProxyPassword(_passCtl.text); });
-    _bypassFn.addListener(() { if (!_bypassFn.hasFocus) sp.setGlobalProxyBypass(_bypassCtl.text); });
+    _hostFn.addListener(() {
+      if (!_hostFn.hasFocus) sp.setGlobalProxyHost(_hostCtl.text);
+    });
+    _portFn.addListener(() {
+      if (!_portFn.hasFocus) sp.setGlobalProxyPort(_portCtl.text);
+    });
+    _userFn.addListener(() {
+      if (!_userFn.hasFocus) sp.setGlobalProxyUsername(_userCtl.text);
+    });
+    _passFn.addListener(() {
+      if (!_passFn.hasFocus) sp.setGlobalProxyPassword(_passCtl.text);
+    });
+    _bypassFn.addListener(() {
+      if (!_bypassFn.hasFocus) sp.setGlobalProxyBypass(_bypassCtl.text);
+    });
   }
 
   @override
@@ -94,124 +106,175 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          _sectionCard(children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(child: Text(l10n.networkProxyEnableLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
-                  IosSwitch(
-                    value: _enabled,
-                    onChanged: (v) async {
-                      setState(() => _enabled = v);
-                      await context.read<SettingsProvider>().setGlobalProxyEnabled(v);
-                    },
+          _sectionCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.networkProxyEnableLabel,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IosSwitch(
+                      value: _enabled,
+                      onChanged: (v) async {
+                        setState(() => _enabled = v);
+                        await context
+                            .read<SettingsProvider>()
+                            .setGlobalProxyEnabled(v);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyType,
+                child: _ProxyTypeSheetField(
+                  value: _type,
+                  onChanged: (v) async {
+                    if (v == null) return;
+                    setState(() => _type = v);
+                    await context.read<SettingsProvider>().setGlobalProxyType(
+                      v,
+                    );
+                  },
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyServerHost,
+                child: TextField(
+                  controller: _hostCtl,
+                  focusNode: _hostFn,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: '127.0.0.1'),
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyPort,
+                child: TextField(
+                  controller: _portCtl,
+                  focusNode: _portFn,
+                  keyboardType: TextInputType.number,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: '8080'),
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyUsername,
+                child: TextField(
+                  controller: _userCtl,
+                  focusNode: _userFn,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: l10n.networkProxyOptionalHint),
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyPassword,
+                child: TextField(
+                  controller: _passCtl,
+                  focusNode: _passFn,
+                  obscureText: true,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: l10n.networkProxyOptionalHint),
+                ),
+              ),
+              _labeledField(
+                context,
+                label: l10n.networkProxyBypassLabel,
+                child: TextField(
+                  controller: _bypassCtl,
+                  focusNode: _bypassFn,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: l10n.networkProxyBypassHint),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                child: Text(
+                  l10n.networkProxyPriorityNote,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withOpacity(0.6),
                   ),
-                ],
+                ),
               ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyType,
-              child: _ProxyTypeSheetField(
-                value: _type,
-                onChanged: (v) async {
-                  if (v == null) return;
-                  setState(() => _type = v);
-                  await context.read<SettingsProvider>().setGlobalProxyType(v);
-                },
-              ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyServerHost,
-              child: TextField(
-                controller: _hostCtl,
-                focusNode: _hostFn,
-                decoration: _deskInputDecoration(context).copyWith(hintText: '127.0.0.1'),
-              ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyPort,
-              child: TextField(
-                controller: _portCtl,
-                focusNode: _portFn,
-                keyboardType: TextInputType.number,
-                decoration: _deskInputDecoration(context).copyWith(hintText: '8080'),
-              ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyUsername,
-              child: TextField(
-                controller: _userCtl,
-                focusNode: _userFn,
-                decoration: _deskInputDecoration(context).copyWith(hintText: l10n.networkProxyOptionalHint),
-              ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyPassword,
-              child: TextField(
-                controller: _passCtl,
-                focusNode: _passFn,
-                obscureText: true,
-                decoration: _deskInputDecoration(context).copyWith(hintText: l10n.networkProxyOptionalHint),
-              ),
-            ),
-            _labeledField(
-              context,
-              label: l10n.networkProxyBypassLabel,
-              child: TextField(
-                controller: _bypassCtl,
-                focusNode: _bypassFn,
-                minLines: 1,
-                maxLines: 3,
-                decoration: _deskInputDecoration(context).copyWith(hintText: l10n.networkProxyBypassHint),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-              child: Text(l10n.networkProxyPriorityNote, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6))),
-            ),
-          ]),
+            ],
+          ),
           const SizedBox(height: 12),
           // Bottom: connection test section with card wrapper
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-            child: Text(l10n.networkProxyTestHeader, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          ),
-          _sectionCard(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              child: TextField(
-                controller: _testUrlCtl,
-                decoration: _deskInputDecoration(context).copyWith(hintText: l10n.networkProxyTestUrlHint),
-              ),
+            child: Text(
+              l10n.networkProxyTestHeader,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: _DeskIosButton(
-                  label: _testing ? l10n.networkProxyTesting : l10n.networkProxyTestButton,
-                  filled: false,
-                  dense: true,
-                  onTap: _testing ? (){} : _onTest,
+          ),
+          _sectionCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: TextField(
+                  controller: _testUrlCtl,
+                  decoration: _deskInputDecoration(
+                    context,
+                  ).copyWith(hintText: l10n.networkProxyTestUrlHint),
                 ),
               ),
-            ),
-          ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _DeskIosButton(
+                    label: _testing
+                        ? l10n.networkProxyTesting
+                        : l10n.networkProxyTestButton,
+                    filled: false,
+                    dense: true,
+                    onTap: _testing ? () {} : _onTest,
+                  ),
+                ),
+              ),
+            ],
+          ),
           if (_ok == true)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: Text(l10n.networkProxyTestSuccess, style: TextStyle(color: Colors.green.shade600, fontWeight: FontWeight.w600)),
+              child: Text(
+                l10n.networkProxyTestSuccess,
+                style: TextStyle(
+                  color: Colors.green.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           if (_ok == false)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: Text(l10n.networkProxyTestFailed(_testErr ?? ''), style: TextStyle(color: cs.error)),
+              child: Text(
+                l10n.networkProxyTestFailed(_testErr ?? ''),
+                style: TextStyle(color: cs.error),
+              ),
             ),
         ],
       ),
@@ -222,10 +285,17 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
     final l10n = AppLocalizations.of(context)!;
     final url = _testUrlCtl.text.trim();
     if (url.isEmpty) {
-      setState(() { _ok = false; _testErr = l10n.networkProxyNoUrl; });
+      setState(() {
+        _ok = false;
+        _testErr = l10n.networkProxyNoUrl;
+      });
       return;
     }
-    setState(() { _testing = true; _ok = null; _testErr = null; });
+    setState(() {
+      _testing = true;
+      _ok = null;
+      _testErr = null;
+    });
     try {
       final host = _hostCtl.text.trim();
       final port = int.tryParse(_portCtl.text.trim()) ?? 8080;
@@ -235,23 +305,42 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
       if (_type == 'socks5') {
         try {
           final proxies = <socks.ProxySettings>[
-            socks.ProxySettings(InternetAddress(host), port,
-                username: user.isNotEmpty ? user : null, password: pass),
+            socks.ProxySettings(
+              InternetAddress(host),
+              port,
+              username: user.isNotEmpty ? user : null,
+              password: pass,
+            ),
           ];
           socks.SocksTCPClient.assignToHttpClient(io, proxies);
         } catch (_) {}
       } else {
         io.findProxy = (_) => 'PROXY $host:$port';
         if (user.isNotEmpty) {
-          io.addProxyCredentials(host, port, '', HttpClientBasicCredentials(user, pass));
+          io.addProxyCredentials(
+            host,
+            port,
+            '',
+            HttpClientBasicCredentials(user, pass),
+          );
         }
       }
       final client = IOClient(io);
-      final res = await client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      final res = await client
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
       client.close();
-      setState(() { _testing = false; _ok = (res.statusCode >= 200 && res.statusCode < 400); _testErr = _ok == true ? null : 'HTTP ${res.statusCode}'; });
+      setState(() {
+        _testing = false;
+        _ok = (res.statusCode >= 200 && res.statusCode < 400);
+        _testErr = _ok == true ? null : 'HTTP ${res.statusCode}';
+      });
     } catch (e) {
-      setState(() { _testing = false; _ok = false; _testErr = e.toString(); });
+      setState(() {
+        _testing = false;
+        _ok = false;
+        _testErr = e.toString();
+      });
     }
   }
 }
@@ -259,7 +348,8 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
 // Bottom-sheet selector styled like Display Settings language/background sheets (no ripple)
 class _ProxyTypeSheetField extends StatelessWidget {
   const _ProxyTypeSheetField({required this.value, required this.onChanged});
-  final String value; final ValueChanged<String?> onChanged;
+  final String value;
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -270,10 +360,13 @@ class _ProxyTypeSheetField extends StatelessWidget {
 
     String labelOf(String v) {
       switch (v) {
-        case 'https': return l10n.networkProxyTypeHttps;
-        case 'socks5': return l10n.networkProxyTypeSocks5;
+        case 'https':
+          return l10n.networkProxyTypeHttps;
+        case 'socks5':
+          return l10n.networkProxyTypeSocks5;
         case 'http':
-        default: return l10n.networkProxyTypeHttp;
+        default:
+          return l10n.networkProxyTypeHttp;
       }
     }
 
@@ -282,7 +375,9 @@ class _ProxyTypeSheetField extends StatelessWidget {
       final selected = await showModalBottomSheet<String>(
         context: context,
         backgroundColor: cs.surface,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         builder: (ctx) {
           return SafeArea(
             child: Padding(
@@ -290,11 +385,26 @@ class _ProxyTypeSheetField extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _sheetOption(ctx, text: l10n.networkProxyTypeHttp, value: 'http', selected: value == 'http'),
+                  _sheetOption(
+                    ctx,
+                    text: l10n.networkProxyTypeHttp,
+                    value: 'http',
+                    selected: value == 'http',
+                  ),
                   _sheetDivider(ctx),
-                  _sheetOption(ctx, text: l10n.networkProxyTypeHttps, value: 'https', selected: value == 'https'),
+                  _sheetOption(
+                    ctx,
+                    text: l10n.networkProxyTypeHttps,
+                    value: 'https',
+                    selected: value == 'https',
+                  ),
                   _sheetDivider(ctx),
-                  _sheetOption(ctx, text: l10n.networkProxyTypeSocks5, value: 'socks5', selected: value == 'socks5'),
+                  _sheetOption(
+                    ctx,
+                    text: l10n.networkProxyTypeSocks5,
+                    value: 'socks5',
+                    selected: value == 'socks5',
+                  ),
                 ],
               ),
             ),
@@ -312,27 +422,43 @@ class _ProxyTypeSheetField extends StatelessWidget {
         decoration: BoxDecoration(
           color: fillColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.12), width: 0.6),
+          border: Border.all(
+            color: cs.outlineVariant.withOpacity(0.12),
+            width: 0.6,
+          ),
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(
                 labelOf(value),
-                style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.88)),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withOpacity(0.88),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: cs.onSurface.withOpacity(0.55)),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: cs.onSurface.withOpacity(0.55),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _sheetOption(BuildContext ctx, {required String text, required String value, required bool selected}) {
-    final cs = Theme.of(ctx).colorScheme; final isDark = Theme.of(ctx).brightness == Brightness.dark;
+  Widget _sheetOption(
+    BuildContext ctx, {
+    required String text,
+    required String value,
+    required bool selected,
+  }) {
+    final cs = Theme.of(ctx).colorScheme;
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: SizedBox(
@@ -345,7 +471,15 @@ class _ProxyTypeSheetField extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              Expanded(child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
               if (selected) Icon(Icons.check, size: 18, color: cs.primary),
             ],
           ),
@@ -355,14 +489,26 @@ class _ProxyTypeSheetField extends StatelessWidget {
   }
 
   Widget _sheetDivider(BuildContext ctx) {
-    final cs = Theme.of(ctx).colorScheme; final isDark = Theme.of(ctx).brightness == Brightness.dark;
-    return Divider(height: 1, thickness: 0.6, indent: 12, endIndent: 12, color: cs.outlineVariant.withOpacity(isDark ? 0.10 : 0.08));
+    final cs = Theme.of(ctx).colorScheme;
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    return Divider(
+      height: 1,
+      thickness: 0.6,
+      indent: 12,
+      endIndent: 12,
+      color: cs.outlineVariant.withOpacity(isDark ? 0.10 : 0.08),
+    );
   }
 }
 
 // Local minimal copies of iOS-style bits to match app style
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.size, required this.onTap});
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.size,
+    required this.onTap,
+  });
   final IconData icon;
   final Color color;
   final double size;
@@ -390,32 +536,47 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
 }
 
 Widget _sectionCard({required List<Widget> children}) {
-  return Builder(builder: (context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(children: children),
-      ),
-    );
-  });
+  return Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final isDark = theme.brightness == Brightness.dark;
+      final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+            width: 0.6,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: children),
+        ),
+      );
+    },
+  );
 }
 
 Widget _divider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 6, thickness: 0.6, indent: 12, endIndent: 12, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 6,
+    thickness: 0.6,
+    indent: 12,
+    endIndent: 12,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
-Widget _labeledField(BuildContext context, {required String label, required Widget child}) {
+Widget _labeledField(
+  BuildContext context, {
+  required String label,
+  required Widget child,
+}) {
   final cs = Theme.of(context).colorScheme;
   return Padding(
     padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
@@ -424,7 +585,13 @@ Widget _labeledField(BuildContext context, {required String label, required Widg
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: Text(label, style: TextStyle(fontSize: 12.5, color: cs.onSurface.withOpacity(0.7))),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: cs.onSurface.withOpacity(0.7),
+            ),
+          ),
         ),
         child,
       ],
@@ -443,11 +610,17 @@ InputDecoration _deskInputDecoration(BuildContext context) {
     hintStyle: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.5)),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.12), width: 0.6),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withOpacity(0.12),
+        width: 0.6,
+      ),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.12), width: 0.6),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withOpacity(0.12),
+        width: 0.6,
+      ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
@@ -458,21 +631,37 @@ InputDecoration _deskInputDecoration(BuildContext context) {
 }
 
 class _DeskIosButton extends StatefulWidget {
-  const _DeskIosButton({required this.label, required this.filled, required this.dense, required this.onTap});
-  final String label; final bool filled; final bool dense; final VoidCallback onTap;
-  @override State<_DeskIosButton> createState() => _DeskIosButtonState();
+  const _DeskIosButton({
+    required this.label,
+    required this.filled,
+    required this.dense,
+    required this.onTap,
+  });
+  final String label;
+  final bool filled;
+  final bool dense;
+  final VoidCallback onTap;
+  @override
+  State<_DeskIosButton> createState() => _DeskIosButtonState();
 }
 
 class _DeskIosButtonState extends State<_DeskIosButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = widget.filled ? Colors.white : cs.onSurface.withOpacity(0.9);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = widget.filled
+        ? Colors.white
+        : cs.onSurface.withOpacity(0.9);
     final bg = widget.filled
         ? cs.primary
-        : (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05));
-    final borderColor = widget.filled ? Colors.transparent : cs.outlineVariant.withOpacity(isDark ? 0.22 : 0.18);
+        : (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05));
+    final borderColor = widget.filled
+        ? Colors.transparent
+        : cs.outlineVariant.withOpacity(isDark ? 0.22 : 0.18);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -484,10 +673,24 @@ class _DeskIosButtonState extends State<_DeskIosButton> {
         duration: const Duration(milliseconds: 110),
         curve: Curves.easeOutCubic,
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: widget.dense ? 8 : 12, horizontal: 12),
+          padding: EdgeInsets.symmetric(
+            vertical: widget.dense ? 8 : 12,
+            horizontal: 12,
+          ),
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
-          child: Text(widget.label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: widget.dense ? 13 : 14)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+              fontSize: widget.dense ? 13 : 14,
+            ),
+          ),
         ),
       ),
     );

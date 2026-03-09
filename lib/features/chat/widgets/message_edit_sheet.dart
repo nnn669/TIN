@@ -5,14 +5,20 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/services/haptics.dart';
 
-Future<MessageEditResult?> showMessageEditSheet(BuildContext context, {required ChatMessage message}) async {
+Future<MessageEditResult?> showMessageEditSheet(
+  BuildContext context, {
+  required ChatMessage message,
+}) async {
   final cs = Theme.of(context).colorScheme;
   return showModalBottomSheet<MessageEditResult?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (ctx) => SafeArea(top: false, child: _MessageEditSheet(message: message)),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) =>
+        SafeArea(top: false, child: _MessageEditSheet(message: message)),
   );
 }
 
@@ -55,7 +61,14 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
           child: Column(
             children: [
               Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               SizedBox(
@@ -75,15 +88,30 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
                         },
                         borderRadius: BorderRadius.circular(20),
                         baseColor: Colors.transparent,
-                        pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Text(l10n.messageEditPageSaveAndSend, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+                        pressedBlendStrength:
+                            Theme.of(context).brightness == Brightness.dark
+                            ? 0.10
+                            : 0.06,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          l10n.messageEditPageSaveAndSend,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                     Center(
                       child: Text(
                         l10n.messageEditPageTitle,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -99,9 +127,21 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
                         },
                         borderRadius: BorderRadius.circular(20),
                         baseColor: Colors.transparent,
-                        pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Text(l10n.messageEditPageSave, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+                        pressedBlendStrength:
+                            Theme.of(context).brightness == Brightness.dark
+                            ? 0.10
+                            : 0.06,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          l10n.messageEditPageSave,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -120,7 +160,9 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
                     decoration: InputDecoration(
                       hintText: l10n.messageEditPageHint,
                       filled: true,
-                      fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white10
+                          : const Color(0xFFF2F3F5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: const BorderSide(color: Colors.transparent),
@@ -131,7 +173,9 @@ class _MessageEditSheetState extends State<_MessageEditSheet> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: cs.primary.withOpacity(0.45)),
+                        borderSide: BorderSide(
+                          color: cs.primary.withOpacity(0.45),
+                        ),
                       ),
                     ),
                   ),

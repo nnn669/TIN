@@ -56,7 +56,10 @@ class WindowSizeManager {
     // the window completely off-screen (which makes the app appear
     // "unopenable" until the prefs are manually deleted).
     const maxAbsCoord = 10000.0;
-    if (x < -maxAbsCoord || x > maxAbsCoord || y < -maxAbsCoord || y > maxAbsCoord) {
+    if (x < -maxAbsCoord ||
+        x > maxAbsCoord ||
+        y < -maxAbsCoord ||
+        y > maxAbsCoord) {
       return null;
     }
 
@@ -83,4 +86,3 @@ class WindowSizeManager {
     await prefs.setBool(_kMaximized, value);
   }
 }
-

@@ -22,7 +22,12 @@ Future<void> showDesktopMcpServersPopover(
   if (box == null) return;
   final offset = box.localToGlobal(Offset.zero);
   final size = box.size;
-  final anchorRect = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+  final anchorRect = Rect.fromLTWH(
+    offset.dx,
+    offset.dy,
+    size.width,
+    size.height,
+  );
 
   late OverlayEntry entry;
   entry = OverlayEntry(
@@ -30,7 +35,11 @@ Future<void> showDesktopMcpServersPopover(
       anchorRect: anchorRect,
       anchorWidth: size.width,
       assistantId: assistantId,
-      onClose: () { try { entry.remove(); } catch (_) {} },
+      onClose: () {
+        try {
+          entry.remove();
+        } catch (_) {}
+      },
     ),
   );
   overlay.insert(entry);
@@ -63,12 +72,17 @@ class _McpServersPopoverState extends State<_McpServersPopover>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       setState(() => _offset = Offset.zero);
-      try { await _controller.forward(); } catch (_) {}
+      try {
+        await _controller.forward();
+      } catch (_) {}
     });
   }
 
@@ -82,7 +96,9 @@ class _McpServersPopoverState extends State<_McpServersPopover>
     if (_closing) return;
     _closing = true;
     setState(() => _offset = const Offset(0, 1.0));
-    try { await _controller.reverse(); } catch (_) {}
+    try {
+      await _controller.reverse();
+    } catch (_) {}
     if (mounted) widget.onClose();
   }
 
@@ -90,8 +106,11 @@ class _McpServersPopoverState extends State<_McpServersPopover>
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final width = (widget.anchorWidth - 16).clamp(260.0, 720.0);
-    final left = (widget.anchorRect.left + (widget.anchorRect.width - width) / 2)
-        .clamp(8.0, screen.width - width - 8.0);
+    final left =
+        (widget.anchorRect.left + (widget.anchorRect.width - width) / 2).clamp(
+          8.0,
+          screen.width - width - 8.0,
+        );
     final clipHeight = widget.anchorRect.top.clamp(0.0, screen.height);
 
     return Stack(
@@ -121,7 +140,9 @@ class _McpServersPopoverState extends State<_McpServersPopover>
                       curve: Curves.easeOutCubic,
                       offset: _offset,
                       child: _GlassPanel(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
                         child: _McpServersContent(
                           assistantId: widget.assistantId,
                           onDone: _close,
@@ -153,17 +174,25 @@ class _GlassPanel extends StatelessWidget {
         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.28 : 0.56),
+            color: (isDark ? Colors.black : Colors.white).withOpacity(
+              isDark ? 0.28 : 0.56,
+            ),
             border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(isDark ? 0.06 : 0.18), width: 0.7),
-              left: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
-              right: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
+              top: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.06 : 0.18),
+                width: 0.7,
+              ),
+              left: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
+              right: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
             ),
           ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: child,
-          ),
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     );
@@ -183,33 +212,50 @@ class _McpServersContent extends StatelessWidget {
     final ap = context.watch<AssistantProvider>();
     final a = ap.getById(assistantId)!;
     final selected = a.mcpServerIds.toSet();
-    final servers = mcp.servers.where((s) => mcp.statusFor(s.id) == McpStatus.connected).toList();
+    final servers = mcp.servers
+        .where((s) => mcp.statusFor(s.id) == McpStatus.connected)
+        .toList();
 
     final rows = <Widget>[];
     // Top clear row
-    rows.add(_RowItem(
-      leading: Icon(Lucide.CircleX, size: 16, color: cs.onSurface),
-      label: l10n.assistantEditClearButton, // '清除'
-      selected: false,
-      onTap: () async {
-        await context.read<AssistantProvider>().updateAssistant(a.copyWith(mcpServerIds: const <String>[]));
-        onDone();
-      },
-    ));
+    rows.add(
+      _RowItem(
+        leading: Icon(Lucide.CircleX, size: 16, color: cs.onSurface),
+        label: l10n.assistantEditClearButton, // '清除'
+        selected: false,
+        onTap: () async {
+          await context.read<AssistantProvider>().updateAssistant(
+            a.copyWith(mcpServerIds: const <String>[]),
+          );
+          onDone();
+        },
+      ),
+    );
 
     for (final s in servers) {
       final isSelected = selected.contains(s.id);
-      rows.add(_RowItem(
-        leading: Icon(Lucide.Hammer, size: 16, color: isSelected ? cs.primary : cs.onSurface),
-        label: s.name,
-        selected: isSelected,
-        onTap: () async {
-          final set = a.mcpServerIds.toSet();
-          if (isSelected) set.remove(s.id); else set.add(s.id);
-          await context.read<AssistantProvider>().updateAssistant(a.copyWith(mcpServerIds: set.toList()));
-          // Do not close; allow multi-select
-        },
-      ));
+      rows.add(
+        _RowItem(
+          leading: Icon(
+            Lucide.Hammer,
+            size: 16,
+            color: isSelected ? cs.primary : cs.onSurface,
+          ),
+          label: s.name,
+          selected: isSelected,
+          onTap: () async {
+            final set = a.mcpServerIds.toSet();
+            if (isSelected)
+              set.remove(s.id);
+            else
+              set.add(s.id);
+            await context.read<AssistantProvider>().updateAssistant(
+              a.copyWith(mcpServerIds: set.toList()),
+            );
+            // Do not close; allow multi-select
+          },
+        ),
+      );
     }
 
     return Padding(
@@ -221,7 +267,12 @@ class _McpServersContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ...rows.map((w) => Padding(padding: const EdgeInsets.only(bottom: 1), child: w)),
+              ...rows.map(
+                (w) => Padding(
+                  padding: const EdgeInsets.only(bottom: 1),
+                  child: w,
+                ),
+              ),
             ],
           ),
         ),
@@ -256,7 +307,9 @@ class _RowItemState extends State<_RowItem> {
     final isDark = theme.brightness == Brightness.dark;
     final onColor = widget.selected ? cs.primary : cs.onSurface;
     final baseBg = Colors.transparent;
-    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.12 : 0.10);
+    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(
+      isDark ? 0.12 : 0.10,
+    );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -274,21 +327,33 @@ class _RowItemState extends State<_RowItem> {
           ),
           child: Row(
             children: [
-              SizedBox(width: 22, height: 22, child: Center(child: widget.leading)),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Center(child: widget.leading),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, decoration: TextDecoration.none)
-                      .copyWith(color: onColor),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    decoration: TextDecoration.none,
+                  ).copyWith(color: onColor),
                 ),
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 160),
                 child: widget.selected
-                    ? Icon(Lucide.Check, key: const ValueKey('check'), size: 16, color: cs.primary)
+                    ? Icon(
+                        Lucide.Check,
+                        key: const ValueKey('check'),
+                        size: 16,
+                        color: cs.primary,
+                      )
                     : const SizedBox(width: 16, key: ValueKey('space')),
               ),
             ],
@@ -298,4 +363,3 @@ class _RowItemState extends State<_RowItem> {
     );
   }
 }
-

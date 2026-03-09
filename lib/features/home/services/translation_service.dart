@@ -28,10 +28,7 @@ enum TranslationResultType {
 
 /// 翻译结果
 class TranslationResult {
-  TranslationResult({
-    required this.type,
-    this.errorMessage,
-  });
+  TranslationResult({required this.type, this.errorMessage});
 
   final TranslationResultType type;
   final String? errorMessage;
@@ -85,13 +82,17 @@ class TranslationService {
     }
 
     final settings = contextProvider.read<SettingsProvider>();
-    final assistant = contextProvider.read<AssistantProvider>().currentAssistant;
+    final assistant = contextProvider
+        .read<AssistantProvider>()
+        .currentAssistant;
 
     // 获取翻译模型配置，回退顺序：翻译专用 -> 助手模型 -> 全局默认
-    final translateProvider = settings.translateModelProvider ??
+    final translateProvider =
+        settings.translateModelProvider ??
         assistant?.chatModelProvider ??
         settings.currentModelProvider;
-    final translateModelId = settings.translateModelId ??
+    final translateModelId =
+        settings.translateModelId ??
         assistant?.chatModelId ??
         settings.currentModelId;
 
@@ -118,7 +119,7 @@ class TranslationService {
         config: provider,
         modelId: translateModelId,
         messages: [
-          {'role': 'user', 'content': prompt}
+          {'role': 'user', 'content': prompt},
         ],
       );
 
@@ -131,7 +132,10 @@ class TranslationService {
       }
 
       // 保存最终翻译结果
-      await chatService.updateMessage(message.id, translation: buffer.toString());
+      await chatService.updateMessage(
+        message.id,
+        translation: buffer.toString(),
+      );
 
       return TranslationResult(type: TranslationResultType.success);
     } catch (e) {

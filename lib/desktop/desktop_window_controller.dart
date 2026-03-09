@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -30,8 +31,14 @@ class DesktopWindowController with WindowListener {
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
     final initialSize = await _sizeMgr.getInitialSize();
-    const minSize = Size(WindowSizeManager.minWindowWidth, WindowSizeManager.minWindowHeight);
-    const maxSize = Size(WindowSizeManager.maxWindowWidth, WindowSizeManager.maxWindowHeight);
+    const minSize = Size(
+      WindowSizeManager.minWindowWidth,
+      WindowSizeManager.minWindowHeight,
+    );
+    const maxSize = Size(
+      WindowSizeManager.maxWindowWidth,
+      WindowSizeManager.maxWindowHeight,
+    );
 
     final isMac = defaultTargetPlatform == TargetPlatform.macOS;
     final options = WindowOptions(
@@ -53,7 +60,9 @@ class DesktopWindowController with WindowListener {
       // On macOS rely on native autosave. Do not set position from Dart.
       final shouldRestorePos = savedPos != null && !isMac;
       if (shouldRestorePos) {
-        try { await windowManager.setPosition(savedPos); } catch (_) {}
+        try {
+          await windowManager.setPosition(savedPos);
+        } catch (_) {}
       }
       // Only auto-restore maximize on Windows; macOS restore may cause jump.
       try {

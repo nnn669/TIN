@@ -57,7 +57,10 @@ abstract class TtsServiceOptions {
           enabled: enabled,
           name: name.isEmpty ? 'Gemini TTS' : name,
           apiKey: (json['apiKey'] ?? '').toString(),
-          baseUrl: (json['baseUrl'] ?? 'https://generativelanguage.googleapis.com/v1beta').toString(),
+          baseUrl:
+              (json['baseUrl'] ??
+                      'https://generativelanguage.googleapis.com/v1beta')
+                  .toString(),
           model: (json['model'] ?? 'gemini-2.5-flash-preview-tts').toString(),
           voiceName: (json['voiceName'] ?? 'Kore').toString(),
         );
@@ -67,7 +70,8 @@ abstract class TtsServiceOptions {
           enabled: enabled,
           name: name.isEmpty ? 'MiniMax TTS' : name,
           apiKey: (json['apiKey'] ?? '').toString(),
-          baseUrl: (json['baseUrl'] ?? 'https://api.minimaxi.com/v1').toString(),
+          baseUrl: (json['baseUrl'] ?? 'https://api.minimaxi.com/v1')
+              .toString(),
           model: (json['model'] ?? 'speech-2.5-hd-preview').toString(),
           voiceId: (json['voiceId'] ?? 'female-shaonv').toString(),
           emotion: (json['emotion'] ?? 'calm').toString(),
@@ -102,7 +106,11 @@ abstract class TtsServiceOptions {
 double _toDouble(dynamic v, double def) {
   if (v == null) return def;
   if (v is num) return v.toDouble();
-  try { return double.parse(v.toString()); } catch (_) { return def; }
+  try {
+    return double.parse(v.toString());
+  } catch (_) {
+    return def;
+  }
 }
 
 class OpenAiTtsOptions extends TtsServiceOptions {
@@ -122,15 +130,15 @@ class OpenAiTtsOptions extends TtsServiceOptions {
 
   @override
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'enabled': enabled,
-        'name': name,
-        'kind': 'openai',
-        'apiKey': apiKey,
-        'baseUrl': baseUrl,
-        'model': model,
-        'voice': voice,
-      };
+    'id': id,
+    'enabled': enabled,
+    'name': name,
+    'kind': 'openai',
+    'apiKey': apiKey,
+    'baseUrl': baseUrl,
+    'model': model,
+    'voice': voice,
+  };
 }
 
 class GeminiTtsOptions extends TtsServiceOptions {
@@ -150,15 +158,15 @@ class GeminiTtsOptions extends TtsServiceOptions {
 
   @override
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'enabled': enabled,
-        'name': name,
-        'kind': 'gemini',
-        'apiKey': apiKey,
-        'baseUrl': baseUrl,
-        'model': model,
-        'voiceName': voiceName,
-      };
+    'id': id,
+    'enabled': enabled,
+    'name': name,
+    'kind': 'gemini',
+    'apiKey': apiKey,
+    'baseUrl': baseUrl,
+    'model': model,
+    'voiceName': voiceName,
+  };
 }
 
 class MiniMaxTtsOptions extends TtsServiceOptions {
@@ -182,17 +190,17 @@ class MiniMaxTtsOptions extends TtsServiceOptions {
 
   @override
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'enabled': enabled,
-        'name': name,
-        'kind': 'minimax',
-        'apiKey': apiKey,
-        'baseUrl': baseUrl,
-        'model': model,
-        'voiceId': voiceId,
-        'emotion': emotion,
-        'speed': speed,
-      };
+    'id': id,
+    'enabled': enabled,
+    'name': name,
+    'kind': 'minimax',
+    'apiKey': apiKey,
+    'baseUrl': baseUrl,
+    'model': model,
+    'voiceId': voiceId,
+    'emotion': emotion,
+    'speed': speed,
+  };
 }
 
 class ElevenLabsTtsOptions extends TtsServiceOptions {
@@ -215,16 +223,16 @@ class ElevenLabsTtsOptions extends TtsServiceOptions {
 
   @override
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'enabled': enabled,
-        'name': name,
-        'kind': 'elevenlabs',
-        'apiKey': apiKey,
-        'baseUrl': baseUrl,
-        'modelId': modelId,
-        'voiceId': voiceId,
-        'outputFormat': outputFormat,
-      };
+    'id': id,
+    'enabled': enabled,
+    'name': name,
+    'kind': 'elevenlabs',
+    'apiKey': apiKey,
+    'baseUrl': baseUrl,
+    'modelId': modelId,
+    'voiceId': voiceId,
+    'outputFormat': outputFormat,
+  };
 }
 
 class NetworkTtsResult {
@@ -249,19 +257,40 @@ class NetworkTtsService {
         case NetworkTtsKind.gemini:
           return _geminiSpeech(options as GeminiTtsOptions, text, c, cancelled);
         case NetworkTtsKind.minimax:
-          return _miniMaxSpeech(options as MiniMaxTtsOptions, text, c, cancelled);
+          return _miniMaxSpeech(
+            options as MiniMaxTtsOptions,
+            text,
+            c,
+            cancelled,
+          );
         case NetworkTtsKind.elevenlabs:
-          return _elevenLabsSpeech(options as ElevenLabsTtsOptions, text, c, cancelled);
+          return _elevenLabsSpeech(
+            options as ElevenLabsTtsOptions,
+            text,
+            c,
+            cancelled,
+          );
       }
     } finally {
       if (client == null) {
-        try { c.close(); } catch (_) {}
+        try {
+          c.close();
+        } catch (_) {}
       }
     }
   }
 
-  static Future<NetworkTtsResult> _openAiSpeech(OpenAiTtsOptions opt, String text, http.Client c, FutureOr<bool> Function()? cancelled) async {
-    final uri = Uri.parse(opt.baseUrl.endsWith('/') ? '${opt.baseUrl}audio/speech' : '${opt.baseUrl}/audio/speech');
+  static Future<NetworkTtsResult> _openAiSpeech(
+    OpenAiTtsOptions opt,
+    String text,
+    http.Client c,
+    FutureOr<bool> Function()? cancelled,
+  ) async {
+    final uri = Uri.parse(
+      opt.baseUrl.endsWith('/')
+          ? '${opt.baseUrl}audio/speech'
+          : '${opt.baseUrl}/audio/speech',
+    );
     final body = jsonEncode({
       'model': opt.model,
       'input': text,
@@ -278,32 +307,44 @@ class NetworkTtsService {
     }
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       final text = await resp.stream.bytesToString();
-      throw Exception('OpenAI TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $text');
+      throw Exception(
+        'OpenAI TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $text',
+      );
     }
     final bytes = await resp.stream.toBytes();
-    return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: 'audio/mpeg');
+    return NetworkTtsResult(
+      bytes: Uint8List.fromList(bytes),
+      mime: 'audio/mpeg',
+    );
   }
 
-  static Future<NetworkTtsResult> _geminiSpeech(GeminiTtsOptions opt, String text, http.Client c, FutureOr<bool> Function()? cancelled) async {
-    final uri = Uri.parse(opt.baseUrl.endsWith('/')
-        ? '${opt.baseUrl}models/${opt.model}:generateContent'
-        : '${opt.baseUrl}/models/${opt.model}:generateContent');
+  static Future<NetworkTtsResult> _geminiSpeech(
+    GeminiTtsOptions opt,
+    String text,
+    http.Client c,
+    FutureOr<bool> Function()? cancelled,
+  ) async {
+    final uri = Uri.parse(
+      opt.baseUrl.endsWith('/')
+          ? '${opt.baseUrl}models/${opt.model}:generateContent'
+          : '${opt.baseUrl}/models/${opt.model}:generateContent',
+    );
     final body = jsonEncode({
       'contents': [
         {
           'role': 'user',
           'parts': [
-            {'text': text}
-          ]
-        }
+            {'text': text},
+          ],
+        },
       ],
       'generationConfig': {
         'responseModalities': ['AUDIO'],
         'speechConfig': {
           'voiceConfig': {
-            'prebuiltVoiceConfig': {'voiceName': opt.voiceName}
-          }
-        }
+            'prebuiltVoiceConfig': {'voiceName': opt.voiceName},
+          },
+        },
       },
       'model': opt.model,
     });
@@ -318,7 +359,9 @@ class NetworkTtsService {
     }
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       final text = await resp.stream.bytesToString();
-      throw Exception('Gemini TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $text');
+      throw Exception(
+        'Gemini TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $text',
+      );
     }
     final textResp = await resp.stream.bytesToString();
     final jsonObj = jsonDecode(textResp) as Map<String, dynamic>;
@@ -326,7 +369,8 @@ class NetworkTtsService {
     if (candidates.isEmpty) {
       throw Exception('Gemini TTS: empty candidates');
     }
-    final parts = (((candidates[0] as Map)['content'] as Map)['parts'] as List?);
+    final parts =
+        (((candidates[0] as Map)['content'] as Map)['parts'] as List?);
     if (parts == null || parts.isEmpty) {
       throw Exception('Gemini TTS: empty audio parts');
     }
@@ -340,21 +384,28 @@ class NetworkTtsService {
     return NetworkTtsResult(bytes: wav, mime: 'audio/wav', sampleRate: 24000);
   }
 
-  static Future<NetworkTtsResult> _miniMaxSpeech(MiniMaxTtsOptions opt, String text, http.Client c, FutureOr<bool> Function()? cancelled) async {
-    final uri = Uri.parse(opt.baseUrl.endsWith('/') ? '${opt.baseUrl}t2a_v2' : '${opt.baseUrl}/t2a_v2');
+  static Future<NetworkTtsResult> _miniMaxSpeech(
+    MiniMaxTtsOptions opt,
+    String text,
+    http.Client c,
+    FutureOr<bool> Function()? cancelled,
+  ) async {
+    final uri = Uri.parse(
+      opt.baseUrl.endsWith('/')
+          ? '${opt.baseUrl}t2a_v2'
+          : '${opt.baseUrl}/t2a_v2',
+    );
     final body = jsonEncode({
       'model': opt.model,
       'text': text,
       'stream': true,
       'output_format': 'hex',
-      'stream_options': {
-        'exclude_aggregated_audio': true,
-      },
+      'stream_options': {'exclude_aggregated_audio': true},
       'voice_setting': {
         'voice_id': opt.voiceId,
         'emotion': opt.emotion,
         'speed': opt.speed,
-      }
+      },
     });
 
     final req = http.Request('POST', uri)
@@ -366,60 +417,86 @@ class NetworkTtsService {
     final resp = await c.send(req);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       final txt = await resp.stream.bytesToString();
-      throw Exception('MiniMax TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $txt');
+      throw Exception(
+        'MiniMax TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $txt',
+      );
     }
 
     final controller = StreamController<List<int>>();
     final buf = BytesBuilder(copy: false);
     // Parse SSE line-by-line
     final completer = Completer<void>();
-    final sub = resp.stream.listen((chunk) {
-      controller.add(chunk);
-    }, onDone: () {
-      controller.close();
-    }, onError: (e, st) {
-      controller.addError(e, st);
-      controller.close();
-    });
+    final sub = resp.stream.listen(
+      (chunk) {
+        controller.add(chunk);
+      },
+      onDone: () {
+        controller.close();
+      },
+      onError: (e, st) {
+        controller.addError(e, st);
+        controller.close();
+      },
+    );
 
-    final transformer = const Utf8Decoder().bind(controller.stream).transform(const LineSplitter());
-    transformer.listen((line) {
-      if (cancelled != null) {
-        // best-effort cancellation gate
-      }
-      if (!line.startsWith('data:')) return;
-      final dataStr = line.substring(5).trim();
-      if (dataStr == '[DONE]') return;
-      try {
-        final obj = jsonDecode(dataStr) as Map<String, dynamic>;
-        final data = obj['data'] as Map<String, dynamic>?;
-        final audioHex = (data?['audio'] ?? '').toString();
-        if (audioHex.isEmpty) return;
-        buf.add(_hexToBytes(audioHex));
-      } catch (_) {
-        // ignore malformed lines
-      }
-    }, onDone: () {
-      if (!completer.isCompleted) completer.complete();
-    }, onError: (e, st) {
-      if (!completer.isCompleted) completer.completeError(e, st);
-    });
+    final transformer = const Utf8Decoder()
+        .bind(controller.stream)
+        .transform(const LineSplitter());
+    transformer.listen(
+      (line) {
+        if (cancelled != null) {
+          // best-effort cancellation gate
+        }
+        if (!line.startsWith('data:')) return;
+        final dataStr = line.substring(5).trim();
+        if (dataStr == '[DONE]') return;
+        try {
+          final obj = jsonDecode(dataStr) as Map<String, dynamic>;
+          final data = obj['data'] as Map<String, dynamic>?;
+          final audioHex = (data?['audio'] ?? '').toString();
+          if (audioHex.isEmpty) return;
+          buf.add(_hexToBytes(audioHex));
+        } catch (_) {
+          // ignore malformed lines
+        }
+      },
+      onDone: () {
+        if (!completer.isCompleted) completer.complete();
+      },
+      onError: (e, st) {
+        if (!completer.isCompleted) completer.completeError(e, st);
+      },
+    );
 
     await completer.future;
-    try { await sub.cancel(); } catch (_) {}
+    try {
+      await sub.cancel();
+    } catch (_) {}
 
     final bytes = buf.takeBytes();
-    return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: 'audio/mpeg', sampleRate: 32000);
+    return NetworkTtsResult(
+      bytes: Uint8List.fromList(bytes),
+      mime: 'audio/mpeg',
+      sampleRate: 32000,
+    );
   }
 
-  static Future<NetworkTtsResult> _elevenLabsSpeech(ElevenLabsTtsOptions opt, String text, http.Client c, FutureOr<bool> Function()? cancelled) async {
-    final base = opt.baseUrl.endsWith('/') ? opt.baseUrl.substring(0, opt.baseUrl.length - 1) : opt.baseUrl;
-    final outputFmt = (opt.outputFormat.isEmpty) ? 'mp3_44100_128' : opt.outputFormat;
-    final uri = Uri.parse('$base/v1/text-to-speech/${opt.voiceId}?output_format=$outputFmt');
-    final body = jsonEncode({
-      'text': text,
-      'model_id': opt.modelId,
-    });
+  static Future<NetworkTtsResult> _elevenLabsSpeech(
+    ElevenLabsTtsOptions opt,
+    String text,
+    http.Client c,
+    FutureOr<bool> Function()? cancelled,
+  ) async {
+    final base = opt.baseUrl.endsWith('/')
+        ? opt.baseUrl.substring(0, opt.baseUrl.length - 1)
+        : opt.baseUrl;
+    final outputFmt = (opt.outputFormat.isEmpty)
+        ? 'mp3_44100_128'
+        : opt.outputFormat;
+    final uri = Uri.parse(
+      '$base/v1/text-to-speech/${opt.voiceId}?output_format=$outputFmt',
+    );
+    final body = jsonEncode({'text': text, 'model_id': opt.modelId});
     final req = http.Request('POST', uri)
       ..headers['xi-api-key'] = opt.apiKey
       ..headers['Content-Type'] = 'application/json'
@@ -430,7 +507,9 @@ class NetworkTtsService {
     }
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       final txt = await resp.stream.bytesToString();
-      throw Exception('ElevenLabs TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $txt');
+      throw Exception(
+        'ElevenLabs TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $txt',
+      );
     }
     final bytes = await resp.stream.toBytes();
     // Determine mime based on output format
@@ -438,24 +517,31 @@ class NetworkTtsService {
     final mime = lower.startsWith('mp3_')
         ? 'audio/mpeg'
         : lower.startsWith('pcm_')
-            ? 'audio/wav' // we don't convert PCM to WAV here; default to mp3
-            : lower.startsWith('opus_')
-                ? 'audio/ogg'
-                : 'application/octet-stream';
+        ? 'audio/wav' // we don't convert PCM to WAV here; default to mp3
+        : lower.startsWith('opus_')
+        ? 'audio/ogg'
+        : 'application/octet-stream';
     return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: mime);
   }
 }
 
 class _Cancelled implements Exception {}
 
-Uint8List _pcmToWav(Uint8List pcm, {required int sampleRate, int channels = 1, int bitsPerSample = 16}) {
+Uint8List _pcmToWav(
+  Uint8List pcm, {
+  required int sampleRate,
+  int channels = 1,
+  int bitsPerSample = 16,
+}) {
   final byteRate = sampleRate * channels * bitsPerSample ~/ 8;
   final dataLength = pcm.lengthInBytes;
   final totalLength = 36 + dataLength;
   final out = BytesBuilder();
   void writeString(String s) => out.add(utf8.encode(s));
-  void writeInt32LE(int v) => out.add(Uint8List(4)..buffer.asByteData().setUint32(0, v, Endian.little));
-  void writeInt16LE(int v) => out.add(Uint8List(2)..buffer.asByteData().setUint16(0, v, Endian.little));
+  void writeInt32LE(int v) =>
+      out.add(Uint8List(4)..buffer.asByteData().setUint32(0, v, Endian.little));
+  void writeInt16LE(int v) =>
+      out.add(Uint8List(2)..buffer.asByteData().setUint16(0, v, Endian.little));
 
   writeString('RIFF');
   writeInt32LE(totalLength);

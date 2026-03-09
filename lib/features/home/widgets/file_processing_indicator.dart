@@ -9,10 +9,10 @@ class FileProcessingIndicator extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
-    
+
     // Match _ReasoningSection styling from ChatMessageWidget
     final bg = cs.primaryContainer.withOpacity(isDark ? 0.25 : 0.30);
-    
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Container(

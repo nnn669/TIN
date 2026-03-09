@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,13 +36,23 @@ class _WebViewPageState extends State<WebViewPage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (p) {
-            setState(() { _isLoading = p < 100; _progress = p; });
+            setState(() {
+              _isLoading = p < 100;
+              _progress = p;
+            });
           },
           onPageStarted: (url) {
-            setState(() { _isLoading = true; _currentUrl = url; });
+            setState(() {
+              _isLoading = true;
+              _currentUrl = url;
+            });
           },
           onPageFinished: (url) async {
-            setState(() { _isLoading = false; _progress = 100; _currentUrl = url; });
+            setState(() {
+              _isLoading = false;
+              _progress = 100;
+              _currentUrl = url;
+            });
             await _refreshCanGoStates();
             await _updateTitle();
           },
@@ -63,7 +74,9 @@ class _WebViewPageState extends State<WebViewPage> {
       // Keep parity with existing Linux limitation: no WebView support
       final l10n = AppLocalizations.of(context)!;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.htmlPreviewNotSupportedOnLinux)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.htmlPreviewNotSupportedOnLinux)),
+      );
       Navigator.of(context).maybePop();
       return;
     }
@@ -72,7 +85,9 @@ class _WebViewPageState extends State<WebViewPage> {
       await _controller.loadRequest(Uri.parse(url));
     } else {
       final data = widget.contentBase64 ?? '';
-      final html = data.isEmpty ? '<!doctype html><html><body></body></html>' : utf8.decode(base64Decode(data));
+      final html = data.isEmpty
+          ? '<!doctype html><html><body></body></html>'
+          : utf8.decode(base64Decode(data));
       await _controller.loadHtmlString(html);
     }
   }
@@ -80,15 +95,32 @@ class _WebViewPageState extends State<WebViewPage> {
   void _onConsoleMessage(JavaScriptMessage msg) {
     try {
       final obj = jsonDecode(msg.message) as Map<String, dynamic>;
-      _pushConsole(level: obj['level']?.toString() ?? 'log', message: obj['message']?.toString() ?? '', source: obj['source']?.toString(), line: (obj['line'] as num?)?.toInt());
+      _pushConsole(
+        level: obj['level']?.toString() ?? 'log',
+        message: obj['message']?.toString() ?? '',
+        source: obj['source']?.toString(),
+        line: (obj['line'] as num?)?.toInt(),
+      );
     } catch (_) {
       _pushConsole(level: 'log', message: msg.message);
     }
   }
 
-  void _pushConsole({required String level, required String message, String? source, int? line}) {
+  void _pushConsole({
+    required String level,
+    required String message,
+    String? source,
+    int? line,
+  }) {
     setState(() {
-      _console.add(_ConsoleMessage(level: level.toUpperCase(), message: message, source: source, line: line));
+      _console.add(
+        _ConsoleMessage(
+          level: level.toUpperCase(),
+          message: message,
+          source: source,
+          line: line,
+        ),
+      );
       if (_console.length > 128) {
         _console.removeRange(0, _console.length - 128);
       }
@@ -97,8 +129,12 @@ class _WebViewPageState extends State<WebViewPage> {
 
   Future<void> _updateTitle() async {
     try {
-      final t = await _controller.runJavaScriptReturningResult('document.title');
-      setState(() { _title = _stripJsString(t); });
+      final t = await _controller.runJavaScriptReturningResult(
+        'document.title',
+      );
+      setState(() {
+        _title = _stripJsString(t);
+      });
     } catch (_) {}
   }
 
@@ -115,14 +151,19 @@ class _WebViewPageState extends State<WebViewPage> {
     try {
       final back = await _controller.canGoBack();
       final fwd = await _controller.canGoForward();
-      setState(() { _canGoBack = back; _canGoForward = fwd; });
+      setState(() {
+        _canGoBack = back;
+        _canGoForward = fwd;
+      });
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bool contentMode = (widget.contentBase64 != null && (widget.contentBase64!.isNotEmpty)) && ((widget.url == null) || widget.url!.isEmpty);
+    final bool contentMode =
+        (widget.contentBase64 != null && (widget.contentBase64!.isNotEmpty)) &&
+        ((widget.url == null) || widget.url!.isEmpty);
     return WillPopScope(
       onWillPop: () async {
         if (_canGoBack) {
@@ -133,7 +174,9 @@ class _WebViewPageState extends State<WebViewPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_title?.isNotEmpty == true ? _title! : (_currentUrl ?? '')),
+          title: Text(
+            _title?.isNotEmpty == true ? _title! : (_currentUrl ?? ''),
+          ),
           actions: [
             if (!contentMode) ...[
               IconButton(
@@ -156,24 +199,40 @@ class _WebViewPageState extends State<WebViewPage> {
                       if (url != null && url.trim().isNotEmpty) {
                         final uri = Uri.tryParse(url);
                         if (uri != null) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
                         }
                       }
                     }
                     break;
                   case 'console':
-                    setState(() { _consoleOpen = true; });
+                    setState(() {
+                      _consoleOpen = true;
+                    });
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       builder: (ctx) => _ConsoleSheet(messages: _console),
-                    ).whenComplete(() => setState(() { _consoleOpen = false; }));
+                    ).whenComplete(
+                      () => setState(() {
+                        _consoleOpen = false;
+                      }),
+                    );
                     break;
                 }
               },
               itemBuilder: (ctx) => [
-                if (!contentMode) PopupMenuItem<String>(value: 'open', child: Text(l10n.messageWebViewOpenInBrowser)),
-                PopupMenuItem<String>(value: 'console', child: Text(l10n.messageWebViewConsoleLogs)),
+                if (!contentMode)
+                  PopupMenuItem<String>(
+                    value: 'open',
+                    child: Text(l10n.messageWebViewOpenInBrowser),
+                  ),
+                PopupMenuItem<String>(
+                  value: 'console',
+                  child: Text(l10n.messageWebViewConsoleLogs),
+                ),
               ],
             ),
           ],
@@ -191,10 +250,10 @@ class _WebViewPageState extends State<WebViewPage> {
         body: Column(
           children: [
             if (_isLoading)
-              LinearProgressIndicator(value: _progress > 0 ? _progress / 100 : null),
-            Expanded(
-              child: WebViewWidget(controller: _controller),
-            ),
+              LinearProgressIndicator(
+                value: _progress > 0 ? _progress / 100 : null,
+              ),
+            Expanded(child: WebViewWidget(controller: _controller)),
           ],
         ),
       ),
@@ -203,7 +262,12 @@ class _WebViewPageState extends State<WebViewPage> {
 }
 
 class _ConsoleMessage {
-  _ConsoleMessage({required this.level, required this.message, this.source, this.line});
+  _ConsoleMessage({
+    required this.level,
+    required this.message,
+    this.source,
+    this.line,
+  });
   final String level;
   final String message;
   final String? source;
@@ -225,14 +289,19 @@ class _ConsoleSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(l10n.messageWebViewConsoleLogs, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              l10n.messageWebViewConsoleLogs,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             if (messages.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   l10n.messageWebViewNoConsoleMessages,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
             Flexible(
@@ -243,16 +312,25 @@ class _ConsoleSheet extends StatelessWidget {
                   final m = messages[i];
                   Color c;
                   switch (m.level) {
-                    case 'ERROR': c = cs.error; break;
+                    case 'ERROR':
+                      c = cs.error;
+                      break;
                     case 'WARN':
-                    case 'WARNING': c = cs.secondary; break;
-                    default: c = cs.onSurface; break;
+                    case 'WARNING':
+                      c = cs.secondary;
+                      break;
+                    default:
+                      c = cs.onSurface;
+                      break;
                   }
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
                       '${m.level}: ${m.message}\nSource: ${m.source ?? ''}${m.line != null ? ':${m.line}' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: c, fontFamily: 'monospace'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: c,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   );
                 },

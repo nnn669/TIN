@@ -43,25 +43,32 @@ class _IosTileButtonState extends State<IosTileButton> {
     final Color baseBg = tinted
         ? (isDark ? tint.withOpacity(0.20) : tint.withOpacity(0.12))
         : (isDark ? Colors.white10 : const Color(0xFFF2F3F5));
-    final overlay = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
+    final overlay = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
     final pressedBg = Color.alphaBlend(overlay, baseBg);
     // Use primary (or provided foreground) for text/icon when tinted; otherwise neutral onSurface
-    final Color defaultFg = widget.foregroundColor ??
-        (tinted ? (widget.backgroundColor ?? cs.primary) : cs.onSurface.withOpacity(0.9));
+    final Color defaultFg =
+        widget.foregroundColor ??
+        (tinted
+            ? (widget.backgroundColor ?? cs.primary)
+            : cs.onSurface.withOpacity(0.9));
     final iconColor = defaultFg;
     final textColor = defaultFg;
     // Keep a subtle same-hue border when tinted; otherwise use neutral outline
-    final Color effectiveBorder = widget.borderColor ?? (
-      tinted
-        ? tint.withOpacity(isDark ? 0.55 : 0.45)
-        : cs.outlineVariant.withOpacity(0.35)
-    );
+    final Color effectiveBorder =
+        widget.borderColor ??
+        (tinted
+            ? tint.withOpacity(isDark ? 0.55 : 0.45)
+            : cs.outlineVariant.withOpacity(0.35));
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
       onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.enabled ? () => setState(() => _pressed = false) : null,
+      onTapCancel: widget.enabled
+          ? () => setState(() => _pressed = false)
+          : null,
       onTap: () {
         if (!widget.enabled) return;
         Haptics.light();
@@ -79,7 +86,11 @@ class _IosTileButtonState extends State<IosTileButton> {
           decoration: BoxDecoration(
             color: _pressed && widget.enabled ? pressedBg : baseBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: widget.enabled ? effectiveBorder : effectiveBorder.withOpacity(0.45)),
+            border: Border.all(
+              color: widget.enabled
+                  ? effectiveBorder
+                  : effectiveBorder.withOpacity(0.45),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -87,7 +98,13 @@ class _IosTileButtonState extends State<IosTileButton> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(left: 2.0),
-                child: Icon(widget.icon, size: 18, color: widget.enabled ? iconColor : iconColor.withOpacity(0.45)),
+                child: Icon(
+                  widget.icon,
+                  size: 18,
+                  color: widget.enabled
+                      ? iconColor
+                      : iconColor.withOpacity(0.45),
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -95,7 +112,9 @@ class _IosTileButtonState extends State<IosTileButton> {
                 style: TextStyle(
                   fontSize: widget.fontSize,
                   fontWeight: FontWeight.w600,
-                  color: widget.enabled ? textColor : textColor.withOpacity(0.45),
+                  color: widget.enabled
+                      ? textColor
+                      : textColor.withOpacity(0.45),
                 ),
               ),
             ],

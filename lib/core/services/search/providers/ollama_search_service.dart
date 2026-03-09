@@ -11,7 +11,10 @@ class OllamaSearchService extends SearchService<OllamaOptions> {
   @override
   Widget description(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Text(l10n.searchProviderOllamaDescription, style: const TextStyle(fontSize: 12));
+    return Text(
+      l10n.searchProviderOllamaDescription,
+      style: const TextStyle(fontSize: 12),
+    );
   }
 
   @override
@@ -58,4 +61,3 @@ class OllamaSearchService extends SearchService<OllamaOptions> {
     }
   }
 }
-

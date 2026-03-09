@@ -782,4 +782,3 @@ class _AssistantAvatarDesktop extends StatelessWidget {
     );
   }
 }
-

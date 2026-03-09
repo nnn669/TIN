@@ -639,10 +639,7 @@ class DesktopDefaultModelPane extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    l10n.defaultModelPageCompressVars(
-                      '{content}',
-                      '{locale}',
-                    ),
+                    l10n.defaultModelPageCompressVars('{content}', '{locale}'),
                     style: TextStyle(
                       color: cs.onSurface.withOpacity(0.6),
                       fontSize: 12,

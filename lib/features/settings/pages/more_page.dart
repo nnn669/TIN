@@ -11,12 +11,12 @@ class MorePage extends StatelessWidget {
     final cs = theme.colorScheme;
 
     Widget title(String text) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            text,
-            style: theme.textTheme.titleSmall?.copyWith(color: cs.primary),
-          ),
-        );
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        text,
+        style: theme.textTheme.titleSmall?.copyWith(color: cs.primary),
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -83,7 +83,10 @@ class LeaderBoardItem extends StatelessWidget {
       child: Card(
         elevation: 0,
         color: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: cs.outline.withOpacity(0.12))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: cs.outline.withOpacity(0.12)),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.openUrl(url),
@@ -99,7 +102,9 @@ class LeaderBoardItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _hostOf(url),
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.textTheme.labelSmall?.color?.withOpacity(0.75)),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.textTheme.labelSmall?.color?.withOpacity(0.75),
+                  ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),

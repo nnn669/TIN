@@ -58,7 +58,9 @@ class _MessageEditPageState extends State<MessageEditPage> {
             decoration: InputDecoration(
               hintText: l10n.messageEditPageHint,
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+              fillColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white10
+                  : const Color(0xFFF2F3F5),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Colors.transparent),
@@ -78,4 +80,3 @@ class _MessageEditPageState extends State<MessageEditPage> {
     );
   }
 }
-

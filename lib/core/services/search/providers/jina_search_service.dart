@@ -11,7 +11,10 @@ class JinaSearchService extends SearchService<JinaOptions> {
   @override
   Widget description(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Text(l10n.searchProviderJinaDescription, style: const TextStyle(fontSize: 12));
+    return Text(
+      l10n.searchProviderJinaDescription,
+      style: const TextStyle(fontSize: 12),
+    );
   }
 
   @override
@@ -21,9 +24,7 @@ class JinaSearchService extends SearchService<JinaOptions> {
     required JinaOptions serviceOptions,
   }) async {
     try {
-      final body = jsonEncode({
-        'q': query,
-      });
+      final body = jsonEncode({'q': query});
 
       final response = await http
           .post(
@@ -39,7 +40,13 @@ class JinaSearchService extends SearchService<JinaOptions> {
             },
             body: body,
           )
-          .timeout(Duration(milliseconds: commonOptions.timeout < 15000 ? 15000 : commonOptions.timeout));
+          .timeout(
+            Duration(
+              milliseconds: commonOptions.timeout < 15000
+                  ? 15000
+                  : commonOptions.timeout,
+            ),
+          );
 
       if (response.statusCode != 200) {
         throw Exception('API request failed: ${response.statusCode}');
@@ -47,7 +54,8 @@ class JinaSearchService extends SearchService<JinaOptions> {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       // Jina typically returns { data: [...] }. Be permissive in case of variant shapes.
-      final listRaw = (data['data'] ?? data['results'] ?? const <dynamic>[]) as List;
+      final listRaw =
+          (data['data'] ?? data['results'] ?? const <dynamic>[]) as List;
       final list = listRaw;
       final results = list.take(commonOptions.resultSize).map((item) {
         final m = (item as Map).cast<String, dynamic>();

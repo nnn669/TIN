@@ -25,21 +25,36 @@ class UpdateInfo {
   });
 
   String? bestDownloadUrl() {
-    if (Platform.isIOS) return downloads['ios'] ?? downloads['iosAppStore'] ?? downloads['universal'];
-    if (Platform.isAndroid) return downloads['android'] ?? downloads['universal'];
-    if (Platform.isMacOS) return downloads['macos'] ?? downloads['mac'] ?? downloads['darwin'] ?? downloads['universal'];
-    if (Platform.isWindows) return downloads['windows'] ?? downloads['win'] ?? downloads['universal'];
+    if (Platform.isIOS)
+      return downloads['ios'] ??
+          downloads['iosAppStore'] ??
+          downloads['universal'];
+    if (Platform.isAndroid)
+      return downloads['android'] ?? downloads['universal'];
+    if (Platform.isMacOS)
+      return downloads['macos'] ??
+          downloads['mac'] ??
+          downloads['darwin'] ??
+          downloads['universal'];
+    if (Platform.isWindows)
+      return downloads['windows'] ?? downloads['win'] ?? downloads['universal'];
     if (Platform.isLinux) return downloads['linux'] ?? downloads['universal'];
     return downloads['universal'] ?? downloads['android'] ?? downloads['ios'];
   }
 
   factory UpdateInfo.fromJson(Map<String, dynamic> json) {
     final latest = (json['latest'] as Map?) ?? const {};
-    final downloads = (latest['downloads'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? const {};
+    final downloads =
+        (latest['downloads'] as Map?)?.map(
+          (k, v) => MapEntry(k.toString(), v.toString()),
+        ) ??
+        const {};
     DateTime? released;
     final releasedRaw = latest['releasedAt']?.toString();
     if (releasedRaw != null && releasedRaw.isNotEmpty) {
-      try { released = DateTime.parse(releasedRaw); } catch (_) {}
+      try {
+        released = DateTime.parse(releasedRaw);
+      } catch (_) {}
     }
     return UpdateInfo(
       app: (json['app'] ?? '').toString(),
@@ -68,19 +83,25 @@ class UpdateProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final url = Uri.parse('https://kelivo.psycheas.top/update.json?kelivo=$ts');
+      final url = Uri.parse(
+        'https://kelivo.psycheas.top/update.json?kelivo=$ts',
+      );
       final resp = await http.get(url);
       if (resp.statusCode != 200) {
         throw Exception('HTTP ${resp.statusCode}');
       }
-      final data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       final info = UpdateInfo.fromJson(data);
 
       final pkg = await PackageInfo.fromPlatform();
       final currentVer = pkg.version; // e.g., 1.0.0
 
       // Compare by version only; ignore build numbers
-      final hasNew = _isRemoteNewer(remoteVersion: info.version, currentVersion: currentVer);
+      final hasNew = _isRemoteNewer(
+        remoteVersion: info.version,
+        currentVersion: currentVer,
+      );
       _available = hasNew ? info : null;
     } catch (e) {
       _error = e.toString();
@@ -103,6 +124,7 @@ class UpdateProvider extends ChangeNotifier {
       }
       return nums;
     }
+
     final a = parseVer(remoteVersion);
     final b = parseVer(currentVersion);
     if (a[0] != b[0]) return a[0] > b[0];

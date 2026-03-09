@@ -43,7 +43,8 @@ class StreamController {
 
   /// Lightweight notifier for streaming content updates.
   /// This avoids triggering full page rebuilds during streaming.
-  final StreamingContentNotifier streamingContentNotifier = StreamingContentNotifier();
+  final StreamingContentNotifier streamingContentNotifier =
+      StreamingContentNotifier();
 
   /// Set of message IDs currently being streamed.
   /// Used to suppress onStateChanged calls during streaming.
@@ -95,8 +96,7 @@ class StreamController {
       _reasoningSegments;
 
   /// Tool UI parts per assistant message.
-  final Map<String, List<ToolUIPart>> _toolParts =
-      <String, List<ToolUIPart>>{};
+  final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{};
   Map<String, List<ToolUIPart>> get toolParts => _toolParts;
 
   /// Gemini thought signatures per assistant message.
@@ -126,8 +126,10 @@ class StreamController {
   final Set<String> _inlineImageSanitizing = <String>{};
 
   /// Regex to capture Gemini thought signature comments.
-  static final RegExp _geminiThoughtSigRe =
-      RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
+  static final RegExp _geminiThoughtSigRe = RegExp(
+    r'<!--\s*gemini_thought_signatures:.*?-->',
+    dotAll: true,
+  );
 
   // ============================================================================
   // Public Methods - State Access
@@ -151,7 +153,10 @@ class StreamController {
       _reasoningSegments[messageId];
 
   /// Set reasoning segments for a message.
-  void setReasoningSegments(String messageId, List<ReasoningSegmentData> segments) {
+  void setReasoningSegments(
+    String messageId,
+    List<ReasoningSegmentData> segments,
+  ) {
     _reasoningSegments[messageId] = segments;
   }
 
@@ -214,7 +219,10 @@ class StreamController {
   }
 
   /// Append Gemini thought signature for API calls (when sending history).
-  String appendGeminiThoughtSignatureForApi(ChatMessage message, String content) {
+  String appendGeminiThoughtSignatureForApi(
+    ChatMessage message,
+    String content,
+  ) {
     String? sig = _geminiThoughtSigs[message.id];
     sig ??= _chatService.getGeminiThoughtSignature(message.id);
     if (sig != null &&
@@ -238,13 +246,15 @@ class StreamController {
   /// Serialize reasoning segments to JSON string.
   String serializeReasoningSegments(List<ReasoningSegmentData> segments) {
     final list = segments
-        .map((s) => {
-              'text': s.text,
-              'startAt': s.startAt?.toIso8601String(),
-              'finishedAt': s.finishedAt?.toIso8601String(),
-              'expanded': s.expanded,
-              'toolStartIndex': s.toolStartIndex,
-            })
+        .map(
+          (s) => {
+            'text': s.text,
+            'startAt': s.startAt?.toIso8601String(),
+            'finishedAt': s.finishedAt?.toIso8601String(),
+            'expanded': s.expanded,
+            'toolStartIndex': s.toolStartIndex,
+          },
+        )
         .toList();
     return _encodeJson(list);
   }
@@ -257,8 +267,9 @@ class StreamController {
       return list.map((item) {
         final s = ReasoningSegmentData();
         s.text = item['text'] ?? '';
-        s.startAt =
-            item['startAt'] != null ? DateTime.parse(item['startAt']) : null;
+        s.startAt = item['startAt'] != null
+            ? DateTime.parse(item['startAt'])
+            : null;
         s.finishedAt = item['finishedAt'] != null
             ? DateTime.parse(item['finishedAt'])
             : null;
@@ -299,13 +310,16 @@ class StreamController {
   }
 
   /// Deduplicate raw persisted tool events.
-  List<Map<String, dynamic>> dedupeToolEvents(List<Map<String, dynamic>> events) {
+  List<Map<String, dynamic>> dedupeToolEvents(
+    List<Map<String, dynamic>> events,
+  ) {
     final seen = <String>{};
     final out = <Map<String, dynamic>>[];
     for (final e in events) {
       final id = (e['id']?.toString() ?? '').trim();
       final name = (e['name']?.toString() ?? '');
-      final args = ((e['arguments'] as Map?)?.cast<String, dynamic>() ??
+      final args =
+          ((e['arguments'] as Map?)?.cast<String, dynamic>() ??
           const <String, dynamic>{});
       final key = id.isNotEmpty
           ? 'id:$id'
@@ -327,7 +341,8 @@ class StreamController {
     String messageId,
     String conversationId,
     String content, {
-    required void Function(String messageId, String content, int totalTokens) updateMessageInList,
+    required void Function(String messageId, String content, int totalTokens)
+    updateMessageInList,
     required int totalTokens,
   }) {
     _pendingStreamContent[messageId] = content;
@@ -335,17 +350,23 @@ class StreamController {
     // Ensure notifier exists for this message
     streamingContentNotifier.getNotifier(messageId);
 
-    _streamThrottleTimers[messageId] ??=
-        Timer.periodic(_streamThrottleInterval, (_) {
-      final pending = _pendingStreamContent[messageId];
-      if (pending != null && getCurrentConversationId() == conversationId) {
-        // Use lightweight notifier instead of full page rebuild
-        streamingContentNotifier.updateContent(messageId, pending, totalTokens);
-        // Also update the message list data (without triggering rebuild)
-        updateMessageInList(messageId, pending, totalTokens);
-        onStreamTick?.call();
-      }
-    });
+    _streamThrottleTimers[messageId] ??= Timer.periodic(
+      _streamThrottleInterval,
+      (_) {
+        final pending = _pendingStreamContent[messageId];
+        if (pending != null && getCurrentConversationId() == conversationId) {
+          // Use lightweight notifier instead of full page rebuild
+          streamingContentNotifier.updateContent(
+            messageId,
+            pending,
+            totalTokens,
+          );
+          // Also update the message list data (without triggering rebuild)
+          updateMessageInList(messageId, pending, totalTokens);
+          onStreamTick?.call();
+        }
+      },
+    );
   }
 
   /// Get pending stream content for a message.
@@ -397,7 +418,7 @@ class StreamController {
     String? latestContent,
     bool immediate = false,
     required Future<void> Function(String messageId, String sanitizedContent)
-        onSanitized,
+    onSanitized,
   }) {
     // Quick pre-check to avoid needless timers
     final snapshot = latestContent ?? '';
@@ -447,7 +468,13 @@ class StreamController {
   Future<void> handleReasoningChunk(
     ChatStreamChunk chunk,
     StreamingState state, {
-    required Future<void> Function(String messageId, {String? reasoningText, DateTime? reasoningStartAt, String? reasoningSegmentsJson}) updateReasoningInDb,
+    required Future<void> Function(
+      String messageId, {
+      String? reasoningText,
+      DateTime? reasoningStartAt,
+      String? reasoningSegmentsJson,
+    })
+    updateReasoningInDb,
   }) async {
     if ((chunk.reasoning ?? '').isEmpty || !state.ctx.supportsReasoning) return;
 
@@ -462,7 +489,8 @@ class StreamController {
       _reasoning[messageId] = r;
 
       // Add to reasoning segments for mixed display
-      final segments = _reasoningSegments[messageId] ?? <ReasoningSegmentData>[];
+      final segments =
+          _reasoningSegments[messageId] ?? <ReasoningSegmentData>[];
       if (segments.isEmpty) {
         final newSegment = ReasoningSegmentData();
         newSegment.text = chunk.reasoning!;
@@ -524,9 +552,15 @@ class StreamController {
   Future<void> handleToolCallsChunk(
     ChatStreamChunk chunk,
     StreamingState state, {
-    required Future<void> Function(String messageId, String json) updateReasoningSegmentsInDb,
-    required Future<void> Function(String messageId, List<Map<String, dynamic>> events) setToolEventsInDb,
-    required List<Map<String, dynamic>> Function(String messageId) getToolEventsFromDb,
+    required Future<void> Function(String messageId, String json)
+    updateReasoningSegmentsInDb,
+    required Future<void> Function(
+      String messageId,
+      List<Map<String, dynamic>> events,
+    )
+    setToolEventsInDb,
+    required List<Map<String, dynamic>> Function(String messageId)
+    getToolEventsFromDb,
   }) async {
     if ((chunk.toolCalls ?? const []).isEmpty) return;
 
@@ -553,12 +587,14 @@ class StreamController {
     // Add tool call placeholders
     final existing = List<ToolUIPart>.of(_toolParts[messageId] ?? const []);
     for (final c in chunk.toolCalls!) {
-      existing.add(ToolUIPart(
-        id: c.id,
-        toolName: c.name,
-        arguments: c.arguments,
-        loading: true,
-      ));
+      existing.add(
+        ToolUIPart(
+          id: c.id,
+          toolName: c.name,
+          arguments: c.arguments,
+          loading: true,
+        ),
+      );
     }
     if (getCurrentConversationId() == conversationId) {
       _toolParts[messageId] = dedupeToolPartsList(existing);
@@ -572,7 +608,12 @@ class StreamController {
       final newEvents = <Map<String, dynamic>>[
         ...prev,
         for (final c in chunk.toolCalls!)
-          {'id': c.id, 'name': c.name, 'arguments': c.arguments, 'content': null},
+          {
+            'id': c.id,
+            'name': c.name,
+            'arguments': c.arguments,
+            'content': null,
+          },
       ];
       await setToolEventsInDb(messageId, dedupeToolEvents(newEvents));
     } catch (_) {}
@@ -582,7 +623,14 @@ class StreamController {
   Future<void> handleToolResultsChunk(
     ChatStreamChunk chunk,
     StreamingState state, {
-    required Future<void> Function(String messageId, {required String id, required String name, required Map<String, dynamic> arguments, String? content}) upsertToolEventInDb,
+    required Future<void> Function(
+      String messageId, {
+      required String id,
+      required String name,
+      required Map<String, dynamic> arguments,
+      String? content,
+    })
+    upsertToolEventInDb,
   }) async {
     if ((chunk.toolResults ?? const []).isEmpty) return;
 
@@ -611,13 +659,15 @@ class StreamController {
           loading: false,
         );
       } else {
-        parts.add(ToolUIPart(
-          id: r.id,
-          toolName: r.name,
-          arguments: r.arguments,
-          content: r.content,
-          loading: false,
-        ));
+        parts.add(
+          ToolUIPart(
+            id: r.id,
+            toolName: r.name,
+            arguments: r.arguments,
+            content: r.content,
+            loading: false,
+          ),
+        );
       }
       try {
         final args = (r.arguments is Map)
@@ -642,7 +692,13 @@ class StreamController {
   /// Finish reasoning segment when content starts arriving.
   Future<void> finishReasoningOnContent(
     StreamingState state, {
-    required Future<void> Function(String messageId, {String? reasoningText, DateTime? reasoningFinishedAt, String? reasoningSegmentsJson}) updateReasoningInDb,
+    required Future<void> Function(
+      String messageId, {
+      String? reasoningText,
+      DateTime? reasoningFinishedAt,
+      String? reasoningSegmentsJson,
+    })
+    updateReasoningInDb,
   }) async {
     final messageId = state.messageId;
 
@@ -685,7 +741,13 @@ class StreamController {
   /// Finalize streaming and finish reasoning state.
   Future<void> finalizeReasoningState(
     String messageId, {
-    required Future<void> Function(String messageId, {String? reasoningText, DateTime? reasoningFinishedAt, String? reasoningSegmentsJson}) updateReasoningInDb,
+    required Future<void> Function(
+      String messageId, {
+      String? reasoningText,
+      DateTime? reasoningFinishedAt,
+      String? reasoningSegmentsJson,
+    })
+    updateReasoningInDb,
   }) async {
     // Finish reasoning data
     final r = _reasoning[messageId];
@@ -743,12 +805,10 @@ class StreamController {
   /// - _handleStreamError (line 3954-3970)
   ///
   /// Returns true if any state was actually changed.
-  bool finishReasoningIfNeeded(
-    String messageId, {
-    bool forceCollapse = false,
-  }) {
+  bool finishReasoningIfNeeded(String messageId, {bool forceCollapse = false}) {
     bool changed = false;
-    final autoCollapse = forceCollapse || getSettingsProvider().autoCollapseThinking;
+    final autoCollapse =
+        forceCollapse || getSettingsProvider().autoCollapseThinking;
 
     // Finish main reasoning data (only when it first finishes, not on subsequent calls)
     final r = _reasoning[messageId];
@@ -797,9 +857,13 @@ class StreamController {
       String? reasoningText,
       DateTime? reasoningFinishedAt,
       String? reasoningSegmentsJson,
-    }) updateReasoningInDb,
+    })
+    updateReasoningInDb,
   }) async {
-    final changed = finishReasoningIfNeeded(messageId, forceCollapse: forceCollapse);
+    final changed = finishReasoningIfNeeded(
+      messageId,
+      forceCollapse: forceCollapse,
+    );
     if (!changed) return;
 
     // Persist reasoning data
@@ -829,7 +893,8 @@ class StreamController {
   /// Restore UI state for a message from its persisted data.
   void restoreMessageUiState(
     ChatMessage message, {
-    required List<Map<String, dynamic>> Function(String messageId) getToolEventsFromDb,
+    required List<Map<String, dynamic>> Function(String messageId)
+    getToolEventsFromDb,
     required String? Function(String messageId) getGeminiThoughtSigFromDb,
   }) {
     if (message.role != 'assistant') return;
@@ -860,22 +925,27 @@ class StreamController {
       final events = dedupeToolEvents(getToolEventsFromDb(messageId));
       if (events.isNotEmpty) {
         _toolParts[messageId] = events
-            .map((e) => ToolUIPart(
-                  id: (e['id'] ?? '').toString(),
-                  toolName: (e['name'] ?? '').toString(),
-                  arguments: (e['arguments'] as Map?)?.cast<String, dynamic>() ??
-                      const <String, dynamic>{},
-                  content: (e['content']?.toString().isNotEmpty == true)
-                      ? e['content'].toString()
-                      : null,
-                  loading: !(e['content']?.toString().isNotEmpty == true),
-                ))
+            .map(
+              (e) => ToolUIPart(
+                id: (e['id'] ?? '').toString(),
+                toolName: (e['name'] ?? '').toString(),
+                arguments:
+                    (e['arguments'] as Map?)?.cast<String, dynamic>() ??
+                    const <String, dynamic>{},
+                content: (e['content']?.toString().isNotEmpty == true)
+                    ? e['content'].toString()
+                    : null,
+                loading: !(e['content']?.toString().isNotEmpty == true),
+              ),
+            )
             .toList();
       }
     } catch (_) {}
 
     // Restore reasoning segments
-    final segments = deserializeReasoningSegments(message.reasoningSegmentsJson);
+    final segments = deserializeReasoningSegments(
+      message.reasoningSegmentsJson,
+    );
     if (segments.isNotEmpty) {
       _reasoningSegments[messageId] = segments;
     }

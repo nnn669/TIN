@@ -126,7 +126,9 @@ class _SearchSettingsSheet extends StatelessWidget {
       final mid = modelId!;
       final rawOv = cfg!.modelOverrides[mid];
       final ov = rawOv is Map ? rawOv : null;
-      final builtInSet = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
+      final builtInSet = BuiltInToolNames.parseAndNormalize(
+        ov?['builtInTools'],
+      );
       hasBuiltInSearch = builtInSet.contains(BuiltInToolNames.search);
       hasUrlContext = builtInSet.contains(BuiltInToolNames.urlContext);
     }
@@ -222,12 +224,12 @@ class _SearchSettingsSheet extends StatelessWidget {
                       final rawMo = overrides[mid];
                       final baseMo = rawMo is Map ? rawMo : null;
                       final mo = Map<String, dynamic>.from(
-                        baseMo?.map(
-                              (k, val) => MapEntry(k.toString(), val),
-                            ) ??
+                        baseMo?.map((k, val) => MapEntry(k.toString(), val)) ??
                             const <String, dynamic>{},
                       );
-                      final builtIns = BuiltInToolNames.parseAndNormalize(mo['builtInTools']);
+                      final builtIns = BuiltInToolNames.parseAndNormalize(
+                        mo['builtInTools'],
+                      );
                       if (v) {
                         builtIns.add(BuiltInToolNames.search);
                       } else {
@@ -236,7 +238,9 @@ class _SearchSettingsSheet extends StatelessWidget {
                       if (builtIns.isEmpty) {
                         mo.remove('builtInTools');
                       } else {
-                        mo['builtInTools'] = BuiltInToolNames.orderedForStorage(builtIns);
+                        mo['builtInTools'] = BuiltInToolNames.orderedForStorage(
+                          builtIns,
+                        );
                       }
                       overrides[mid] = mo;
                       await context.read<SettingsProvider>().setProviderConfig(
@@ -293,7 +297,9 @@ class _SearchSettingsSheet extends StatelessWidget {
                                   ) ??
                                   const <String, dynamic>{},
                             );
-                            final builtIns = BuiltInToolNames.parseAndNormalize(mo['builtInTools']);
+                            final builtIns = BuiltInToolNames.parseAndNormalize(
+                              mo['builtInTools'],
+                            );
                             if (v) {
                               builtIns.add(BuiltInToolNames.search);
                             } else {
@@ -302,7 +308,8 @@ class _SearchSettingsSheet extends StatelessWidget {
                             if (builtIns.isEmpty) {
                               mo.remove('builtInTools');
                             } else {
-                              mo['builtInTools'] = BuiltInToolNames.orderedForStorage(builtIns);
+                              mo['builtInTools'] =
+                                  BuiltInToolNames.orderedForStorage(builtIns);
                             }
                             overrides[mid] = mo;
                             await context

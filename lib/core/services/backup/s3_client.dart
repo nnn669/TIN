@@ -32,14 +32,18 @@ class S3BackupClient {
 
   static Uri _buildBucketUri(S3Config cfg, {Map<String, String>? query}) {
     final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
-    final baseSegs = base.pathSegments.where((s) => s.trim().isNotEmpty).toList();
+    final baseSegs = base.pathSegments
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
 
     final host = cfg.pathStyle ? base.host : '${cfg.bucket}.${base.host}';
     final segs = cfg.pathStyle ? [...baseSegs, cfg.bucket] : [...baseSegs];
     // Dart's `Uri(queryParameters: ...)` encodes space as `+`, but some S3-compatible
     // providers (e.g. Cloudflare R2) require strict RFC3986 encoding for SigV4.
     // Build the encoded query string ourselves to ensure spaces become `%20`.
-    final queryStr = (query != null && query.isNotEmpty) ? _canonicalQuery(query) : null;
+    final queryStr = (query != null && query.isNotEmpty)
+        ? _canonicalQuery(query)
+        : null;
     return Uri(
       scheme: base.scheme.isEmpty ? 'https' : base.scheme,
       host: host,
@@ -51,11 +55,15 @@ class S3BackupClient {
 
   static Uri _buildObjectUri(S3Config cfg, String key) {
     final base = Uri.parse(_normalizeEndpoint(cfg.endpoint));
-    final baseSegs = base.pathSegments.where((s) => s.trim().isNotEmpty).toList();
+    final baseSegs = base.pathSegments
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
     final keySegs = key.split('/').where((s) => s.isNotEmpty).toList();
 
     final host = cfg.pathStyle ? base.host : '${cfg.bucket}.${base.host}';
-    final segs = cfg.pathStyle ? [...baseSegs, cfg.bucket, ...keySegs] : [...baseSegs, ...keySegs];
+    final segs = cfg.pathStyle
+        ? [...baseSegs, cfg.bucket, ...keySegs]
+        : [...baseSegs, ...keySegs];
     return Uri(
       scheme: base.scheme.isEmpty ? 'https' : base.scheme,
       host: host,
@@ -111,7 +119,12 @@ class S3BackupClient {
 
   static String _canonicalHeaders(Map<String, String> headers) {
     final entries = headers.entries
-        .map((e) => MapEntry(e.key.toLowerCase().trim(), e.value.trim().replaceAll(RegExp(r'\s+'), ' ')))
+        .map(
+          (e) => MapEntry(
+            e.key.toLowerCase().trim(),
+            e.value.trim().replaceAll(RegExp(r'\s+'), ' '),
+          ),
+        )
         .toList();
     entries.sort((a, b) => a.key.compareTo(b.key));
     final sb = StringBuffer();
@@ -122,7 +135,9 @@ class S3BackupClient {
   }
 
   static String _signedHeaders(Map<String, String> headers) {
-    final names = headers.keys.map((k) => k.toLowerCase().trim()).toSet().toList()..sort();
+    final names =
+        headers.keys.map((k) => k.toLowerCase().trim()).toSet().toList()
+          ..sort();
     return names.join(';');
   }
 
@@ -313,8 +328,14 @@ class S3BackupClient {
     final regionHint = res.headers['x-amz-bucket-region'] ?? '';
     try {
       final doc = XmlDocument.parse(res.body);
-      final code = doc.findAllElements('Code', namespace: '*').map((e) => e.innerText.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
-      final msg = doc.findAllElements('Message', namespace: '*').map((e) => e.innerText.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+      final code = doc
+          .findAllElements('Code', namespace: '*')
+          .map((e) => e.innerText.trim())
+          .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+      final msg = doc
+          .findAllElements('Message', namespace: '*')
+          .map((e) => e.innerText.trim())
+          .firstWhere((s) => s.isNotEmpty, orElse: () => '');
       final parts = <String>[
         if (code.isNotEmpty) code,
         if (msg.isNotEmpty) msg,
@@ -332,34 +353,46 @@ class S3BackupClient {
     if (cfg.endpoint.trim().isEmpty) throw Exception('S3 endpoint is required');
     if (cfg.region.trim().isEmpty) throw Exception('S3 region is required');
     if (cfg.bucket.trim().isEmpty) throw Exception('S3 bucket is required');
-    if (cfg.accessKeyId.trim().isEmpty) throw Exception('S3 accessKeyId is required');
-    if (cfg.secretAccessKey.isEmpty) throw Exception('S3 secretAccessKey is required');
+    if (cfg.accessKeyId.trim().isEmpty)
+      throw Exception('S3 accessKeyId is required');
+    if (cfg.secretAccessKey.isEmpty)
+      throw Exception('S3 secretAccessKey is required');
   }
 
   Future<void> test(S3Config cfg) async {
     _validateConfigBasics(cfg);
     final prefix = _normalizePrefix(cfg.prefix);
-    final uri = _buildBucketUri(cfg, query: {
-      'list-type': '2',
-      if (prefix.isNotEmpty) 'prefix': prefix,
-      'max-keys': '1',
-    });
-    final res = await _sendSigned(cfg, method: 'GET', uri: uri, headers: {'accept': 'application/xml'});
+    final uri = _buildBucketUri(
+      cfg,
+      query: {
+        'list-type': '2',
+        if (prefix.isNotEmpty) 'prefix': prefix,
+        'max-keys': '1',
+      },
+    );
+    final res = await _sendSigned(
+      cfg,
+      method: 'GET',
+      uri: uri,
+      headers: {'accept': 'application/xml'},
+    );
     if (res.statusCode != 200) {
       throw Exception('S3 test failed: ${_extractErrorMessage(res)}');
     }
   }
 
-  Future<void> uploadObject(S3Config cfg, {required String key, required List<int> bytes}) async {
+  Future<void> uploadObject(
+    S3Config cfg, {
+    required String key,
+    required List<int> bytes,
+  }) async {
     _validateConfigBasics(cfg);
     final uri = _buildObjectUri(cfg, key);
     final res = await _sendSigned(
       cfg,
       method: 'PUT',
       uri: uri,
-      headers: {
-        'content-type': 'application/zip',
-      },
+      headers: {'content-type': 'application/zip'},
       bodyBytes: bytes,
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -369,7 +402,11 @@ class S3BackupClient {
 
   /// Upload a file from disk using a streamed PUT request.
   /// This avoids loading the entire file into memory.
-  Future<void> uploadFile(S3Config cfg, {required String key, required File file}) async {
+  Future<void> uploadFile(
+    S3Config cfg, {
+    required String key,
+    required File file,
+  }) async {
     _validateConfigBasics(cfg);
     final uri = _buildObjectUri(cfg, key);
     final streamed = await _sendSignedStreamedFile(
@@ -388,7 +425,11 @@ class S3BackupClient {
 
   /// Download an S3 object directly to a local file using a streamed response.
   /// This avoids buffering the full object in memory.
-  Future<void> downloadToFile(S3Config cfg, {required String key, required File destination}) async {
+  Future<void> downloadToFile(
+    S3Config cfg, {
+    required String key,
+    required File destination,
+  }) async {
     _validateConfigBasics(cfg);
     final uri = _buildObjectUri(cfg, key);
     final res = await _sendSigned(cfg, method: 'GET', uri: uri);
@@ -413,12 +454,20 @@ class S3BackupClient {
   Future<List<BackupFileItem>> listObjects(S3Config cfg) async {
     _validateConfigBasics(cfg);
     final prefix = _normalizePrefix(cfg.prefix);
-    final uri = _buildBucketUri(cfg, query: {
-      'list-type': '2',
-      if (prefix.isNotEmpty) 'prefix': prefix,
-      'max-keys': '1000',
-    });
-    final res = await _sendSigned(cfg, method: 'GET', uri: uri, headers: {'accept': 'application/xml'});
+    final uri = _buildBucketUri(
+      cfg,
+      query: {
+        'list-type': '2',
+        if (prefix.isNotEmpty) 'prefix': prefix,
+        'max-keys': '1000',
+      },
+    );
+    final res = await _sendSigned(
+      cfg,
+      method: 'GET',
+      uri: uri,
+      headers: {'accept': 'application/xml'},
+    );
     if (res.statusCode != 200) {
       throw Exception('S3 list failed: ${_extractErrorMessage(res)}');
     }
@@ -429,7 +478,8 @@ class S3BackupClient {
       final key = c.getElement('Key', namespace: '*')?.innerText ?? '';
       if (key.trim().isEmpty) continue;
       final sizeStr = c.getElement('Size', namespace: '*')?.innerText ?? '0';
-      final mtimeStr = c.getElement('LastModified', namespace: '*')?.innerText ?? '';
+      final mtimeStr =
+          c.getElement('LastModified', namespace: '*')?.innerText ?? '';
       final size = int.tryParse(sizeStr.trim()) ?? 0;
       DateTime? mtime;
       if (mtimeStr.trim().isNotEmpty) {
@@ -441,7 +491,11 @@ class S3BackupClient {
       final name = key.split('/').where((s) => s.isNotEmpty).toList().last;
       if (!name.toLowerCase().endsWith('.zip')) continue;
 
-      final href = Uri(scheme: 's3', host: cfg.bucket.trim(), pathSegments: key.split('/').where((s) => s.isNotEmpty).toList());
+      final href = Uri(
+        scheme: 's3',
+        host: cfg.bucket.trim(),
+        pathSegments: key.split('/').where((s) => s.isNotEmpty).toList(),
+      );
       items.add(
         BackupFileItem(
           href: href,
@@ -452,7 +506,11 @@ class S3BackupClient {
       );
     }
 
-    items.sort((a, b) => (b.lastModified ?? DateTime(0)).compareTo(a.lastModified ?? DateTime(0)));
+    items.sort(
+      (a, b) => (b.lastModified ?? DateTime(0)).compareTo(
+        a.lastModified ?? DateTime(0),
+      ),
+    );
     return items;
   }
 }

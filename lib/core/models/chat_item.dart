@@ -5,7 +5,9 @@ class ChatItem {
 
   ChatItem({required this.id, required this.title, required this.created});
 
-  ChatItem copyWith({String? id, String? title, DateTime? created}) =>
-      ChatItem(id: id ?? this.id, title: title ?? this.title, created: created ?? this.created);
+  ChatItem copyWith({String? id, String? title, DateTime? created}) => ChatItem(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    created: created ?? this.created,
+  );
 }
-

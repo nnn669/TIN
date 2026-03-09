@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'mermaid_bridge.dart';
 import 'mermaid_image_cache.dart';
 
-RegExp mermaidFenceExp = RegExp(r"```\s*mermaid\s*\n([\s\S]*?)\n```", multiLine: true);
+RegExp mermaidFenceExp = RegExp(
+  r"```\s*mermaid\s*\n([\s\S]*?)\n```",
+  multiLine: true,
+);
 
 List<String> extractMermaidCodes(String md) {
   final List<String> out = [];
@@ -22,9 +25,9 @@ Map<String, String> buildThemeVarsFromColorScheme(ColorScheme cs) {
     final g = (v >> 8) & 0xFF;
     final b = v & 0xFF;
     return '#'
-        '${r.toRadixString(16).padLeft(2, '0')}'
-        '${g.toRadixString(16).padLeft(2, '0')}'
-        '${b.toRadixString(16).padLeft(2, '0')}'
+            '${r.toRadixString(16).padLeft(2, '0')}'
+            '${g.toRadixString(16).padLeft(2, '0')}'
+            '${b.toRadixString(16).padLeft(2, '0')}'
         .toUpperCase();
   }
 
@@ -71,7 +74,10 @@ Future<void> preRenderMermaidCodesForExport(
   final themeVars = buildThemeVarsFromColorScheme(cs);
 
   // De-dup codes and skip those already cached
-  final distinct = codes.toSet().where((c) => MermaidImageCache.get(c) == null).toList();
+  final distinct = codes
+      .toSet()
+      .where((c) => MermaidImageCache.get(c) == null)
+      .toList();
   if (distinct.isEmpty) return;
 
   final overlay = Overlay.of(context);
@@ -80,24 +86,31 @@ Future<void> preRenderMermaidCodesForExport(
   // Sequentially render codes with a single offscreen overlay to avoid heavy composites
   for (final code in distinct) {
     final key = GlobalKey();
-    final handle = createMermaidView(code, isDark, themeVars: themeVars, viewKey: key);
+    final handle = createMermaidView(
+      code,
+      isDark,
+      themeVars: themeVars,
+      viewKey: key,
+    );
     if (handle == null) continue;
     final ready = Completer<void>();
     late OverlayEntry entry;
-    entry = OverlayEntry(builder: (ctx) {
-      // Wait a few frames to allow WebView to load and mermaid to render
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!ready.isCompleted) ready.complete();
-      });
-      return Positioned(
-        left: -10000,
-        top: -10000,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints.tightFor(width: 720, height: 600),
-          child: Material(color: Colors.transparent, child: handle.widget),
-        ),
-      );
-    });
+    entry = OverlayEntry(
+      builder: (ctx) {
+        // Wait a few frames to allow WebView to load and mermaid to render
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!ready.isCompleted) ready.complete();
+        });
+        return Positioned(
+          left: -10000,
+          top: -10000,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints.tightFor(width: 720, height: 600),
+            child: Material(color: Colors.transparent, child: handle.widget),
+          ),
+        );
+      },
+    );
     overlay.insert(entry);
     try {
       // Wait initial frame and a small delay for mermaid.run

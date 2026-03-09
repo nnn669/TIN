@@ -9,10 +9,7 @@ import '../../../l10n/app_localizations.dart';
 /// This widget allows users to edit the prompt text of an instruction
 /// injection item directly.
 class LearningPromptSheet extends StatefulWidget {
-  const LearningPromptSheet({
-    super.key,
-    required this.target,
-  });
+  const LearningPromptSheet({super.key, required this.target});
 
   /// The instruction injection item to edit.
   final InstructionInjection target;
@@ -81,11 +78,15 @@ class _LearningPromptSheetState extends State<LearningPromptSheet> {
                     : const Color(0xFFF2F3F5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -102,7 +103,9 @@ class _LearningPromptSheetState extends State<LearningPromptSheet> {
                     final updated = widget.target.copyWith(
                       prompt: _controller.text.trim(),
                     );
-                    await context.read<InstructionInjectionProvider>().update(updated);
+                    await context.read<InstructionInjectionProvider>().update(
+                      updated,
+                    );
                     if (context.mounted) Navigator.of(context).pop();
                   },
                   child: Text(l10n.bottomToolsSheetSave),

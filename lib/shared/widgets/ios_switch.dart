@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Theme; // for Material color scheme primary
+import 'package:flutter/material.dart'
+    show Theme; // for Material color scheme primary
 import '../../core/services/haptics.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/settings_provider.dart';
@@ -58,16 +59,20 @@ class _IosSwitchState extends State<IosSwitch> {
   Widget build(BuildContext context) {
     final brightness = CupertinoTheme.brightnessOf(context);
     // Prefer Material color scheme primary to better match app theme; fall back to Cupertino default
-    final primary = widget.activeColor ??
-        (Theme.of(context).colorScheme.primary);
+    final primary =
+        widget.activeColor ?? (Theme.of(context).colorScheme.primary);
 
     final bool isDark = brightness == Brightness.dark;
     final bool isOn = widget.value;
 
     // Track color when OFF; dark mode uses a deeper fill
-    final Color offTrack = widget.inactiveColor ??
+    final Color offTrack =
+        widget.inactiveColor ??
         (isDark
-            ? CupertinoDynamicColor.resolve(CupertinoColors.systemGrey6, context)
+            ? CupertinoDynamicColor.resolve(
+                CupertinoColors.systemGrey6,
+                context,
+              )
             : const Color(0x14_000000)); // subtle black overlay on light
 
     final bool enabled = widget.onChanged != null;
@@ -87,10 +92,11 @@ class _IosSwitchState extends State<IosSwitch> {
       color: offTrack,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: (brightness == Brightness.dark
-                ? CupertinoColors.systemGrey3
-                : CupertinoColors.systemGrey4)
-            .withOpacity(enabled ? 0.65 : 0.35),
+        color:
+            (brightness == Brightness.dark
+                    ? CupertinoColors.systemGrey3
+                    : CupertinoColors.systemGrey4)
+                .withOpacity(enabled ? 0.65 : 0.35),
         width: 1,
       ),
     );
@@ -99,13 +105,19 @@ class _IosSwitchState extends State<IosSwitch> {
     // - Dark + OFF: medium grey for thumb
     // - Dark + ON: keep prior non-white thumb to match design
     // - Light: white thumb
-    final Color thumb = widget.thumbColor ?? (
-      isDark
-          ? (isOn
-              ? CupertinoDynamicColor.resolve(CupertinoColors.systemGrey6, context)
-              : CupertinoDynamicColor.resolve(CupertinoColors.systemGrey2, context))
-          : CupertinoColors.white
-    );
+    final Color thumb =
+        widget.thumbColor ??
+        (isDark
+            ? (isOn
+                  ? CupertinoDynamicColor.resolve(
+                      CupertinoColors.systemGrey6,
+                      context,
+                    )
+                  : CupertinoDynamicColor.resolve(
+                      CupertinoColors.systemGrey2,
+                      context,
+                    ))
+            : CupertinoColors.white);
 
     return Semantics(
       label: widget.semanticLabel,
@@ -140,8 +152,9 @@ class _IosSwitchState extends State<IosSwitch> {
                     AnimatedAlign(
                       duration: widget.animationDuration,
                       curve: widget.animationCurve,
-                      alignment:
-                          widget.value ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: widget.value
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: _Thumb(
                         size: thumbSize,
                         color: enabled ? thumb : thumb.withOpacity(0.7),
@@ -164,7 +177,6 @@ class _IosSwitchState extends State<IosSwitch> {
     if (widget.enableHaptics && sp.hapticsIosSwitch) Haptics.soft();
     widget.onChanged?.call(!widget.value);
   }
-
 }
 
 class _Thumb extends StatelessWidget {
@@ -178,11 +190,7 @@ class _Thumb extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
- 

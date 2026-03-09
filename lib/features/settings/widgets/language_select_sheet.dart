@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
@@ -22,15 +23,60 @@ class LanguageOption {
 }
 
 const List<LanguageOption> supportedLanguages = [
-  LanguageOption(code: 'zh-CN', displayName: 'Simplified Chinese', displayNameZh: '简体中文', flag: '🇨🇳'),
-  LanguageOption(code: 'en', displayName: 'English', displayNameZh: 'English', flag: '🇺🇸'),
-  LanguageOption(code: 'zh-TW', displayName: 'Traditional Chinese', displayNameZh: '繁體中文', flag: '🇨🇳'),
-  LanguageOption(code: 'ja', displayName: 'Japanese', displayNameZh: '日本語', flag: '🇯🇵'),
-  LanguageOption(code: 'ko', displayName: 'Korean', displayNameZh: '한국어', flag: '🇰🇷'),
-  LanguageOption(code: 'fr', displayName: 'French', displayNameZh: 'Français', flag: '🇫🇷'),
-  LanguageOption(code: 'de', displayName: 'German', displayNameZh: 'Deutsch', flag: '🇩🇪'),
-  LanguageOption(code: 'it', displayName: 'Italian', displayNameZh: 'Italiano', flag: '🇮🇹'),
-  LanguageOption(code: 'es', displayName: 'Spanish', displayNameZh: 'Español', flag: '🇪🇸'),
+  LanguageOption(
+    code: 'zh-CN',
+    displayName: 'Simplified Chinese',
+    displayNameZh: '简体中文',
+    flag: '🇨🇳',
+  ),
+  LanguageOption(
+    code: 'en',
+    displayName: 'English',
+    displayNameZh: 'English',
+    flag: '🇺🇸',
+  ),
+  LanguageOption(
+    code: 'zh-TW',
+    displayName: 'Traditional Chinese',
+    displayNameZh: '繁體中文',
+    flag: '🇨🇳',
+  ),
+  LanguageOption(
+    code: 'ja',
+    displayName: 'Japanese',
+    displayNameZh: '日本語',
+    flag: '🇯🇵',
+  ),
+  LanguageOption(
+    code: 'ko',
+    displayName: 'Korean',
+    displayNameZh: '한국어',
+    flag: '🇰🇷',
+  ),
+  LanguageOption(
+    code: 'fr',
+    displayName: 'French',
+    displayNameZh: 'Français',
+    flag: '🇫🇷',
+  ),
+  LanguageOption(
+    code: 'de',
+    displayName: 'German',
+    displayNameZh: 'Deutsch',
+    flag: '🇩🇪',
+  ),
+  LanguageOption(
+    code: 'it',
+    displayName: 'Italian',
+    displayNameZh: 'Italiano',
+    flag: '🇮🇹',
+  ),
+  LanguageOption(
+    code: 'es',
+    displayName: 'Spanish',
+    displayNameZh: 'Español',
+    flag: '🇪🇸',
+  ),
   // LanguageOption(code: 'pt', displayName: 'Portuguese', displayNameZh: 'Português', flag: '🇵🇹'),
   // LanguageOption(code: 'ru', displayName: 'Russian', displayNameZh: 'Русский', flag: '🇷🇺'),
   // LanguageOption(code: 'ar', displayName: 'Arabic', displayNameZh: 'العربية', flag: '🇸🇦'),
@@ -65,7 +111,8 @@ String _displayNameFor(AppLocalizations l10n, String languageCode) {
 }
 
 Future<LanguageOption?> showLanguageSelector(BuildContext context) async {
-  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+  final isDesktop =
+      defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux;
   if (!isDesktop) {
@@ -75,7 +122,7 @@ Future<LanguageOption?> showLanguageSelector(BuildContext context) async {
       isScrollControlled: true,
       backgroundColor: cs.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20 )),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => const _LanguageSelectSheet(),
     );
@@ -85,11 +132,13 @@ Future<LanguageOption?> showLanguageSelector(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
   LanguageOption? selected;
   final items = [
-    ...supportedLanguages.map((lang) => DesktopContextMenuItem(
-          icon: null,
-          label: '${lang.flag} ${_displayNameFor(l10n, lang.code)}',
-          onTap: () => selected = lang,
-        )),
+    ...supportedLanguages.map(
+      (lang) => DesktopContextMenuItem(
+        icon: null,
+        label: '${lang.flag} ${_displayNameFor(l10n, lang.code)}',
+        onTap: () => selected = lang,
+      ),
+    ),
     DesktopContextMenuItem(
       icon: Lucide.X,
       label: l10n.languageSelectSheetClearButton,
@@ -132,7 +181,9 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
           child: SingleChildScrollView(
@@ -158,7 +209,9 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      ...supportedLanguages.map((lang) => _languageOption(context, lang)),
+                      ...supportedLanguages.map(
+                        (lang) => _languageOption(context, lang),
+                      ),
                       const SizedBox(height: 8),
                       // Clear translation row (iOS style)
                       SizedBox(
@@ -169,21 +222,31 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
                           duration: const Duration(milliseconds: 260),
                           onTap: () {
                             Haptics.light();
-                            Navigator.of(context).pop(const LanguageOption(
-                              code: '__clear__',
-                              displayName: 'Clear Translation',
-                              displayNameZh: '清空翻译',
-                              flag: '',
-                            ));
+                            Navigator.of(context).pop(
+                              const LanguageOption(
+                                code: '__clear__',
+                                displayName: 'Clear Translation',
+                                displayNameZh: '清空翻译',
+                                flag: '',
+                              ),
+                            );
                           },
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
                             children: [
-                              Icon(Lucide.X, size: 20, color: Colors.red.shade600),
+                              Icon(
+                                Lucide.X,
+                                size: 20,
+                                color: Colors.red.shade600,
+                              ),
                               const SizedBox(width: 10),
                               Text(
                                 l10n.languageSelectSheetClearButton,
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.red.shade600),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.red.shade600,
+                                ),
                               ),
                             ],
                           ),
@@ -226,7 +289,10 @@ class _LanguageSelectSheetState extends State<_LanguageSelectSheet> {
               Expanded(
                 child: Text(
                   _getLanguageDisplayName(l10n, lang.code),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],

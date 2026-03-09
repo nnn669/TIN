@@ -16,7 +16,9 @@ class QuickPhraseStore {
     }
     try {
       final list = jsonDecode(json) as List;
-      _cache = list.map((e) => QuickPhrase.fromJson(e as Map<String, dynamic>)).toList();
+      _cache = list
+          .map((e) => QuickPhrase.fromJson(e as Map<String, dynamic>))
+          .toList();
       return List.of(_cache!);
     } catch (_) {
       _cache = [];
@@ -31,7 +33,9 @@ class QuickPhraseStore {
 
   static Future<List<QuickPhrase>> getForAssistant(String assistantId) async {
     final all = await getAll();
-    return all.where((p) => !p.isGlobal && p.assistantId == assistantId).toList();
+    return all
+        .where((p) => !p.isGlobal && p.assistantId == assistantId)
+        .toList();
   }
 
   static Future<void> save(List<QuickPhrase> phrases) async {

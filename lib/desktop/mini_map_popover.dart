@@ -27,7 +27,12 @@ Future<String?> showDesktopMiniMapPopover(
   if (box == null) return null;
   final offset = box.localToGlobal(Offset.zero);
   final size = box.size;
-  final anchorRect = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+  final anchorRect = Rect.fromLTWH(
+    offset.dx,
+    offset.dy,
+    size.width,
+    size.height,
+  );
 
   final completer = Completer<String?>();
 
@@ -44,11 +49,15 @@ Future<String?> showDesktopMiniMapPopover(
       onSelect: selecting
           ? null
           : (id) {
-              try { entry.remove(); } catch (_) {}
+              try {
+                entry.remove();
+              } catch (_) {}
               if (!completer.isCompleted) completer.complete(id);
             },
       onClose: () {
-        try { entry.remove(); } catch (_) {}
+        try {
+          entry.remove();
+        } catch (_) {}
         if (!completer.isCompleted) completer.complete(null);
       },
     ),
@@ -94,11 +103,21 @@ class _MiniMapPopoverState extends State<_MiniMapPopover>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
-    final curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    final curve = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
     _fadeIn = curve;
     _slideY = Tween<double>(begin: 16.0, end: 0.0).animate(curve);
-    WidgetsBinding.instance.addPostFrameCallback((_) async { try { await _controller.forward(); } catch (_) {} });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await _controller.forward();
+      } catch (_) {}
+    });
   }
 
   @override
@@ -110,7 +129,9 @@ class _MiniMapPopoverState extends State<_MiniMapPopover>
   Future<void> _close() async {
     if (_closing) return;
     _closing = true;
-    try { await _controller.reverse(); } catch (_) {}
+    try {
+      await _controller.reverse();
+    } catch (_) {}
     if (mounted) widget.onClose();
   }
 
@@ -118,8 +139,11 @@ class _MiniMapPopoverState extends State<_MiniMapPopover>
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final width = (widget.anchorWidth - 16).clamp(320.0, 800.0);
-    final left = (widget.anchorRect.left + (widget.anchorRect.width - width) / 2)
-        .clamp(8.0, screen.width - width - 8.0);
+    final left =
+        (widget.anchorRect.left + (widget.anchorRect.width - width) / 2).clamp(
+          8.0,
+          screen.width - width - 8.0,
+        );
     final clipHeight = widget.anchorRect.top.clamp(0.0, screen.height);
 
     return Stack(
@@ -151,7 +175,9 @@ class _MiniMapPopoverState extends State<_MiniMapPopover>
                         child: child,
                       ),
                       child: _GlassPanel(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
                         child: _MiniMapList(
                           messages: widget.messages,
                           selecting: widget.selecting,
@@ -193,17 +219,25 @@ class _GlassPanel extends StatelessWidget {
         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.28 : 0.56),
+            color: (isDark ? Colors.black : Colors.white).withOpacity(
+              isDark ? 0.28 : 0.56,
+            ),
             border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(isDark ? 0.06 : 0.18), width: 0.7),
-              left: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
-              right: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
+              top: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.06 : 0.18),
+                width: 0.7,
+              ),
+              left: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
+              right: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
             ),
           ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: child,
-          ),
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     );
@@ -226,7 +260,10 @@ class _MiniMapList extends StatelessWidget {
 
   String _oneLine(String s) {
     var t = s
-        .replaceAll(RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false), '')
+        .replaceAll(
+          RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false),
+          '',
+        )
         .replaceAll(RegExp(r"\[image:[^\]]+\]"), "")
         .replaceAll(RegExp(r"\[file:[^\]]+\]"), "")
         .replaceAll('\n', ' ')
@@ -240,7 +277,8 @@ class _MiniMapList extends StatelessWidget {
     ChatMessage? pendingUser;
     for (final m in items) {
       if (m.role == 'user') {
-        if (pendingUser != null) pairs.add(_QaPair(user: pendingUser, assistant: null));
+        if (pendingUser != null)
+          pairs.add(_QaPair(user: pendingUser, assistant: null));
         pendingUser = m;
       } else if (m.role == 'assistant') {
         if (pendingUser != null) {
@@ -251,7 +289,8 @@ class _MiniMapList extends StatelessWidget {
         }
       }
     }
-    if (pendingUser != null) pairs.add(_QaPair(user: pendingUser, assistant: null));
+    if (pendingUser != null)
+      pairs.add(_QaPair(user: pendingUser, assistant: null));
     return pairs;
   }
 
@@ -269,11 +308,13 @@ class _MiniMapList extends StatelessWidget {
             itemCount: pairs.length,
             itemBuilder: (context, index) {
               final p = pairs[index];
-              final userSelected = selecting &&
+              final userSelected =
+                  selecting &&
                   selectedMessageIds != null &&
                   p.user != null &&
                   selectedMessageIds!.contains(p.user!.id);
-              final assistantSelected = selecting &&
+              final assistantSelected =
+                  selecting &&
                   selectedMessageIds != null &&
                   p.assistant != null &&
                   selectedMessageIds!.contains(p.assistant!.id);
@@ -370,7 +411,9 @@ class _MiniMapRowState extends State<_MiniMapRow> {
     final asstText = widget.assistant?.content ?? '';
     final userBorder = cs.primary.withOpacity(isDark ? 0.45 : 0.35);
 
-    final assistantSelectedBg = (isDark ? cs.primary.withOpacity(0.18) : cs.primary.withOpacity(0.10));
+    final assistantSelectedBg = (isDark
+        ? cs.primary.withOpacity(0.18)
+        : cs.primary.withOpacity(0.10));
     final assistantBorder = cs.primary.withOpacity(isDark ? 0.38 : 0.28);
 
     return Column(
@@ -380,29 +423,47 @@ class _MiniMapRowState extends State<_MiniMapRow> {
         Align(
           alignment: Alignment.centerRight,
           child: MouseRegion(
-            cursor: widget.user != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            cursor: widget.user != null
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
             onEnter: (_) => setState(() => _hoverUser = true),
             onExit: (_) => setState(() => _hoverUser = false),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: widget.user != null ? () => widget.onTapMessage(widget.user!.id) : null,
+              onTap: widget.user != null
+                  ? () => widget.onTapMessage(widget.user!.id)
+                  : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: cs.primary.withOpacity(
                     _hoverUser
-                        ? (widget.userSelected ? (isDark ? 0.32 : 0.18) : (isDark ? 0.22 : 0.14))
-                        : (widget.userSelected ? (isDark ? 0.26 : 0.14) : (isDark ? 0.15 : 0.08)),
+                        ? (widget.userSelected
+                              ? (isDark ? 0.32 : 0.18)
+                              : (isDark ? 0.22 : 0.14))
+                        : (widget.userSelected
+                              ? (isDark ? 0.26 : 0.14)
+                              : (isDark ? 0.15 : 0.08)),
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: widget.userSelected ? Border.all(color: userBorder, width: 1) : null,
+                  border: widget.userSelected
+                      ? Border.all(color: userBorder, width: 1)
+                      : null,
                 ),
                 child: Text(
                   userText.isNotEmpty ? widget.toOneLine(userText) : ' ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 15, height: 1.35, color: cs.onSurface, decoration: TextDecoration.none),
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.35,
+                    color: cs.onSurface,
+                    decoration: TextDecoration.none,
+                  ),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -414,28 +475,43 @@ class _MiniMapRowState extends State<_MiniMapRow> {
         Align(
           alignment: Alignment.centerLeft,
           child: MouseRegion(
-            cursor: widget.assistant != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            cursor: widget.assistant != null
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
             onEnter: (_) => setState(() => _hoverAssistant = true),
             onExit: (_) => setState(() => _hoverAssistant = false),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: widget.assistant != null ? () => widget.onTapMessage(widget.assistant!.id) : null,
+              onTap: widget.assistant != null
+                  ? () => widget.onTapMessage(widget.assistant!.id)
+                  : null,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: widget.assistantSelected
                       ? assistantSelectedBg
                       : cs.onSurface.withOpacity(
-                          _hoverAssistant ? (isDark ? 0.07 : 0.05) : (isDark ? 0.05 : 0.03),
+                          _hoverAssistant
+                              ? (isDark ? 0.07 : 0.05)
+                              : (isDark ? 0.05 : 0.03),
                         ),
                   borderRadius: BorderRadius.circular(16),
-                  border: widget.assistantSelected ? Border.all(color: assistantBorder, width: 1) : null,
+                  border: widget.assistantSelected
+                      ? Border.all(color: assistantBorder, width: 1)
+                      : null,
                 ),
                 child: Text(
                   asstText.isNotEmpty ? widget.toOneLine(asstText) : ' ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15.2, height: 1.4, decoration: TextDecoration.none),
+                  style: const TextStyle(
+                    fontSize: 15.2,
+                    height: 1.4,
+                    decoration: TextDecoration.none,
+                  ),
                   textAlign: TextAlign.left,
                 ),
               ),

@@ -24,7 +24,8 @@ Future<void> showDesktopMcpTimeoutDialog(BuildContext context) async {
 class _DesktopMcpTimeoutDialog extends StatefulWidget {
   const _DesktopMcpTimeoutDialog();
   @override
-  State<_DesktopMcpTimeoutDialog> createState() => _DesktopMcpTimeoutDialogState();
+  State<_DesktopMcpTimeoutDialog> createState() =>
+      _DesktopMcpTimeoutDialogState();
 }
 
 class _DesktopMcpTimeoutDialogState extends State<_DesktopMcpTimeoutDialog> {
@@ -54,7 +55,9 @@ class _DesktopMcpTimeoutDialogState extends State<_DesktopMcpTimeoutDialog> {
       );
       return;
     }
-    await context.read<McpProvider>().updateRequestTimeout(Duration(seconds: seconds));
+    await context.read<McpProvider>().updateRequestTimeout(
+      Duration(seconds: seconds),
+    );
     if (mounted) Navigator.of(context).maybePop();
   }
 
@@ -78,7 +81,10 @@ class _DesktopMcpTimeoutDialogState extends State<_DesktopMcpTimeoutDialog> {
                 children: [
                   Text(
                     l10n.mcpTimeoutDialogTitle,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   _SmallIconBtn(
@@ -100,17 +106,24 @@ class _DesktopMcpTimeoutDialogState extends State<_DesktopMcpTimeoutDialog> {
                 fillColor: isDark ? Colors.white10 : Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.4),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: cs.primary.withOpacity(0.5)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
               ),
               onSubmitted: (_) => _save(),
             ),
@@ -123,7 +136,9 @@ class _DesktopMcpTimeoutDialogState extends State<_DesktopMcpTimeoutDialog> {
                   onTap: () => Navigator.of(context).maybePop(),
                   background: Colors.transparent,
                   foreground: cs.onSurface,
-                  hoverBackground: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+                  hoverBackground: isDark
+                      ? Colors.white.withOpacity(0.06)
+                      : Colors.black.withOpacity(0.05),
                 ),
                 const SizedBox(width: 8),
                 _ActionBtn(
@@ -157,11 +172,18 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     final btn = Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       alignment: Alignment.center,
       child: Icon(widget.icon, size: 18, color: cs.onSurface),
     );
@@ -171,7 +193,9 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: widget.tooltip == null ? btn : Tooltip(message: widget.tooltip!, child: btn),
+        child: widget.tooltip == null
+            ? btn
+            : Tooltip(message: widget.tooltip!, child: btn),
       ),
     );
   }
@@ -191,7 +215,11 @@ class _TextBtnState extends State<_TextBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -200,7 +228,10 @@ class _TextBtnState extends State<_TextBtn> {
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Text(widget.label, style: TextStyle(color: cs.onSurface)),
         ),
       ),

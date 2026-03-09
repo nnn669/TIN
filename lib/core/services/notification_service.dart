@@ -2,7 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   static bool _inited = false;
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'kelivo_bg_chat_v2',
@@ -17,12 +18,18 @@ class NotificationService {
     if (_inited) return;
 
     // Android initialization
-    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings init = InitializationSettings(android: androidInit);
+    const AndroidInitializationSettings androidInit =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings init = InitializationSettings(
+      android: androidInit,
+    );
     await _plugin.initialize(init);
 
     // Create channel
-    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       await android.createNotificationChannel(_channel);
       // Runtime notification permission (Android 13+) should be requested by app UI if needed
@@ -33,7 +40,10 @@ class NotificationService {
   /// Ensure Android 13+ notifications permission is granted (no-op on lower versions/other platforms).
   static Future<bool> ensureAndroidNotificationsPermission() async {
     if (!Platform.isAndroid) return true;
-    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android == null) return true;
     try {
       final enabled = await android.areNotificationsEnabled();

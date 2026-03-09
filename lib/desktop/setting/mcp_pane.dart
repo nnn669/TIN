@@ -35,27 +35,31 @@ class DesktopMcpPane extends StatelessWidget {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
-                      child: Text(
-                        l10n.mcpAssistantSheetTitle,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
+                          child: Text(
+                            l10n.mcpAssistantSheetTitle,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: cs.onSurface.withOpacity(0.9),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Tooltip(
-                    message: l10n.mcpTimeoutSettingsTooltip,
-                    child: _SmallIconBtn(
-                      icon: lucide.Lucide.Timer,
-                      onTap: () async {
-                        await showDesktopMcpTimeoutDialog(context);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _SmallIconBtn(
-                    icon: lucide.Lucide.Edit,
-                    onTap: () async {
-                      await showDesktopMcpJsonEditDialog(context);
-                    },
+                      Tooltip(
+                        message: l10n.mcpTimeoutSettingsTooltip,
+                        child: _SmallIconBtn(
+                          icon: lucide.Lucide.Timer,
+                          onTap: () async {
+                            await showDesktopMcpTimeoutDialog(context);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      _SmallIconBtn(
+                        icon: lucide.Lucide.Edit,
+                        onTap: () async {
+                          await showDesktopMcpJsonEditDialog(context);
+                        },
                       ),
                       const SizedBox(width: 6),
                       _SmallIconBtn(
@@ -98,12 +102,19 @@ class DesktopMcpPane extends StatelessWidget {
                             name: s.name,
                             enabled: s.enabled,
                             transport: s.transport,
-                            toolsEnabled: s.tools.where((t) => t.enabled).length,
+                            toolsEnabled: s.tools
+                                .where((t) => t.enabled)
+                                .length,
                             toolsTotal: s.tools.length,
                             status: status,
-                            showError: status == McpStatus.error && (error?.isNotEmpty ?? false),
+                            showError:
+                                status == McpStatus.error &&
+                                (error?.isNotEmpty ?? false),
                             onTap: () async {
-                              await showDesktopMcpEditDialog(context, serverId: s.id);
+                              await showDesktopMcpEditDialog(
+                                context,
+                                serverId: s.id,
+                              );
                             },
                             onReconnect: () async {
                               await context.read<McpProvider>().reconnect(s.id);
@@ -111,14 +122,23 @@ class DesktopMcpPane extends StatelessWidget {
                             onDelete: () async {
                               final ok = await _confirmDelete(context);
                               if (ok == true) {
-                                await context.read<McpProvider>().removeServer(s.id);
+                                await context.read<McpProvider>().removeServer(
+                                  s.id,
+                                );
                                 if (context.mounted) {
-                                  showAppSnackBar(context, message: l10n.mcpPageServerDeleted);
+                                  showAppSnackBar(
+                                    context,
+                                    message: l10n.mcpPageServerDeleted,
+                                  );
                                 }
                               }
                             },
                             onDetails: () async {
-                              await _showErrorDetails(context, name: s.name, message: error);
+                              await _showErrorDetails(
+                                context,
+                                name: s.name,
+                                message: error,
+                              );
                             },
                           ),
                         ),
@@ -127,7 +147,10 @@ class DesktopMcpPane extends StatelessWidget {
                   },
                   onReorder: (oldIndex, newIndex) async {
                     if (newIndex > oldIndex) newIndex -= 1;
-                    await context.read<McpProvider>().reorderServers(oldIndex, newIndex);
+                    await context.read<McpProvider>().reorderServers(
+                      oldIndex,
+                      newIndex,
+                    );
                   },
                 ),
             ],
@@ -261,7 +284,11 @@ class _ServerCardState extends State<_ServerCard> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(lucide.Lucide.Terminal, size: 18, color: cs.primary),
+                    child: Icon(
+                      lucide.Lucide.Terminal,
+                      size: 18,
+                      color: cs.primary,
+                    ),
                   ),
                   Positioned(
                     right: -2,
@@ -272,7 +299,9 @@ class _ServerCardState extends State<_ServerCard> {
                             height: 12,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                cs.primary,
+                              ),
                             ),
                           )
                         : Container(
@@ -281,7 +310,12 @@ class _ServerCardState extends State<_ServerCard> {
                             decoration: BoxDecoration(
                               color: widget.enabled ? statusColor : cs.outline,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 1.5),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).scaffoldBackgroundColor,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                   ),
@@ -296,7 +330,10 @@ class _ServerCardState extends State<_ServerCard> {
                       widget.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -305,29 +342,45 @@ class _ServerCardState extends State<_ServerCard> {
                       children: [
                         tag(statusText, color: statusColor),
                         tag(transportText),
-                        tag(AppLocalizations.of(context)!
-                            .mcpPageToolsCount(widget.toolsEnabled, widget.toolsTotal)),
+                        tag(
+                          AppLocalizations.of(context)!.mcpPageToolsCount(
+                            widget.toolsEnabled,
+                            widget.toolsTotal,
+                          ),
+                        ),
                         if (!widget.enabled)
-                          tag(l10n.mcpPageStatusDisabled, color: cs.onSurface.withOpacity(0.7)),
+                          tag(
+                            l10n.mcpPageStatusDisabled,
+                            color: cs.onSurface.withOpacity(0.7),
+                          ),
                       ],
                     ),
                     if (widget.showError) ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(lucide.Lucide.MessageCircleWarning, size: 14, color: Colors.red),
+                          Icon(
+                            lucide.Lucide.MessageCircleWarning,
+                            size: 14,
+                            color: Colors.red,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               l10n.mcpPageConnectionFailed,
-                              style: const TextStyle(fontSize: 12, color: Colors.red),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.red,
+                              ),
                             ),
                           ),
                           TextButton(
                             onPressed: widget.onDetails,
                             style: ButtonStyle(
                               splashFactory: NoSplash.splashFactory,
-                              overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+                              overlayColor: const MaterialStatePropertyAll(
+                                Colors.transparent,
+                              ),
                             ),
                             child: Text(l10n.mcpPageDetails),
                           ),
@@ -340,7 +393,10 @@ class _ServerCardState extends State<_ServerCard> {
               const SizedBox(width: 8),
               _SmallIconBtn(icon: lucide.Lucide.Settings2, onTap: widget.onTap),
               const SizedBox(width: 6),
-              _SmallIconBtn(icon: lucide.Lucide.RefreshCw, onTap: widget.onReconnect),
+              _SmallIconBtn(
+                icon: lucide.Lucide.RefreshCw,
+                onTap: widget.onReconnect,
+              ),
               const SizedBox(width: 6),
               _SmallIconBtn(icon: lucide.Lucide.Trash2, onTap: widget.onDelete),
             ],
@@ -365,7 +421,11 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -375,7 +435,10 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
         child: Container(
           width: 28,
           height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(6),
+          ),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: cs.onSurface),
         ),
@@ -384,7 +447,11 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   }
 }
 
-Future<void> _showErrorDetails(BuildContext context, {required String name, String? message}) async {
+Future<void> _showErrorDetails(
+  BuildContext context, {
+  required String name,
+  String? message,
+}) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   await showDialog<void>(
@@ -409,9 +476,20 @@ Future<void> _showErrorDetails(BuildContext context, {required String name, Stri
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(l10n.mcpPageErrorDialogTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                          Text(
+                            l10n.mcpPageErrorDialogTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           const SizedBox(height: 6),
-                          Text(name, style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
+                          Text(
+                            name,
+                            style: TextStyle(
+                              color: cs.onSurface.withOpacity(0.7),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -426,15 +504,23 @@ Future<void> _showErrorDetails(BuildContext context, {required String name, Stri
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white10
+                        : const Color(0xFFF7F7F9),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+                    border: Border.all(
+                      color: cs.outlineVariant.withOpacity(0.2),
+                    ),
                   ),
                   child: SingleChildScrollView(
                     child: SelectableText(
-                      (message?.isNotEmpty == true ? message! : l10n.mcpPageErrorNoDetails),
-                      style: (Theme.of(ctx).textTheme.bodyMedium ?? const TextStyle())
-                          .copyWith(fontSize: 13.0, height: 1.35),
+                      (message?.isNotEmpty == true
+                          ? message!
+                          : l10n.mcpPageErrorNoDetails),
+                      style:
+                          (Theme.of(ctx).textTheme.bodyMedium ??
+                                  const TextStyle())
+                              .copyWith(fontSize: 13.0, height: 1.35),
                     ),
                   ),
                 ),
@@ -444,7 +530,9 @@ Future<void> _showErrorDetails(BuildContext context, {required String name, Stri
                   child: FilledButton(
                     onPressed: () => Navigator.of(ctx).maybePop(),
                     style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     child: Text(l10n.mcpPageClose),
                   ),
@@ -477,41 +565,78 @@ Future<bool?> _confirmDelete(BuildContext context) async {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l10n.mcpPageConfirmDeleteTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(
+                  l10n.mcpPageConfirmDeleteTitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 10),
-                Text(l10n.mcpPageConfirmDeleteContent, style: TextStyle(color: cs.onSurface.withOpacity(0.8))),
+                Text(
+                  l10n.mcpPageConfirmDeleteContent,
+                  style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Builder(builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-                      return TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        style: ButtonStyle(
-                          splashFactory: NoSplash.splashFactory,
-                          overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                          minimumSize: const MaterialStatePropertyAll(Size(88, 36)),
-                          shape: MaterialStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                          backgroundColor: MaterialStateProperty.resolveWith((states) {
-                            if (states.contains(MaterialState.hovered)) {
-                              return isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-                            }
-                            return Colors.transparent;
-                          }),
-                        ),
-                        child: Text(l10n.mcpPageCancel),
-                      );
-                    }),
+                    Builder(
+                      builder: (context) {
+                        final isDark =
+                            Theme.of(context).brightness == Brightness.dark;
+                        return TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          style: ButtonStyle(
+                            splashFactory: NoSplash.splashFactory,
+                            overlayColor: const MaterialStatePropertyAll(
+                              Colors.transparent,
+                            ),
+                            minimumSize: const MaterialStatePropertyAll(
+                              Size(88, 36),
+                            ),
+                            shape: MaterialStatePropertyAll(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            backgroundColor: MaterialStateProperty.resolveWith((
+                              states,
+                            ) {
+                              if (states.contains(MaterialState.hovered)) {
+                                return isDark
+                                    ? Colors.white.withOpacity(0.06)
+                                    : Colors.black.withOpacity(0.05);
+                              }
+                              return Colors.transparent;
+                            }),
+                          ),
+                          child: Text(l10n.mcpPageCancel),
+                        );
+                      },
+                    ),
                     const SizedBox(width: 8),
                     FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError)
-                          .copyWith(
+                      style:
+                          FilledButton.styleFrom(
+                            backgroundColor: cs.error,
+                            foregroundColor: cs.onError,
+                          ).copyWith(
                             splashFactory: NoSplash.splashFactory,
-                            overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                            minimumSize: const MaterialStatePropertyAll(Size(88, 36)),
-                            shape: MaterialStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                            backgroundColor: MaterialStateProperty.resolveWith((states) {
+                            overlayColor: const MaterialStatePropertyAll(
+                              Colors.transparent,
+                            ),
+                            minimumSize: const MaterialStatePropertyAll(
+                              Size(88, 36),
+                            ),
+                            shape: MaterialStatePropertyAll(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            backgroundColor: MaterialStateProperty.resolveWith((
+                              states,
+                            ) {
                               if (states.contains(MaterialState.hovered)) {
                                 return Color.lerp(cs.error, Colors.white, 0.08);
                               }

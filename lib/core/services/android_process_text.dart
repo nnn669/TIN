@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 
 class AndroidProcessText {
   static const MethodChannel _channel = MethodChannel('app.process_text');
-  static final StreamController<String> _controller = StreamController.broadcast();
+  static final StreamController<String> _controller =
+      StreamController.broadcast();
   static bool _initialized = false;
 
   static void ensureInitialized() {

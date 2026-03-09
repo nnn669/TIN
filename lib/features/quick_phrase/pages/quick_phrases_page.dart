@@ -157,10 +157,10 @@ class _QuickPhrasesPageState extends State<QuickPhrasesPage> {
                 if (newIndex > oldIndex) newIndex -= 1;
                 // Update immediately for smooth drop animation
                 context.read<QuickPhraseProvider>().reorderPhrases(
-                      oldIndex: oldIndex,
-                      newIndex: newIndex,
-                      assistantId: widget.assistantId,
-                    );
+                  oldIndex: oldIndex,
+                  newIndex: newIndex,
+                  assistantId: widget.assistantId,
+                );
               },
               itemBuilder: (context, index) {
                 final phrase = phrases[index];
@@ -226,12 +226,19 @@ class _QuickPhrasesPageState extends State<QuickPhrasesPage> {
                           pressedScale: 0.98,
                           onTap: () => _showAddEditSheet(phrase: phrase),
                           builder: (pressed, overlay) {
-                            final baseBg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
+                            final baseBg = isDark
+                                ? Colors.white10
+                                : Colors.white.withOpacity(0.96);
                             return Container(
                               decoration: BoxDecoration(
                                 color: Color.alphaBlend(overlay, baseBg),
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.1 : 0.08), width: 0.6),
+                                border: Border.all(
+                                  color: cs.outlineVariant.withOpacity(
+                                    isDark ? 0.1 : 0.08,
+                                  ),
+                                  width: 0.6,
+                                ),
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(14),
@@ -240,19 +247,28 @@ class _QuickPhrasesPageState extends State<QuickPhrasesPage> {
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Row(
                                             children: [
-                                              Icon(Lucide.Zap, size: 18, color: cs.primary),
+                                              Icon(
+                                                Lucide.Zap,
+                                                size: 18,
+                                                color: cs.primary,
+                                              ),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
                                                   phrase.title,
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -262,13 +278,25 @@ class _QuickPhrasesPageState extends State<QuickPhrasesPage> {
                                             phrase.content,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withOpacity(0.7),
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Icon(Lucide.ChevronRight, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                                    Icon(
+                                      Lucide.ChevronRight,
+                                      size: 16,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.5),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -353,7 +381,10 @@ class _QuickPhraseEditSheetState extends State<_QuickPhraseEditSheet> {
                 widget.phrase == null
                     ? l10n.quickPhraseAddTitle
                     : l10n.quickPhraseEditTitle,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -442,52 +473,94 @@ class _QuickPhraseEditSheetState extends State<_QuickPhraseEditSheet> {
 // --- iOS tactile helpers (no ripple) ---
 
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.onTap, this.size = 22});
-  final IconData icon; final Color color; final VoidCallback onTap; final double size;
-  @override State<_TactileIconButton> createState() => _TactileIconButtonState();
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.size = 22,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final double size;
+  @override
+  State<_TactileIconButton> createState() => _TactileIconButtonState();
 }
 
 class _TactileIconButtonState extends State<_TactileIconButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final base = widget.color; final press = base.withOpacity(0.7);
+    final base = widget.color;
+    final press = base.withOpacity(0.7);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(()=>_pressed=true),
-      onTapUp: (_) => setState(()=>_pressed=false),
-      onTapCancel: () => setState(()=>_pressed=false),
-      onTap: () { Haptics.light(); widget.onTap(); },
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: () {
+        Haptics.light();
+        widget.onTap();
+      },
       child: Padding(
         padding: const EdgeInsets.all(6),
-        child: Icon(widget.icon, size: widget.size, color: _pressed ? press : base),
+        child: Icon(
+          widget.icon,
+          size: widget.size,
+          color: _pressed ? press : base,
+        ),
       ),
     );
   }
 }
 
 class _TactileCard extends StatefulWidget {
-  const _TactileCard({required this.builder, this.onTap, this.pressedScale = 0.98});
-  final Widget Function(bool pressed, Color overlay) builder; final VoidCallback? onTap; final double pressedScale;
-  @override State<_TactileCard> createState() => _TactileCardState();
+  const _TactileCard({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 0.98,
+  });
+  final Widget Function(bool pressed, Color overlay) builder;
+  final VoidCallback? onTap;
+  final double pressedScale;
+  @override
+  State<_TactileCard> createState() => _TactileCardState();
 }
 
 class _TactileCardState extends State<_TactileCard> {
   bool _pressed = false;
-  void _set(bool v){ if(_pressed!=v) setState(()=>_pressed=v);} 
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final overlay = _pressed ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final overlay = _pressed
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap==null?null:(_)=>_set(true),
-      onTapUp: widget.onTap==null?null:(_)=>Future.delayed(const Duration(milliseconds: 120), ()=>_set(false)),
-      onTapCancel: widget.onTap==null?null:()=>_set(false),
-      onTap: widget.onTap==null?null:(){ Haptics.soft(); widget.onTap!.call(); },
+      onTapDown: widget.onTap == null ? null : (_) => _set(true),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) => Future.delayed(
+              const Duration(milliseconds: 120),
+              () => _set(false),
+            ),
+      onTapCancel: widget.onTap == null ? null : () => _set(false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              Haptics.soft();
+              widget.onTap!.call();
+            },
       child: AnimatedScale(
         scale: _pressed ? widget.pressedScale : 1.0,
-        duration: const Duration(milliseconds: 110), curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
         child: widget.builder(_pressed, overlay),
       ),
     );
@@ -496,26 +569,35 @@ class _TactileCardState extends State<_TactileCard> {
 
 class _IosOutlineButton extends StatefulWidget {
   const _IosOutlineButton({required this.label, required this.onTap});
-  final String label; final VoidCallback onTap;
+  final String label;
+  final VoidCallback onTap;
   @override
   State<_IosOutlineButton> createState() => _IosOutlineButtonState();
 }
 
 class _IosOutlineButtonState extends State<_IosOutlineButton> {
   bool _pressed = false;
-  void _set(bool v){ if(_pressed!=v) setState(()=>_pressed=v);} 
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _set(true),
-      onTapUp: (_) => Future.delayed(const Duration(milliseconds: 80), ()=>_set(false)),
+      onTapUp: (_) =>
+          Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
       onTapCancel: () => _set(false),
-      onTap: () { Haptics.soft(); widget.onTap(); },
+      onTap: () {
+        Haptics.soft();
+        widget.onTap();
+      },
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 110), curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
@@ -523,7 +605,10 @@ class _IosOutlineButtonState extends State<_IosOutlineButton> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: cs.primary.withOpacity(0.5)),
           ),
-          child: Text(widget.label, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+          child: Text(
+            widget.label,
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
@@ -532,31 +617,46 @@ class _IosOutlineButtonState extends State<_IosOutlineButton> {
 
 class _IosFilledButton extends StatefulWidget {
   const _IosFilledButton({required this.label, required this.onTap});
-  final String label; final VoidCallback onTap;
+  final String label;
+  final VoidCallback onTap;
   @override
   State<_IosFilledButton> createState() => _IosFilledButtonState();
 }
 
 class _IosFilledButtonState extends State<_IosFilledButton> {
   bool _pressed = false;
-  void _set(bool v){ if(_pressed!=v) setState(()=>_pressed=v);} 
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _set(true),
-      onTapUp: (_) => Future.delayed(const Duration(milliseconds: 80), ()=>_set(false)),
+      onTapUp: (_) =>
+          Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
       onTapCancel: () => _set(false),
-      onTap: () { Haptics.soft(); widget.onTap(); },
+      onTap: () {
+        Haptics.soft();
+        widget.onTap();
+      },
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 110), curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
-          child: Text(widget.label, style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600)),
+          decoration: BoxDecoration(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );

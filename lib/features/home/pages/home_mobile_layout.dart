@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -125,7 +126,8 @@ class HomeMobileScaffold extends StatelessWidget {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, ColorScheme cs) {
-    final isDesktopPlatform = defaultTargetPlatform == TargetPlatform.macOS ||
+    final isDesktopPlatform =
+        defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
 
@@ -145,23 +147,25 @@ class HomeMobileScaffold extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: Builder(builder: (context) {
-        return IosIconButton(
-          size: 20,
-          padding: const EdgeInsets.all(8),
-          minSize: 40,
-          builder: (color) => SvgPicture.asset(
-            'assets/icons/list.svg',
-            width: 14,
-            height: 14,
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-          ),
-          onTap: () {
-            onDismissKeyboard();
-            onToggleDrawer();
-          },
-        );
-      }),
+      leading: Builder(
+        builder: (context) {
+          return IosIconButton(
+            size: 20,
+            padding: const EdgeInsets.all(8),
+            minSize: 40,
+            builder: (color) => SvgPicture.asset(
+              'assets/icons/list.svg',
+              width: 14,
+              height: 14,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            ),
+            onTap: () {
+              onDismissKeyboard();
+              onToggleDrawer();
+            },
+          );
+        },
+      ),
       titleSpacing: 2,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +231,9 @@ class MobileBackgroundLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final bg = context.watch<AssistantProvider>().currentAssistant?.background;
-    final maskStrength = context.watch<SettingsProvider>().chatBackgroundMaskStrength;
+    final maskStrength = context
+        .watch<SettingsProvider>()
+        .chatBackgroundMaskStrength;
 
     if (bg == null || bg.trim().isEmpty) return const SizedBox.shrink();
 
@@ -250,7 +256,10 @@ class MobileBackgroundLayer extends StatelessWidget {
                 image: DecorationImage(
                   image: provider,
                   fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.04), BlendMode.srcATop),
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.04),
+                    BlendMode.srcATop,
+                  ),
                 ),
               ),
             ),
@@ -263,8 +272,12 @@ class MobileBackgroundLayer extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      cs.surface.withOpacity((0.20 * maskStrength).clamp(0.0, 1.0)),
-                      cs.surface.withOpacity((0.50 * maskStrength).clamp(0.0, 1.0)),
+                      cs.surface.withOpacity(
+                        (0.20 * maskStrength).clamp(0.0, 1.0),
+                      ),
+                      cs.surface.withOpacity(
+                        (0.50 * maskStrength).clamp(0.0, 1.0),
+                      ),
                     ],
                   ),
                 ),
@@ -350,7 +363,10 @@ class ScrollNavigationButtons extends StatelessWidget {
                   curve: Curves.easeOutCubic,
                   opacity: showJumpToBottom ? 1 : 0,
                   child: Padding(
-                    padding: EdgeInsets.only(right: 16, bottom: bottomOffset + 52),
+                    padding: EdgeInsets.only(
+                      right: 16,
+                      bottom: bottomOffset + 52,
+                    ),
                     child: _ScrollButton(
                       isDark: isDark,
                       icon: Lucide.ChevronUp,
@@ -385,7 +401,9 @@ class _ScrollButton extends StatelessWidget {
         filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.07),
+            color: isDark
+                ? Colors.white.withOpacity(0.06)
+                : Colors.white.withOpacity(0.07),
             shape: BoxShape.circle,
             border: Border.all(
               color: isDark
@@ -504,9 +522,15 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final glassBase = isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.06);
-    final overlay = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-    final tileColor = _pressed ? Color.alphaBlend(overlay, glassBase) : glassBase;
+    final glassBase = isDark
+        ? Colors.black.withOpacity(0.06)
+        : Colors.white.withOpacity(0.06);
+    final overlay = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
+    final tileColor = _pressed
+        ? Color.alphaBlend(overlay, glassBase)
+        : glassBase;
     final borderColor = cs.outlineVariant.withOpacity(0.10);
 
     return Semantics(
@@ -533,7 +557,9 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
                   shape: BoxShape.circle,
                   border: Border.all(color: borderColor, width: 1.0),
                 ),
-                child: Center(child: Icon(widget.icon, size: 18, color: widget.color)),
+                child: Center(
+                  child: Icon(widget.icon, size: 18, color: widget.color),
+                ),
               ),
             ),
           ),

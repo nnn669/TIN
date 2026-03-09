@@ -11,8 +11,10 @@ import '../core/providers/settings_provider.dart';
 import '../core/providers/assistant_provider.dart';
 import '../core/services/api/chat_api_service.dart';
 import '../shared/widgets/snackbar.dart';
-import '../features/model/widgets/model_select_sheet.dart' show showModelSelector, ModelSelection;
-import '../features/settings/widgets/language_select_sheet.dart' show LanguageOption, supportedLanguages;
+import '../features/model/widgets/model_select_sheet.dart'
+    show showModelSelector, ModelSelection;
+import '../features/settings/widgets/language_select_sheet.dart'
+    show LanguageOption, supportedLanguages;
 
 class DesktopTranslatePage extends StatefulWidget {
   const DesktopTranslatePage({super.key});
@@ -53,14 +55,22 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
 
     final savedLang = _languageForCode(settings.translateTargetLang);
     final locale = Localizations.localeOf(context).languageCode.toLowerCase();
-    final localeLang = locale.startsWith('zh') ? _languageForCode('zh-CN') : _languageForCode('en');
+    final localeLang = locale.startsWith('zh')
+        ? _languageForCode('zh-CN')
+        : _languageForCode('en');
     setState(() {
       _targetLang = savedLang ?? localeLang ?? supportedLanguages.first;
     });
 
     // Default model: translate model -> assistant's chat model -> global default
-    final providerKey = settings.translateModelProvider ?? assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final modelId = settings.translateModelId ?? assistant?.chatModelId ?? settings.currentModelId;
+    final providerKey =
+        settings.translateModelProvider ??
+        assistant?.chatModelProvider ??
+        settings.currentModelProvider;
+    final modelId =
+        settings.translateModelId ??
+        assistant?.chatModelId ??
+        settings.currentModelId;
     setState(() {
       _modelProviderKey = providerKey;
       _modelId = modelId;
@@ -116,7 +126,10 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
         _modelId = sel.modelId;
       });
       // Persist translate model selection so it’s remembered next time
-      await context.read<SettingsProvider>().setTranslateModel(sel.providerKey, sel.modelId);
+      await context.read<SettingsProvider>().setTranslateModel(
+        sel.providerKey,
+        sel.modelId,
+      );
     }
   }
 
@@ -130,7 +143,11 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
     final providerKey = _modelProviderKey;
     final modelId = _modelId;
     if (providerKey == null || modelId == null) {
-      showAppSnackBar(context, message: l10n.homePagePleaseSetupTranslateModel, type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: l10n.homePagePleaseSetupTranslateModel,
+        type: NotificationType.warning,
+      );
       return;
     }
 
@@ -172,13 +189,21 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
         onError: (e) {
           if (!mounted) return;
           setState(() => _translating = false);
-          showAppSnackBar(context, message: l10n.homePageTranslateFailed(e.toString()), type: NotificationType.error);
+          showAppSnackBar(
+            context,
+            message: l10n.homePageTranslateFailed(e.toString()),
+            type: NotificationType.error,
+          );
         },
         cancelOnError: true,
       );
     } catch (e) {
       setState(() => _translating = false);
-      showAppSnackBar(context, message: l10n.homePageTranslateFailed(e.toString()), type: NotificationType.error);
+      showAppSnackBar(
+        context,
+        message: l10n.homePageTranslateFailed(e.toString()),
+        type: NotificationType.error,
+      );
     }
   }
 
@@ -213,7 +238,9 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
       ),
     );
 
-    final brandAsset = (_modelId != null) ? BrandAssets.assetForName(_modelId!) : null;
+    final brandAsset = (_modelId != null)
+        ? BrandAssets.assetForName(_modelId!)
+        : null;
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -237,7 +264,9 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                             // Language dropdown
                             _LanguageDropdown(
                               value: _targetLang,
-                              onChanged: _translating ? null : (v) => _onLanguageChanged(v),
+                              onChanged: _translating
+                                  ? null
+                                  : (v) => _onLanguageChanged(v),
                             ),
                             const SizedBox(width: 8),
                             // Translate / Stop button with animation
@@ -283,7 +312,10 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                                     isCollapsed: true,
                                     contentPadding: const EdgeInsets.all(14),
                                   ),
-                                  style: const TextStyle(fontSize: 14.5, height: 1.4),
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
                             ),
@@ -294,11 +326,15 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                                   icon: lucide.Lucide.Copy,
                                   label: '复制',
                                   onTap: () async {
-                                    await Clipboard.setData(ClipboardData(text: _output.text));
+                                    await Clipboard.setData(
+                                      ClipboardData(text: _output.text),
+                                    );
                                     if (!mounted) return;
                                     showAppSnackBar(
                                       context,
-                                      message: AppLocalizations.of(context)!.chatMessageWidgetCopiedToClipboard,
+                                      message: AppLocalizations.of(
+                                        context,
+                                      )!.chatMessageWidgetCopiedToClipboard,
                                       type: NotificationType.success,
                                     );
                                   },
@@ -315,7 +351,10 @@ class _DesktopTranslatePageState extends State<DesktopTranslatePage> {
                                     isCollapsed: true,
                                     contentPadding: const EdgeInsets.all(14),
                                   ),
-                                  style: const TextStyle(fontSize: 14.5, height: 1.4),
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
                             ),
@@ -347,17 +386,16 @@ class _PaneContainer extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.18)),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withOpacity(0.18),
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: child,
         ),
-        if (overlay != null)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: overlay!,
-          ),
+        if (overlay != null) Positioned(top: 8, right: 8, child: overlay!),
       ],
     );
   }
@@ -400,39 +438,46 @@ class _LanguageDropdownState extends State<_LanguageDropdown> {
     final triggerSize = rb.size;
     final triggerWidth = triggerSize.width;
 
-    _entry = OverlayEntry(builder: (ctx) {
-      final cs = Theme.of(ctx).colorScheme;
-      final isDark = Theme.of(ctx).brightness == Brightness.dark;
-      final usePure = Provider.of<SettingsProvider>(ctx, listen: false).usePureBackground;
-      final bgColor = usePure
-          ? (isDark ? Colors.black : Colors.white)
-          : (isDark ? const Color(0xFF1C1C1E) : Colors.white);
+    _entry = OverlayEntry(
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final usePure = Provider.of<SettingsProvider>(
+          ctx,
+          listen: false,
+        ).usePureBackground;
+        final bgColor = usePure
+            ? (isDark ? Colors.black : Colors.white)
+            : (isDark ? const Color(0xFF1C1C1E) : Colors.white);
 
-      return Stack(children: [
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: _close,
-            child: const SizedBox.expand(),
-          ),
-        ),
-        CompositedTransformFollower(
-          link: _link,
-          showWhenUnlinked: false,
-          offset: Offset(0, triggerSize.height + 6),
-          child: _LangDropdownOverlay(
-            width: triggerWidth,
-            backgroundColor: bgColor,
-            onClose: _close,
-            onSelected: (opt) {
-              widget.onChanged?.call(opt);
-              _close();
-            },
-            selected: widget.value ?? supportedLanguages.first,
-          ),
-        ),
-      ]);
-    });
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _close,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _link,
+              showWhenUnlinked: false,
+              offset: Offset(0, triggerSize.height + 6),
+              child: _LangDropdownOverlay(
+                width: triggerWidth,
+                backgroundColor: bgColor,
+                onClose: _close,
+                onSelected: (opt) {
+                  widget.onChanged?.call(opt);
+                  _close();
+                },
+                selected: widget.value ?? supportedLanguages.first,
+              ),
+            ),
+          ],
+        );
+      },
+    );
     Overlay.of(context)?.insert(_entry!);
     setState(() => _open = true);
   }
@@ -484,7 +529,10 @@ class _LanguageDropdownState extends State<_LanguageDropdown> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(selected.flag, style: const TextStyle(fontSize: 16, height: 1)),
+                    Text(
+                      selected.flag,
+                      style: const TextStyle(fontSize: 16, height: 1),
+                    ),
                     const SizedBox(width: 8),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 240),
@@ -568,7 +616,8 @@ class _LangDropdownOverlay extends StatefulWidget {
   State<_LangDropdownOverlay> createState() => _LangDropdownOverlayState();
 }
 
-class _LangDropdownOverlayState extends State<_LangDropdownOverlay> with SingleTickerProviderStateMixin {
+class _LangDropdownOverlayState extends State<_LangDropdownOverlay>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _opacity;
   late final Animation<Offset> _slide;
@@ -576,9 +625,15 @@ class _LangDropdownOverlayState extends State<_LangDropdownOverlay> with SingleT
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
     _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    _slide = Tween<Offset>(begin: const Offset(0, -0.08), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, -0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     WidgetsBinding.instance.addPostFrameCallback((_) => _ctrl.forward());
   }
 
@@ -606,13 +661,20 @@ class _LangDropdownOverlayState extends State<_LangDropdownOverlay> with SingleT
         child: Material(
           color: Colors.transparent,
           child: Container(
-            constraints: BoxConstraints(minWidth: widget.width, maxWidth: widget.width),
+            constraints: BoxConstraints(
+              minWidth: widget.width,
+              maxWidth: widget.width,
+            ),
             decoration: BoxDecoration(
               color: widget.backgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: borderColor, width: 0.5),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.08), blurRadius: 16, offset: const Offset(0, 6)),
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.32 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
               ],
             ),
             clipBehavior: Clip.antiAlias,
@@ -653,7 +715,11 @@ class _LangDropdownOverlayState extends State<_LangDropdownOverlay> with SingleT
 // (search removed as per requirement)
 
 class _LangOptionTile extends StatefulWidget {
-  const _LangOptionTile({required this.option, required this.selected, required this.onTap});
+  const _LangOptionTile({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
   final LanguageOption option;
   final bool selected;
   final VoidCallback onTap;
@@ -672,7 +738,11 @@ class _LangOptionTileState extends State<_LangOptionTile> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = widget.selected
         ? cs.primary.withOpacity(0.12)
-        : (_hover ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04)) : Colors.transparent);
+        : (_hover
+              ? (isDark
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.black.withOpacity(0.04))
+              : Colors.transparent);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -693,24 +763,39 @@ class _LangOptionTileState extends State<_LangOptionTile> {
             curve: Curves.easeOutCubic,
             margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Row(
               children: [
-                Text(widget.option.flag, style: const TextStyle(fontSize: 16, height: 1)),
+                Text(
+                  widget.option.flag,
+                  style: const TextStyle(fontSize: 16, height: 1),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _localizedLabel(AppLocalizations.of(context)!, widget.option.code),
+                    _localizedLabel(
+                      AppLocalizations.of(context)!,
+                      widget.option.code,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.88), fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: cs.onSurface.withOpacity(0.88),
+                      fontWeight: widget.selected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-              Opacity(
-                opacity: widget.selected ? 1 : 0,
-                child: Icon(lucide.Lucide.Check, size: 14, color: cs.primary),
-              ),
+                Opacity(
+                  opacity: widget.selected ? 1 : 0,
+                  child: Icon(lucide.Lucide.Check, size: 14, color: cs.primary),
+                ),
               ],
             ),
           ),
@@ -746,7 +831,11 @@ class _LangOptionTileState extends State<_LangOptionTile> {
 }
 
 class _TranslateButton extends StatefulWidget {
-  const _TranslateButton({required this.translating, required this.onTranslate, required this.onStop});
+  const _TranslateButton({
+    required this.translating,
+    required this.onTranslate,
+    required this.onStop,
+  });
   final bool translating;
   final VoidCallback onTranslate;
   final VoidCallback onStop;
@@ -776,18 +865,36 @@ class _TranslateButtonState extends State<_TranslateButton> {
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
-            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+            transitionBuilder: (child, anim) => ScaleTransition(
+              scale: anim,
+              child: FadeTransition(opacity: anim, child: child),
+            ),
             child: widget.translating
                 ? Row(
                     key: const ValueKey('stop'),
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SvgPicture.asset('assets/icons/stop.svg', width: 16, height: 16, colorFilter: ColorFilter.mode(fg, BlendMode.srcIn)),
+                      SvgPicture.asset(
+                        'assets/icons/stop.svg',
+                        width: 16,
+                        height: 16,
+                        colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
+                      ),
                       const SizedBox(width: 6),
-                      Text('终止', style: TextStyle(color: fg, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      Text(
+                        '终止',
+                        style: TextStyle(
+                          color: fg,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   )
                 : Row(
@@ -796,7 +903,14 @@ class _TranslateButtonState extends State<_TranslateButton> {
                     children: [
                       Icon(lucide.Lucide.Languages, size: 16, color: fg),
                       const SizedBox(width: 6),
-                      Text('翻译', style: TextStyle(color: fg, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      Text(
+                        '翻译',
+                        style: TextStyle(
+                          color: fg,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
           ),
@@ -807,7 +921,12 @@ class _TranslateButtonState extends State<_TranslateButton> {
 }
 
 class _ModelPickerButton extends StatelessWidget {
-  const _ModelPickerButton({required this.asset, required this.modelId, required this.onTap, required this.enabled});
+  const _ModelPickerButton({
+    required this.asset,
+    required this.modelId,
+    required this.onTap,
+    required this.enabled,
+  });
   final String? asset;
   final String? modelId;
   final VoidCallback onTap;
@@ -817,14 +936,21 @@ class _ModelPickerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = enabled ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = enabled
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: enabled ? onTap : null,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -836,12 +962,20 @@ class _ModelPickerButton extends StatelessWidget {
                   return Image.asset(asset!, width: 18, height: 18);
                 }()
               else
-                Icon(lucide.Lucide.Bot, size: 18, color: cs.onSurface.withOpacity(0.9)),
+                Icon(
+                  lucide.Lucide.Bot,
+                  size: 18,
+                  color: cs.onSurface.withOpacity(0.9),
+                ),
               if (modelId != null) ...[
                 const SizedBox(width: 8),
                 Text(
                   modelId!,
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: cs.onSurface.withOpacity(0.85)),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurface.withOpacity(0.85),
+                  ),
                 ),
               ],
             ],
@@ -853,7 +987,11 @@ class _ModelPickerButton extends StatelessWidget {
 }
 
 class _PaneActionButton extends StatefulWidget {
-  const _PaneActionButton({required this.icon, required this.label, required this.onTap});
+  const _PaneActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -869,7 +1007,9 @@ class _PaneActionButtonState extends State<_PaneActionButton> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
-        ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))
+        ? (isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.06))
         : Colors.transparent;
     final fg = cs.onSurface.withOpacity(0.9);
     return MouseRegion(

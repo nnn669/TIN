@@ -17,8 +17,13 @@ Future<void> showProviderGroupPickerSheet(
   await showModalBottomSheet<void>(
     context: context,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-    builder: (ctx) => ProviderGroupPickerSheet(providerKey: providerKey, rootContext: context),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) => ProviderGroupPickerSheet(
+      providerKey: providerKey,
+      rootContext: context,
+    ),
   );
 }
 
@@ -32,7 +37,10 @@ class ProviderGroupPickerSheet extends StatelessWidget {
   final String providerKey;
   final BuildContext rootContext;
 
-  Future<void> _createAndAssign(BuildContext context, SettingsProvider sp) async {
+  Future<void> _createAndAssign(
+    BuildContext context,
+    SettingsProvider sp,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController();
     final ok = await showDialog<bool>(
@@ -45,8 +53,14 @@ class ProviderGroupPickerSheet extends StatelessWidget {
           decoration: InputDecoration(hintText: l10n.providerGroupsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerGroupsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.providerGroupsCreateDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerGroupsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.providerGroupsCreateDialogOk),
+          ),
         ],
       ),
     );
@@ -61,9 +75,9 @@ class ProviderGroupPickerSheet extends StatelessWidget {
 
   Future<void> _openGroupManager(BuildContext context) async {
     if (context.mounted) Navigator.of(context).pop();
-    await Navigator.of(rootContext).push(
-      MaterialPageRoute(builder: (_) => const ProviderGroupsPage()),
-    );
+    await Navigator.of(
+      rootContext,
+    ).push(MaterialPageRoute(builder: (_) => const ProviderGroupsPage()));
   }
 
   @override
@@ -97,7 +111,11 @@ class ProviderGroupPickerSheet extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: onColor),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: onColor,
+                    ),
                   ),
                 ),
                 if (selected)
@@ -122,7 +140,10 @@ class ProviderGroupPickerSheet extends StatelessWidget {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -131,7 +152,10 @@ class ProviderGroupPickerSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l10n.providerGroupsPickerTitle,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 IosIconButton(

@@ -6,14 +6,20 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/services/haptics.dart';
 
-Future<void> showSelectCopySheet(BuildContext context, {required ChatMessage message}) async {
+Future<void> showSelectCopySheet(
+  BuildContext context, {
+  required ChatMessage message,
+}) async {
   final cs = Theme.of(context).colorScheme;
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (ctx) => SafeArea(top: false, child: _SelectCopySheet(message: message)),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) =>
+        SafeArea(top: false, child: _SelectCopySheet(message: message)),
   );
 }
 
@@ -25,7 +31,11 @@ class _SelectCopySheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     await Clipboard.setData(ClipboardData(text: message.content));
     if (!context.mounted) return;
-    showAppSnackBar(context, message: l10n.selectCopyPageCopiedAll, type: NotificationType.success);
+    showAppSnackBar(
+      context,
+      message: l10n.selectCopyPageCopiedAll,
+      type: NotificationType.success,
+    );
   }
 
   @override
@@ -42,7 +52,14 @@ class _SelectCopySheet extends StatelessWidget {
         child: Column(
           children: [
             Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -58,8 +75,14 @@ class _SelectCopySheet extends StatelessWidget {
                         onTap: () {},
                         borderRadius: BorderRadius.circular(20),
                         baseColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Text(l10n.selectCopyPageCopyAll, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          l10n.selectCopyPageCopyAll,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
                   ),
@@ -67,18 +90,36 @@ class _SelectCopySheet extends StatelessWidget {
                     child: Center(
                       child: Text(
                         l10n.selectCopyPageTitle,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   ),
                   IosCardPress(
-                    onTap: () { Haptics.light(); _copyAll(context); },
+                    onTap: () {
+                      Haptics.light();
+                      _copyAll(context);
+                    },
                     borderRadius: BorderRadius.circular(20),
                     baseColor: Colors.transparent,
-                    pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    child: Text(l10n.selectCopyPageCopyAll, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+                    pressedBlendStrength:
+                        Theme.of(context).brightness == Brightness.dark
+                        ? 0.10
+                        : 0.06,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Text(
+                      l10n.selectCopyPageCopyAll,
+                      style: TextStyle(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),

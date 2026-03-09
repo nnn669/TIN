@@ -24,7 +24,9 @@ class McpToolService extends ChangeNotifier {
     AssistantProvider assistants,
     String? assistantId,
   ) {
-    final a = (assistantId != null) ? assistants.getById(assistantId) : assistants.currentAssistant;
+    final a = (assistantId != null)
+        ? assistants.getById(assistantId)
+        : assistants.currentAssistant;
     final selected = (a?.mcpServerIds ?? const <String>[]).toSet();
     return mcpProvider.getEnabledToolsForServers(selected);
   }
@@ -32,16 +34,18 @@ class McpToolService extends ChangeNotifier {
   Future<mcp.CallToolResult?> callToolForConversation(
     McpProvider mcpProvider,
     ChatService chat, {
-      required String conversationId,
-      required String toolName,
-      Map<String, dynamic> arguments = const {},
+    required String conversationId,
+    required String toolName,
+    Map<String, dynamic> arguments = const {},
   }) async {
     final selected = chat.getConversationMcpServers(conversationId).toSet();
     // debugPrint('[MCP/Call/Select] convo=$conversationId tool=$toolName selectedServers=${selected.join(',')}');
     if (selected.isEmpty) return null;
 
     // Find a server that has this tool enabled
-    final connected = mcpProvider.connectedServers.where((s) => selected.contains(s.id)).toList();
+    final connected = mcpProvider.connectedServers
+        .where((s) => selected.contains(s.id))
+        .toList();
     // debugPrint('[MCP/Call/Select] connectedAndSelected=${connected.map((s)=>s.id).join(',')}');
     for (final s in connected) {
       final has = s.tools.any((t) => t.enabled && t.name == toolName);
@@ -57,13 +61,15 @@ class McpToolService extends ChangeNotifier {
   Future<String> callToolTextForConversation(
     McpProvider mcpProvider,
     ChatService chat, {
-      required String conversationId,
-      required String toolName,
-      Map<String, dynamic> arguments = const {},
+    required String conversationId,
+    required String toolName,
+    Map<String, dynamic> arguments = const {},
   }) async {
     // Attempt call via selected server
     final selected = chat.getConversationMcpServers(conversationId).toSet();
-    final connected = mcpProvider.connectedServers.where((s) => selected.contains(s.id)).toList();
+    final connected = mcpProvider.connectedServers
+        .where((s) => selected.contains(s.id))
+        .toList();
     mcp.CallToolResult? res;
     McpServerConfig? usedServer;
     for (final s in connected) {
@@ -76,7 +82,9 @@ class McpToolService extends ChangeNotifier {
     if (res == null) {
       if (usedServer != null) {
         final errMsg = mcpProvider.errorFor(usedServer.id) ?? 'Unknown error';
-        final schema = usedServer.tools.firstWhere((t) => t.name == toolName).schema;
+        final schema = usedServer.tools
+            .firstWhere((t) => t.name == toolName)
+            .schema;
         return _renderToolErrorForModel(
           serverName: usedServer.name,
           toolName: toolName,
@@ -110,7 +118,11 @@ class McpToolService extends ChangeNotifier {
           final data = (c.data ?? '').toString();
           final mime = (c.mimeType ?? 'image/png').toString();
           if (data.isNotEmpty) {
-            final savedPath = await AppDirectories.saveBase64Image(mime, data, prefix: 'mcp_img');
+            final savedPath = await AppDirectories.saveBase64Image(
+              mime,
+              data,
+              prefix: 'mcp_img',
+            );
             if (savedPath != null) {
               buf.writeln('[image:$savedPath]');
             }
@@ -155,16 +167,20 @@ class McpToolService extends ChangeNotifier {
   Future<String> callToolTextForAssistant(
     McpProvider mcpProvider,
     AssistantProvider assistants, {
-      required String? assistantId,
-      required String toolName,
-      Map<String, dynamic> arguments = const {},
+    required String? assistantId,
+    required String toolName,
+    Map<String, dynamic> arguments = const {},
   }) async {
     // try servers selected for the assistant
-    final a = (assistantId != null) ? assistants.getById(assistantId) : assistants.currentAssistant;
+    final a = (assistantId != null)
+        ? assistants.getById(assistantId)
+        : assistants.currentAssistant;
     final selected = (a?.mcpServerIds ?? const <String>[]).toSet();
     // debugPrint('[MCP/Call/Select] assistant=${assistantId ?? a?.id ?? '(current)'} tool=$toolName selectedServers=${selected.join(',')}');
     if (selected.isEmpty) return '';
-    for (final s in mcpProvider.connectedServers.where((s) => selected.contains(s.id))) {
+    for (final s in mcpProvider.connectedServers.where(
+      (s) => selected.contains(s.id),
+    )) {
       final has = s.tools.any((t) => t.enabled && t.name == toolName);
       if (has) {
         // debugPrint('[MCP/Call/Select] using server=${s.id} name=${s.name} transport=${s.transport.name}');
@@ -201,7 +217,11 @@ class McpToolService extends ChangeNotifier {
               final data = (c.data ?? '').toString();
               final mime = (c.mimeType ?? 'image/png').toString();
               if (data.isNotEmpty) {
-                final savedPath = await AppDirectories.saveBase64Image(mime, data, prefix: 'mcp_img');
+                final savedPath = await AppDirectories.saveBase64Image(
+                  mime,
+                  data,
+                  prefix: 'mcp_img',
+                );
                 if (savedPath != null) {
                   buf.writeln('[image:$savedPath]');
                 }
@@ -260,7 +280,8 @@ class McpToolService extends ChangeNotifier {
       'server': serverName,
       'lastArguments': arguments,
       if (schema != null && schema.isNotEmpty) 'parametersSchema': schema,
-      'instruction': 'Revise arguments to satisfy parametersSchema, then call the same tool again.'
+      'instruction':
+          'Revise arguments to satisfy parametersSchema, then call the same tool again.',
     };
     return const JsonEncoder.withIndent('  ').convert(map);
   }

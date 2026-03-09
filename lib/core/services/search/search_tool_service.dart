@@ -6,7 +6,7 @@ import '../../providers/settings_provider.dart';
 class SearchToolService {
   static const String toolName = 'search_web';
   static const String toolDescription = 'Search the web for information';
-  
+
   static Map<String, dynamic> getToolDefinition() {
     return {
       'type': 'function',
@@ -26,7 +26,7 @@ class SearchToolService {
       },
     };
   }
-  
+
   static Future<String> executeSearch(
     String query,
     SettingsProvider settings,
@@ -35,21 +35,22 @@ class SearchToolService {
       // Get selected search service
       final services = settings.searchServices;
       if (services.isEmpty) {
-        return jsonEncode({
-          'error': 'No search services configured',
-        });
+        return jsonEncode({'error': 'No search services configured'});
       }
-      
-      final selectedIndex = settings.searchServiceSelected.clamp(0, services.length - 1);
+
+      final selectedIndex = settings.searchServiceSelected.clamp(
+        0,
+        services.length - 1,
+      );
       final service = SearchService.getService(services[selectedIndex]);
-      
+
       // Execute search
       final result = await service.search(
         query: query,
         commonOptions: settings.searchCommonOptions,
         serviceOptions: services[selectedIndex],
       );
-      
+
       // Add unique IDs to each result item
       final itemsWithIds = result.items.asMap().entries.map((entry) {
         final item = entry.value;
@@ -57,19 +58,17 @@ class SearchToolService {
         item.index = entry.key + 1;
         return item;
       }).toList();
-      
+
       // Return formatted result
       return jsonEncode({
         if (result.answer != null) 'answer': result.answer,
         'items': itemsWithIds.map((item) => item.toJson()).toList(),
       });
     } catch (e) {
-      return jsonEncode({
-        'error': 'Search failed: $e',
-      });
+      return jsonEncode({'error': 'Search failed: $e'});
     }
   }
-  
+
   static String getSystemPrompt() {
     return '''
 ## search_web 工具使用说明

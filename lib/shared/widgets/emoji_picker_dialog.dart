@@ -20,7 +20,118 @@ Future<String?> showEmojiPickerDialog(
   }
 
   const List<String> quick = <String>[
-    '😀','😁','😂','🤣','😃','😄','😅','😊','😍','😘','😗','😙','😚','🙂','🤗','🤩','🫶','🤝','👍','👎','👋','🙏','💪','🔥','✨','🌟','💡','🎉','🎊','🎈','🌈','☀️','🌙','⭐','⚡','☁️','❄️','🌧️','🍎','🍊','🍋','🍉','🍇','🍓','🍒','🍑','🥭','🍍','🥝','🍅','🥕','🌽','🍞','🧀','🍔','🍟','🍕','🌮','🌯','🍣','🍜','🍰','🍪','🍩','🍫','🍻','☕','🧋','🥤','⚽','🏀','🏈','🎾','🏐','🎮','🎧','🎸','🎹','🎺','📚','✏️','💼','💻','🖥️','📱','🛩️','✈️','🚗','🚕','🚙','🚌','🚀','🛰️','🧠','🫀','💊','🩺','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵'
+    '😀',
+    '😁',
+    '😂',
+    '🤣',
+    '😃',
+    '😄',
+    '😅',
+    '😊',
+    '😍',
+    '😘',
+    '😗',
+    '😙',
+    '😚',
+    '🙂',
+    '🤗',
+    '🤩',
+    '🫶',
+    '🤝',
+    '👍',
+    '👎',
+    '👋',
+    '🙏',
+    '💪',
+    '🔥',
+    '✨',
+    '🌟',
+    '💡',
+    '🎉',
+    '🎊',
+    '🎈',
+    '🌈',
+    '☀️',
+    '🌙',
+    '⭐',
+    '⚡',
+    '☁️',
+    '❄️',
+    '🌧️',
+    '🍎',
+    '🍊',
+    '🍋',
+    '🍉',
+    '🍇',
+    '🍓',
+    '🍒',
+    '🍑',
+    '🥭',
+    '🍍',
+    '🥝',
+    '🍅',
+    '🥕',
+    '🌽',
+    '🍞',
+    '🧀',
+    '🍔',
+    '🍟',
+    '🍕',
+    '🌮',
+    '🌯',
+    '🍣',
+    '🍜',
+    '🍰',
+    '🍪',
+    '🍩',
+    '🍫',
+    '🍻',
+    '☕',
+    '🧋',
+    '🥤',
+    '⚽',
+    '🏀',
+    '🏈',
+    '🎾',
+    '🏐',
+    '🎮',
+    '🎧',
+    '🎸',
+    '🎹',
+    '🎺',
+    '📚',
+    '✏️',
+    '💼',
+    '💻',
+    '🖥️',
+    '📱',
+    '🛩️',
+    '✈️',
+    '🚗',
+    '🚕',
+    '🚙',
+    '🚌',
+    '🚀',
+    '🛰️',
+    '🧠',
+    '🫀',
+    '💊',
+    '🩺',
+    '🐶',
+    '🐱',
+    '🐭',
+    '🐹',
+    '🐰',
+    '🦊',
+    '🐻',
+    '🐼',
+    '🐨',
+    '🐯',
+    '🦁',
+    '🐮',
+    '🐷',
+    '🐸',
+    '🐵',
   ];
 
   return showDialog<String>(
@@ -34,7 +145,9 @@ Future<String?> showEmojiPickerDialog(
           final double gridHeight = (avail * 0.28).clamp(120.0, 220.0);
           return AlertDialog(
             scrollable: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             backgroundColor: cs.surface,
             title: Text(title ?? l10n.assistantEditEmojiDialogTitle),
             content: SizedBox(
@@ -52,7 +165,9 @@ Future<String?> showEmojiPickerDialog(
                     ),
                     alignment: Alignment.center,
                     child: EmojiText(
-                      value.isEmpty ? '🙂' : value.characters.take(1).toString(),
+                      value.isEmpty
+                          ? '🙂'
+                          : value.characters.take(1).toString(),
                       fontSize: 40,
                       optimizeEmojiAlign: true,
                       nudge: Offset.zero, // picker preview: no extra nudge
@@ -65,13 +180,17 @@ Future<String?> showEmojiPickerDialog(
                     onChanged: (v) => setLocal(() => value = v),
                     onSubmitted: (_) {
                       if (validGrapheme(value)) {
-                        Navigator.of(ctx).pop(value.characters.take(1).toString());
+                        Navigator.of(
+                          ctx,
+                        ).pop(value.characters.take(1).toString());
                       }
                     },
                     decoration: InputDecoration(
                       hintText: hintText ?? l10n.assistantEditEmojiDialogHint,
                       filled: true,
-                      fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+                      fillColor: Theme.of(ctx).brightness == Brightness.dark
+                          ? Colors.white10
+                          : const Color(0xFFF2F3F5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Colors.transparent),
@@ -82,7 +201,9 @@ Future<String?> showEmojiPickerDialog(
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
+                        borderSide: BorderSide(
+                          color: cs.primary.withOpacity(0.4),
+                        ),
                       ),
                     ),
                   ),
@@ -92,11 +213,12 @@ Future<String?> showEmojiPickerDialog(
                     child: GridView.builder(
                       shrinkWrap: true,
                       padding: EdgeInsets.zero,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 8,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 8,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                          ),
                       itemCount: quick.length,
                       itemBuilder: (c, i) {
                         final e = quick[i];
@@ -130,12 +252,16 @@ Future<String?> showEmojiPickerDialog(
               ),
               TextButton(
                 onPressed: validGrapheme(value)
-                    ? () => Navigator.of(ctx).pop(value.characters.take(1).toString())
+                    ? () => Navigator.of(
+                        ctx,
+                      ).pop(value.characters.take(1).toString())
                     : null,
                 child: Text(
                   l10n.assistantEditEmojiDialogSave,
                   style: TextStyle(
-                    color: validGrapheme(value) ? cs.primary : cs.onSurface.withOpacity(0.38),
+                    color: validGrapheme(value)
+                        ? cs.primary
+                        : cs.onSurface.withOpacity(0.38),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -36,7 +36,8 @@ class CurrentModelIcon extends StatelessWidget {
     if (asset != null) {
       if (asset.endsWith('.svg')) {
         final isColorful = asset.contains('color');
-        final ColorFilter? tint = (Theme.of(context).brightness == Brightness.dark && !isColorful)
+        final ColorFilter? tint =
+            (Theme.of(context).brightness == Brightness.dark && !isColorful)
             ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
             : null;
         inner = SvgPicture.asset(
@@ -46,12 +47,21 @@ class CurrentModelIcon extends StatelessWidget {
           colorFilter: tint,
         );
       } else {
-        inner = Image.asset(asset, width: size * 0.5, height: size * 0.5, fit: BoxFit.contain);
+        inner = Image.asset(
+          asset,
+          width: size * 0.5,
+          height: size * 0.5,
+          fit: BoxFit.contain,
+        );
       }
     } else {
       inner = Text(
         modelId!.isNotEmpty ? modelId!.characters.first.toUpperCase() : '?',
-        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.43),
+        style: TextStyle(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.43,
+        ),
       );
     }
 
@@ -60,7 +70,8 @@ class CurrentModelIcon extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: withBackground
-            ? (backgroundColor ?? (isDark ? Colors.white10 : cs.primary.withOpacity(0.1)))
+            ? (backgroundColor ??
+                  (isDark ? Colors.white10 : cs.primary.withOpacity(0.1)))
             : Colors.transparent,
         shape: BoxShape.circle,
       ),
@@ -68,7 +79,11 @@ class CurrentModelIcon extends StatelessWidget {
       child: SizedBox(
         width: size * 0.64,
         height: size * 0.64,
-        child: Center(child: inner is SvgPicture || inner is Image ? inner : FittedBox(child: inner)),
+        child: Center(
+          child: inner is SvgPicture || inner is Image
+              ? inner
+              : FittedBox(child: inner),
+        ),
       ),
     );
   }

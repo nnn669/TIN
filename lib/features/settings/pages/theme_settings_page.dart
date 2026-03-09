@@ -20,12 +20,16 @@ class ThemeSettingsPage extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
 
     Widget header(String text) => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 18, 12, 6),
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.8)),
-          ),
-        );
+      padding: const EdgeInsets.fromLTRB(12, 18, 12, 6),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurface.withOpacity(0.8),
+        ),
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -43,38 +47,55 @@ class ThemeSettingsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && settings.dynamicColorSupported) ...[
+          if (!kIsWeb &&
+              defaultTargetPlatform == TargetPlatform.android &&
+              settings.dynamicColorSupported) ...[
             header(l10n.themeSettingsPageDynamicColorSection),
-            _iosSectionCard(children: [
-              _iosSwitchRow(
-                context,
-                icon: Lucide.Palette,
-                label: l10n.themeSettingsPageUseDynamicColorTitle,
-                subtitle: l10n.themeSettingsPageUseDynamicColorSubtitle,
-                value: settings.useDynamicColor,
-                onChanged: (v) => context.read<SettingsProvider>().setUseDynamicColor(v),
-              ),
-            ]),
+            _iosSectionCard(
+              children: [
+                _iosSwitchRow(
+                  context,
+                  icon: Lucide.Palette,
+                  label: l10n.themeSettingsPageUseDynamicColorTitle,
+                  subtitle: l10n.themeSettingsPageUseDynamicColorSubtitle,
+                  value: settings.useDynamicColor,
+                  onChanged: (v) =>
+                      context.read<SettingsProvider>().setUseDynamicColor(v),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
           ],
-          _iosSectionCard(children: [
-            _iosSwitchRow(
-              context,
-              icon: Lucide.Square,
-              label: l10n.themeSettingsPageUsePureBackgroundTitle,
-              subtitle: l10n.themeSettingsPageUsePureBackgroundSubtitle,
-              value: settings.usePureBackground,
-              onChanged: (v) => context.read<SettingsProvider>().setUsePureBackground(v),
-            ),
-          ]),
+          _iosSectionCard(
+            children: [
+              _iosSwitchRow(
+                context,
+                icon: Lucide.Square,
+                label: l10n.themeSettingsPageUsePureBackgroundTitle,
+                subtitle: l10n.themeSettingsPageUsePureBackgroundSubtitle,
+                value: settings.usePureBackground,
+                onChanged: (v) =>
+                    context.read<SettingsProvider>().setUsePureBackground(v),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           // header(l10n.themeSettingsPageColorPalettesSection),
-          _iosSectionCard(children: [
-            for (int i = 0; i < ThemePalettes.all.length; i++) ...[
-              _paletteRow(context, palette: ThemePalettes.all[i], selected: settings.themePaletteId == ThemePalettes.all[i].id, onTap: () => context.read<SettingsProvider>().setThemePalette(ThemePalettes.all[i].id)),
-              if (i != ThemePalettes.all.length - 1) _iosDivider(context),
+          _iosSectionCard(
+            children: [
+              for (int i = 0; i < ThemePalettes.all.length; i++) ...[
+                _paletteRow(
+                  context,
+                  palette: ThemePalettes.all[i],
+                  selected: settings.themePaletteId == ThemePalettes.all[i].id,
+                  onTap: () => context.read<SettingsProvider>().setThemePalette(
+                    ThemePalettes.all[i].id,
+                  ),
+                ),
+                if (i != ThemePalettes.all.length - 1) _iosDivider(context),
+              ],
             ],
-          ]),
+          ),
         ],
       ),
     );
@@ -84,43 +105,60 @@ class ThemeSettingsPage extends StatelessWidget {
 // --- iOS-style helpers ---
 
 Widget _iosSectionCard({required List<Widget> children}) {
-  return Builder(builder: (context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final settings = context.watch<SettingsProvider>();
-    final Color bg = settings.usePureBackground
-        ? (isDark ? Colors.black : const Color(0xFFFFFFFF))
-        : (isDark ? Colors.white10 : Colors.white.withOpacity(0.96));
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(children: children),
-      ),
-    );
-  });
+  return Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final isDark = theme.brightness == Brightness.dark;
+      final settings = context.watch<SettingsProvider>();
+      final Color bg = settings.usePureBackground
+          ? (isDark ? Colors.black : const Color(0xFFFFFFFF))
+          : (isDark ? Colors.white10 : Colors.white.withOpacity(0.96));
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+            width: 0.6,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(children: children),
+        ),
+      );
+    },
+  );
 }
 
 Widget _iosDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 6, thickness: 0.6, indent: 12, endIndent: 12, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 6,
+    thickness: 0.6,
+    indent: 12,
+    endIndent: 12,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
 class _AnimatedPressColor extends StatelessWidget {
-  const _AnimatedPressColor({required this.pressed, required this.base, required this.builder});
+  const _AnimatedPressColor({
+    required this.pressed,
+    required this.base,
+    required this.builder,
+  });
   final bool pressed;
   final Color base;
   final Widget Function(Color color) builder;
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
+    final target = pressed
+        ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base)
+        : base;
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(end: target),
       duration: const Duration(milliseconds: 220),
@@ -141,7 +179,10 @@ class _TactileRow extends StatefulWidget {
 
 class _TactileRowState extends State<_TactileRow> {
   bool _pressed = false;
-  void _setPressed(bool v) { if (_pressed != v) setState(() => _pressed = v); }
+  void _setPressed(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -149,98 +190,176 @@ class _TactileRowState extends State<_TactileRow> {
       onTapDown: widget.onTap == null ? null : (_) => _setPressed(true),
       onTapUp: widget.onTap == null ? null : (_) => _setPressed(false),
       onTapCancel: widget.onTap == null ? null : () => _setPressed(false),
-      onTap: widget.onTap == null ? null : () {
-        if (widget.haptics && context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
-        widget.onTap!.call();
-      },
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptics &&
+                  context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
+              widget.onTap!.call();
+            },
       child: widget.builder(_pressed),
     );
   }
 }
 
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.onTap, this.onLongPress, this.semanticLabel, this.size = 22, this.haptics = true});
-  final IconData icon; final Color color; final VoidCallback onTap; final VoidCallback? onLongPress; final String? semanticLabel; final double size; final bool haptics;
-  @override State<_TactileIconButton> createState() => _TactileIconButtonState();
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.onLongPress,
+    this.semanticLabel,
+    this.size = 22,
+    this.haptics = true,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final String? semanticLabel;
+  final double size;
+  final bool haptics;
+  @override
+  State<_TactileIconButton> createState() => _TactileIconButtonState();
 }
 
 class _TactileIconButtonState extends State<_TactileIconButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final base = widget.color; final pressColor = base.withOpacity(0.7);
-    final icon = Icon(widget.icon, size: widget.size, color: _pressed ? pressColor : base, semanticLabel: widget.semanticLabel);
+    final base = widget.color;
+    final pressColor = base.withOpacity(0.7);
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: _pressed ? pressColor : base,
+      semanticLabel: widget.semanticLabel,
+    );
     return Semantics(
-      button: true, label: widget.semanticLabel,
+      button: true,
+      label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () { if (widget.haptics) Haptics.light(); widget.onTap(); },
-        onLongPress: widget.onLongPress == null ? null : () { if (widget.haptics) Haptics.light(); widget.onLongPress!.call(); },
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), child: icon),
+        onTap: () {
+          if (widget.haptics) Haptics.light();
+          widget.onTap();
+        },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                if (widget.haptics) Haptics.light();
+                widget.onLongPress!.call();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: icon,
+        ),
       ),
     );
   }
 }
 
-Widget _iosSwitchRow(BuildContext context, {required IconData icon, required String label, String? subtitle, required bool value, required ValueChanged<bool> onChanged}) {
+Widget _iosSwitchRow(
+  BuildContext context, {
+  required IconData icon,
+  required String label,
+  String? subtitle,
+  required bool value,
+  required ValueChanged<bool> onChanged,
+}) {
   final cs = Theme.of(context).colorScheme;
   return _TactileRow(
     onTap: () => onChanged(!value),
     builder: (pressed) {
       final baseColor = cs.onSurface.withOpacity(0.9);
       return _AnimatedPressColor(
-        pressed: pressed, base: baseColor,
+        pressed: pressed,
+        base: baseColor,
         builder: (c) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: TextStyle(fontSize: 15, color: c)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.6)))
-                ]
-              ]),
-            ),
-            IosSwitch(value: value, onChanged: onChanged),
-          ]),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: TextStyle(fontSize: 15, color: c)),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IosSwitch(value: value, onChanged: onChanged),
+            ],
+          ),
         ),
       );
     },
   );
 }
 
-Widget _paletteRow(BuildContext context, {required ThemePalette palette, required bool selected, required VoidCallback onTap}) {
+Widget _paletteRow(
+  BuildContext context, {
+  required ThemePalette palette,
+  required bool selected,
+  required VoidCallback onTap,
+}) {
   final cs = Theme.of(context).colorScheme;
-  final title = Localizations.localeOf(context).languageCode == 'zh' ? palette.displayNameZh : palette.displayNameEn;
+  final title = Localizations.localeOf(context).languageCode == 'zh'
+      ? palette.displayNameZh
+      : palette.displayNameEn;
   final color = palette.light.primary;
   return _TactileRow(
     onTap: onTap,
     builder: (pressed) {
       final baseColor = cs.onSurface.withOpacity(0.9);
       return _AnimatedPressColor(
-        pressed: pressed, base: baseColor,
+        pressed: pressed,
+        base: baseColor,
         builder: (c) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(children: [
-            // color dot (slightly smaller)
-            Container(
-              width: 24, height: 24,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: Theme.of(context).brightness == Brightness.dark ? [] : [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2)),
-                ],
+          child: Row(
+            children: [
+              // color dot (slightly smaller)
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: Theme.of(context).brightness == Brightness.dark
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: Text(title, style: TextStyle(fontSize: 15, color: c))),
-            if (selected) Icon(Lucide.Check, size: 18, color: cs.primary) else const SizedBox(width: 18, height: 18),
-          ]),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(title, style: TextStyle(fontSize: 15, color: c)),
+              ),
+              if (selected)
+                Icon(Lucide.Check, size: 18, color: cs.primary)
+              else
+                const SizedBox(width: 18, height: 18),
+            ],
+          ),
         ),
       );
     },

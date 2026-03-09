@@ -39,7 +39,8 @@ class RequestLogger {
 
   static String _two(int v) => v.toString().padLeft(2, '0');
   static DateTime _dayOf(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-  static String _formatDate(DateTime dt) => '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
+  static String _formatDate(DateTime dt) =>
+      '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
   static String _formatTs(DateTime dt) {
     return '${_formatDate(dt)} ${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}.${dt.millisecond.toString().padLeft(3, '0')}';
   }
@@ -74,7 +75,9 @@ class RequestLogger {
           var rotated = File('${logsDir.path}/logs_$suffix.txt');
           if (await rotated.exists()) {
             int i = 1;
-            while (await File('${logsDir.path}/logs_${suffix}_$i.txt').exists()) {
+            while (await File(
+              '${logsDir.path}/logs_${suffix}_$i.txt',
+            ).exists()) {
               i++;
             }
             rotated = File('${logsDir.path}/logs_${suffix}_$i.txt');
@@ -110,7 +113,9 @@ class RequestLogger {
         if (!_writeErrorReported) {
           _writeErrorReported = true;
           try {
-            stderr.writeln('[RequestLogger] write failed; further write errors will be suppressed.');
+            stderr.writeln(
+              '[RequestLogger] write failed; further write errors will be suppressed.',
+            );
           } catch (_) {}
         }
       }

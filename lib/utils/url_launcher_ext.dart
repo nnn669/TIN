@@ -10,4 +10,3 @@ extension BuildContextUrlLauncher on BuildContext {
     }
   }
 }
-

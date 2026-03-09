@@ -17,15 +17,14 @@ class AssistantMemory {
       );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'assistantId': assistantId,
-        'content': content,
-      };
+    'id': id,
+    'assistantId': assistantId,
+    'content': content,
+  };
 
   static AssistantMemory fromJson(Map<String, dynamic> json) => AssistantMemory(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        assistantId: (json['assistantId'] ?? '').toString(),
-        content: (json['content'] ?? '').toString(),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    assistantId: (json['assistantId'] ?? '').toString(),
+    content: (json['content'] ?? '').toString(),
+  );
 }
-

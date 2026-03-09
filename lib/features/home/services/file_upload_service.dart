@@ -55,7 +55,6 @@ class FileUploadService {
     return out;
   }
 
-
   /// 从相册选取图片
   Future<void> onPickPhotos() async {
     try {
@@ -65,7 +64,15 @@ class FileUploadService {
           allowMultiple: true,
           withData: false,
           type: FileType.custom,
-          allowedExtensions: const ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'],
+          allowedExtensions: const [
+            'png',
+            'jpg',
+            'jpeg',
+            'gif',
+            'webp',
+            'heic',
+            'heif',
+          ],
         );
         if (res == null || res.files.isEmpty) return;
         final toCopy = <XFile>[];
@@ -191,9 +198,36 @@ class FileUploadService {
           // images
           'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif',
           // videos
-          'mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv', 'mpeg', 'mpg', 'webm', '3gp', '3gpp',
+          'mp4',
+          'avi',
+          'mkv',
+          'mov',
+          'flv',
+          'wmv',
+          'mpeg',
+          'mpg',
+          'webm',
+          '3gp',
+          '3gpp',
           // docs
-          'txt', 'md', 'json', 'js', 'pdf', 'docx', 'html', 'xml', 'py', 'java', 'kt', 'dart', 'ts', 'tsx', 'markdown', 'mdx', 'yml', 'yaml'
+          'txt',
+          'md',
+          'json',
+          'js',
+          'pdf',
+          'docx',
+          'html',
+          'xml',
+          'py',
+          'java',
+          'kt',
+          'dart',
+          'ts',
+          'tsx',
+          'markdown',
+          'mdx',
+          'yml',
+          'yaml',
         ],
       );
       if (res == null || res.files.isEmpty) return;
@@ -222,7 +256,13 @@ class FileUploadService {
           images.add(savedPath);
         } else {
           final mime = inferMimeByExtension(savedName);
-          docs.add(DocumentAttachment(path: savedPath, fileName: savedName, mime: mime));
+          docs.add(
+            DocumentAttachment(
+              path: savedPath,
+              fileName: savedName,
+              mime: mime,
+            ),
+          );
         }
       }
       if (images.isNotEmpty) {
@@ -248,7 +288,9 @@ class FileUploadService {
       final kinds = <bool>[]; // true=image, false=document
       final names = <String>[];
       for (final f in files) {
-        final name = (f.name.isNotEmpty ? f.name : (f.path.split(Platform.pathSeparator).last));
+        final name = (f.name.isNotEmpty
+            ? f.name
+            : (f.path.split(Platform.pathSeparator).last));
         toCopy.add(f);
         kinds.add(isImageExtension(name));
         names.add(name);
@@ -263,7 +305,13 @@ class FileUploadService {
           images.add(savedPath);
         } else {
           final mime = inferMimeByExtension(savedName);
-          docs.add(DocumentAttachment(path: savedPath, fileName: savedName, mime: mime));
+          docs.add(
+            DocumentAttachment(
+              path: savedPath,
+              fileName: savedName,
+              mime: mime,
+            ),
+          );
         }
       }
       if (images.isNotEmpty) mediaController.addImages(images);

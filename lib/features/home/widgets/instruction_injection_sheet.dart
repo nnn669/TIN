@@ -132,23 +132,48 @@ class InstructionInjectionSheet extends StatelessWidget {
                                           onLongPress: () async {
                                             Haptics.medium();
                                             final item = grouped[groupName]![i];
-                                            final result = await showModalBottomSheet<Map<String, String>?>(
-                                              context: ctx,
-                                              isScrollControlled: true,
-                                              backgroundColor: cs.surface,
-                                              shape: const RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                                              ),
-                                              builder: (_) => InstructionInjectionEditSheet(item: item),
-                                            );
+                                            final result =
+                                                await showModalBottomSheet<
+                                                  Map<String, String>?
+                                                >(
+                                                  context: ctx,
+                                                  isScrollControlled: true,
+                                                  backgroundColor: cs.surface,
+                                                  shape: const RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.vertical(
+                                                          top: Radius.circular(
+                                                            16,
+                                                          ),
+                                                        ),
+                                                  ),
+                                                  builder: (_) =>
+                                                      InstructionInjectionEditSheet(
+                                                        item: item,
+                                                      ),
+                                                );
                                             if (result != null) {
-                                              final title = result['title']?.trim() ?? '';
-                                              final prompt = result['prompt']?.trim() ?? '';
-                                              final group = result['group']?.trim() ?? '';
-                                              if (title.isEmpty || prompt.isEmpty) return;
-                                              await ctx.read<InstructionInjectionProvider>().update(
-                                                item.copyWith(title: title, prompt: prompt, group: group),
-                                              );
+                                              final title =
+                                                  result['title']?.trim() ?? '';
+                                              final prompt =
+                                                  result['prompt']?.trim() ??
+                                                  '';
+                                              final group =
+                                                  result['group']?.trim() ?? '';
+                                              if (title.isEmpty ||
+                                                  prompt.isEmpty)
+                                                return;
+                                              await ctx
+                                                  .read<
+                                                    InstructionInjectionProvider
+                                                  >()
+                                                  .update(
+                                                    item.copyWith(
+                                                      title: title,
+                                                      prompt: prompt,
+                                                      group: group,
+                                                    ),
+                                                  );
                                             }
                                           },
                                         ),

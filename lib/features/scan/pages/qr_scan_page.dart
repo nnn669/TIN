@@ -44,9 +44,14 @@ class _QrScanPageState extends State<QrScanPage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 20),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom + 20,
+              ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: cs.surface.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(999),
@@ -63,4 +68,3 @@ class _QrScanPageState extends State<QrScanPage> {
     );
   }
 }
-

@@ -139,13 +139,13 @@ class _GlassyCircleButton extends StatelessWidget {
               : Theme.of(context).colorScheme.outline.withOpacity(0.20),
           width: 1,
         ),
-         //  boxShadow: [
-         //    BoxShadow(
-         //      color: Colors.black.withOpacity(0.01),
-         //      blurRadius: 8,
-         //      offset: const Offset(0, 2),
-         //    ),
-         // ],
+        //  boxShadow: [
+        //    BoxShadow(
+        //      color: Colors.black.withOpacity(0.01),
+        //      blurRadius: 8,
+        //      offset: const Offset(0, 2),
+        //    ),
+        // ],
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -155,11 +155,7 @@ class _GlassyCircleButton extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: EdgeInsets.all(padding),
-            child: Icon(
-              icon,
-              size: iconSize,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: iconSize, color: iconColor),
           ),
         ),
       ),

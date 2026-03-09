@@ -11,7 +11,8 @@ class DesktopQuickPhrasesPane extends StatefulWidget {
   const DesktopQuickPhrasesPane({super.key});
 
   @override
-  State<DesktopQuickPhrasesPane> createState() => _DesktopQuickPhrasesPaneState();
+  State<DesktopQuickPhrasesPane> createState() =>
+      _DesktopQuickPhrasesPaneState();
 }
 
 class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
@@ -49,7 +50,11 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             l10n.quickPhraseGlobalTitle,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface.withOpacity(0.9)),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: cs.onSurface.withOpacity(0.9),
+                            ),
                           ),
                         ),
                       ),
@@ -71,11 +76,18 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(lucide.Lucide.Zap, size: 56, color: cs.onSurface.withOpacity(0.28)),
+                          Icon(
+                            lucide.Lucide.Zap,
+                            size: 56,
+                            color: cs.onSurface.withOpacity(0.28),
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             l10n.quickPhraseEmptyMessage,
-                            style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontSize: 14),
+                            style: TextStyle(
+                              color: cs.onSurface.withOpacity(0.65),
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
@@ -95,10 +107,14 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
                           index: index,
                           child: _QuickPhraseCard(
                             phrase: phrase,
-                            onTap: () => _showAddEditDialog(context, phrase: phrase),
-                            onEdit: () => _showAddEditDialog(context, phrase: phrase),
+                            onTap: () =>
+                                _showAddEditDialog(context, phrase: phrase),
+                            onEdit: () =>
+                                _showAddEditDialog(context, phrase: phrase),
                             onDelete: () async {
-                              await context.read<QuickPhraseProvider>().delete(phrase.id);
+                              await context.read<QuickPhraseProvider>().delete(
+                                phrase.id,
+                              );
                             },
                           ),
                         ),
@@ -108,10 +124,10 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
                   onReorder: (oldIndex, newIndex) async {
                     if (newIndex > oldIndex) newIndex -= 1;
                     await context.read<QuickPhraseProvider>().reorderPhrases(
-                          oldIndex: oldIndex,
-                          newIndex: newIndex,
-                          assistantId: null,
-                        );
+                      oldIndex: oldIndex,
+                      newIndex: newIndex,
+                      assistantId: null,
+                    );
                   },
                 ),
             ],
@@ -121,12 +137,17 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
     );
   }
 
-  Future<void> _showAddEditDialog(BuildContext context, {QuickPhrase? phrase}) async {
+  Future<void> _showAddEditDialog(
+    BuildContext context, {
+    QuickPhrase? phrase,
+  }) async {
     final l10n = AppLocalizations.of(context)!;
     final result = await showDialog<Map<String, String>?>(
       context: context,
       builder: (ctx) => _QuickPhraseEditDialog(
-        title: phrase == null ? l10n.quickPhraseAddTitle : l10n.quickPhraseEditTitle,
+        title: phrase == null
+            ? l10n.quickPhraseAddTitle
+            : l10n.quickPhraseEditTitle,
         initTitle: phrase?.title ?? '',
         initContent: phrase?.content ?? '',
       ),
@@ -153,7 +174,12 @@ class _DesktopQuickPhrasesPaneState extends State<DesktopQuickPhrasesPane> {
 }
 
 class _QuickPhraseCard extends StatefulWidget {
-  const _QuickPhraseCard({required this.phrase, required this.onTap, required this.onEdit, required this.onDelete});
+  const _QuickPhraseCard({
+    required this.phrase,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final QuickPhrase phrase;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -201,20 +227,29 @@ class _QuickPhraseCardState extends State<_QuickPhraseCard> {
                       widget.phrase.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       widget.phrase.content,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.75)),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: cs.onSurface.withOpacity(0.75),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              _SmallIconBtn(icon: lucide.Lucide.Settings2, onTap: widget.onEdit),
+              _SmallIconBtn(
+                icon: lucide.Lucide.Settings2,
+                onTap: widget.onEdit,
+              ),
               const SizedBox(width: 6),
               _SmallIconBtn(icon: lucide.Lucide.Trash2, onTap: widget.onDelete),
             ],
@@ -226,7 +261,11 @@ class _QuickPhraseCardState extends State<_QuickPhraseCard> {
 }
 
 class _QuickPhraseEditDialog extends StatefulWidget {
-  const _QuickPhraseEditDialog({required this.title, required this.initTitle, required this.initContent});
+  const _QuickPhraseEditDialog({
+    required this.title,
+    required this.initTitle,
+    required this.initContent,
+  });
   final String title;
   final String initTitle;
   final String initContent;
@@ -243,6 +282,7 @@ class _QuickPhraseEditDialogState extends State<_QuickPhraseEditDialog> {
     _titleController = TextEditingController(text: widget.initTitle);
     _contentController = TextEditingController(text: widget.initContent);
   }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -270,20 +310,35 @@ class _QuickPhraseEditDialogState extends State<_QuickPhraseEditDialog> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(widget.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
-                      _SmallIconBtn(icon: lucide.Lucide.X, onTap: () => Navigator.of(context).maybePop()),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      _SmallIconBtn(
+                        icon: lucide.Lucide.X,
+                        onTap: () => Navigator.of(context).maybePop(),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _titleController,
-                    decoration: _deskInputDecoration(context).copyWith(hintText: l10n.quickPhraseTitleLabel),
+                    decoration: _deskInputDecoration(
+                      context,
+                    ).copyWith(hintText: l10n.quickPhraseTitleLabel),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _contentController,
                     maxLines: 8,
-                    decoration: _deskInputDecoration(context).copyWith(hintText: l10n.quickPhraseContentLabel),
+                    decoration: _deskInputDecoration(
+                      context,
+                    ).copyWith(hintText: l10n.quickPhraseContentLabel),
                   ),
                 ],
               ),
@@ -312,16 +367,23 @@ class _QuickPhraseEditDialogState extends State<_QuickPhraseEditDialog> {
 
 class _SmallIconBtn extends StatefulWidget {
   const _SmallIconBtn({required this.icon, required this.onTap});
-  final IconData icon; final VoidCallback onTap;
-  @override State<_SmallIconBtn> createState() => _SmallIconBtnState();
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  State<_SmallIconBtn> createState() => _SmallIconBtnState();
 }
 
 class _SmallIconBtnState extends State<_SmallIconBtn> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -329,8 +391,12 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          width: 28, height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: cs.onSurface),
         ),
@@ -340,21 +406,40 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
 }
 
 class _DeskIosButton extends StatefulWidget {
-  const _DeskIosButton({required this.label, required this.filled, required this.dense, required this.onTap});
-  final String label; final bool filled; final bool dense; final VoidCallback onTap;
-  @override State<_DeskIosButton> createState() => _DeskIosButtonState();
+  const _DeskIosButton({
+    required this.label,
+    required this.filled,
+    required this.dense,
+    required this.onTap,
+  });
+  final String label;
+  final bool filled;
+  final bool dense;
+  final VoidCallback onTap;
+  @override
+  State<_DeskIosButton> createState() => _DeskIosButtonState();
 }
 
 class _DeskIosButtonState extends State<_DeskIosButton> {
-  bool _hover = false; bool _pressed = false;
+  bool _hover = false;
+  bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = widget.filled ? cs.onPrimary : cs.onSurface.withOpacity(0.9);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = widget.filled
+        ? cs.onPrimary
+        : cs.onSurface.withOpacity(0.9);
     final bg = widget.filled
         ? (_hover ? cs.primary.withOpacity(0.92) : cs.primary)
-        : (_hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent);
-    final borderColor = widget.filled ? Colors.transparent : cs.outlineVariant.withOpacity(isDark ? 0.22 : 0.18);
+        : (_hover
+              ? (isDark
+                    ? Colors.white.withOpacity(0.06)
+                    : Colors.black.withOpacity(0.05))
+              : Colors.transparent);
+    final borderColor = widget.filled
+        ? Colors.transparent
+        : cs.outlineVariant.withOpacity(isDark ? 0.22 : 0.18);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -370,10 +455,24 @@ class _DeskIosButtonState extends State<_DeskIosButton> {
           duration: const Duration(milliseconds: 110),
           curve: Curves.easeOutCubic,
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: widget.dense ? 8 : 12, horizontal: 12),
+            padding: EdgeInsets.symmetric(
+              vertical: widget.dense ? 8 : 12,
+              horizontal: 12,
+            ),
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
-            child: Text(widget.label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: widget.dense ? 13 : 14)),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor),
+            ),
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: widget.dense ? 13 : 14,
+              ),
+            ),
           ),
         ),
       ),
@@ -390,11 +489,17 @@ InputDecoration _deskInputDecoration(BuildContext context) {
     fillColor: isDark ? Colors.white10 : const Color(0xFFF7F7F9),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.2), width: 0.8),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withOpacity(0.2),
+        width: 0.8,
+      ),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.2), width: 0.8),
+      borderSide: BorderSide(
+        color: cs.outlineVariant.withOpacity(0.2),
+        width: 0.8,
+      ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -403,4 +508,3 @@ InputDecoration _deskInputDecoration(BuildContext context) {
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
   );
 }
-

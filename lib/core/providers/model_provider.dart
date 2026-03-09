@@ -317,7 +317,10 @@ class ProviderManager {
     ProviderConfig cfg,
     String modelId,
   ) {
-    return ModelOverridePayloadParser.modelOverride(cfg.modelOverrides, modelId);
+    return ModelOverridePayloadParser.modelOverride(
+      cfg.modelOverrides,
+      modelId,
+    );
   }
 
   static Map<String, String> _customHeaders(
@@ -436,8 +439,8 @@ class ProviderManager {
             throw HttpException('Stream response expected but not received');
           }
         }
-      return;
-    } else if (kind == ProviderKind.claude) {
+        return;
+      } else if (kind == ProviderKind.claude) {
         final base = cfg.baseUrl.endsWith('/')
             ? cfg.baseUrl.substring(0, cfg.baseUrl.length - 1)
             : cfg.baseUrl;
@@ -498,7 +501,8 @@ class ProviderManager {
         final endpoint = useStream
             ? 'streamGenerateContent'
             : 'generateContent';
-        final bool isVertex = cfg.vertexAI == true &&
+        final bool isVertex =
+            cfg.vertexAI == true &&
             (cfg.location?.isNotEmpty == true) &&
             (cfg.projectId?.isNotEmpty == true);
         final bool isVertexClaude =
@@ -536,10 +540,7 @@ class ProviderManager {
             ? {
                 'anthropic_version': 'vertex-2023-10-16',
                 'messages': [
-                  {
-                    'role': 'user',
-                    'content': 'hello',
-                  },
+                  {'role': 'user', 'content': 'hello'},
                 ],
                 'max_tokens': 32,
                 if (useStream) 'stream': true,

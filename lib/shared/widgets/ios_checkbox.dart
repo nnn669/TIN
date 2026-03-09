@@ -48,25 +48,37 @@ class _IosCheckboxState extends State<IosCheckbox> {
     final brightness = CupertinoTheme.brightnessOf(context);
     final materialTheme = Theme.of(context);
     final cs = materialTheme.colorScheme;
-    final activeColor = widget.activeColor ?? CupertinoTheme.of(context).primaryColor;
-    final borderColor = widget.borderColor ?? (brightness == Brightness.dark
-        ? CupertinoColors.systemGrey3
-        : CupertinoColors.systemGrey4);
+    final activeColor =
+        widget.activeColor ?? CupertinoTheme.of(context).primaryColor;
+    final borderColor =
+        widget.borderColor ??
+        (brightness == Brightness.dark
+            ? CupertinoColors.systemGrey3
+            : CupertinoColors.systemGrey4);
 
     final bool enabled = widget.onChanged != null;
-    final Color bgColor = widget.value ? activeColor : CupertinoColors.transparent;
+    final Color bgColor = widget.value
+        ? activeColor
+        : CupertinoColors.transparent;
     final Color effectiveBorderColor = widget.value ? activeColor : borderColor;
     // Dynamically compute check color similar to providers multi-select:
     // - If using theme primary, use `onPrimary` for best contrast.
     // - If a custom activeColor is provided, compute contrast by brightness.
     Color _contrastOn(Color bg) {
       final b = ThemeData.estimateBrightnessForColor(bg);
-      return b == Brightness.dark ? CupertinoColors.white : CupertinoColors.black;
+      return b == Brightness.dark
+          ? CupertinoColors.white
+          : CupertinoColors.black;
     }
+
     final bool usesThemePrimary = widget.activeColor == null;
     final Color computedOnPrimary = cs.onPrimary;
-    final Color dynamicCheck = usesThemePrimary ? computedOnPrimary : _contrastOn(activeColor);
-    final Color effectiveCheckColor = dynamicCheck.withOpacity((widget.onChanged != null) ? 1.0 : 0.5);
+    final Color dynamicCheck = usesThemePrimary
+        ? computedOnPrimary
+        : _contrastOn(activeColor);
+    final Color effectiveCheckColor = dynamicCheck.withOpacity(
+      (widget.onChanged != null) ? 1.0 : 0.5,
+    );
 
     final double visualSize = widget.size;
     final double tapSize = math.max(widget.hitTestSize, visualSize);
@@ -103,7 +115,9 @@ class _IosCheckboxState extends State<IosCheckbox> {
                   color: enabled ? bgColor : bgColor.withOpacity(0.5),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: enabled ? effectiveBorderColor : effectiveBorderColor.withOpacity(0.5),
+                    color: enabled
+                        ? effectiveBorderColor
+                        : effectiveBorderColor.withOpacity(0.5),
                     width: widget.borderWidth,
                   ),
                 ),
@@ -151,7 +165,11 @@ class _AnimatedCheck extends StatelessWidget {
         return Transform.scale(
           scale: scale,
           child: CustomPaint(
-            painter: _CheckPainter(progress: t, color: color, strokeWidth: strokeWidth),
+            painter: _CheckPainter(
+              progress: t,
+              color: color,
+              strokeWidth: strokeWidth,
+            ),
             child: const SizedBox.expand(),
           ),
         );
@@ -161,7 +179,11 @@ class _AnimatedCheck extends StatelessWidget {
 }
 
 class _CheckPainter extends CustomPainter {
-  _CheckPainter({required this.progress, required this.color, required this.strokeWidth});
+  _CheckPainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+  });
 
   final double progress; // 0..1
   final Color color;

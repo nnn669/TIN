@@ -29,7 +29,9 @@ class AvatarCache {
     final uri = Uri.tryParse(url);
     String ext = 'img';
     if (uri != null) {
-      final seg = uri.pathSegments.isNotEmpty ? uri.pathSegments.last.toLowerCase() : '';
+      final seg = uri.pathSegments.isNotEmpty
+          ? uri.pathSegments.last.toLowerCase()
+          : '';
       final m = RegExp(r"\.(png|jpg|jpeg|webp|gif|bmp|ico)").firstMatch(seg);
       if (m != null) ext = m.group(1)!;
     }

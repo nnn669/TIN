@@ -21,4 +21,3 @@ class DesktopSidebarTabBus {
 
   void dispose() => _controller.close();
 }
-

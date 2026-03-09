@@ -48,10 +48,15 @@ class AssistantSettingsPage extends StatelessWidget {
               onTap: () async {
                 final name = await _showAddAssistantSheet(context);
                 if (name == null) return;
-                final id = await context.read<AssistantProvider>().addAssistant(name: name.trim(), context: context);
+                final id = await context.read<AssistantProvider>().addAssistant(
+                  name: name.trim(),
+                  context: context,
+                );
                 if (!context.mounted) return;
                 await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => AssistantSettingsEditPage(assistantId: id)),
+                  MaterialPageRoute(
+                    builder: (_) => AssistantSettingsEditPage(assistantId: id),
+                  ),
                 );
               },
             ),
@@ -118,7 +123,9 @@ class _AssistantCard extends StatelessWidget {
     final content = _TactileCard(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => AssistantSettingsEditPage(assistantId: item.id)),
+          MaterialPageRoute(
+            builder: (_) => AssistantSettingsEditPage(assistantId: item.id),
+          ),
         );
       },
       builder: (pressed, overlay) {
@@ -126,7 +133,12 @@ class _AssistantCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Color.alphaBlend(overlay, baseBg),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(isDark ? 0.12 : 0.08), width: 0.8),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withOpacity(isDark ? 0.12 : 0.08),
+              width: 0.8,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -150,11 +162,17 @@ class _AssistantCard extends StatelessWidget {
                                   item.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                               if (!item.deletable)
-                                _TagPill(text: l10n.assistantSettingsDefaultTag, color: cs.primary),
+                                _TagPill(
+                                  text: l10n.assistantSettingsDefaultTag,
+                                  color: cs.primary,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -164,7 +182,11 @@ class _AssistantCard extends StatelessWidget {
                                 : item.systemPrompt),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.7), height: 1.25),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: cs.onSurface.withOpacity(0.7),
+                              height: 1.25,
+                            ),
                           ),
                         ],
                       ),
@@ -189,7 +211,9 @@ class _AssistantCard extends StatelessWidget {
             backgroundColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(horizontal: 4),
             onPressed: (_) async {
-              final newId = await context.read<AssistantProvider>().duplicateAssistant(item.id, l10n: l10n);
+              final newId = await context
+                  .read<AssistantProvider>()
+                  .duplicateAssistant(item.id, l10n: l10n);
               if (!context.mounted) return;
               if (newId != null) {
                 showAppSnackBar(
@@ -221,7 +245,10 @@ class _AssistantCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           l10n.assistantSettingsCopyButton,
-                          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -246,7 +273,9 @@ class _AssistantCard extends StatelessWidget {
               }
               final ok = await _confirmDelete(context, l10n);
               if (ok == true) {
-                final success = await context.read<AssistantProvider>().deleteAssistant(item.id);
+                final success = await context
+                    .read<AssistantProvider>()
+                    .deleteAssistant(item.id);
                 if (success != true) {
                   showAppSnackBar(
                     context,
@@ -278,7 +307,10 @@ class _AssistantCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           l10n.assistantSettingsDeleteButton,
-                          style: TextStyle(color: cs.error, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: cs.error,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -304,34 +336,72 @@ class _AssistantCard extends StatelessWidget {
 // --- iOS-style tactile helpers ---
 
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.onTap, this.onLongPress, this.semanticLabel, this.size = 22, this.haptics = true});
-  final IconData icon; final Color color; final VoidCallback onTap; final VoidCallback? onLongPress; final String? semanticLabel; final double size; final bool haptics;
-  @override State<_TactileIconButton> createState() => _TactileIconButtonState();
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.onLongPress,
+    this.semanticLabel,
+    this.size = 22,
+    this.haptics = true,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final String? semanticLabel;
+  final double size;
+  final bool haptics;
+  @override
+  State<_TactileIconButton> createState() => _TactileIconButtonState();
 }
 
 class _TactileIconButtonState extends State<_TactileIconButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final base = widget.color; final pressColor = base.withOpacity(0.7);
-    final icon = Icon(widget.icon, size: widget.size, color: _pressed ? pressColor : base, semanticLabel: widget.semanticLabel);
+    final base = widget.color;
+    final pressColor = base.withOpacity(0.7);
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: _pressed ? pressColor : base,
+      semanticLabel: widget.semanticLabel,
+    );
     return Semantics(
-      button: true, label: widget.semanticLabel,
+      button: true,
+      label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () { if (widget.haptics) Haptics.light(); widget.onTap(); },
-        onLongPress: widget.onLongPress == null ? null : () { if (widget.haptics) Haptics.light(); widget.onLongPress!.call(); },
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), child: icon),
+        onTap: () {
+          if (widget.haptics) Haptics.light();
+          widget.onTap();
+        },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                if (widget.haptics) Haptics.light();
+                widget.onLongPress!.call();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: icon,
+        ),
       ),
     );
   }
 }
 
 class _TactileCard extends StatefulWidget {
-  const _TactileCard({required this.builder, this.onTap, this.haptics = true, this.pressedScale = 0.98});
+  const _TactileCard({
+    required this.builder,
+    this.onTap,
+    this.haptics = true,
+    this.pressedScale = 0.98,
+  });
   final Widget Function(bool pressed, Color overlay) builder;
   final VoidCallback? onTap;
   final bool haptics;
@@ -342,22 +412,31 @@ class _TactileCard extends StatefulWidget {
 
 class _TactileCardState extends State<_TactileCard> {
   bool _pressed = false;
-  void _set(bool v){ if (_pressed!=v) setState(()=>_pressed=v);} 
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final overlay = _pressed
-        ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04))
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.04))
         : Colors.transparent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap==null?null:(_)=>_set(true),
-      onTapUp: widget.onTap==null?null:(_)=>_set(false),
-      onTapCancel: widget.onTap==null?null:()=>_set(false),
-      onTap: widget.onTap==null?null:(){
-        if(widget.haptics && context.read<SettingsProvider>().hapticsOnCardTap) Haptics.soft();
-        widget.onTap!.call();
-      },
+      onTapDown: widget.onTap == null ? null : (_) => _set(true),
+      onTapUp: widget.onTap == null ? null : (_) => _set(false),
+      onTapCancel: widget.onTap == null ? null : () => _set(false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptics &&
+                  context.read<SettingsProvider>().hapticsOnCardTap)
+                Haptics.soft();
+              widget.onTap!.call();
+            },
       child: AnimatedScale(
         scale: _pressed ? widget.pressedScale : 1.0,
         duration: const Duration(milliseconds: 110),
@@ -390,7 +469,12 @@ Future<String?> _showAddAssistantSheet(BuildContext context) async {
       return SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.only(left: 16, right: 16, top: 12, bottom: bottomInset + 16),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: bottomInset + 16,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,7 +493,10 @@ Future<String?> _showAddAssistantSheet(BuildContext context) async {
               Center(
                 child: Text(
                   l10n.assistantSettingsAddSheetTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -422,18 +509,23 @@ Future<String?> _showAddAssistantSheet(BuildContext context) async {
                   fillColor: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withOpacity(0.4),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withOpacity(0.4),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: cs.primary.withOpacity(0.5)),
                   ),
                 ),
-                onSubmitted: (_) => Navigator.of(ctx).pop(controller.text.trim()),
+                onSubmitted: (_) =>
+                    Navigator.of(ctx).pop(controller.text.trim()),
               ),
               const SizedBox(height: 16),
               Row(
@@ -448,7 +540,8 @@ Future<String?> _showAddAssistantSheet(BuildContext context) async {
                   Expanded(
                     child: _IosFilledButton(
                       label: l10n.assistantSettingsAddSheetSave,
-                      onTap: () => Navigator.of(ctx).pop(controller.text.trim()),
+                      onTap: () =>
+                          Navigator.of(ctx).pop(controller.text.trim()),
                     ),
                   ),
                 ],
@@ -464,7 +557,10 @@ Future<String?> _showAddAssistantSheet(BuildContext context) async {
   return trimmed;
 }
 
-Future<bool?> _confirmDelete(BuildContext context, AppLocalizations l10n) async {
+Future<bool?> _confirmDelete(
+  BuildContext context,
+  AppLocalizations l10n,
+) async {
   return showDialog<bool>(
     context: context,
     builder: (ctx) {
@@ -473,10 +569,16 @@ Future<bool?> _confirmDelete(BuildContext context, AppLocalizations l10n) async 
         title: Text(l10n.assistantSettingsDeleteDialogTitle),
         content: Text(l10n.assistantSettingsDeleteDialogContent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantSettingsDeleteDialogCancel)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantSettingsDeleteDialogCancel),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.assistantSettingsDeleteDialogConfirm, style: TextStyle(color: cs.error)),
+            child: Text(
+              l10n.assistantSettingsDeleteDialogConfirm,
+              style: TextStyle(color: cs.error),
+            ),
           ),
         ],
       );
@@ -571,7 +673,10 @@ class _AssistantAvatar extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Text(emoji.characters.take(1).toString(), style: TextStyle(fontSize: size * 0.5)),
+      child: Text(
+        emoji.characters.take(1).toString(),
+        style: TextStyle(fontSize: size * 0.5),
+      ),
     );
   }
 }
@@ -589,15 +694,20 @@ class _IosOutlineButtonState extends State<_IosOutlineButton> {
   void _set(bool v) {
     if (_pressed != v) setState(() => _pressed = v);
   }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _set(true),
-      onTapUp: (_) => Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
+      onTapUp: (_) =>
+          Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
       onTapCancel: () => _set(false),
-      onTap: () { Haptics.soft(); widget.onTap(); },
+      onTap: () {
+        Haptics.soft();
+        widget.onTap();
+      },
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 110),
@@ -609,7 +719,10 @@ class _IosOutlineButtonState extends State<_IosOutlineButton> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: cs.primary.withOpacity(0.5)),
           ),
-          child: Text(widget.label, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+          child: Text(
+            widget.label,
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
@@ -629,15 +742,20 @@ class _IosFilledButtonState extends State<_IosFilledButton> {
   void _set(bool v) {
     if (_pressed != v) setState(() => _pressed = v);
   }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _set(true),
-      onTapUp: (_) => Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
+      onTapUp: (_) =>
+          Future.delayed(const Duration(milliseconds: 80), () => _set(false)),
       onTapCancel: () => _set(false),
-      onTap: () { Haptics.soft(); widget.onTap(); },
+      onTap: () {
+        Haptics.soft();
+        widget.onTap();
+      },
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 110),
@@ -645,8 +763,14 @@ class _IosFilledButtonState extends State<_IosFilledButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
-          child: Text(widget.label, style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600)),
+          decoration: BoxDecoration(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
@@ -670,7 +794,11 @@ class _TagPill extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

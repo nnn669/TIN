@@ -20,4 +20,3 @@ ScreenType screenTypeForContext(BuildContext context) {
   final w = MediaQuery.sizeOf(context).width;
   return screenTypeForWidth(w);
 }
-

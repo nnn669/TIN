@@ -56,7 +56,9 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
     final brightness = Theme.of(context).brightness;
     final sp = context.watch<SettingsProvider>();
     final isDark = brightness == Brightness.dark;
-    final Color bg = sp.usePureBackground ? (isDark ? Colors.black : Colors.white) : cs.surfaceContainerHighest;
+    final Color bg = sp.usePureBackground
+        ? (isDark ? Colors.black : Colors.white)
+        : cs.surfaceContainerHighest;
     return Container(
       height: 40,
       decoration: BoxDecoration(
@@ -74,11 +76,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
           ...widget.leftChildren,
           // https://github.com/leanflutter/window_manager/issues/136
           // Only the middle area should be draggable, not the buttons.
-          Expanded(
-            child: DragToMoveArea(
-              child: const SizedBox.expand(),
-            ),
-          ),
+          Expanded(child: DragToMoveArea(child: const SizedBox.expand())),
           WindowCaptionButton.minimize(
             brightness: brightness,
             onPressed: () => windowManager.minimize(),
@@ -102,4 +100,3 @@ class _WindowTitleBarState extends State<WindowTitleBar> with WindowListener {
     );
   }
 }
-

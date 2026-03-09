@@ -73,7 +73,8 @@ class FlutterLogger {
 
   static String _two(int v) => v.toString().padLeft(2, '0');
   static DateTime _dayOf(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-  static String _formatDate(DateTime dt) => '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
+  static String _formatDate(DateTime dt) =>
+      '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
   static String _formatTs(DateTime dt) {
     return '${_formatDate(dt)} ${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}.${dt.millisecond.toString().padLeft(3, '0')}';
   }
@@ -105,13 +106,19 @@ class FlutterLogger {
         final fileDay = _dayOf(stat.modified.toLocal());
         if (fileDay != today) {
           final suffix = _formatDate(fileDay);
-          var rotated = File('${logsDir.path}/${_rotatedFilePrefix}$suffix.txt');
+          var rotated = File(
+            '${logsDir.path}/${_rotatedFilePrefix}$suffix.txt',
+          );
           if (await rotated.exists()) {
             int i = 1;
-            while (await File('${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt').exists()) {
+            while (await File(
+              '${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt',
+            ).exists()) {
               i++;
             }
-            rotated = File('${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt');
+            rotated = File(
+              '${logsDir.path}/${_rotatedFilePrefix}${suffix}_$i.txt',
+            );
           }
           await active.rename(rotated.path);
         }
@@ -152,7 +159,9 @@ class FlutterLogger {
         if (!_writeErrorReported) {
           _writeErrorReported = true;
           try {
-            stderr.writeln('[FlutterLogger] write failed; further write errors will be suppressed.');
+            stderr.writeln(
+              '[FlutterLogger] write failed; further write errors will be suppressed.',
+            );
           } catch (_) {}
         }
       }

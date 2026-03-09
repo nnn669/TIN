@@ -29,7 +29,9 @@ class GenerationController {
     required this.contextProvider,
     required this.onStateChanged,
     required this.getTitleForLocale,
-  }) : toolHandlerService = ToolHandlerService(contextProvider: contextProvider);
+  }) : toolHandlerService = ToolHandlerService(
+         contextProvider: contextProvider,
+       );
 
   final ChatService chatService;
   final ChatController chatController;
@@ -70,14 +72,17 @@ class GenerationController {
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities = (ov['abilities'] as List?)
+      final abilities =
+          (ov['abilities'] as List?)
               ?.map((e) => e.toString().toLowerCase())
               .where((e) => e.isNotEmpty)
               .toList() ??
           const [];
       return abilities.contains('reasoning');
     }
-    final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+    final inferred = ModelRegistry.infer(
+      ModelInfo(id: modelId, displayName: modelId),
+    );
     return inferred.abilities.contains(ModelAbility.reasoning);
   }
 
@@ -86,14 +91,17 @@ class GenerationController {
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities = (ov['abilities'] as List?)
+      final abilities =
+          (ov['abilities'] as List?)
               ?.map((e) => e.toString().toLowerCase())
               .where((e) => e.isNotEmpty)
               .toList() ??
           const [];
       return abilities.contains('tool');
     }
-    final inferred = ModelRegistry.infer(ModelInfo(id: modelId, displayName: modelId));
+    final inferred = ModelRegistry.infer(
+      ModelInfo(id: modelId, displayName: modelId),
+    );
     return inferred.abilities.contains(ModelAbility.tool);
   }
 
@@ -144,7 +152,8 @@ class GenerationController {
     if ((assistant?.customHeaders.isNotEmpty ?? false)) {
       final headers = <String, String>{
         for (final e in assistant!.customHeaders)
-          if ((e['name'] ?? '').trim().isNotEmpty) (e['name']!.trim()): (e['value'] ?? '')
+          if ((e['name'] ?? '').trim().isNotEmpty)
+            (e['name']!.trim()): (e['value'] ?? ''),
       };
       return headers.isEmpty ? null : headers;
     }
@@ -157,7 +166,7 @@ class GenerationController {
       final body = <String, dynamic>{
         for (final e in assistant!.customBody)
           if ((e['key'] ?? '').trim().isNotEmpty)
-            (e['key']!.trim()): (e['value'] ?? '')
+            (e['key']!.trim()): (e['value'] ?? ''),
       };
       return body.isEmpty ? null : body;
     }

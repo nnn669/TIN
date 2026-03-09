@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:characters/characters.dart';
 
@@ -29,7 +30,8 @@ class EmojiText extends StatelessWidget {
     final String glyph = text.characters.take(1).toString();
 
     // Optional platform-specific scaling for Windows to reduce line jitter
-    final bool isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+    final bool isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
     const double winScale = 0.9;
     final double scaleFactor = isWindows ? winScale : 1.0;
     double fs = fontSize * scaleFactor;
@@ -62,8 +64,9 @@ class EmojiText extends StatelessWidget {
       fontSize: fs,
       height: effectiveHeight,
       // Encourage even leading distribution for better visual centering
-      leadingDistribution:
-          optimizeEmojiAlign ? TextLeadingDistribution.even : null,
+      leadingDistribution: optimizeEmojiAlign
+          ? TextLeadingDistribution.even
+          : null,
       fontFamilyFallback: fallback,
       decoration: TextDecoration.none,
     );
@@ -112,4 +115,3 @@ class EmojiText extends StatelessWidget {
     );
   }
 }
-

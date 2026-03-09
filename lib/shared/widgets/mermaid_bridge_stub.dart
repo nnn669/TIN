@@ -16,17 +16,27 @@ class MermaidViewHandle {
   final Widget widget;
   final Future<bool> Function() exportPng;
   final Future<Uint8List?> Function()? exportPngBytes;
-  MermaidViewHandle({required this.widget, required this.exportPng, this.exportPngBytes});
+  MermaidViewHandle({
+    required this.widget,
+    required this.exportPng,
+    this.exportPngBytes,
+  });
 }
 
 class _MermaidInlineWindowsView extends StatefulWidget {
   final String code;
   final bool dark;
   final Map<String, String>? themeVars;
-  const _MermaidInlineWindowsView({Key? key, required this.code, required this.dark, this.themeVars}) : super(key: key);
+  const _MermaidInlineWindowsView({
+    Key? key,
+    required this.code,
+    required this.dark,
+    this.themeVars,
+  }) : super(key: key);
 
   @override
-  State<_MermaidInlineWindowsView> createState() => _MermaidInlineWindowsViewState();
+  State<_MermaidInlineWindowsView> createState() =>
+      _MermaidInlineWindowsViewState();
 }
 
 class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
@@ -52,7 +62,9 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
   Future<void> _init() async {
     try {
       await _controller.initialize();
-      try { await _controller.setBackgroundColor(const Color(0x00000000)); } catch (_) {}
+      try {
+        await _controller.setBackgroundColor(const Color(0x00000000));
+      } catch (_) {}
       _msgSub = _controller.webMessage.listen((event) {
         String text;
         try {
@@ -84,7 +96,9 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
             setState(() {
               _height = max(120, v + 16);
             });
-            try { MermaidHeightCache.put(widget.code, _height); } catch (_) {}
+            try {
+              MermaidHeightCache.put(widget.code, _height);
+            } catch (_) {}
           });
         }
       } else if (type == 'export') {
@@ -101,7 +115,9 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
     super.didUpdateWidget(oldWidget);
     final themeSig = _themeVarsSignature(widget.themeVars);
     final themeChanged = _lastThemeVarsSig != themeSig;
-    if (oldWidget.code != widget.code || oldWidget.dark != widget.dark || themeChanged) {
+    if (oldWidget.code != widget.code ||
+        oldWidget.dark != widget.dark ||
+        themeChanged) {
       _loadHtml();
     } else {
       _postHeight();
@@ -125,9 +141,16 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
   Future<void> _loadHtml() async {
     try {
       final mermaidJs = await rootBundle.loadString('assets/mermaid.min.js');
-      final html = _buildWindowsHtml(widget.code, widget.dark, mermaidJs, widget.themeVars);
+      final html = _buildWindowsHtml(
+        widget.code,
+        widget.dark,
+        mermaidJs,
+        widget.themeVars,
+      );
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/mermaid_${DateTime.now().millisecondsSinceEpoch}.html');
+      final file = File(
+        '${dir.path}/mermaid_${DateTime.now().millisecondsSinceEpoch}.html',
+      );
       await file.writeAsString(html, flush: true);
       _tempFilePath = file.path;
       await _controller.loadUrl(Uri.file(file.path).toString());
@@ -143,7 +166,8 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
 
   String _themeVarsSignature(Map<String, String>? vars) {
     if (vars == null || vars.isEmpty) return '';
-    final entries = vars.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    final entries = vars.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
     return entries.map((e) => '${e.key}=${e.value}').join('&');
   }
 
@@ -151,7 +175,9 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
     try {
       _exportCompleter = Completer<String?>();
       _controller.executeScript('exportSvgToPng();');
-      final b64 = await _exportCompleter!.future.timeout(const Duration(seconds: 8));
+      final b64 = await _exportCompleter!.future.timeout(
+        const Duration(seconds: 8),
+      );
       if (b64 == null || b64.isEmpty) return null;
       return base64Decode(b64);
     } catch (_) {
@@ -163,11 +189,17 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
 
   @override
   void dispose() {
-    try { _heightDebounce?.cancel(); } catch (_) {}
+    try {
+      _heightDebounce?.cancel();
+    } catch (_) {}
     _heightDebounce = null;
-    try { _msgSub?.cancel(); } catch (_) {}
+    try {
+      _msgSub?.cancel();
+    } catch (_) {}
     _msgSub = null;
-    try { _controller.dispose(); } catch (_) {}
+    try {
+      _controller.dispose();
+    } catch (_) {}
     try {
       if (_tempFilePath != null) {
         File(_tempFilePath!).deleteSync();
@@ -176,7 +208,12 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
     super.dispose();
   }
 
-  String _buildWindowsHtml(String code, bool dark, String mermaidJs, Map<String, String>? themeVars) {
+  String _buildWindowsHtml(
+    String code,
+    bool dark,
+    String mermaidJs,
+    Map<String, String>? themeVars,
+  ) {
     final bg = dark ? '#111111' : '#ffffff';
     final fg = dark ? '#eaeaea' : '#222222';
     final escaped = code
@@ -185,7 +222,9 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
         .replaceAll('>', '&gt;');
     String themeVarsJson = '{}';
     if (themeVars != null && themeVars.isNotEmpty) {
-      final entries = themeVars.entries.map((e) => '"${e.key}": "${e.value}"').join(',');
+      final entries = themeVars.entries
+          .map((e) => '"${e.key}": "${e.value}"')
+          .join(',');
       themeVarsJson = '{' + entries + '}';
     }
     return '''
@@ -291,18 +330,29 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
 
 /// Mobile/desktop (non-web) Mermaid renderer using webview_flutter.
 /// Returns a handle with the widget and an export-to-PNG action.
-MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String>? themeVars, GlobalKey? viewKey}) {
+MermaidViewHandle? createMermaidView(
+  String code,
+  bool dark, {
+  Map<String, String>? themeVars,
+  GlobalKey? viewKey,
+}) {
   // Windows: use webview_windows with messaging for height + export.
   if (Platform.isWindows) {
     final usedKey = viewKey ?? GlobalKey<_MermaidInlineWindowsViewState>();
-    final widget = _MermaidInlineWindowsView(key: usedKey, code: code, dark: dark, themeVars: themeVars);
+    final widget = _MermaidInlineWindowsView(
+      key: usedKey,
+      code: code,
+      dark: dark,
+      themeVars: themeVars,
+    );
     Future<bool> doExport() async {
       try {
         final state = usedKey.currentState;
         if (state is _MermaidInlineWindowsViewState) {
           final bytes = await state.exportPngBytes();
           if (bytes == null || bytes.isEmpty) return false;
-          final suggested = 'mermaid_${DateTime.now().millisecondsSinceEpoch}.png';
+          final suggested =
+              'mermaid_${DateTime.now().millisecondsSinceEpoch}.png';
           final savePath = await FilePicker.platform.saveFile(
             dialogTitle: 'Save PNG',
             fileName: suggested,
@@ -317,6 +367,7 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
       } catch (_) {}
       return false;
     }
+
     Future<Uint8List?> doExportBytes() async {
       try {
         final state = usedKey.currentState;
@@ -326,7 +377,12 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
       } catch (_) {}
       return null;
     }
-    return MermaidViewHandle(widget: widget, exportPng: doExport, exportPngBytes: doExportBytes);
+
+    return MermaidViewHandle(
+      widget: widget,
+      exportPng: doExport,
+      exportPngBytes: doExportBytes,
+    );
   }
 
   // Linux: downgrade to plain code block (no WebView, no export)
@@ -336,7 +392,12 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
 
   // Other platforms keep using webview_flutter (unchanged behavior).
   final usedKey = viewKey ?? GlobalKey<_MermaidInlineWebViewState>();
-  final widget = _MermaidInlineWebView(key: usedKey, code: code, dark: dark, themeVars: themeVars);
+  final widget = _MermaidInlineWebView(
+    key: usedKey,
+    code: code,
+    dark: dark,
+    themeVars: themeVars,
+  );
   Future<bool> doExport() async {
     try {
       final state = usedKey.currentState;
@@ -346,6 +407,7 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
     } catch (_) {}
     return false;
   }
+
   Future<Uint8List?> doExportBytes() async {
     try {
       final state = usedKey.currentState;
@@ -355,7 +417,12 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
     } catch (_) {}
     return null;
   }
-  return MermaidViewHandle(widget: widget, exportPng: doExport, exportPngBytes: doExportBytes);
+
+  return MermaidViewHandle(
+    widget: widget,
+    exportPng: doExport,
+    exportPngBytes: doExportBytes,
+  );
 }
 
 // (Linux-only view removed; Linux now falls back to code block via null handle.)
@@ -364,7 +431,12 @@ class _MermaidInlineWebView extends StatefulWidget {
   final String code;
   final bool dark;
   final Map<String, String>? themeVars;
-  const _MermaidInlineWebView({Key? key, required this.code, required this.dark, this.themeVars}) : super(key: key);
+  const _MermaidInlineWebView({
+    Key? key,
+    required this.code,
+    required this.dark,
+    this.themeVars,
+  }) : super(key: key);
 
   @override
   State<_MermaidInlineWebView> createState() => _MermaidInlineWebViewState();
@@ -387,26 +459,34 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
     } catch (_) {}
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel('HeightChannel', onMessageReceived: (JavaScriptMessage msg) {
-        final v = double.tryParse(msg.message);
-        if (v != null && mounted) {
-          // Debounce rapid height updates to avoid jank
-          _heightDebounce?.cancel();
-          _heightDebounce = Timer(const Duration(milliseconds: 60), () {
-            if (!mounted) return;
-            setState(() {
-              _height = max(120, v + 16);
+      ..addJavaScriptChannel(
+        'HeightChannel',
+        onMessageReceived: (JavaScriptMessage msg) {
+          final v = double.tryParse(msg.message);
+          if (v != null && mounted) {
+            // Debounce rapid height updates to avoid jank
+            _heightDebounce?.cancel();
+            _heightDebounce = Timer(const Duration(milliseconds: 60), () {
+              if (!mounted) return;
+              setState(() {
+                _height = max(120, v + 16);
+              });
+              try {
+                MermaidHeightCache.put(widget.code, _height);
+              } catch (_) {}
             });
-            try { MermaidHeightCache.put(widget.code, _height); } catch (_) {}
-          });
-        }
-      })
-      ..addJavaScriptChannel('ExportChannel', onMessageReceived: (JavaScriptMessage msg) {
-        if (_exportCompleter != null && !(_exportCompleter!.isCompleted)) {
-          final b64 = msg.message;
-          _exportCompleter!.complete(b64.isEmpty ? null : b64);
-        }
-      });
+          }
+        },
+      )
+      ..addJavaScriptChannel(
+        'ExportChannel',
+        onMessageReceived: (JavaScriptMessage msg) {
+          if (_exportCompleter != null && !(_exportCompleter!.isCompleted)) {
+            final b64 = msg.message;
+            _exportCompleter!.complete(b64.isEmpty ? null : b64);
+          }
+        },
+      );
     _loadHtml();
   }
 
@@ -442,13 +522,23 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
   Future<void> _loadHtml() async {
     // Load mermaid script from assets and inline it to avoid external requests.
     final mermaidJs = await rootBundle.loadString('assets/mermaid.min.js');
-    final html = _buildHtml(widget.code, widget.dark, mermaidJs, widget.themeVars);
+    final html = _buildHtml(
+      widget.code,
+      widget.dark,
+      mermaidJs,
+      widget.themeVars,
+    );
     await _controller.loadHtmlString(html);
     // Store latest theme signature for change detection
     _lastThemeVarsSig = _themeVarsSignature(widget.themeVars);
   }
 
-  String _buildHtml(String code, bool dark, String mermaidJs, Map<String, String>? themeVars) {
+  String _buildHtml(
+    String code,
+    bool dark,
+    String mermaidJs,
+    Map<String, String>? themeVars,
+  ) {
     final bg = dark ? '#111111' : '#ffffff';
     final fg = dark ? '#eaeaea' : '#222222';
     final escaped = code
@@ -458,7 +548,9 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
     // Build themeVariables JSON
     String themeVarsJson = '{}';
     if (themeVars != null && themeVars.isNotEmpty) {
-      final entries = themeVars.entries.map((e) => '"${e.key}": "${e.value}"').join(',');
+      final entries = themeVars.entries
+          .map((e) => '"${e.key}": "${e.value}"')
+          .join(',');
       themeVarsJson = '{' + entries + '}';
     }
     return '''
@@ -561,12 +653,15 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
     try {
       _exportCompleter = Completer<String?>();
       await _controller.runJavaScript('exportSvgToPng();');
-      final b64 = await _exportCompleter!.future.timeout(const Duration(seconds: 8));
+      final b64 = await _exportCompleter!.future.timeout(
+        const Duration(seconds: 8),
+      );
       if (b64 == null || b64.isEmpty) return false;
       final bytes = base64Decode(b64);
       // Desktop: Save As dialog (use existing file_picker, same as image viewer)
       if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        final suggested = 'mermaid_${DateTime.now().millisecondsSinceEpoch}.png';
+        final suggested =
+            'mermaid_${DateTime.now().millisecondsSinceEpoch}.png';
         final savePath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save PNG',
           fileName: suggested,
@@ -586,7 +681,8 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
         name: name,
       );
       if (result is Map) {
-        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+        final isSuccess =
+            result['isSuccess'] == true || result['isSuccess'] == 1;
         final filePath = result['filePath'] ?? result['file_path'];
         return isSuccess || (filePath is String && filePath.isNotEmpty);
       }
@@ -600,7 +696,9 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
 
   @override
   void dispose() {
-    try { _heightDebounce?.cancel(); } catch (_) {}
+    try {
+      _heightDebounce?.cancel();
+    } catch (_) {}
     _heightDebounce = null;
     super.dispose();
   }
@@ -609,7 +707,9 @@ class _MermaidInlineWebViewState extends State<_MermaidInlineWebView> {
     try {
       _exportCompleter = Completer<String?>();
       await _controller.runJavaScript('exportSvgToPng();');
-      final b64 = await _exportCompleter!.future.timeout(const Duration(seconds: 8));
+      final b64 = await _exportCompleter!.future.timeout(
+        const Duration(seconds: 8),
+      );
       if (b64 == null || b64.isEmpty) return null;
       final bytes = base64Decode(b64);
       return bytes;

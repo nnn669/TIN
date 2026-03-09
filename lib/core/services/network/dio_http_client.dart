@@ -28,19 +28,17 @@ class NetworkProxyConfig {
 }
 
 class DioHttpClient extends http.BaseClient {
-  DioHttpClient({
-    NetworkProxyConfig? proxy,
-    CancelToken? cancelToken,
-  })  : _proxy = proxy,
-        _cancelToken = cancelToken ?? CancelToken(),
-        _dio = Dio(
-          BaseOptions(
-            connectTimeout: null,
-            sendTimeout: null,
-            receiveTimeout: null,
-            validateStatus: (_) => true,
-          ),
-        ) {
+  DioHttpClient({NetworkProxyConfig? proxy, CancelToken? cancelToken})
+    : _proxy = proxy,
+      _cancelToken = cancelToken ?? CancelToken(),
+      _dio = Dio(
+        BaseOptions(
+          connectTimeout: null,
+          sendTimeout: null,
+          receiveTimeout: null,
+          validateStatus: (_) => true,
+        ),
+      ) {
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
@@ -104,12 +102,18 @@ class DioHttpClient extends http.BaseClient {
     if (RequestLogger.enabled) {
       RequestLogger.logLine('[REQ $reqId] $method $uri');
       if (reqHeaders.isNotEmpty) {
-        RequestLogger.logLine('[REQ $reqId] headers=${RequestLogger.encodeObject(reqHeaders)}');
+        RequestLogger.logLine(
+          '[REQ $reqId] headers=${RequestLogger.encodeObject(reqHeaders)}',
+        );
       }
       if (bodyBytes.isNotEmpty) {
         final decoded = RequestLogger.safeDecodeUtf8(bodyBytes);
-        final bodyText = decoded.isNotEmpty ? decoded : 'base64:${base64Encode(bodyBytes)}';
-        RequestLogger.logLine('[REQ $reqId] body=${RequestLogger.escape(bodyText)}');
+        final bodyText = decoded.isNotEmpty
+            ? decoded
+            : 'base64:${base64Encode(bodyBytes)}';
+        RequestLogger.logLine(
+          '[REQ $reqId] body=${RequestLogger.escape(bodyText)}',
+        );
       }
     }
 
@@ -138,12 +142,17 @@ class DioHttpClient extends http.BaseClient {
       if (RequestLogger.enabled) {
         RequestLogger.logLine('[RES $reqId] status=$statusCode');
         if (headers.isNotEmpty) {
-          RequestLogger.logLine('[RES $reqId] headers=${RequestLogger.encodeObject(headers)}');
+          RequestLogger.logLine(
+            '[RES $reqId] headers=${RequestLogger.encodeObject(headers)}',
+          );
         }
       }
 
       final body = resp.data!;
-      final int? contentLength = (body.contentLength != null && body.contentLength! >= 0) ? body.contentLength : null;
+      final int? contentLength =
+          (body.contentLength != null && body.contentLength! >= 0)
+          ? body.contentLength
+          : null;
       StreamSubscription<Uint8List>? sub;
 
       final controller = StreamController<List<int>>(sync: true);
@@ -154,13 +163,17 @@ class DioHttpClient extends http.BaseClient {
             if (RequestLogger.enabled && RequestLogger.saveOutput) {
               final s = RequestLogger.safeDecodeUtf8(chunk);
               if (s.isNotEmpty) {
-                RequestLogger.logLine('[RES $reqId] chunk=${RequestLogger.escape(s)}');
+                RequestLogger.logLine(
+                  '[RES $reqId] chunk=${RequestLogger.escape(s)}',
+                );
               }
             }
           },
           onError: (e, st) {
             if (RequestLogger.enabled) {
-              RequestLogger.logLine('[RES $reqId] error=${RequestLogger.escape(e.toString())}');
+              RequestLogger.logLine(
+                '[RES $reqId] error=${RequestLogger.escape(e.toString())}',
+              );
             }
             controller.addError(e, st);
             controller.close();
@@ -198,12 +211,16 @@ class DioHttpClient extends http.BaseClient {
       );
     } on DioException catch (e) {
       if (RequestLogger.enabled) {
-        RequestLogger.logLine('[RES $reqId] dio_error=${RequestLogger.escape(e.toString())}');
+        RequestLogger.logLine(
+          '[RES $reqId] dio_error=${RequestLogger.escape(e.toString())}',
+        );
       }
       throw http.ClientException(e.toString(), uri);
     } catch (e) {
       if (RequestLogger.enabled) {
-        RequestLogger.logLine('[RES $reqId] error=${RequestLogger.escape(e.toString())}');
+        RequestLogger.logLine(
+          '[RES $reqId] error=${RequestLogger.escape(e.toString())}',
+        );
       }
       throw http.ClientException(e.toString(), uri);
     }

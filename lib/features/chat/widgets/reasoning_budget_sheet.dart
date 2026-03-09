@@ -9,7 +9,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/services/haptics.dart';
 
-Future<void> showReasoningBudgetSheet(BuildContext context, {String? modelProvider, String? modelId}) async {
+Future<void> showReasoningBudgetSheet(
+  BuildContext context, {
+  String? modelProvider,
+  String? modelId,
+}) async {
   await showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -17,7 +21,8 @@ Future<void> showReasoningBudgetSheet(BuildContext context, {String? modelProvid
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) => _ReasoningBudgetSheet(modelProvider: modelProvider, modelId: modelId),
+    builder: (ctx) =>
+        _ReasoningBudgetSheet(modelProvider: modelProvider, modelId: modelId),
   );
 }
 
@@ -85,7 +90,14 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     }
   }
 
-  Widget _tile(IconData icon, String title, int value, {String? subtitle, bool deepthink = false, required int selectedBucket}) {
+  Widget _tile(
+    IconData icon,
+    String title,
+    int value, {
+    String? subtitle,
+    bool deepthink = false,
+    required int selectedBucket,
+  }) {
     final cs = Theme.of(context).colorScheme;
     final active = selectedBucket == value;
     final Color iconColor = active ? cs.primary : cs.onSurface.withOpacity(0.7);
@@ -118,12 +130,19 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: onColor),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: onColor,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (active) Icon(Lucide.Check, size: 18, color: cs.primary) else const SizedBox(width: 18),
+              if (active)
+                Icon(Lucide.Check, size: 18, color: cs.primary)
+              else
+                const SizedBox(width: 18),
             ],
           ),
         ),
@@ -133,10 +152,17 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
 
   bool _showXhighOption(SettingsProvider settings) {
     final assistant = context.read<AssistantProvider>().currentAssistant;
-    final currentProvider = widget.modelProvider ?? assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final currentModelId = widget.modelId ?? assistant?.chatModelId ?? settings.currentModelId;
+    final currentProvider =
+        widget.modelProvider ??
+        assistant?.chatModelProvider ??
+        settings.currentModelProvider;
+    final currentModelId =
+        widget.modelId ?? assistant?.chatModelId ?? settings.currentModelId;
     if (currentProvider == null || currentModelId == null) return false;
-    return settings.supportsOpenAIXhighReasoning(currentProvider, currentModelId);
+    return settings.supportsOpenAIXhighReasoning(
+      currentProvider,
+      currentModelId,
+    );
   }
 
   @override
@@ -152,7 +178,9 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
           child: SingleChildScrollView(
@@ -161,19 +189,61 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 12),
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
                 const SizedBox(height: 6),
                 // No title per iOS style; keep content close to handle
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Column(
                     children: [
-                      _tile(Lucide.X, l10n.reasoningBudgetSheetOff, 0, selectedBucket: selectedBucket),
-                      _tile(Lucide.Settings2, l10n.reasoningBudgetSheetAuto, -1, selectedBucket: selectedBucket),
-                      _tile(Lucide.Brain, l10n.reasoningBudgetSheetLight, 1024, deepthink: true, selectedBucket: selectedBucket),
-                      _tile(Lucide.Brain, l10n.reasoningBudgetSheetMedium, 16000, deepthink: true, selectedBucket: selectedBucket),
-                      _tile(Lucide.Brain, l10n.reasoningBudgetSheetHeavy, 32000, deepthink: true, selectedBucket: selectedBucket),
-                      if (showXhigh) _tile(Lucide.Brain, l10n.reasoningBudgetSheetXhigh, 64000, deepthink: true, selectedBucket: selectedBucket),
+                      _tile(
+                        Lucide.X,
+                        l10n.reasoningBudgetSheetOff,
+                        0,
+                        selectedBucket: selectedBucket,
+                      ),
+                      _tile(
+                        Lucide.Settings2,
+                        l10n.reasoningBudgetSheetAuto,
+                        -1,
+                        selectedBucket: selectedBucket,
+                      ),
+                      _tile(
+                        Lucide.Brain,
+                        l10n.reasoningBudgetSheetLight,
+                        1024,
+                        deepthink: true,
+                        selectedBucket: selectedBucket,
+                      ),
+                      _tile(
+                        Lucide.Brain,
+                        l10n.reasoningBudgetSheetMedium,
+                        16000,
+                        deepthink: true,
+                        selectedBucket: selectedBucket,
+                      ),
+                      _tile(
+                        Lucide.Brain,
+                        l10n.reasoningBudgetSheetHeavy,
+                        32000,
+                        deepthink: true,
+                        selectedBucket: selectedBucket,
+                      ),
+                      if (showXhigh)
+                        _tile(
+                          Lucide.Brain,
+                          l10n.reasoningBudgetSheetXhigh,
+                          64000,
+                          deepthink: true,
+                          selectedBucket: selectedBucket,
+                        ),
                     ],
                   ),
                 ),

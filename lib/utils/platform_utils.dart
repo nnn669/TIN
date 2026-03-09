@@ -1,6 +1,7 @@
 import 'dart:io' show Platform, exit;
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:restart_app/restart_app.dart';
 
 abstract final class PlatformUtils {
@@ -19,7 +20,6 @@ abstract final class PlatformUtils {
   static bool get isMobileTarget =>
       defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS;
-
 
   static bool get isMacOS => Platform.isMacOS;
 

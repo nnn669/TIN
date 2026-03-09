@@ -2,7 +2,7 @@ import 'dart:convert';
 
 enum RestoreMode {
   overwrite, // 完全覆盖：清空本地后恢复
-  merge,     // 增量合并：智能去重
+  merge, // 增量合并：智能去重
 }
 
 class WebDavConfig {
@@ -41,13 +41,13 @@ class WebDavConfig {
   }
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'username': username,
-        'password': password,
-        'path': path,
-        'includeChats': includeChats,
-        'includeFiles': includeFiles,
-      };
+    'url': url,
+    'username': username,
+    'password': password,
+    'path': path,
+    'includeChats': includeChats,
+    'includeFiles': includeFiles,
+  };
 
   static WebDavConfig fromJson(Map<String, dynamic> json) {
     return WebDavConfig(
@@ -75,14 +75,17 @@ class WebDavConfig {
 }
 
 class S3Config {
-  final String endpoint; // e.g. https://s3.amazonaws.com or https://<accountid>.r2.cloudflarestorage.com
-  final String region; // e.g. us-east-1 / auto (for some S3-compatible providers)
+  final String
+  endpoint; // e.g. https://s3.amazonaws.com or https://<accountid>.r2.cloudflarestorage.com
+  final String
+  region; // e.g. us-east-1 / auto (for some S3-compatible providers)
   final String bucket;
   final String accessKeyId;
   final String secretAccessKey;
   final String sessionToken; // optional
   final String prefix; // object key prefix/folder
-  final bool pathStyle; // safer for custom endpoints (no bucket subdomain TLS mismatch)
+  final bool
+  pathStyle; // safer for custom endpoints (no bucket subdomain TLS mismatch)
   final bool includeChats;
   final bool includeFiles;
 
@@ -126,17 +129,17 @@ class S3Config {
   }
 
   Map<String, dynamic> toJson() => {
-        'endpoint': endpoint,
-        'region': region,
-        'bucket': bucket,
-        'accessKeyId': accessKeyId,
-        'secretAccessKey': secretAccessKey,
-        'sessionToken': sessionToken,
-        'prefix': prefix,
-        'pathStyle': pathStyle,
-        'includeChats': includeChats,
-        'includeFiles': includeFiles,
-      };
+    'endpoint': endpoint,
+    'region': region,
+    'bucket': bucket,
+    'accessKeyId': accessKeyId,
+    'secretAccessKey': secretAccessKey,
+    'sessionToken': sessionToken,
+    'prefix': prefix,
+    'pathStyle': pathStyle,
+    'includeChats': includeChats,
+    'includeFiles': includeFiles,
+  };
 
   static S3Config fromJson(Map<String, dynamic> json) {
     return S3Config(

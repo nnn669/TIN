@@ -8,7 +8,10 @@ class AssistantRegex {
     this.visualOnly = false,
     this.replaceOnly = false,
     this.enabled = true,
-  }) : assert(!(visualOnly && replaceOnly), 'visualOnly and replaceOnly cannot both be true');
+  }) : assert(
+         !(visualOnly && replaceOnly),
+         'visualOnly and replaceOnly cannot both be true',
+       );
 
   final String id;
   final String name;
@@ -42,15 +45,15 @@ class AssistantRegex {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'pattern': pattern,
-        'replacement': replacement,
-        'scopes': scopes.map((e) => e.name).toList(),
-        'visualOnly': visualOnly,
-        'replaceOnly': replaceOnly,
-        'enabled': enabled,
-      };
+    'id': id,
+    'name': name,
+    'pattern': pattern,
+    'replacement': replacement,
+    'scopes': scopes.map((e) => e.name).toList(),
+    'visualOnly': visualOnly,
+    'replaceOnly': replaceOnly,
+    'enabled': enabled,
+  };
 
   static AssistantRegex fromJson(Map<String, dynamic> json) {
     final rawScopes = json['scopes'];
@@ -61,12 +64,16 @@ class AssistantRegex {
           .whereType<AssistantRegexScope>()
           .toList();
     } else if (rawScopes is String && rawScopes.isNotEmpty) {
-      scopes = <AssistantRegexScope>[AssistantRegexScopeX.fromName(rawScopes) ?? AssistantRegexScope.user];
+      scopes = <AssistantRegexScope>[
+        AssistantRegexScopeX.fromName(rawScopes) ?? AssistantRegexScope.user,
+      ];
     }
 
     final visualOnly = json['visualOnly'] as bool? ?? false;
     final replaceOnly = json['replaceOnly'] as bool? ?? false;
-    final normalizedReplaceOnly = (visualOnly && replaceOnly) ? false : replaceOnly;
+    final normalizedReplaceOnly = (visualOnly && replaceOnly)
+        ? false
+        : replaceOnly;
 
     return AssistantRegex(
       id: (json['id'] as String?) ?? '',

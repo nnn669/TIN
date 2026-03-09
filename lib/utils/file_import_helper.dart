@@ -24,10 +24,12 @@ class FileImportHelper {
       }
 
       // XFile.name is the preferred filename
-      final String originalName = xFile.name.isNotEmpty 
-          ? xFile.name 
-          : (xFile.path.isNotEmpty ? p.basename(xFile.path) : DateTime.now().millisecondsSinceEpoch.toString());
-      
+      final String originalName = xFile.name.isNotEmpty
+          ? xFile.name
+          : (xFile.path.isNotEmpty
+                ? p.basename(xFile.path)
+                : DateTime.now().millisecondsSinceEpoch.toString());
+
       final File sourceFile = File(xFile.path);
       FileStat? srcStat;
       if (xFile.path.isNotEmpty) {
@@ -44,14 +46,27 @@ class FileImportHelper {
           destStat = await dest.stat();
         } catch (_) {}
 
-        final srcModifiedSec = srcStat == null ? null : (srcStat.modified.millisecondsSinceEpoch ~/ 1000);
-        final destModifiedSec = destStat == null ? null : (destStat.modified.millisecondsSinceEpoch ~/ 1000);
-        
-        final sameSize = srcStat != null && destStat != null && srcStat.size == destStat.size;
-        final sameModified = srcModifiedSec != null && destModifiedSec != null && srcModifiedSec == destModifiedSec;
+        final srcModifiedSec = srcStat == null
+            ? null
+            : (srcStat.modified.millisecondsSinceEpoch ~/ 1000);
+        final destModifiedSec = destStat == null
+            ? null
+            : (destStat.modified.millisecondsSinceEpoch ~/ 1000);
+
+        final sameSize =
+            srcStat != null &&
+            destStat != null &&
+            srcStat.size == destStat.size;
+        final sameModified =
+            srcModifiedSec != null &&
+            destModifiedSec != null &&
+            srcModifiedSec == destModifiedSec;
 
         if (sameSize && sameModified) {
-          final useExisting = await FileDuplicateDialog.show(context, originalName);
+          final useExisting = await FileDuplicateDialog.show(
+            context,
+            originalName,
+          );
           if (useExisting) {
             return dest.path;
           }
@@ -71,14 +86,14 @@ class FileImportHelper {
 
       // Perform copy
       await dest.writeAsBytes(await xFile.readAsBytes());
-      
+
       // Keep modified time to help cache keying
       if (srcStat != null) {
         try {
           await dest.setLastModified(srcStat.modified);
         } catch (_) {}
       }
-      
+
       return dest.path;
     } catch (_) {
       return null;

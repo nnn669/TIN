@@ -20,7 +20,8 @@ class AnimatedIconSwap extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: duration,
-      transitionBuilder: (child, anim) => FadeScaleTransition(animation: anim, child: child),
+      transitionBuilder: (child, anim) =>
+          FadeScaleTransition(animation: anim, child: child),
       child: child,
     );
   }
@@ -48,26 +49,47 @@ class AnimatedTextSwap extends StatelessWidget {
       layoutBuilder: (currentChild, previousChildren) {
         return Stack(
           alignment: Alignment.centerLeft,
-          children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
         );
       },
       transitionBuilder: (child, anim) {
-        final offset = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(anim);
+        final offset = Tween<Offset>(
+          begin: const Offset(0, 0.15),
+          end: Offset.zero,
+        ).animate(anim);
         return FadeTransition(
           opacity: anim,
           child: SlideTransition(position: offset, child: child),
         );
       },
-      child: Text(text, key: ValueKey(text), style: style, maxLines: maxLines, overflow: overflow),
+      child: Text(
+        text,
+        key: ValueKey(text),
+        style: style,
+        maxLines: maxLines,
+        overflow: overflow,
+      ),
     );
   }
 }
 
 // Handy appear animation using flutter_animate (fade + slight Y move)
 extension Appear on Widget {
-  Widget appear({Duration duration = kAnim, double dy = 0.02, double begin = 0}) {
+  Widget appear({
+    Duration duration = kAnim,
+    double dy = 0.02,
+    double begin = 0,
+  }) {
     return animate()
         .fadeIn(duration: duration, begin: begin)
-        .moveY(begin: dy, end: 0, duration: duration, curve: Curves.easeOutCubic);
+        .moveY(
+          begin: dy,
+          end: 0,
+          duration: duration,
+          curve: Curves.easeOutCubic,
+        );
   }
 }

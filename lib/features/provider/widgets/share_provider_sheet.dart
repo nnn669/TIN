@@ -38,10 +38,15 @@ String encodeProviderConfig(ProviderConfig cfg) {
   return 'ai-provider:v1:$b64';
 }
 
-Future<void> showShareProviderSheet(BuildContext context, String providerKey) async {
+Future<void> showShareProviderSheet(
+  BuildContext context,
+  String providerKey,
+) async {
   final cs = Theme.of(context).colorScheme;
   final settings = context.read<SettingsProvider>();
-  final cfg = settings.providerConfigs[providerKey] ?? settings.getProviderConfig(providerKey);
+  final cfg =
+      settings.providerConfigs[providerKey] ??
+      settings.getProviderConfig(providerKey);
   final code = encodeProviderConfig(cfg);
 
   await showModalBottomSheet<void>(
@@ -56,14 +61,22 @@ Future<void> showShareProviderSheet(BuildContext context, String providerKey) as
       Rect shareAnchorRect(BuildContext bctx) {
         try {
           final ro = bctx.findRenderObject();
-          if (ro is RenderBox && ro.hasSize && ro.size.width > 0 && ro.size.height > 0) {
+          if (ro is RenderBox &&
+              ro.hasSize &&
+              ro.size.width > 0 &&
+              ro.size.height > 0) {
             final origin = ro.localToGlobal(Offset.zero);
             return origin & ro.size;
           }
         } catch (_) {}
         final size = MediaQuery.of(bctx).size;
-        return Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
+        return Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: 1,
+          height: 1,
+        );
       }
+
       return SafeArea(
         top: false,
         child: DraggableScrollableSheet(
@@ -77,10 +90,23 @@ Future<void> showShareProviderSheet(BuildContext context, String providerKey) as
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(l10n.shareProviderSheetTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(
+                  l10n.shareProviderSheetTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Text(l10n.shareProviderSheetDescription),
                 const SizedBox(height: 10),
@@ -95,7 +121,9 @@ Future<void> showShareProviderSheet(BuildContext context, String providerKey) as
                             // Always use white background to ensure visibility in dark mode
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+                            border: Border.all(
+                              color: cs.outlineVariant.withOpacity(0.2),
+                            ),
                           ),
                           child: PrettyQr(
                             data: code,
@@ -137,7 +165,11 @@ Future<void> showShareProviderSheet(BuildContext context, String providerKey) as
                         label: l10n.shareProviderSheetShareButton,
                         onTap: () async {
                           final rect = shareAnchorRect(ctx);
-                          await Share.share(code, subject: 'AI Provider', sharePositionOrigin: rect);
+                          await Share.share(
+                            code,
+                            subject: 'AI Provider',
+                            sharePositionOrigin: rect,
+                          );
                         },
                       ),
                     ),

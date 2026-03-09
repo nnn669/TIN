@@ -13,4 +13,3 @@ class DesktopChatPage extends StatelessWidget {
     return const HomePage();
   }
 }
-

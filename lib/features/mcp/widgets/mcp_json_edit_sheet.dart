@@ -53,7 +53,11 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
       jsonDecode(_controller.text);
     } catch (e) {
       setState(() => _error = e.toString());
-      showAppSnackBar(context, message: l10n.mcpJsonEditParseFailed, type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: l10n.mcpJsonEditParseFailed,
+        type: NotificationType.warning,
+      );
       return;
     }
     try {
@@ -64,7 +68,11 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
     } catch (e) {
       setState(() => _error = e.toString());
       if (!mounted) return;
-      showAppSnackBar(context, message: e.toString(), type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: e.toString(),
+        type: NotificationType.warning,
+      );
     }
   }
 
@@ -87,6 +95,7 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
       }
       return fam;
     }
+
     final codeFontFamily = resolveCodeFont();
     final media = MediaQuery.of(context);
     final height = media.size.height * 0.9;
@@ -118,15 +127,25 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
                   IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: Icon(Lucide.X, size: 20, color: cs.onSurface),
-                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
                   ),
                   const Spacer(),
-                  Text(AppLocalizations.of(context)!.mcpJsonEditTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(
+                    AppLocalizations.of(context)!.mcpJsonEditTitle,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const Spacer(),
                   IconButton(
                     onPressed: _save,
                     icon: Icon(Lucide.Check, size: 20, color: cs.primary),
-                    tooltip: AppLocalizations.of(context)!.mcpServerEditSheetSave,
+                    tooltip: AppLocalizations.of(
+                      context,
+                    )!.mcpServerEditSheetSave,
                   ),
                 ],
               ),
@@ -143,7 +162,9 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
                   decoration: BoxDecoration(
                     color: isDark ? Colors.white10 : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+                    border: Border.all(
+                      color: cs.outlineVariant.withOpacity(0.3),
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -151,7 +172,11 @@ class _McpJsonEditSheetState extends State<_McpJsonEditSheet> {
                       controller: _controller,
                       keyboardType: TextInputType.multiline,
                       maxLines: null,
-                      style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5, height: 1.4),
+                      style: TextStyle(
+                        fontFamily: codeFontFamily,
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
                       decoration: const InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,

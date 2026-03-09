@@ -23,7 +23,10 @@ class StorageUsageStats {
   const StorageUsageStats({required this.fileCount, required this.bytes});
 
   StorageUsageStats operator +(StorageUsageStats other) {
-    return StorageUsageStats(fileCount: fileCount + other.fileCount, bytes: bytes + other.bytes);
+    return StorageUsageStats(
+      fileCount: fileCount + other.fileCount,
+      bytes: bytes + other.bytes,
+    );
   }
 }
 
@@ -31,7 +34,11 @@ class StorageUsageSubcategory {
   final String id;
   final StorageUsageStats stats;
   final String? path;
-  const StorageUsageSubcategory({required this.id, required this.stats, this.path});
+  const StorageUsageSubcategory({
+    required this.id,
+    required this.stats,
+    this.path,
+  });
 }
 
 class StorageUsageCategory {
@@ -107,9 +114,7 @@ abstract final class StorageUsageService {
       'tool_events_v1': _MutableStats(),
     };
 
-    final assistantSubs = <String, _MutableStats>{
-      'avatars': _MutableStats(),
-    };
+    final assistantSubs = <String, _MutableStats>{'avatars': _MutableStats()};
 
     final cacheSubs = <String, _MutableStats>{
       'avatar_cache': _MutableStats(),
@@ -133,7 +138,10 @@ abstract final class StorageUsageService {
         clearable: const StorageUsageStats(fileCount: 0, bytes: 0),
         categories: [
           for (final k in _categoryOrder)
-            StorageUsageCategory(key: k, stats: const StorageUsageStats(fileCount: 0, bytes: 0)),
+            StorageUsageCategory(
+              key: k,
+              stats: const StorageUsageStats(fileCount: 0, bytes: 0),
+            ),
         ],
       );
     }
@@ -229,7 +237,10 @@ abstract final class StorageUsageService {
     // Platform cache directory (e.g. Android /data/user/0/<package>/cache).
     try {
       if (await systemCacheDir.exists()) {
-        await for (final ent in systemCacheDir.list(recursive: true, followLinks: false)) {
+        await for (final ent in systemCacheDir.list(
+          recursive: true,
+          followLinks: false,
+        )) {
           if (ent is! File) continue;
           int bytes = 0;
           try {
@@ -246,8 +257,12 @@ abstract final class StorageUsageService {
     } catch (_) {}
 
     final clearable = StorageUsageStats(
-      fileCount: byCat[StorageUsageCategoryKey.cache]!.fileCount + byCat[StorageUsageCategoryKey.logs]!.fileCount,
-      bytes: byCat[StorageUsageCategoryKey.cache]!.bytes + byCat[StorageUsageCategoryKey.logs]!.bytes,
+      fileCount:
+          byCat[StorageUsageCategoryKey.cache]!.fileCount +
+          byCat[StorageUsageCategoryKey.logs]!.fileCount,
+      bytes:
+          byCat[StorageUsageCategoryKey.cache]!.bytes +
+          byCat[StorageUsageCategoryKey.logs]!.bytes,
     );
 
     final categories = <StorageUsageCategory>[
@@ -265,40 +280,78 @@ abstract final class StorageUsageService {
         subcategories: [
           for (final e in chatSubs.entries)
             if (e.value.bytes > 0 || e.value.fileCount > 0)
-              StorageUsageSubcategory(id: e.key, stats: e.value.toStats(), path: p.join(root.path, '${e.key}.hive')),
+              StorageUsageSubcategory(
+                id: e.key,
+                stats: e.value.toStats(),
+                path: p.join(root.path, '${e.key}.hive'),
+              ),
         ],
       ),
       StorageUsageCategory(
         key: StorageUsageCategoryKey.assistantData,
         stats: byCat[StorageUsageCategoryKey.assistantData]!.toStats(),
         subcategories: [
-          StorageUsageSubcategory(id: 'avatars', stats: assistantSubs['avatars']!.toStats(), path: avatarsDir.path),
+          StorageUsageSubcategory(
+            id: 'avatars',
+            stats: assistantSubs['avatars']!.toStats(),
+            path: avatarsDir.path,
+          ),
         ],
       ),
       StorageUsageCategory(
         key: StorageUsageCategoryKey.cache,
         stats: byCat[StorageUsageCategoryKey.cache]!.toStats(),
         subcategories: [
-          StorageUsageSubcategory(id: 'avatar_cache', stats: cacheSubs['avatar_cache']!.toStats(), path: avatarCacheDir.path),
-          StorageUsageSubcategory(id: 'other_cache', stats: cacheSubs['other_cache']!.toStats(), path: cacheDir.path),
-          if (cacheSubs['system_cache']!.bytes > 0 || cacheSubs['system_cache']!.fileCount > 0)
-            StorageUsageSubcategory(id: 'system_cache', stats: cacheSubs['system_cache']!.toStats(), path: systemCacheDir.path),
+          StorageUsageSubcategory(
+            id: 'avatar_cache',
+            stats: cacheSubs['avatar_cache']!.toStats(),
+            path: avatarCacheDir.path,
+          ),
+          StorageUsageSubcategory(
+            id: 'other_cache',
+            stats: cacheSubs['other_cache']!.toStats(),
+            path: cacheDir.path,
+          ),
+          if (cacheSubs['system_cache']!.bytes > 0 ||
+              cacheSubs['system_cache']!.fileCount > 0)
+            StorageUsageSubcategory(
+              id: 'system_cache',
+              stats: cacheSubs['system_cache']!.toStats(),
+              path: systemCacheDir.path,
+            ),
         ],
       ),
       StorageUsageCategory(
         key: StorageUsageCategoryKey.logs,
         stats: byCat[StorageUsageCategoryKey.logs]!.toStats(),
         subcategories: [
-          StorageUsageSubcategory(id: 'flutter_logs', stats: logsSubs['flutter_logs']!.toStats(), path: logsDir.path),
-          StorageUsageSubcategory(id: 'request_logs', stats: logsSubs['request_logs']!.toStats(), path: logsDir.path),
-          if (logsSubs['other_logs']!.bytes > 0 || logsSubs['other_logs']!.fileCount > 0)
-            StorageUsageSubcategory(id: 'other_logs', stats: logsSubs['other_logs']!.toStats(), path: logsDir.path),
+          StorageUsageSubcategory(
+            id: 'flutter_logs',
+            stats: logsSubs['flutter_logs']!.toStats(),
+            path: logsDir.path,
+          ),
+          StorageUsageSubcategory(
+            id: 'request_logs',
+            stats: logsSubs['request_logs']!.toStats(),
+            path: logsDir.path,
+          ),
+          if (logsSubs['other_logs']!.bytes > 0 ||
+              logsSubs['other_logs']!.fileCount > 0)
+            StorageUsageSubcategory(
+              id: 'other_logs',
+              stats: logsSubs['other_logs']!.toStats(),
+              path: logsDir.path,
+            ),
         ],
       ),
     ];
 
     // Ensure consistent ordering.
-    categories.sort((a, b) => _categoryOrder.indexOf(a.key).compareTo(_categoryOrder.indexOf(b.key)));
+    categories.sort(
+      (a, b) => _categoryOrder
+          .indexOf(a.key)
+          .compareTo(_categoryOrder.indexOf(b.key)),
+    );
 
     return StorageUsageReport(
       totalBytes: totalBytes,
@@ -329,9 +382,14 @@ abstract final class StorageUsageService {
     final avatarCacheDir = await AppDirectories.getAvatarCacheDirectory();
     if (!await cacheDir.exists()) return;
 
-    final String avatarAbs = p.normalize(Directory(avatarCacheDir.path).absolute.path);
+    final String avatarAbs = p.normalize(
+      Directory(avatarCacheDir.path).absolute.path,
+    );
     try {
-      await for (final ent in cacheDir.list(recursive: false, followLinks: false)) {
+      await for (final ent in cacheDir.list(
+        recursive: false,
+        followLinks: false,
+      )) {
         try {
           final entAbs = p.normalize(p.absolute(ent.path));
           if (p.equals(entAbs, avatarAbs)) continue;
@@ -373,11 +431,17 @@ abstract final class StorageUsageService {
     }
   }
 
-  static Future<List<StorageFileEntry>> listUploadEntries({required bool images}) async {
+  static Future<List<StorageFileEntry>> listUploadEntries({
+    required bool images,
+  }) async {
     final dir = await AppDirectories.getUploadDirectory();
     final imagesDir = await AppDirectories.getImagesDirectory();
     final out = <StorageFileEntry>[];
-    Future<void> addFromDir(Directory d, {required bool includeImages, required bool includeNonImages}) async {
+    Future<void> addFromDir(
+      Directory d, {
+      required bool includeImages,
+      required bool includeNonImages,
+    }) async {
       if (!await d.exists()) return;
       try {
         await for (final ent in d.list(recursive: true, followLinks: false)) {
@@ -397,12 +461,20 @@ abstract final class StorageUsageService {
               bytes = await ent.length();
             } catch (_) {}
           }
-          out.add(StorageFileEntry(path: ent.path, name: name, bytes: bytes, modifiedAt: modifiedAt));
+          out.add(
+            StorageFileEntry(
+              path: ent.path,
+              name: name,
+              bytes: bytes,
+              modifiedAt: modifiedAt,
+            ),
+          );
         }
       } catch (_) {
         // Ignore listing errors and return partial results.
       }
     }
+
     // Chat attachments live under upload/. Inline/generated images live under images/.
     await addFromDir(dir, includeImages: images, includeNonImages: !images);
     if (images) {
@@ -412,7 +484,10 @@ abstract final class StorageUsageService {
     return out;
   }
 
-  static Future<int> deleteUploadFiles(Iterable<String> paths, {required bool images}) async {
+  static Future<int> deleteUploadFiles(
+    Iterable<String> paths, {
+    required bool images,
+  }) async {
     final dir = await AppDirectories.getUploadDirectory();
     final imagesDir = await AppDirectories.getImagesDirectory();
     final roots = <String>[
@@ -423,7 +498,9 @@ abstract final class StorageUsageService {
     for (final raw in paths) {
       try {
         final abs = p.normalize(File(raw).absolute.path);
-        final allowed = roots.any((root) => p.isWithin(root, abs) || abs == root);
+        final allowed = roots.any(
+          (root) => p.isWithin(root, abs) || abs == root,
+        );
         if (!allowed) continue;
         final f = File(abs);
         if (await f.exists()) {
@@ -484,7 +561,8 @@ class _MutableStats {
     bytes += b;
   }
 
-  StorageUsageStats toStats() => StorageUsageStats(fileCount: fileCount, bytes: bytes);
+  StorageUsageStats toStats() =>
+      StorageUsageStats(fileCount: fileCount, bytes: bytes);
 }
 
 const List<StorageUsageCategoryKey> _categoryOrder = <StorageUsageCategoryKey>[

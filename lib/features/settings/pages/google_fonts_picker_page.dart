@@ -28,7 +28,8 @@ class _GoogleFontsPickerPageState extends State<GoogleFontsPickerPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final allFonts = GoogleFonts.asMap().keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final allFonts = GoogleFonts.asMap().keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -47,11 +48,19 @@ class _GoogleFontsPickerPageState extends State<GoogleFontsPickerPage> {
                 hintText: l10n.fontPickerFilterHint,
                 isDense: true,
                 filled: true,
-                fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white10
+                    : Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.28), width: 0.8),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withOpacity(0.28),
+                    width: 0.8,
+                  ),
                 ),
               ),
               onChanged: (_) => setState(() {}),
@@ -64,7 +73,10 @@ class _GoogleFontsPickerPageState extends State<GoogleFontsPickerPage> {
                 final fam = _filtered(allFonts)[i];
                 return ListTile(
                   title: Text(fam),
-                  trailing: Text('Aa字', style: GoogleFonts.getFont(fam, fontSize: 18)),
+                  trailing: Text(
+                    'Aa字',
+                    style: GoogleFonts.getFont(fam, fontSize: 18),
+                  ),
                   onTap: () => Navigator.of(context).pop(fam),
                 );
               },
@@ -81,4 +93,3 @@ class _GoogleFontsPickerPageState extends State<GoogleFontsPickerPage> {
     return all.where((e) => e.toLowerCase().contains(q)).toList();
   }
 }
-

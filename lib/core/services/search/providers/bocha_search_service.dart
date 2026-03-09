@@ -11,7 +11,10 @@ class BochaSearchService extends SearchService<BochaOptions> {
   @override
   Widget description(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Text(l10n.searchProviderBochaDescription, style: const TextStyle(fontSize: 12));
+    return Text(
+      l10n.searchProviderBochaDescription,
+      style: const TextStyle(fontSize: 12),
+    );
   }
 
   @override
@@ -23,13 +26,16 @@ class BochaSearchService extends SearchService<BochaOptions> {
     try {
       final body = <String, dynamic>{
         'query': query,
-        if (serviceOptions.freshness != null && serviceOptions.freshness!.isNotEmpty)
+        if (serviceOptions.freshness != null &&
+            serviceOptions.freshness!.isNotEmpty)
           'freshness': serviceOptions.freshness,
         'summary': serviceOptions.summary,
         'count': commonOptions.resultSize,
-        if (serviceOptions.include != null && serviceOptions.include!.isNotEmpty)
+        if (serviceOptions.include != null &&
+            serviceOptions.include!.isNotEmpty)
           'include': serviceOptions.include,
-        if (serviceOptions.exclude != null && serviceOptions.exclude!.isNotEmpty)
+        if (serviceOptions.exclude != null &&
+            serviceOptions.exclude!.isNotEmpty)
           'exclude': serviceOptions.exclude,
       };
 
@@ -71,4 +77,3 @@ class BochaSearchService extends SearchService<BochaOptions> {
     }
   }
 }
-

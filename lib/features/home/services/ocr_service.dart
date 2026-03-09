@@ -57,10 +57,7 @@ class OcrService {
     final cfg = settings.getProviderConfig(prov);
 
     final messages = <Map<String, dynamic>>[
-      {
-        'role': 'system',
-        'content': settings.ocrPrompt,
-      },
+      {'role': 'system', 'content': settings.ocrPrompt},
       {
         'role': 'user',
         'content':
@@ -189,7 +186,8 @@ class OcrService {
   String wrapOcrBlock(String ocrText) {
     final buf = StringBuffer();
     buf.writeln(
-        "The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.");
+      "The image_file_ocr tag contains a description of an image that the user uploaded to you, not the user's prompt.",
+    );
     buf.writeln('<image_file_ocr>');
     buf.writeln(ocrText.trim());
     buf.writeln('</image_file_ocr>');

@@ -44,7 +44,10 @@ Future<void> showOcrPromptSheet(BuildContext context) async {
               const SizedBox(height: 12),
               Text(
                 l10n.defaultModelPagePromptLabel,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -53,14 +56,20 @@ Future<void> showOcrPromptSheet(BuildContext context) async {
                 decoration: InputDecoration(
                   hintText: l10n.defaultModelPageOcrPromptHint,
                   filled: true,
-                  fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
+                  fillColor: Theme.of(ctx).brightness == Brightness.dark
+                      ? Colors.white10
+                      : const Color(0xFFF2F3F5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withOpacity(0.4),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withOpacity(0.4),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -95,4 +104,3 @@ Future<void> showOcrPromptSheet(BuildContext context) async {
     },
   );
 }
-

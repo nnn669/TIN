@@ -65,7 +65,7 @@ class TtsProvider extends ChangeNotifier {
       _pitch = (prefs.getDouble(_pitchKey) ?? 1.0).clamp(0.5, 2.0);
       _engineId = prefs.getString(_engineKey);
       _languageTag = prefs.getString(_langKey);
-      
+
       // Event handlers
       _tts.setStartHandler(() {
         _isSpeaking = true;
@@ -116,17 +116,27 @@ class TtsProvider extends ChangeNotifier {
 
   Future<void> _applyConfig() async {
     // Configure engine
-    try { await _tts.setSpeechRate(_speechRate); } catch (_) {}
-    try { await _tts.setPitch(_pitch); } catch (_) {}
-    try { await _tts.setVolume(1.0); } catch (_) {}
+    try {
+      await _tts.setSpeechRate(_speechRate);
+    } catch (_) {}
+    try {
+      await _tts.setPitch(_pitch);
+    } catch (_) {}
+    try {
+      await _tts.setVolume(1.0);
+    } catch (_) {}
     // Try to set device locale language
     final loc = ui.PlatformDispatcher.instance.locale;
     final defaultTag = _localeToTag(loc);
     try {
       if (_engineId != null && _engineId!.isNotEmpty) {
-        try { await _tts.setEngine(_engineId!); } catch (_) {}
+        try {
+          await _tts.setEngine(_engineId!);
+        } catch (_) {}
       }
-      final tag = (_languageTag == null || _languageTag!.isEmpty) ? defaultTag : _languageTag!;
+      final tag = (_languageTag == null || _languageTag!.isEmpty)
+          ? defaultTag
+          : _languageTag!;
       final res = await _tts.isLanguageAvailable(tag);
       if (res == true) {
         await _tts.setLanguage(tag);
@@ -143,13 +153,21 @@ class TtsProvider extends ChangeNotifier {
       // Ignore language config failures; engine may still speak
     }
     // Better UX: await completion callbacks to sequence chunks
-    try { await _tts.awaitSpeakCompletion(true); } catch (_) {}
-    try { await _tts.awaitSynthCompletion(true); } catch (_) {}
-    try { await _tts.setQueueMode(1); } catch (_) {}
+    try {
+      await _tts.awaitSpeakCompletion(true);
+    } catch (_) {}
+    try {
+      await _tts.awaitSynthCompletion(true);
+    } catch (_) {}
+    try {
+      await _tts.setQueueMode(1);
+    } catch (_) {}
   }
 
   Future<void> _recreateEngine() async {
-    try { await _tts.stop(); } catch (_) {}
+    try {
+      await _tts.stop();
+    } catch (_) {}
     _engineReady = false;
     _tts = FlutterTts();
     // Rebind event handlers
@@ -184,11 +202,17 @@ class TtsProvider extends ChangeNotifier {
 
   Future<void> _kickEngine() async {
     // Querying languages/engines tends to trigger binding on Android.
-    try { await _tts.getLanguages; } catch (_) {}
-    try { await _tts.getEngines; } catch (_) {}
+    try {
+      await _tts.getLanguages;
+    } catch (_) {}
+    try {
+      await _tts.getEngines;
+    } catch (_) {}
   }
 
-  Future<void> _ensureBound({Duration timeout = const Duration(seconds: 3)}) async {
+  Future<void> _ensureBound({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
     if (_engineReady) return;
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
@@ -214,10 +238,15 @@ class TtsProvider extends ChangeNotifier {
         String? chosen;
         for (final e in engines) {
           final s = e.toString();
-          if (s.toLowerCase().contains('google')) { chosen = s; break; }
+          if (s.toLowerCase().contains('google')) {
+            chosen = s;
+            break;
+          }
         }
         chosen ??= engines.first.toString();
-        try { await _tts.setEngine(chosen); } catch (_) {}
+        try {
+          await _tts.setEngine(chosen);
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -266,7 +295,9 @@ class TtsProvider extends ChangeNotifier {
     _engineId = id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_engineKey, id);
-    try { await _tts.setEngine(id); } catch (_) {}
+    try {
+      await _tts.setEngine(id);
+    } catch (_) {}
     await _applyConfig();
     notifyListeners();
   }
@@ -275,7 +306,9 @@ class TtsProvider extends ChangeNotifier {
     _languageTag = tag;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_langKey, tag);
-    try { await _tts.setLanguage(tag); } catch (_) {}
+    try {
+      await _tts.setLanguage(tag);
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -290,7 +323,9 @@ class TtsProvider extends ChangeNotifier {
     // Fallback to system TTS
     await _ensureBound();
     if (flush) {
-      try { await _tts.stop(); } catch (_) {}
+      try {
+        await _tts.stop();
+      } catch (_) {}
       _stopInternal(updateState: false);
     }
     final content = _stripMarkdown(text).trim();
@@ -309,7 +344,9 @@ class TtsProvider extends ChangeNotifier {
     if (!_initialized) return;
     await _ensureBound();
     if (flush) {
-      try { await _tts.stop(); } catch (_) {}
+      try {
+        await _tts.stop();
+      } catch (_) {}
       _stopInternal(updateState: false);
     }
     final content = _stripMarkdown(text).trim();
@@ -354,8 +391,12 @@ class TtsProvider extends ChangeNotifier {
 
   Future<void> stop() async {
     // stop both network and system TTS safely
-    try { await _player.stop(); } catch (_) {}
-    try { await _tts.stop(); } catch (_) {}
+    try {
+      await _player.stop();
+    } catch (_) {}
+    try {
+      await _tts.stop();
+    } catch (_) {}
     _stopInternal(updateState: true);
   }
 
@@ -394,20 +435,26 @@ class TtsProvider extends ChangeNotifier {
   Future<bool> _trySpeak(String text) async {
     await _ensureBound();
     dynamic res;
-    try { res = await _tts.speak(text, focus: true); } catch (_) {}
+    try {
+      res = await _tts.speak(text, focus: true);
+    } catch (_) {}
     if (_speakOk(res)) return true;
     // Try picking engine and retry a few times to accommodate late binding
     await _selectEngine();
     for (int i = 0; i < 5; i++) {
       await Future.delayed(const Duration(milliseconds: 180));
-      try { res = await _tts.speak(text, focus: true); } catch (_) {}
+      try {
+        res = await _tts.speak(text, focus: true);
+      } catch (_) {}
       if (_speakOk(res)) return true;
     }
     // Recreate engine once and re-try
     await _recreateEngine();
     for (int i = 0; i < 5; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
-      try { res = await _tts.speak(text, focus: true); } catch (_) {}
+      try {
+        res = await _tts.speak(text, focus: true);
+      } catch (_) {}
       if (_speakOk(res)) return true;
     }
     return false;
@@ -418,7 +465,9 @@ class TtsProvider extends ChangeNotifier {
     if (res is int) return res == 1;
     if (res is bool) return res == true;
     final s = res.toString();
-    return s == '1' || s.toLowerCase() == 'true' || s.toLowerCase() == 'success';
+    return s == '1' ||
+        s.toLowerCase() == 'true' ||
+        s.toLowerCase() == 'success';
   }
 
   void _advanceOrFinish() {
@@ -438,7 +487,10 @@ class TtsProvider extends ChangeNotifier {
     // Remove inline code
     s = s.replaceAll(RegExp(r'`[^`]*`'), ' ');
     // Links: keep link text
-    s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), (m) => m.group(1) ?? '');
+    s = s.replaceAllMapped(
+      RegExp(r'\[([^\]]+)\]\([^\)]+\)'),
+      (m) => m.group(1) ?? '',
+    );
     // Images: remove
     s = s.replaceAll(RegExp(r'!\[[^\]]*\]\([^\)]*\)'), ' ');
     // Headings and emphasis markers
@@ -472,22 +524,31 @@ class TtsProvider extends ChangeNotifier {
       }
     }
     if (buf.isNotEmpty) out.add(buf.toString().trim());
-    if (out.isEmpty) out.add(text.length > maxLen ? text.substring(0, maxLen) : text);
+    if (out.isEmpty)
+      out.add(text.length > maxLen ? text.substring(0, maxLen) : text);
     return out;
   }
 
   @override
   void dispose() {
     _tts.stop();
-    try { _player.dispose(); } catch (_) {}
+    try {
+      _player.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
   // ===== Network TTS integration =====
 
-  Future<void> _speakNetwork(String text, TtsServiceOptions service, {bool flush = true}) async {
+  Future<void> _speakNetwork(
+    String text,
+    TtsServiceOptions service, {
+    bool flush = true,
+  }) async {
     if (flush) {
-      try { await _player.stop(); } catch (_) {}
+      try {
+        await _player.stop();
+      } catch (_) {}
       _stopInternal(updateState: false);
     }
     final content = _stripMarkdown(text).trim();
@@ -503,7 +564,11 @@ class TtsProvider extends ChangeNotifier {
 
     Future<void> doFetch() async {
       try {
-        final res = await NetworkTtsService.synthesize(options: service, text: content, cancelled: _cancelFlag);
+        final res = await NetworkTtsService.synthesize(
+          options: service,
+          text: content,
+          cancelled: _cancelFlag,
+        );
         if (cancelled) return;
         await _playAudioBytes(res.bytes, mime: res.mime);
       } catch (e) {
@@ -518,19 +583,31 @@ class TtsProvider extends ChangeNotifier {
   }
 
   // Expose for settings UI test/play
-  Future<void> speakWithNetworkService(TtsServiceOptions service, String text, {bool flush = true}) async {
+  Future<void> speakWithNetworkService(
+    TtsServiceOptions service,
+    String text, {
+    bool flush = true,
+  }) async {
     await _speakNetwork(text, service, flush: flush);
   }
 
   /// Settings-only: test a network TTS service without touching global speaking state.
   /// Returns null on success, or the error message on failure.
-  Future<String?> testNetworkService(TtsServiceOptions service, String text) async {
+  Future<String?> testNetworkService(
+    TtsServiceOptions service,
+    String text,
+  ) async {
     final content = _stripMarkdown(text).trim();
     if (content.isEmpty) return null;
     try {
-      final res = await NetworkTtsService.synthesize(options: service, text: content);
+      final res = await NetworkTtsService.synthesize(
+        options: service,
+        text: content,
+      );
       // Play bytes via temp file (Darwin-friendly)
-      try { await _player.stop(); } catch (_) {}
+      try {
+        await _player.stop();
+      } catch (_) {}
       await _playAudioBytes(res.bytes, mime: res.mime);
       return null;
     } catch (e) {
@@ -549,7 +626,10 @@ class TtsProvider extends ChangeNotifier {
       // Persist to a temp file with a proper extension for AVPlayer.
       final ext = _extForMime(mime);
       final dir = await getTemporaryDirectory();
-      final path = p.join(dir.path, 'kelivo_tts_${DateTime.now().millisecondsSinceEpoch}.$ext');
+      final path = p.join(
+        dir.path,
+        'kelivo_tts_${DateTime.now().millisecondsSinceEpoch}.$ext',
+      );
       final f = io.File(path);
       await f.writeAsBytes(bytes, flush: true);
       await _player.play(DeviceFileSource(path));
@@ -584,8 +664,10 @@ class TtsProvider extends ChangeNotifier {
       if (jsonStr.isEmpty) return null;
       final list = jsonDecode(jsonStr) as List;
       if (selected >= list.length) return null;
-      final obj = list[selected]; 
-      final map = obj is Map<String, dynamic> ? obj : Map<String, dynamic>.from(obj as Map);
+      final obj = list[selected];
+      final map = obj is Map<String, dynamic>
+          ? obj
+          : Map<String, dynamic>.from(obj as Map);
       return TtsServiceOptions.fromJson(map);
     } catch (_) {
       return null;

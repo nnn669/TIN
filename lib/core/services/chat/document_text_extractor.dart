@@ -18,10 +18,13 @@ class _ExtractorParams {
 class DocumentTextExtractor {
   /// Extracts text from a document file at [path] with [mime] type.
   /// This operation is performed in a background isolate to avoid blocking the UI.
-  static Future<String> extract({required String path, required String mime}) async {
+  static Future<String> extract({
+    required String path,
+    required String mime,
+  }) async {
     // Fix path before passing to isolate (isolate has no access to main UI context)
     final fixedPath = SandboxPathResolver.fix(path);
-    
+
     // Offload the heavy work to a separate isolate using compute.
     // This unblocks the main UI thread.
     return compute(_extractTask, _ExtractorParams(fixedPath, mime));
@@ -31,42 +34,45 @@ class DocumentTextExtractor {
   static String _extractTask(_ExtractorParams params) {
     final path = params.path;
     final mime = params.mime;
-    
+
     try {
       if (mime == 'application/pdf') {
         try {
           final file = File(path);
           if (!file.existsSync()) return '[[File not found: $path]]';
-          
+
           final bytes = file.readAsBytesSync();
           // Heavy synchronous PDF parsing happens here, in the sub-thread.
           final document = PdfDocument(inputBytes: bytes);
           final extractor = PdfTextExtractor(document);
           final extracted = extractor.extractText();
           final text = UnicodeSanitizer.sanitize(extracted);
-          
+
           document.dispose();
-          
+
           if (text.trim().isNotEmpty) return text;
           return '[PDF] Unable to extract text from file.';
         } catch (e) {
           return '[[Failed to read PDF: $e]]';
         }
       }
-      
+
       if (mime == 'application/msword') {
         return '[[DOC format (.doc) not supported for text extraction]]';
       }
-      
-      if (mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+
+      if (mime ==
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         return _extractDocxSync(path);
       }
-      
+
       // Fallback: read as plain text
       final file = File(path);
       if (!file.existsSync()) return '[[File not found: $path]]';
       final bytes = file.readAsBytesSync();
-      return UnicodeSanitizer.sanitize(utf8.decode(bytes, allowMalformed: true));
+      return UnicodeSanitizer.sanitize(
+        utf8.decode(bytes, allowMalformed: true),
+      );
     } catch (e) {
       return '[[Failed to read file: $e]]';
     }
@@ -77,12 +83,12 @@ class DocumentTextExtractor {
     try {
       final file = File(path);
       if (!file.existsSync()) return '[DOCX] file not found';
-      
+
       final input = file.readAsBytesSync();
       final archive = ZipDecoder().decodeBytes(input);
       final docXml = archive.findFile('word/document.xml');
       if (docXml == null) return '[DOCX] document.xml not found';
-      
+
       final xml = XmlDocument.parse(utf8.decode(docXml.content as List<int>));
       final buffer = StringBuffer();
       for (final p in xml.findAllElements('w:p')) {

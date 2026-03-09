@@ -14,12 +14,15 @@ class PromptTransformer {
     final now = DateTime.now();
     final locale = Localizations.localeOf(context).toLanguageTag();
     final tz = now.timeZoneName;
-    final date = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final date =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final dt = '$date $time';
     final os = Platform.operatingSystem;
     final osv = Platform.operatingSystemVersion;
-    final device = os; // Simple fallback; can be extended with device_info plugins
+    final device =
+        os; // Simple fallback; can be extended with device_info plugins
     final battery = 'unknown';
 
     return <String, String>{
@@ -48,13 +51,16 @@ class PromptTransformer {
 
   // Very simple mustache-like replacement for message template variables
   // Supported: {{ role }}, {{ message }}, {{ time }}, {{ date }}
-  static String applyMessageTemplate(String template, {
+  static String applyMessageTemplate(
+    String template, {
     required String role,
     required String message,
     required DateTime now,
   }) {
-    final date = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final date =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final vars = <String, String>{
       'role': role,
       'message': message,
@@ -62,14 +68,11 @@ class PromptTransformer {
       'date': date,
     };
 
-    return template.replaceAllMapped(
-      RegExp(r'{{\s*(\w+)\s*}}'),
-      (match) {
-        final key = match.group(1);
-        return key != null && vars.containsKey(key)
-            ? vars[key]!
-            : match.group(0) ?? '';
-      },
-    );
+    return template.replaceAllMapped(RegExp(r'{{\s*(\w+)\s*}}'), (match) {
+      final key = match.group(1);
+      return key != null && vars.containsKey(key)
+          ? vars[key]!
+          : match.group(0) ?? '';
+    });
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +11,10 @@ import '../../core/providers/mcp_provider.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../../shared/widgets/ios_switch.dart';
 
-Future<void> showDesktopMcpEditDialog(BuildContext context, {String? serverId}) async {
+Future<void> showDesktopMcpEditDialog(
+  BuildContext context, {
+  String? serverId,
+}) async {
   final cs = Theme.of(context).colorScheme;
   await showDialog<void>(
     context: context,
@@ -35,9 +39,12 @@ class _DesktopMcpEditDialog extends StatefulWidget {
   State<_DesktopMcpEditDialog> createState() => _DesktopMcpEditDialogState();
 }
 
-class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with SingleTickerProviderStateMixin {
+class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog>
+    with SingleTickerProviderStateMixin {
   bool get isEdit => widget.serverId != null;
-  late final TabController? _tab = isEdit ? TabController(length: 2, vsync: this) : null;
+  late final TabController? _tab = isEdit
+      ? TabController(length: 2, vsync: this)
+      : null;
 
   bool _enabled = true;
   final _nameCtrl = TextEditingController();
@@ -60,14 +67,24 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       _transport = server.transport;
       _urlCtrl.text = server.url;
       server.headers.forEach((k, v) {
-        _headers.add(_HeaderEntry(TextEditingController(text: k), TextEditingController(text: v)));
+        _headers.add(
+          _HeaderEntry(
+            TextEditingController(text: k),
+            TextEditingController(text: v),
+          ),
+        );
       });
       if (server.transport == McpTransportType.stdio) {
         _cmdCtrl.text = server.command ?? '';
         _argsCtrl.text = server.args.join(' ');
         _cwdCtrl.text = server.workingDirectory ?? '';
         server.env.forEach((k, v) {
-          _env.add(_HeaderEntry(TextEditingController(text: k), TextEditingController(text: v)));
+          _env.add(
+            _HeaderEntry(
+              TextEditingController(text: k),
+              TextEditingController(text: v),
+            ),
+          );
         });
       }
     }
@@ -78,11 +95,15 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     _tab?.dispose();
     _nameCtrl.dispose();
     _urlCtrl.dispose();
-    for (final h in _headers) { h.dispose(); }
+    for (final h in _headers) {
+      h.dispose();
+    }
     _cmdCtrl.dispose();
     _argsCtrl.dispose();
     _cwdCtrl.dispose();
-    for (final e in _env) { e.dispose(); }
+    for (final e in _env) {
+      e.dispose();
+    }
     super.dispose();
   }
 
@@ -97,35 +118,57 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       return;
     }
     final name = _nameCtrl.text.trim().isEmpty ? 'MCP' : _nameCtrl.text.trim();
-    final headers = <String, String>{ for (final h in _headers) if (h.key.text.trim().isNotEmpty) h.key.text.trim(): h.value.text.trim() };
+    final headers = <String, String>{
+      for (final h in _headers)
+        if (h.key.text.trim().isNotEmpty)
+          h.key.text.trim(): h.value.text.trim(),
+    };
     if (_transport == McpTransportType.stdio) {
       if (!_isDesktopPlatform()) {
-        showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpServerEditSheetStdioOnlyDesktop, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(
+            context,
+          )!.mcpServerEditSheetStdioOnlyDesktop,
+          type: NotificationType.warning,
+        );
         return;
       }
       final cmd = _cmdCtrl.text.trim();
       if (cmd.isEmpty) {
-        showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpServerEditSheetStdioCommandRequired, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(
+            context,
+          )!.mcpServerEditSheetStdioCommandRequired,
+          type: NotificationType.warning,
+        );
         return;
       }
       final args = _parseArgs(_argsCtrl.text.trim());
-      final env = <String, String>{ for (final e in _env) if (e.key.text.trim().isNotEmpty) e.key.text.trim(): e.value.text.trim() };
+      final env = <String, String>{
+        for (final e in _env)
+          if (e.key.text.trim().isNotEmpty)
+            e.key.text.trim(): e.value.text.trim(),
+      };
       final cwd = _cwdCtrl.text.trim();
       if (isEdit) {
         final old = mcp.getById(widget.serverId!)!;
         final clearing = cwd.isEmpty;
-        await mcp.updateServer(old.copyWith(
-          enabled: _enabled,
-          name: name,
-          transport: McpTransportType.stdio,
-          url: '',
-          headers: const {},
-          command: cmd,
-          args: args,
-          env: env,
-          workingDirectory: clearing ? null : cwd,
-          clearWorkingDirectory: clearing,
-        ));
+        await mcp.updateServer(
+          old.copyWith(
+            enabled: _enabled,
+            name: name,
+            transport: McpTransportType.stdio,
+            url: '',
+            headers: const {},
+            command: cmd,
+            args: args,
+            env: env,
+            workingDirectory: clearing ? null : cwd,
+            clearWorkingDirectory: clearing,
+          ),
+        );
       } else {
         await mcp.addServer(
           enabled: _enabled,
@@ -140,14 +183,32 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     } else {
       final url = _urlCtrl.text.trim();
       if (url.isEmpty) {
-        showAppSnackBar(context, message: l10n.mcpServerEditSheetUrlRequired, type: NotificationType.warning);
+        showAppSnackBar(
+          context,
+          message: l10n.mcpServerEditSheetUrlRequired,
+          type: NotificationType.warning,
+        );
         return;
       }
       if (isEdit) {
         final old = mcp.getById(widget.serverId!)!;
-        await mcp.updateServer(old.copyWith(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers));
+        await mcp.updateServer(
+          old.copyWith(
+            enabled: _enabled,
+            name: name,
+            transport: _transport,
+            url: url,
+            headers: headers,
+          ),
+        );
       } else {
-        await mcp.addServer(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers);
+        await mcp.addServer(
+          enabled: _enabled,
+          name: name,
+          transport: _transport,
+          url: url,
+          headers: headers,
+        );
       }
     }
     if (mounted) Navigator.of(context).maybePop();
@@ -166,8 +227,13 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  isEdit ? l10n.mcpServerEditSheetTitleEdit : l10n.mcpServerEditSheetTitleAdd,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  isEdit
+                      ? l10n.mcpServerEditSheetTitleEdit
+                      : l10n.mcpServerEditSheetTitleAdd,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -178,7 +244,9 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                   icon: lucide.Lucide.RefreshCw,
                   tooltip: l10n.mcpServerEditSheetSyncToolsTooltip,
                   onTap: () async {
-                    await context.read<McpProvider>().refreshTools(widget.serverId!);
+                    await context.read<McpProvider>().refreshTools(
+                      widget.serverId!,
+                    );
                   },
                 ),
               ),
@@ -204,8 +272,19 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
           padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
           child: Row(
             children: [
-              Expanded(child: Text(l10n.mcpServerEditSheetEnabledLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
-              IosSwitch(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
+              Expanded(
+                child: Text(
+                  l10n.mcpServerEditSheetEnabledLabel,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              IosSwitch(
+                value: _enabled,
+                onChanged: (v) => setState(() => _enabled = v),
+              ),
             ],
           ),
         ),
@@ -216,109 +295,196 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(
               children: [
-                Text(l10n.mcpServerEditSheetNameLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  l10n.mcpServerEditSheetNameLabel,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: Text(_nameCtrl.text, style: const TextStyle(fontWeight: FontWeight.w600))),
+                Expanded(
+                  child: Text(
+                    _nameCtrl.text,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
           ),
         ] else ...[
-          _labeledField(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP', bold: true),
+          _labeledField(
+            label: l10n.mcpServerEditSheetNameLabel,
+            controller: _nameCtrl,
+            hint: 'My MCP',
+            bold: true,
+          ),
           const SizedBox(height: 10),
-          Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(
+            l10n.mcpServerEditSheetTransportLabel,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 6),
-          Builder(builder: (context) {
-            final isDesktop = _isDesktopPlatform();
-            final labels = isDesktop ? ['Streamable HTTP', 'SSE', l10n.mcpTransportOptionStdio] : ['Streamable HTTP', 'SSE'];
-            int selectedIdx;
-            if (_transport == McpTransportType.http) selectedIdx = 0;
-            else if (_transport == McpTransportType.sse) selectedIdx = 1;
-            else selectedIdx = isDesktop ? 2 : 0;
-            return _SegChoiceBar(
-              labels: labels,
-              selectedIndex: selectedIdx,
-              onSelected: (i) {
-                setState(() {
-                  if (isDesktop && i == 2) {
-                    _transport = McpTransportType.stdio;
-                  } else if (i == 0) {
-                    _transport = McpTransportType.http;
-                  } else {
-                    _transport = McpTransportType.sse;
-                  }
-                });
-              },
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final isDesktop = _isDesktopPlatform();
+              final labels = isDesktop
+                  ? ['Streamable HTTP', 'SSE', l10n.mcpTransportOptionStdio]
+                  : ['Streamable HTTP', 'SSE'];
+              int selectedIdx;
+              if (_transport == McpTransportType.http)
+                selectedIdx = 0;
+              else if (_transport == McpTransportType.sse)
+                selectedIdx = 1;
+              else
+                selectedIdx = isDesktop ? 2 : 0;
+              return _SegChoiceBar(
+                labels: labels,
+                selectedIndex: selectedIdx,
+                onSelected: (i) {
+                  setState(() {
+                    if (isDesktop && i == 2) {
+                      _transport = McpTransportType.stdio;
+                    } else if (i == 0) {
+                      _transport = McpTransportType.http;
+                    } else {
+                      _transport = McpTransportType.sse;
+                    }
+                  });
+                },
+              );
+            },
+          ),
         ],
         const SizedBox(height: 10),
         if (!isBuiltin && _transport == McpTransportType.sse)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+            child: Text(
+              l10n.mcpServerEditSheetSseRetryHint,
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.onSurface.withOpacity(0.7),
+              ),
+            ),
           ),
         if (!isBuiltin && _transport != McpTransportType.stdio)
           _labeledField(
             label: l10n.mcpServerEditSheetUrlLabel,
             controller: _urlCtrl,
-            hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000', bold: true,
+            hint: _transport == McpTransportType.sse
+                ? 'http://localhost:3000/sse'
+                : 'http://localhost:3000',
+            bold: true,
           ),
         if (!isBuiltin && _transport == McpTransportType.stdio) ...[
-          _labeledField(label: l10n.mcpServerEditSheetStdioCommandLabel, controller: _cmdCtrl, hint: 'npx', bold: false),
+          _labeledField(
+            label: l10n.mcpServerEditSheetStdioCommandLabel,
+            controller: _cmdCtrl,
+            hint: 'npx',
+            bold: false,
+          ),
           const SizedBox(height: 10),
-          _labeledField(label: l10n.mcpServerEditSheetStdioArgumentsLabel, controller: _argsCtrl, hint: "-y @modelcontextprotocol/server-filesystem", bold: false),
+          _labeledField(
+            label: l10n.mcpServerEditSheetStdioArgumentsLabel,
+            controller: _argsCtrl,
+            hint: "-y @modelcontextprotocol/server-filesystem",
+            bold: false,
+          ),
           const SizedBox(height: 10),
-          _labeledField(label: l10n.mcpServerEditSheetStdioWorkingDirectoryLabel, controller: _cwdCtrl, hint: '', bold: false),
+          _labeledField(
+            label: l10n.mcpServerEditSheetStdioWorkingDirectoryLabel,
+            controller: _cwdCtrl,
+            hint: '',
+            bold: false,
+          ),
           const SizedBox(height: 16),
-          Text(l10n.mcpServerEditSheetStdioEnvironmentTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            l10n.mcpServerEditSheetStdioEnvironmentTitle,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
-          Column(children: [
-            for (int i = 0; i < _env.length; i++) ...[
-              _card(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _labeledField(label: l10n.mcpServerEditSheetStdioEnvNameLabel, controller: _env[i].key, hint: 'ENV_NAME', bold: false),
-                    const SizedBox(height: 10),
-                    _labeledField(label: l10n.mcpServerEditSheetStdioEnvValueLabel, controller: _env[i].value, hint: 'value', bold: false),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _SmallIconBtn(
-                        icon: lucide.Lucide.Trash2,
-                        tooltip: l10n.mcpServerEditSheetRemoveHeaderTooltip,
-                        onTap: () => setState(() => _env.removeAt(i)),
+          Column(
+            children: [
+              for (int i = 0; i < _env.length; i++) ...[
+                _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _labeledField(
+                        label: l10n.mcpServerEditSheetStdioEnvNameLabel,
+                        controller: _env[i].key,
+                        hint: 'ENV_NAME',
+                        bold: false,
+                      ),
+                      const SizedBox(height: 10),
+                      _labeledField(
+                        label: l10n.mcpServerEditSheetStdioEnvValueLabel,
+                        controller: _env[i].value,
+                        hint: 'value',
+                        bold: false,
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _SmallIconBtn(
+                          icon: lucide.Lucide.Trash2,
+                          tooltip: l10n.mcpServerEditSheetRemoveHeaderTooltip,
+                          onTap: () => setState(() => _env.removeAt(i)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  icon: const Icon(lucide.Lucide.Plus, size: 16),
+                  label: Text(l10n.mcpServerEditSheetStdioAddEnv),
+                  style:
+                      OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ).copyWith(
+                        splashFactory: NoSplash.splashFactory,
+                        overlayColor: const MaterialStatePropertyAll(
+                          Colors.transparent,
+                        ),
+                        backgroundColor: MaterialStateProperty.resolveWith((
+                          states,
+                        ) {
+                          if (states.contains(MaterialState.hovered)) {
+                            return isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.05);
+                          }
+                          return Colors.transparent;
+                        }),
+                      ),
+                  onPressed: () => setState(
+                    () => _env.add(
+                      _HeaderEntry(
+                        TextEditingController(),
+                        TextEditingController(),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                icon: const Icon(lucide.Lucide.Plus, size: 16),
-                label: Text(l10n.mcpServerEditSheetStdioAddEnv),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ).copyWith(
-                  splashFactory: NoSplash.splashFactory,
-                  overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                  backgroundColor: MaterialStateProperty.resolveWith((states) {
-                    if (states.contains(MaterialState.hovered)) {
-                      return isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-                    }
-                    return Colors.transparent;
-                  }),
-                ),
-                onPressed: () => setState(() => _env.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
-              ),
-            ),
-          ]),
+          ),
         ],
         const SizedBox(height: 16),
         if (!isBuiltin && _transport != McpTransportType.stdio) ...[
-          Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            l10n.mcpServerEditSheetCustomHeadersTitle,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
           Column(
             children: [
@@ -327,9 +493,19 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _labeledField(label: l10n.mcpServerEditSheetHeaderNameLabel, controller: _headers[i].key, hint: l10n.mcpServerEditSheetHeaderNameHint, bold: false),
+                      _labeledField(
+                        label: l10n.mcpServerEditSheetHeaderNameLabel,
+                        controller: _headers[i].key,
+                        hint: l10n.mcpServerEditSheetHeaderNameHint,
+                        bold: false,
+                      ),
                       const SizedBox(height: 10),
-                      _labeledField(label: l10n.mcpServerEditSheetHeaderValueLabel, controller: _headers[i].value, hint: l10n.mcpServerEditSheetHeaderValueHint, bold: false),
+                      _labeledField(
+                        label: l10n.mcpServerEditSheetHeaderValueLabel,
+                        controller: _headers[i].value,
+                        hint: l10n.mcpServerEditSheetHeaderValueHint,
+                        bold: false,
+                      ),
                       Align(
                         alignment: Alignment.centerRight,
                         child: _SmallIconBtn(
@@ -347,20 +523,39 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                 child: OutlinedButton.icon(
                   icon: const Icon(lucide.Lucide.Plus, size: 16),
                   label: Text(l10n.mcpServerEditSheetAddHeader),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ).copyWith(
-                    splashFactory: NoSplash.splashFactory,
-                    overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                    backgroundColor: MaterialStateProperty.resolveWith((states) {
-                      if (states.contains(MaterialState.hovered)) {
-                        return isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-                      }
-                      return Colors.transparent;
-                    }),
+                  style:
+                      OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ).copyWith(
+                        splashFactory: NoSplash.splashFactory,
+                        overlayColor: const MaterialStatePropertyAll(
+                          Colors.transparent,
+                        ),
+                        backgroundColor: MaterialStateProperty.resolveWith((
+                          states,
+                        ) {
+                          if (states.contains(MaterialState.hovered)) {
+                            return isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.05);
+                          }
+                          return Colors.transparent;
+                        }),
+                      ),
+                  onPressed: () => setState(
+                    () => _headers.add(
+                      _HeaderEntry(
+                        TextEditingController(),
+                        TextEditingController(),
+                      ),
+                    ),
                   ),
-                  onPressed: () => setState(() => _headers.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
                 ),
               ),
             ],
@@ -380,7 +575,10 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       return Center(
         child: Padding(
           padding: const EdgeInsets.only(top: 20),
-          child: Text(l10n.mcpServerEditSheetNoToolsHint, style: TextStyle(color: cs.onSurface.withOpacity(0.6))),
+          child: Text(
+            l10n.mcpServerEditSheetNoToolsHint,
+            style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+          ),
         ),
       );
     }
@@ -395,10 +593,19 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(tool.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        tool.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       if ((tool.description ?? '').isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(tool.description!, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+                        Text(
+                          tool.description!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: cs.onSurface.withOpacity(0.7),
+                          ),
+                        ),
                       ],
                       if (tool.params.isNotEmpty) ...[
                         const SizedBox(height: 8),
@@ -406,16 +613,32 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                           spacing: 6,
                           runSpacing: 6,
                           children: tool.params.map((p) {
-                            final color = p.required ? cs.primary : cs.onSurface.withOpacity(0.5);
-                            final bg = p.required ? cs.primary.withOpacity(0.12) : cs.onSurface.withOpacity(0.06);
+                            final color = p.required
+                                ? cs.primary
+                                : cs.onSurface.withOpacity(0.5);
+                            final bg = p.required
+                                ? cs.primary.withOpacity(0.12)
+                                : cs.onSurface.withOpacity(0.06);
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: bg,
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: color.withOpacity(0.5)),
+                                border: Border.all(
+                                  color: color.withOpacity(0.5),
+                                ),
                               ),
-                              child: Text(p.name, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                              child: Text(
+                                p.name,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -425,7 +648,11 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
                 ),
                 IosSwitch(
                   value: tool.enabled,
-                  onChanged: (v) => context.read<McpProvider>().setToolEnabled(server!.id, tool.name, v),
+                  onChanged: (v) => context.read<McpProvider>().setToolEnabled(
+                    server!.id,
+                    tool.name,
+                    v,
+                  ),
                 ),
               ],
             ),
@@ -460,16 +687,19 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       children: [
         _headerBar(),
         if (isEdit)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: AnimatedBuilder(
-            animation: _tab!,
-            builder: (context, _) => _SegTabBar(
-              controller: _tab!,
-              tabs: [l10n.mcpServerEditSheetTabBasic, l10n.mcpServerEditSheetTabTools],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: AnimatedBuilder(
+              animation: _tab!,
+              builder: (context, _) => _SegTabBar(
+                controller: _tab!,
+                tabs: [
+                  l10n.mcpServerEditSheetTabBasic,
+                  l10n.mcpServerEditSheetTabTools,
+                ],
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 10),
         Expanded(
           child: Padding(
@@ -477,7 +707,8 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
             child: isEdit
                 ? AnimatedBuilder(
                     animation: _tab!,
-                    builder: (context, _) => _tab!.index == 0 ? _basicForm() : _toolsTab(),
+                    builder: (context, _) =>
+                        _tab!.index == 0 ? _basicForm() : _toolsTab(),
                   )
                 : _basicForm(),
           ),
@@ -489,21 +720,37 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
             children: [
               FilledButton(
                 onPressed: _save,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  backgroundColor: cs.primary,
-                  foregroundColor: cs.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ).copyWith(
-                  splashFactory: NoSplash.splashFactory,
-                  overlayColor: const MaterialStatePropertyAll(Colors.transparent),
-                  backgroundColor: MaterialStateProperty.resolveWith((states) {
-                    if (states.contains(MaterialState.hovered)) {
-                      return Color.lerp(cs.primary, Colors.white, Theme.of(context).brightness == Brightness.dark ? 0.06 : 0.08);
-                    }
-                    return cs.primary;
-                  }),
-                ),
+                style:
+                    FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      backgroundColor: cs.primary,
+                      foregroundColor: cs.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ).copyWith(
+                      splashFactory: NoSplash.splashFactory,
+                      overlayColor: const MaterialStatePropertyAll(
+                        Colors.transparent,
+                      ),
+                      backgroundColor: MaterialStateProperty.resolveWith((
+                        states,
+                      ) {
+                        if (states.contains(MaterialState.hovered)) {
+                          return Color.lerp(
+                            cs.primary,
+                            Colors.white,
+                            Theme.of(context).brightness == Brightness.dark
+                                ? 0.06
+                                : 0.08,
+                          );
+                        }
+                        return cs.primary;
+                      }),
+                    ),
                 child: Text(l10n.mcpServerEditSheetSave),
               ),
             ],
@@ -513,17 +760,33 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
     );
   }
 
-  Widget _labeledField({required String label, required TextEditingController controller, String? hint, bool bold = false}) {
+  Widget _labeledField({
+    required String label,
+    required TextEditingController controller,
+    String? hint,
+    bool bold = false,
+  }) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: cs.onSurface.withOpacity(0.8))),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            color: cs.onSurface.withOpacity(0.8),
+          ),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: cs.onSurface),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: cs.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
@@ -540,7 +803,10 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: cs.primary.withOpacity(0.5)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -554,7 +820,10 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog> with Singl
       decoration: BoxDecoration(
         color: isDark ? Colors.white10 : Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
+        border: Border.all(
+          color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+          width: 0.6,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: child,
@@ -566,7 +835,10 @@ class _HeaderEntry {
   final TextEditingController key;
   final TextEditingController value;
   _HeaderEntry(this.key, this.value);
-  void dispose() { key.dispose(); value.dispose(); }
+  void dispose() {
+    key.dispose();
+    value.dispose();
+  }
 }
 
 class _SmallIconBtn extends StatefulWidget {
@@ -584,11 +856,18 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     final btn = Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       alignment: Alignment.center,
       child: Icon(widget.icon, size: 18, color: cs.onSurface),
     );
@@ -598,14 +877,20 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: widget.tooltip == null ? btn : Tooltip(message: widget.tooltip!, child: btn),
+        child: widget.tooltip == null
+            ? btn
+            : Tooltip(message: widget.tooltip!, child: btn),
       ),
     );
   }
 }
 
 class _SegChoiceBar extends StatelessWidget {
-  const _SegChoiceBar({required this.labels, required this.selectedIndex, required this.onSelected});
+  const _SegChoiceBar({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -621,7 +906,10 @@ class _SegChoiceBar extends StatelessWidget {
     const double gap = 6;
     const double minSegWidth = 88;
     final double pillRadius = 18;
-    final double innerRadius = ((pillRadius - innerPadding).clamp(0.0, pillRadius)).toDouble();
+    final double innerRadius = ((pillRadius - innerPadding).clamp(
+      0.0,
+      pillRadius,
+    )).toDouble();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -631,9 +919,12 @@ class _SegChoiceBar extends StatelessWidget {
           minSegWidth,
           (innerAvailWidth - gap * (labels.length - 1)) / labels.length,
         );
-        final double rowWidth = segWidth * labels.length + gap * (labels.length - 1);
+        final double rowWidth =
+            segWidth * labels.length + gap * (labels.length - 1);
 
-        final Color shellBg = isDark ? Colors.white.withOpacity(0.08) : Colors.white;
+        final Color shellBg = isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.white;
 
         List<Widget> children = [];
         for (int index = 0; index < labels.length; index++) {
@@ -650,7 +941,9 @@ class _SegChoiceBar extends StatelessWidget {
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      color: selected ? cs.primary.withOpacity(0.14) : Colors.transparent,
+                      color: selected
+                          ? cs.primary.withOpacity(0.14)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(innerRadius),
                     ),
                     alignment: Alignment.center,
@@ -661,7 +954,9 @@ class _SegChoiceBar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: selected ? cs.primary : cs.onSurface.withOpacity(0.82),
+                          color: selected
+                              ? cs.primary
+                              : cs.onSurface.withOpacity(0.82),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -671,7 +966,8 @@ class _SegChoiceBar extends StatelessWidget {
               ),
             ),
           );
-          if (index != labels.length - 1) children.add(const SizedBox(width: gap));
+          if (index != labels.length - 1)
+            children.add(const SizedBox(width: gap));
         }
 
         return Container(
@@ -688,7 +984,10 @@ class _SegChoiceBar extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: innerAvailWidth),
-                child: SizedBox(width: rowWidth, child: Row(children: children)),
+                child: SizedBox(
+                  width: rowWidth,
+                  child: Row(children: children),
+                ),
               ),
             ),
           ),
@@ -714,7 +1013,10 @@ class _SegTabBar extends StatelessWidget {
     const double gap = 6;
     const double minSegWidth = 88;
     final double pillRadius = 18;
-    final double innerRadius = ((pillRadius - innerPadding).clamp(0.0, pillRadius)).toDouble();
+    final double innerRadius = ((pillRadius - innerPadding).clamp(
+      0.0,
+      pillRadius,
+    )).toDouble();
 
     final content = LayoutBuilder(
       builder: (context, constraints) {
@@ -724,9 +1026,12 @@ class _SegTabBar extends StatelessWidget {
           minSegWidth,
           (innerAvailWidth - gap * (tabs.length - 1)) / tabs.length,
         );
-        final double rowWidth = segWidth * tabs.length + gap * (tabs.length - 1);
+        final double rowWidth =
+            segWidth * tabs.length + gap * (tabs.length - 1);
 
-        final Color shellBg = isDark ? Colors.white.withOpacity(0.08) : Colors.white;
+        final Color shellBg = isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.white;
 
         List<Widget> children = [];
         for (int index = 0; index < tabs.length; index++) {
@@ -743,7 +1048,9 @@ class _SegTabBar extends StatelessWidget {
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      color: selected ? cs.primary.withOpacity(0.14) : Colors.transparent,
+                      color: selected
+                          ? cs.primary.withOpacity(0.14)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(innerRadius),
                     ),
                     alignment: Alignment.center,
@@ -754,7 +1061,9 @@ class _SegTabBar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: selected ? cs.primary : cs.onSurface.withOpacity(0.82),
+                          color: selected
+                              ? cs.primary
+                              : cs.onSurface.withOpacity(0.82),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -764,7 +1073,8 @@ class _SegTabBar extends StatelessWidget {
               ),
             ),
           );
-          if (index != tabs.length - 1) children.add(const SizedBox(width: gap));
+          if (index != tabs.length - 1)
+            children.add(const SizedBox(width: gap));
         }
 
         return Container(
@@ -781,7 +1091,10 @@ class _SegTabBar extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: innerAvailWidth),
-                child: SizedBox(width: rowWidth, child: Row(children: children)),
+                child: SizedBox(
+                  width: rowWidth,
+                  child: Row(children: children),
+                ),
               ),
             ),
           ),

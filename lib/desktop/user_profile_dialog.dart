@@ -75,7 +75,10 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
       avatarWidget = Container(
         width: 84,
         height: 84,
-        decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
         child: EmojiText(
           value,
@@ -122,7 +125,9 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: isDark ? Colors.white.withOpacity(0.08) : cs.outlineVariant.withOpacity(0.25),
+              color: isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : cs.outlineVariant.withOpacity(0.25),
               width: 1,
             ),
           ),
@@ -142,7 +147,10 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: cs.outlineVariant.withOpacity(0.35), width: 1),
+                          border: Border.all(
+                            color: cs.outlineVariant.withOpacity(0.35),
+                            width: 1,
+                          ),
                         ),
                         child: avatarWidget,
                       ),
@@ -155,9 +163,18 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
                           decoration: BoxDecoration(
                             color: cs.primary,
                             shape: BoxShape.circle,
-                            border: Border.all(color: isDark ? const Color(0xFF1C1C1E) : Colors.white, width: 2),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF1C1C1E)
+                                  : Colors.white,
+                              width: 2,
+                            ),
                           ),
-                          child: Icon(lucide.Lucide.Pencil, size: 14, color: cs.onPrimary),
+                          child: Icon(
+                            lucide.Lucide.Pencil,
+                            size: 14,
+                            color: cs.onPrimary,
+                          ),
                         ),
                       ),
                     ],
@@ -175,7 +192,9 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
                       decoration: InputDecoration(
                         labelText: l10n.backupPageUsername,
                         hintText: l10n.sideDrawerNicknameHint,
-                        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
                         isDense: true,
                       ),
                       onChanged: (v) {
@@ -193,10 +212,7 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
       ),
     );
 
-    return Material(
-      type: MaterialType.transparency,
-      child: dialog,
-    );
+    return Material(type: MaterialType.transparency, child: dialog);
   }
 
   Widget _initialAvatar(String name, ColorScheme cs, {double size = 84}) {
@@ -204,11 +220,19 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: cs.primary.withOpacity(0.15),
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Text(
         letter,
-        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.none, fontSize: size * 0.44),
+        style: TextStyle(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+          decoration: TextDecoration.none,
+          fontSize: size * 0.44,
+        ),
       ),
     );
   }
@@ -245,9 +269,19 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
                 allowMultiple: false,
                 withData: false,
                 type: FileType.custom,
-                allowedExtensions: const ['png','jpg','jpeg','gif','webp','heic','heif'],
+                allowedExtensions: const [
+                  'png',
+                  'jpg',
+                  'jpeg',
+                  'gif',
+                  'webp',
+                  'heic',
+                  'heif',
+                ],
               );
-              final f = (res != null && res.files.isNotEmpty) ? res.files.first : null;
+              final f = (res != null && res.files.isNotEmpty)
+                  ? res.files.first
+                  : null;
               final path = f?.path;
               if (path != null && path.isNotEmpty) {
                 await up.setAvatarFilePath(path);
@@ -289,56 +323,67 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
-        bool valid(String s) => s.trim().startsWith('http://') || s.trim().startsWith('https://');
+        bool valid(String s) =>
+            s.trim().startsWith('http://') || s.trim().startsWith('https://');
         String value = '';
-        return StatefulBuilder(builder: (ctx, setLocal) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            backgroundColor: cs.surface,
-            title: Text(l10n.sideDrawerImageUrlDialogTitle),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: l10n.sideDrawerImageUrlDialogHint,
-                filled: true,
-                fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.transparent),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.transparent),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
-                ),
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              onChanged: (v) => setLocal(() => value = v),
-              onSubmitted: (_) {
-                if (valid(value)) Navigator.of(ctx).pop(true);
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(l10n.sideDrawerCancel),
-              ),
-              TextButton(
-                onPressed: valid(value) ? () => Navigator.of(ctx).pop(true) : null,
-                child: Text(
-                  l10n.sideDrawerSave,
-                  style: TextStyle(
-                    color: valid(value) ? cs.primary : cs.onSurface.withOpacity(0.38),
-                    fontWeight: FontWeight.w600,
+              backgroundColor: cs.surface,
+              title: Text(l10n.sideDrawerImageUrlDialogTitle),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.sideDrawerImageUrlDialogHint,
+                  filled: true,
+                  fillColor: Theme.of(ctx).brightness == Brightness.dark
+                      ? Colors.white10
+                      : const Color(0xFFF2F3F5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.transparent),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.transparent),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
                   ),
                 ),
+                onChanged: (v) => setLocal(() => value = v),
+                onSubmitted: (_) {
+                  if (valid(value)) Navigator.of(ctx).pop(true);
+                },
               ),
-            ],
-          );
-        });
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.sideDrawerCancel),
+                ),
+                TextButton(
+                  onPressed: valid(value)
+                      ? () => Navigator.of(ctx).pop(true)
+                      : null,
+                  child: Text(
+                    l10n.sideDrawerSave,
+                    style: TextStyle(
+                      color: valid(value)
+                          ? cs.primary
+                          : cs.onSurface.withOpacity(0.38),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
     if (ok == true) {
@@ -387,7 +432,10 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
           int a2 = 0;
           for (int i = 0; i < firstGroups.length; i++) {
             a2 += firstWeights[i];
-            if (r2 <= a2) { idx = i; break; }
+            if (r2 <= a2) {
+              idx = i;
+              break;
+            }
           }
           final group = firstGroups[idx];
           sb.write(group[rnd.nextInt(group.length)]);
@@ -396,92 +444,111 @@ class _UserProfileDialogBodyState extends State<_UserProfileDialogBody> {
           }
           return sb.toString();
         }
-        return StatefulBuilder(builder: (ctx, setLocal) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            backgroundColor: cs.surface,
-            title: Text(l10n.sideDrawerQQAvatarDialogTitle),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: l10n.sideDrawerQQAvatarInputHint,
-                filled: true,
-                fillColor: Theme.of(ctx).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF2F3F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.transparent),
-                ),
-                enabledBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: Colors.transparent),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
-                ),
+
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              onChanged: (v) => setLocal(() => value = v),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  // Try multiple times until a valid avatar is fetched
-                  const int maxTries = 20;
-                  bool applied = false;
-                  for (int i = 0; i < maxTries; i++) {
-                    final qq = randomQQ();
-                    final url = 'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=100';
-                    try {
-                      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
-                      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
-                        await context.read<UserProvider>().setAvatarUrl(url);
-                        applied = true;
-                        break;
-                      }
-                    } catch (_) {}
-                  }
-                  if (applied) {
-                    if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop(false);
-                  } else {
-                    showAppSnackBar(
-                      context,
-                      message: l10n.sideDrawerQQAvatarFetchFailed,
-                      type: NotificationType.error,
-                    );
-                  }
-                },
-                child: Text(l10n.sideDrawerRandomQQ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: Text(l10n.sideDrawerCancel),
+              backgroundColor: cs.surface,
+              title: Text(l10n.sideDrawerQQAvatarDialogTitle),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: l10n.sideDrawerQQAvatarInputHint,
+                  filled: true,
+                  fillColor: Theme.of(ctx).brightness == Brightness.dark
+                      ? Colors.white10
+                      : const Color(0xFFF2F3F5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.transparent),
                   ),
-                  TextButton(
-                    onPressed: valid(value) ? () => Navigator.of(ctx).pop(true) : null,
-                    child: Text(
-                      l10n.sideDrawerSave,
-                      style: TextStyle(
-                        color: valid(value) ? cs.primary : cs.onSurface.withOpacity(0.38),
-                        fontWeight: FontWeight.w600,
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.transparent),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
+                  ),
+                ),
+                onChanged: (v) => setLocal(() => value = v),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    // Try multiple times until a valid avatar is fetched
+                    const int maxTries = 20;
+                    bool applied = false;
+                    for (int i = 0; i < maxTries; i++) {
+                      final qq = randomQQ();
+                      final url =
+                          'https://q2.qlogo.cn/headimg_dl?dst_uin=' +
+                          qq +
+                          '&spec=100';
+                      try {
+                        final resp = await http
+                            .get(Uri.parse(url))
+                            .timeout(const Duration(seconds: 5));
+                        if (resp.statusCode == 200 &&
+                            resp.bodyBytes.isNotEmpty) {
+                          await context.read<UserProvider>().setAvatarUrl(url);
+                          applied = true;
+                          break;
+                        }
+                      } catch (_) {}
+                    }
+                    if (applied) {
+                      if (Navigator.of(ctx).canPop())
+                        Navigator.of(ctx).pop(false);
+                    } else {
+                      showAppSnackBar(
+                        context,
+                        message: l10n.sideDrawerQQAvatarFetchFailed,
+                        type: NotificationType.error,
+                      );
+                    }
+                  },
+                  child: Text(l10n.sideDrawerRandomQQ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: Text(l10n.sideDrawerCancel),
+                    ),
+                    TextButton(
+                      onPressed: valid(value)
+                          ? () => Navigator.of(ctx).pop(true)
+                          : null,
+                      child: Text(
+                        l10n.sideDrawerSave,
+                        style: TextStyle(
+                          color: valid(value)
+                              ? cs.primary
+                              : cs.onSurface.withOpacity(0.38),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        });
+                  ],
+                ),
+              ],
+            );
+          },
+        );
       },
     );
     if (ok == true) {
       final qq = controller.text.trim();
       if (qq.isNotEmpty) {
-        final url = 'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=100';
+        final url =
+            'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=100';
         await context.read<UserProvider>().setAvatarUrl(url);
       }
     }

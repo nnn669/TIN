@@ -27,7 +27,9 @@ class GoogleServiceAccountCredentials {
         : 'https://oauth2.googleapis.com/token';
     final proj = (obj['project_id'] as String?)?.trim();
     if (email.isEmpty || key.isEmpty) {
-      throw ArgumentError('Invalid service account JSON: missing client_email/private_key');
+      throw ArgumentError(
+        'Invalid service account JSON: missing client_email/private_key',
+      );
     }
     return GoogleServiceAccountCredentials(
       clientEmail: email,
@@ -52,15 +54,21 @@ class GoogleServiceAccountAuth {
   /// Default scope is cloud-platform which covers Vertex AI.
   static Future<String> getAccessTokenFromJson(
     String serviceAccountJson, {
-    List<String> scopes = const ['https://www.googleapis.com/auth/cloud-platform'],
+    List<String> scopes = const [
+      'https://www.googleapis.com/auth/cloud-platform',
+    ],
   }) async {
-    final creds = GoogleServiceAccountCredentials.fromJsonString(serviceAccountJson);
+    final creds = GoogleServiceAccountCredentials.fromJsonString(
+      serviceAccountJson,
+    );
     return getAccessToken(creds, scopes: scopes);
   }
 
   static Future<String> getAccessToken(
     GoogleServiceAccountCredentials creds, {
-    List<String> scopes = const ['https://www.googleapis.com/auth/cloud-platform'],
+    List<String> scopes = const [
+      'https://www.googleapis.com/auth/cloud-platform',
+    ],
   }) async {
     final key = _cacheKey(creds.clientEmail, scopes, creds.tokenUri);
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;

@@ -4,7 +4,10 @@ import '../../../core/providers/tag_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../icons/lucide_adapter.dart';
 
-Future<void> showAssistantTagsManagerDialog(BuildContext context, {required String assistantId}) async {
+Future<void> showAssistantTagsManagerDialog(
+  BuildContext context, {
+  required String assistantId,
+}) async {
   final cs = Theme.of(context).colorScheme;
   await showGeneralDialog<void>(
     context: context,
@@ -24,7 +27,10 @@ Future<void> showAssistantTagsManagerDialog(BuildContext context, {required Stri
               behavior: HitTestBehavior.translucent,
               onTap: () {}, // absorb taps inside the dialog
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520, maxHeight: 600),
+                constraints: const BoxConstraints(
+                  maxWidth: 520,
+                  maxHeight: 600,
+                ),
                 child: DecoratedBox(
                   decoration: ShapeDecoration(
                     color: Theme.of(ctx).colorScheme.surface,
@@ -37,7 +43,10 @@ Future<void> showAssistantTagsManagerDialog(BuildContext context, {required Stri
                       ),
                     ),
                   ),
-                  child: _TagsManagerBody(assistantId: assistantId, isDialog: true),
+                  child: _TagsManagerBody(
+                    assistantId: assistantId,
+                    isDialog: true,
+                  ),
                 ),
               ),
             ),
@@ -81,8 +90,14 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
           decoration: InputDecoration(hintText: l10n.assistantTagsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsCreateDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsCreateDialogOk),
+          ),
         ],
       ),
     );
@@ -96,7 +111,11 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
     }
   }
 
-  Future<void> _renameTag(BuildContext context, String tagId, String oldName) async {
+  Future<void> _renameTag(
+    BuildContext context,
+    String tagId,
+    String oldName,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final TextEditingController c = TextEditingController(text: oldName);
     final ok = await showDialog<bool>(
@@ -109,8 +128,14 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
           decoration: InputDecoration(hintText: l10n.assistantTagsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsRenameDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsRenameDialogOk),
+          ),
         ],
       ),
     );
@@ -131,8 +156,14 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
         title: Text(l10n.assistantTagsDeleteConfirmTitle),
         content: Text(l10n.assistantTagsDeleteConfirmContent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsDeleteConfirmCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsDeleteConfirmOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsDeleteConfirmCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsDeleteConfirmOk),
+          ),
         ],
       ),
     );
@@ -163,12 +194,21 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
                     l10n.assistantTagsManageTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                _SmallIconBtn(icon: Lucide.Plus, onTap: () => _createTag(context)),
+                _SmallIconBtn(
+                  icon: Lucide.Plus,
+                  onTap: () => _createTag(context),
+                ),
                 const SizedBox(width: 6),
-                _SmallIconBtn(icon: Lucide.X, onTap: () => Navigator.of(context).maybePop()),
+                _SmallIconBtn(
+                  icon: Lucide.X,
+                  onTap: () => Navigator.of(context).maybePop(),
+                ),
               ],
             ),
           ),
@@ -179,7 +219,10 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
             buildDefaultDragHandles: false,
             proxyDecorator: (child, index, animation) {
               // No shadow/elevation while dragging; just return the card itself with subtle scale.
-              return ScaleTransition(scale: Tween<double>(begin: 1.0, end: 1.02).animate(animation), child: child);
+              return ScaleTransition(
+                scale: Tween<double>(begin: 1.0, end: 1.02).animate(animation),
+                child: child,
+              );
             },
             onReorder: (oldIndex, newIndex) async {
               if (newIndex > oldIndex) newIndex -= 1;
@@ -196,8 +239,12 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
                     child: _TagCard(
                       title: t.name,
                       onTap: () async {
-                        await context.read<TagProvider>().assignAssistantToTag(widget.assistantId, t.id);
-                        if (widget.isDialog && context.mounted) Navigator.of(context).pop();
+                        await context.read<TagProvider>().assignAssistantToTag(
+                          widget.assistantId,
+                          t.id,
+                        );
+                        if (widget.isDialog && context.mounted)
+                          Navigator.of(context).pop();
                       },
                       onRename: () => _renameTag(context, t.id, t.name),
                       onDelete: () => _deleteTag(context, t.id),
@@ -215,16 +262,23 @@ class _TagsManagerBodyState extends State<_TagsManagerBody> {
 
 class _SmallIconBtn extends StatefulWidget {
   const _SmallIconBtn({required this.icon, required this.onTap});
-  final IconData icon; final VoidCallback onTap;
-  @override State<_SmallIconBtn> createState() => _SmallIconBtnState();
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  State<_SmallIconBtn> createState() => _SmallIconBtnState();
 }
 
 class _SmallIconBtnState extends State<_SmallIconBtn> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -232,8 +286,12 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          width: 28, height: 28,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.center,
           child: Icon(widget.icon, size: 18, color: cs.onSurface),
         ),
@@ -243,9 +301,18 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
 }
 
 class _TagCard extends StatefulWidget {
-  const _TagCard({required this.title, required this.onTap, required this.onRename, required this.onDelete});
-  final String title; final VoidCallback onTap; final VoidCallback onRename; final VoidCallback onDelete;
-  @override State<_TagCard> createState() => _TagCardState();
+  const _TagCard({
+    required this.title,
+    required this.onTap,
+    required this.onRename,
+    required this.onDelete,
+  });
+  final String title;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+  @override
+  State<_TagCard> createState() => _TagCardState();
 }
 
 class _TagCardState extends State<_TagCard> {
@@ -278,7 +345,10 @@ class _TagCardState extends State<_TagCard> {
                   widget.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

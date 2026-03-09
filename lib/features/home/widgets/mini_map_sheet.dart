@@ -53,7 +53,8 @@ class _MiniMapSheet extends StatefulWidget {
   State<_MiniMapSheet> createState() => _MiniMapSheetState();
 }
 
-class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMixin {
+class _MiniMapSheetState extends State<_MiniMapSheet>
+    with TickerProviderStateMixin {
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
   String _query = '';
@@ -135,7 +136,10 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                     Expanded(
                       child: Text(
                         AppLocalizations.of(context)!.miniMapTitle,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -145,11 +149,20 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                       width: 36,
                       child: IconButton(
                         padding: EdgeInsets.zero,
-                        icon: Icon(Lucide.ChevronsDown, size: 18, color: cs.onSurface),
-                        tooltip: AppLocalizations.of(context)!.miniMapScrollToBottomTooltip,
+                        icon: Icon(
+                          Lucide.ChevronsDown,
+                          size: 18,
+                          color: cs.onSurface,
+                        ),
+                        tooltip: AppLocalizations.of(
+                          context,
+                        )!.miniMapScrollToBottomTooltip,
                         onPressed: () {
-                          if (controller.hasClients && controller.position.maxScrollExtent > 0) {
-                            controller.jumpTo(controller.position.maxScrollExtent);
+                          if (controller.hasClients &&
+                              controller.position.maxScrollExtent > 0) {
+                            controller.jumpTo(
+                              controller.position.maxScrollExtent,
+                            );
                           }
                         },
                       ),
@@ -164,7 +177,9 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                       ? AnimatedBuilder(
                           animation: widget.selectionListenable!,
                           builder: (context, child) {
-                            final pairs = _filteredPairs(_buildPairs(widget.messages));
+                            final pairs = _filteredPairs(
+                              _buildPairs(widget.messages),
+                            );
                             return ListView(
                               controller: controller,
                               children: [
@@ -172,8 +187,10 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                                   _MiniMapRow(
                                     pair: p,
                                     selecting: true,
-                                    selectedMessageIds: widget.selectedMessageIds!,
-                                    onToggleSelection: widget.onToggleSelection!,
+                                    selectedMessageIds:
+                                        widget.selectedMessageIds!,
+                                    onToggleSelection:
+                                        widget.onToggleSelection!,
                                   ),
                               ],
                             );
@@ -182,7 +199,9 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                       : ListView(
                           controller: controller,
                           children: [
-                            for (final p in _filteredPairs(_buildPairs(widget.messages)))
+                            for (final p in _filteredPairs(
+                              _buildPairs(widget.messages),
+                            ))
                               _MiniMapRow(
                                 pair: p,
                                 selecting: widget.selecting,
@@ -201,7 +220,14 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
   }
 
   Widget _legendDot(Color c) {
-    return Container(width: 10, height: 10, decoration: BoxDecoration(color: c.withOpacity(0.8), shape: BoxShape.circle));
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.8),
+        shape: BoxShape.circle,
+      ),
+    );
   }
 
   Widget _buildSearchToggle(BuildContext context, double maxWidth) {
@@ -241,10 +267,17 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                           textAlignVertical: TextAlignVertical.center,
                           decoration: InputDecoration(
                             isDense: true,
-                            hintText: MaterialLocalizations.of(context).searchFieldLabel,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            hintText: MaterialLocalizations.of(
+                              context,
+                            ).searchFieldLabel,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             filled: true,
-                            fillColor: cs.surfaceVariant.withOpacity(isDark ? 0.35 : 0.6),
+                            fillColor: cs.surfaceVariant.withOpacity(
+                              isDark ? 0.35 : 0.6,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide(color: borderColor),
@@ -267,9 +300,15 @@ class _MiniMapSheetState extends State<_MiniMapSheet> with TickerProviderStateMi
                       width: 36,
                       child: IconButton(
                         padding: EdgeInsets.zero,
-                        icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.7)),
+                        icon: Icon(
+                          Lucide.X,
+                          size: 18,
+                          color: cs.onSurface.withOpacity(0.7),
+                        ),
                         onPressed: () => _clearOrCloseSearch(close: true),
-                        tooltip: MaterialLocalizations.of(context).closeButtonLabel,
+                        tooltip: MaterialLocalizations.of(
+                          context,
+                        ).closeButtonLabel,
                       ),
                     ),
                   ],
@@ -350,7 +389,10 @@ class _MiniMapRow extends StatelessWidget {
     // Strip inline embed markers used in user messages to avoid noise
     var t = s
         // remove vendor inline reasoning blocks if present
-        .replaceAll(RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false), '')
+        .replaceAll(
+          RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false),
+          '',
+        )
         .replaceAll(RegExp(r"\[image:[^\]]+\]"), "")
         .replaceAll(RegExp(r"\[file:[^\]]+\]"), "")
         .replaceAll('\n', ' ')
@@ -367,16 +409,26 @@ class _MiniMapRow extends StatelessWidget {
     final asstText = pair.assistant?.content ?? '';
 
     final bool userSelected =
-        selectedMessageIds != null && pair.user != null && selectedMessageIds!.contains(pair.user!.id);
+        selectedMessageIds != null &&
+        pair.user != null &&
+        selectedMessageIds!.contains(pair.user!.id);
     final bool assistantSelected =
-        selectedMessageIds != null && pair.assistant != null && selectedMessageIds!.contains(pair.assistant!.id);
+        selectedMessageIds != null &&
+        pair.assistant != null &&
+        selectedMessageIds!.contains(pair.assistant!.id);
 
-    final userBg = (isDark ? cs.primary.withOpacity(0.15) : cs.primary.withOpacity(0.08));
-    final userSelectedBg = (isDark ? cs.primary.withOpacity(0.26) : cs.primary.withOpacity(0.14));
+    final userBg = (isDark
+        ? cs.primary.withOpacity(0.15)
+        : cs.primary.withOpacity(0.08));
+    final userSelectedBg = (isDark
+        ? cs.primary.withOpacity(0.26)
+        : cs.primary.withOpacity(0.14));
     final userBorder = cs.primary.withOpacity(isDark ? 0.45 : 0.35);
 
     final assistantBg = cs.onSurface.withOpacity(isDark ? 0.06 : 0.04);
-    final assistantSelectedBg = (isDark ? cs.primary.withOpacity(0.18) : cs.primary.withOpacity(0.10));
+    final assistantSelectedBg = (isDark
+        ? cs.primary.withOpacity(0.18)
+        : cs.primary.withOpacity(0.10));
     final assistantBorder = cs.primary.withOpacity(isDark ? 0.38 : 0.28);
 
     return Padding(
@@ -389,35 +441,53 @@ class _MiniMapRow extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.75 - 32, // subtract side paddings approx in sheet
+                maxWidth:
+                    MediaQuery.sizeOf(context).width * 0.75 -
+                    32, // subtract side paddings approx in sheet
               ),
               child: Material(
                 color: Colors.transparent,
                 child: selecting
                     ? GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: pair.user != null ? () => onToggleSelection?.call(pair.user!.id) : null,
+                        onTap: pair.user != null
+                            ? () => onToggleSelection?.call(pair.user!.id)
+                            : null,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: userSelected ? userSelectedBg : userBg,
                             borderRadius: BorderRadius.circular(16),
-                            border: userSelected ? Border.all(color: userBorder, width: 1) : null,
+                            border: userSelected
+                                ? Border.all(color: userBorder, width: 1)
+                                : null,
                           ),
                           child: Text(
                             userText.isNotEmpty ? _oneLine(userText) : ' ',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 15.5, height: 1.4, color: cs.onSurface),
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              height: 1.4,
+                              color: cs.onSurface,
+                            ),
                             textAlign: TextAlign.left,
                           ),
                         ),
                       )
                     : InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: pair.user != null ? () => Navigator.of(context).pop(pair.user!.id) : null,
+                        onTap: pair.user != null
+                            ? () => Navigator.of(context).pop(pair.user!.id)
+                            : null,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: userBg,
                             borderRadius: BorderRadius.circular(16),
@@ -426,7 +496,11 @@ class _MiniMapRow extends StatelessWidget {
                             userText.isNotEmpty ? _oneLine(userText) : ' ',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 15.5, height: 1.4, color: cs.onSurface),
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              height: 1.4,
+                              color: cs.onSurface,
+                            ),
                             textAlign: TextAlign.left,
                           ),
                         ),
@@ -440,20 +514,31 @@ class _MiniMapRow extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width //* 0.75 - 32, // subtract side paddings approx in sheet
+                maxWidth: MediaQuery.sizeOf(
+                  context,
+                ).width, //* 0.75 - 32, // subtract side paddings approx in sheet
               ),
               child: Material(
                 color: Colors.transparent,
                 child: selecting
                     ? GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: pair.assistant != null ? () => onToggleSelection?.call(pair.assistant!.id) : null,
+                        onTap: pair.assistant != null
+                            ? () => onToggleSelection?.call(pair.assistant!.id)
+                            : null,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
-                            color: assistantSelected ? assistantSelectedBg : assistantBg,
+                            color: assistantSelected
+                                ? assistantSelectedBg
+                                : assistantBg,
                             borderRadius: BorderRadius.circular(16),
-                            border: assistantSelected ? Border.all(color: assistantBorder, width: 1) : null,
+                            border: assistantSelected
+                                ? Border.all(color: assistantBorder, width: 1)
+                                : null,
                           ),
                           child: Text(
                             asstText.isNotEmpty ? _oneLine(asstText) : ' ',
@@ -466,9 +551,15 @@ class _MiniMapRow extends StatelessWidget {
                       )
                     : InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: pair.assistant != null ? () => Navigator.of(context).pop(pair.assistant!.id) : null,
+                        onTap: pair.assistant != null
+                            ? () =>
+                                  Navigator.of(context).pop(pair.assistant!.id)
+                            : null,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: assistantBg,
                             borderRadius: BorderRadius.circular(16),

@@ -11,21 +11,31 @@ class MermaidViewHandle {
   final Widget widget;
   final Future<bool> Function() exportPng;
   final Future<Uint8List?> Function()? exportPngBytes;
-  MermaidViewHandle({required this.widget, required this.exportPng, this.exportPngBytes});
+  MermaidViewHandle({
+    required this.widget,
+    required this.exportPng,
+    this.exportPngBytes,
+  });
 }
 
 final Map<String, html.DivElement> _containers = {};
 
 /// Web-only Mermaid renderer using JS injection (no extra Dart packages).
 /// Returns a handle with the widget and an export-to-PNG action.
-MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String>? themeVars, GlobalKey? viewKey}) {
+MermaidViewHandle? createMermaidView(
+  String code,
+  bool dark, {
+  Map<String, String>? themeVars,
+  GlobalKey? viewKey,
+}) {
   final container = html.DivElement()
     ..style.width = '100%'
-    ..style.height = (() {
-      final cached = MermaidHeightCache.get(code);
-      if (cached != null) return '${cached.ceil()}px';
-      return '120px';
-    })() // initial height from cache if available
+    ..style.height =
+        (() {
+          final cached = MermaidHeightCache.get(code);
+          if (cached != null) return '${cached.ceil()}px';
+          return '120px';
+        })() // initial height from cache if available
     ..style.display = 'block';
 
   final mermaidDiv = html.DivElement()
@@ -41,7 +51,8 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
   container.append(style);
   container.append(mermaidDiv);
 
-  final viewType = 'mermaid-view-${DateTime.now().microsecondsSinceEpoch}-${_viewSeq++}';
+  final viewType =
+      'mermaid-view-${DateTime.now().microsecondsSinceEpoch}-${_viewSeq++}';
   container.id = viewType;
   // ignore: undefined_prefixed_name
   ui.platformViewRegistry.registerViewFactory(viewType, (int id) => container);
@@ -64,9 +75,13 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
       js_util.callMethod(mermaid, 'initialize', [js_util.jsify(init)]);
 
       // Render only this node and set explicit height to fit content
-      await js_util.promiseToFuture(js_util.callMethod(mermaid, 'run', [js_util.jsify({
-        'nodes': [mermaidDiv],
-      })]));
+      await js_util.promiseToFuture(
+        js_util.callMethod(mermaid, 'run', [
+          js_util.jsify({
+            'nodes': [mermaidDiv],
+          }),
+        ]),
+      );
 
       // After rendering, set container height to the SVG bbox height
       final svg = mermaidDiv.querySelector('svg');
@@ -74,7 +89,9 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
         final rect = svg.getBoundingClientRect();
         final h = rect.height.ceil();
         container.style.height = '${h + 16}px';
-        try { MermaidHeightCache.put(code, (h + 16).toDouble()); } catch (_) {}
+        try {
+          MermaidHeightCache.put(code, (h + 16).toDouble());
+        } catch (_) {}
       }
     } catch (_) {
       // ignore; caller will still see the code content
@@ -91,17 +108,25 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
       final w = rect.width.ceil();
       final h = rect.height.ceil();
       final scale = (html.window.devicePixelRatio ?? 1) * 2;
-      final canvas = html.CanvasElement(width: (w * scale).floor(), height: (h * scale).floor());
+      final canvas = html.CanvasElement(
+        width: (w * scale).floor(),
+        height: (h * scale).floor(),
+      );
       final ctx = canvas.context2D;
-      final cloned = (html.DocumentFragment.html('')..append(svg.clone(true))).children.first;
+      final cloned = (html.DocumentFragment.html(
+        '',
+      )..append(svg.clone(true))).children.first;
       final xmlRaw = (cloned?.outerHtml ?? svg.outerHtml) ?? '';
       final img = html.ImageElement();
       final completer = Completer<void>();
       img.onLoad.listen((_) => completer.complete());
       img.onError.listen((_) => completer.complete());
-      img.src = 'data:image/svg+xml;charset=utf-8,' + Uri.encodeComponent(xmlRaw);
+      img.src =
+          'data:image/svg+xml;charset=utf-8,' + Uri.encodeComponent(xmlRaw);
       await completer.future;
-      final bg = (themeVars != null && themeVars['background'] != null) ? themeVars['background']! : '#ffffff';
+      final bg = (themeVars != null && themeVars['background'] != null)
+          ? themeVars['background']!
+          : '#ffffff';
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width!.toDouble(), canvas.height!.toDouble());
       ctx.drawImageScaled(img, 0, 0, canvas.width!, canvas.height!);
@@ -122,7 +147,12 @@ MermaidViewHandle? createMermaidView(String code, bool dark, {Map<String, String
     // Not implemented for web currently (Flutter web capture path likely not used)
     return null;
   }
-  return MermaidViewHandle(widget: HtmlElementView(viewType: viewType), exportPng: export, exportPngBytes: exportBytes);
+
+  return MermaidViewHandle(
+    widget: HtmlElementView(viewType: viewType),
+    exportPng: export,
+    exportPngBytes: exportBytes,
+  );
 }
 
 int _viewSeq = 0;
@@ -147,6 +177,7 @@ Future<void> _ensureMermaidLoaded() {
       _loader!.complete();
     }
   }
+
   script.onLoad.listen((_) => complete());
   script.onError.listen((_) => complete());
   html.document.head?.append(script);

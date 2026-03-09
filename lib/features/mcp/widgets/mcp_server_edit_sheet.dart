@@ -21,7 +21,10 @@ class _HeaderEntry {
   }
 }
 
-Future<void> showMcpServerEditSheet(BuildContext context, {String? serverId}) async {
+Future<void> showMcpServerEditSheet(
+  BuildContext context, {
+  String? serverId,
+}) async {
   final cs = Theme.of(context).colorScheme;
   await showModalBottomSheet<void>(
     context: context,
@@ -43,7 +46,8 @@ class _McpServerEditSheet extends StatefulWidget {
   State<_McpServerEditSheet> createState() => _McpServerEditSheetState();
 }
 
-class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTickerProviderStateMixin {
+class _McpServerEditSheetState extends State<_McpServerEditSheet>
+    with SingleTickerProviderStateMixin {
   late final bool isEdit = widget.serverId != null;
   TabController? _tab;
 
@@ -65,7 +69,12 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
       _transport = server.transport;
       _urlCtrl.text = server.url;
       server.headers.forEach((k, v) {
-        _headers.add(_HeaderEntry(TextEditingController(text: k), TextEditingController(text: v)));
+        _headers.add(
+          _HeaderEntry(
+            TextEditingController(text: k),
+            TextEditingController(text: v),
+          ),
+        );
       });
     }
   }
@@ -87,10 +96,19 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
   }
 
   // Match provider sheet switch row style
-  Widget _switchRow({required String label, required bool value, required ValueChanged<bool> onChanged}) {
+  Widget _switchRow({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ),
         IosSwitch(value: value, onChanged: onChanged),
       ],
     );
@@ -104,14 +122,22 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
       decoration: BoxDecoration(
         color: isDark ? Colors.white10 : Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6),
+        border: Border.all(
+          color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+          width: 0.6,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           children: [
             for (int i = 0; i < children.length; i++) ...[
-              if (i > 0) Divider(height: 10, thickness: 0.6, color: cs.outlineVariant.withOpacity(0.18)),
+              if (i > 0)
+                Divider(
+                  height: 10,
+                  thickness: 0.6,
+                  color: cs.outlineVariant.withOpacity(0.18),
+                ),
               children[i],
             ],
           ],
@@ -120,13 +146,20 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
     );
   }
 
-  Widget _inputRow({required String label, required TextEditingController controller, String? hint}) {
+  Widget _inputRow({
+    required String label,
+    required TextEditingController controller,
+    String? hint,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.8))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.8)),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -148,7 +181,10 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: cs.primary.withOpacity(0.5)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -162,7 +198,10 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
     return _SegChoiceBar(
       labels: labels,
       selectedIndex: idx,
-      onSelected: (i) => setState(() => _transport = i == 0 ? McpTransportType.http : McpTransportType.sse),
+      onSelected: (i) => setState(
+        () =>
+            _transport = i == 0 ? McpTransportType.http : McpTransportType.sse,
+      ),
     );
   }
 
@@ -173,39 +212,80 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _iosCard(children: [
-          _switchRow(label: l10n.mcpServerEditSheetEnabledLabel, value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
-        ]),
+        _iosCard(
+          children: [
+            _switchRow(
+              label: l10n.mcpServerEditSheetEnabledLabel,
+              value: _enabled,
+              onChanged: (v) => setState(() => _enabled = v),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         if (isBuiltin)
-          _iosCard(children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Text(l10n.mcpServerEditSheetNameLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(_nameCtrl.text, style: const TextStyle(fontWeight: FontWeight.w600))),
-                ],
+          _iosCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      l10n.mcpServerEditSheetNameLabel,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _nameCtrl.text,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ])
+            ],
+          )
         else ...[
-          _inputRow(label: l10n.mcpServerEditSheetNameLabel, controller: _nameCtrl, hint: 'My MCP'),
+          _inputRow(
+            label: l10n.mcpServerEditSheetNameLabel,
+            controller: _nameCtrl,
+            hint: 'My MCP',
+          ),
           const SizedBox(height: 10),
-          Text(l10n.mcpServerEditSheetTransportLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(
+            l10n.mcpServerEditSheetTransportLabel,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 6),
           _transportPicker(),
           const SizedBox(height: 10),
           if (_transport == McpTransportType.sse) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text(l10n.mcpServerEditSheetSseRetryHint, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+              child: Text(
+                l10n.mcpServerEditSheetSseRetryHint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
             ),
           ],
-          _inputRow(label: l10n.mcpServerEditSheetUrlLabel, controller: _urlCtrl, hint: _transport == McpTransportType.sse ? 'http://localhost:3000/sse' : 'http://localhost:3000'),
+          _inputRow(
+            label: l10n.mcpServerEditSheetUrlLabel,
+            controller: _urlCtrl,
+            hint: _transport == McpTransportType.sse
+                ? 'http://localhost:3000/sse'
+                : 'http://localhost:3000',
+          ),
           const SizedBox(height: 16),
-          Text(l10n.mcpServerEditSheetCustomHeadersTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            l10n.mcpServerEditSheetCustomHeadersTitle,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
           _headersEditor(),
         ],
@@ -224,16 +304,26 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF7F7F9),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white10
+                  : const Color(0xFFF7F7F9),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _inputRow(label: l10n.mcpServerEditSheetHeaderNameLabel, controller: _headers[i].key, hint: l10n.mcpServerEditSheetHeaderNameHint),
+                _inputRow(
+                  label: l10n.mcpServerEditSheetHeaderNameLabel,
+                  controller: _headers[i].key,
+                  hint: l10n.mcpServerEditSheetHeaderNameHint,
+                ),
                 const SizedBox(height: 10),
-                _inputRow(label: l10n.mcpServerEditSheetHeaderValueLabel, controller: _headers[i].value, hint: l10n.mcpServerEditSheetHeaderValueHint),
+                _inputRow(
+                  label: l10n.mcpServerEditSheetHeaderValueLabel,
+                  controller: _headers[i].value,
+                  hint: l10n.mcpServerEditSheetHeaderValueHint,
+                ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: _TactileIconButton(
@@ -254,7 +344,11 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
             label: l10n.mcpServerEditSheetAddHeader,
             backgroundColor: cs.primary,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            onTap: () => setState(() => _headers.add(_HeaderEntry(TextEditingController(), TextEditingController()))),
+            onTap: () => setState(
+              () => _headers.add(
+                _HeaderEntry(TextEditingController(), TextEditingController()),
+              ),
+            ),
           ),
         ),
       ],
@@ -283,13 +377,28 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
     }
     final headers = <String, String>{
       for (final h in _headers)
-        if (h.key.text.trim().isNotEmpty) h.key.text.trim(): h.value.text.trim(),
+        if (h.key.text.trim().isNotEmpty)
+          h.key.text.trim(): h.value.text.trim(),
     };
     if (isEdit) {
       final old = mcp.getById(widget.serverId!)!;
-      await mcp.updateServer(old.copyWith(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers));
+      await mcp.updateServer(
+        old.copyWith(
+          enabled: _enabled,
+          name: name,
+          transport: _transport,
+          url: url,
+          headers: headers,
+        ),
+      );
     } else {
-      await mcp.addServer(enabled: _enabled, name: name, transport: _transport, url: url, headers: headers);
+      await mcp.addServer(
+        enabled: _enabled,
+        name: name,
+        transport: _transport,
+        url: url,
+        headers: headers,
+      );
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -304,7 +413,9 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: DraggableScrollableSheet(
           expand: false,
           initialChildSize: isEdit ? 0.85 : 0.6,
@@ -330,8 +441,13 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
                     Align(
                       alignment: Alignment.center,
                       child: Text(
-                        isEdit ? l10n.mcpServerEditSheetTitleEdit : l10n.mcpServerEditSheetTitleAdd,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        isEdit
+                            ? l10n.mcpServerEditSheetTitleEdit
+                            : l10n.mcpServerEditSheetTitleAdd,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     Align(
@@ -355,7 +471,8 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
                           child: _TactileIconButton(
                             icon: Lucide.RefreshCw,
                             color: cs.primary,
-                            semanticLabel: l10n.mcpServerEditSheetSyncToolsTooltip,
+                            semanticLabel:
+                                l10n.mcpServerEditSheetSyncToolsTooltip,
                             onTap: () => mcp.refreshTools(widget.serverId!),
                           ),
                         ),
@@ -367,10 +484,13 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
               if (isEdit) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _SegTabBar(controller: _tab!, tabs: [
-                    l10n.mcpServerEditSheetTabBasic,
-                    l10n.mcpServerEditSheetTabTools,
-                  ]),
+                  child: _SegTabBar(
+                    controller: _tab!,
+                    tabs: [
+                      l10n.mcpServerEditSheetTabBasic,
+                      l10n.mcpServerEditSheetTabTools,
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -390,12 +510,18 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
                               return _basicForm();
                             } else {
                               // Tools tab
-                              final tools = server?.tools ?? const <McpToolConfig>[];
+                              final tools =
+                                  server?.tools ?? const <McpToolConfig>[];
                               if (tools.isEmpty) {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 20),
                                   child: Center(
-                                    child: Text(l10n.mcpServerEditSheetNoToolsHint, style: TextStyle(color: cs.onSurface.withOpacity(0.6))),
+                                    child: Text(
+                                      l10n.mcpServerEditSheetNoToolsHint,
+                                      style: TextStyle(
+                                        color: cs.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
                                   ),
                                 );
                               }
@@ -406,40 +532,96 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
                                       margin: const EdgeInsets.only(bottom: 10),
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).brightness == Brightness.dark
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
                                             ? Colors.white10
                                             : const Color(0xFFF7F7F9),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+                                        border: Border.all(
+                                          color: cs.outlineVariant.withOpacity(
+                                            0.2,
+                                          ),
+                                        ),
                                       ),
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Text(tool.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                                if ((tool.description ?? '').isNotEmpty) ...[
+                                                Text(
+                                                  tool.name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                if ((tool.description ?? '')
+                                                    .isNotEmpty) ...[
                                                   const SizedBox(height: 4),
-                                                  Text(tool.description!, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+                                                  Text(
+                                                    tool.description!,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: cs.onSurface
+                                                          .withOpacity(0.7),
+                                                    ),
+                                                  ),
                                                 ],
                                                 if (tool.params.isNotEmpty) ...[
                                                   const SizedBox(height: 8),
                                                   Wrap(
                                                     spacing: 6,
                                                     runSpacing: 6,
-                                                    children: tool.params.map((p) {
-                                                      final color = p.required ? cs.primary : cs.onSurface.withOpacity(0.5);
-                                                      final bg = p.required ? cs.primary.withOpacity(0.12) : cs.onSurface.withOpacity(0.06);
+                                                    children: tool.params.map((
+                                                      p,
+                                                    ) {
+                                                      final color = p.required
+                                                          ? cs.primary
+                                                          : cs.onSurface
+                                                                .withOpacity(
+                                                                  0.5,
+                                                                );
+                                                      final bg = p.required
+                                                          ? cs.primary
+                                                                .withOpacity(
+                                                                  0.12,
+                                                                )
+                                                          : cs.onSurface
+                                                                .withOpacity(
+                                                                  0.06,
+                                                                );
                                                       return Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 2,
+                                                            ),
                                                         decoration: BoxDecoration(
                                                           color: bg,
-                                                          borderRadius: BorderRadius.circular(999),
-                                                          border: Border.all(color: color.withOpacity(0.5)),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                999,
+                                                              ),
+                                                          border: Border.all(
+                                                            color: color
+                                                                .withOpacity(
+                                                                  0.5,
+                                                                ),
+                                                          ),
                                                         ),
-                                                        child: Text(p.name, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                                                        child: Text(
+                                                          p.name,
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: color,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
                                                       );
                                                     }).toList(),
                                                   ),
@@ -449,7 +631,13 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
                                           ),
                                           IosSwitch(
                                             value: tool.enabled,
-                                            onChanged: (v) => context.read<McpProvider>().setToolEnabled(server!.id, tool.name, v),
+                                            onChanged: (v) => context
+                                                .read<McpProvider>()
+                                                .setToolEnabled(
+                                                  server!.id,
+                                                  tool.name,
+                                                  v,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -490,27 +678,47 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet> with SingleTic
 // --- iOS tactile helpers (no ripple) ---
 
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.onTap, this.semanticLabel, this.size = 20});
-  final IconData icon; final Color color; final VoidCallback onTap; final String? semanticLabel; final double size;
-  @override State<_TactileIconButton> createState() => _TactileIconButtonState();
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.semanticLabel,
+    this.size = 20,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final String? semanticLabel;
+  final double size;
+  @override
+  State<_TactileIconButton> createState() => _TactileIconButtonState();
 }
 
 class _TactileIconButtonState extends State<_TactileIconButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final base = widget.color; final press = base.withOpacity(0.7);
+    final base = widget.color;
+    final press = base.withOpacity(0.7);
     return Semantics(
-      button: true, label: widget.semanticLabel,
+      button: true,
+      label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(()=>_pressed=true),
-        onTapUp: (_) => setState(()=>_pressed=false),
-        onTapCancel: () => setState(()=>_pressed=false),
-        onTap: () { Haptics.light(); widget.onTap(); },
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: () {
+          Haptics.light();
+          widget.onTap();
+        },
         child: Padding(
           padding: const EdgeInsets.all(6),
-          child: Icon(widget.icon, size: widget.size, color: _pressed ? press : base),
+          child: Icon(
+            widget.icon,
+            size: widget.size,
+            color: _pressed ? press : base,
+          ),
         ),
       ),
     );
@@ -518,28 +726,49 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
 }
 
 class _TactileRow extends StatefulWidget {
-  const _TactileRow({required this.builder, this.onTap, this.pressedScale = 1.0});
-  final Widget Function(bool pressed) builder; final VoidCallback? onTap; final double pressedScale;
-  @override State<_TactileRow> createState() => _TactileRowState();
+  const _TactileRow({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 1.0,
+  });
+  final Widget Function(bool pressed) builder;
+  final VoidCallback? onTap;
+  final double pressedScale;
+  @override
+  State<_TactileRow> createState() => _TactileRowState();
 }
 
 class _TactileRowState extends State<_TactileRow> {
-  bool _pressed = false; void _set(bool v){ if(_pressed!=v) setState(()=>_pressed=v);} 
+  bool _pressed = false;
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap==null?null:(_)=>_set(true),
-      onTapUp: widget.onTap==null?null:(_){ /* keep pressed a bit for better feel */ },
-      onTapCancel: widget.onTap==null?null:()=>_set(false),
-      onTap: widget.onTap==null?null:(){
-        if (context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
-        widget.onTap!.call();
-        Future.delayed(const Duration(milliseconds: 120), () { if (mounted) _set(false); });
-      },
+      onTapDown: widget.onTap == null ? null : (_) => _set(true),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) {
+              /* keep pressed a bit for better feel */
+            },
+      onTapCancel: widget.onTap == null ? null : () => _set(false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
+              widget.onTap!.call();
+              Future.delayed(const Duration(milliseconds: 120), () {
+                if (mounted) _set(false);
+              });
+            },
       child: AnimatedScale(
         scale: _pressed ? widget.pressedScale : 1.0,
-        duration: const Duration(milliseconds: 110), curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
         child: widget.builder(_pressed),
       ),
     );
@@ -548,7 +777,8 @@ class _TactileRowState extends State<_TactileRow> {
 
 class _IosOutlineButton extends StatelessWidget {
   const _IosOutlineButton({required this.label, required this.onTap});
-  final String label; final VoidCallback onTap;
+  final String label;
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -556,9 +786,14 @@ class _IosOutlineButton extends StatelessWidget {
       pressedScale: 0.98,
       onTap: onTap,
       builder: (pressed) {
-        final overlay = pressed ? (Theme.of(context).brightness==Brightness.dark ? Colors.black.withOpacity(0.04) : Colors.white.withOpacity(0.04)) : Colors.transparent;
+        final overlay = pressed
+            ? (Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black.withOpacity(0.04)
+                  : Colors.white.withOpacity(0.04))
+            : Colors.transparent;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 160), curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: overlay,
             borderRadius: BorderRadius.circular(12),
@@ -566,7 +801,10 @@ class _IosOutlineButton extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+          child: Text(
+            label,
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
+          ),
         );
       },
     );
@@ -575,7 +813,9 @@ class _IosOutlineButton extends StatelessWidget {
 
 class _IosFilledButton extends StatelessWidget {
   const _IosFilledButton({required this.label, required this.onTap, this.icon});
-  final String label; final VoidCallback onTap; final IconData? icon;
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -584,8 +824,12 @@ class _IosFilledButton extends StatelessWidget {
       onTap: onTap,
       builder: (pressed) {
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 160), curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
           child: Row(
@@ -596,7 +840,13 @@ class _IosFilledButton extends StatelessWidget {
                 Icon(icon, size: 18, color: cs.onPrimary),
                 const SizedBox(width: 6),
               ],
-              Text(label, style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: cs.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         );
@@ -607,7 +857,11 @@ class _IosFilledButton extends StatelessWidget {
 
 // Generic segmented choice bar (visual style matches provider segmented tabs)
 class _SegChoiceBar extends StatelessWidget {
-  const _SegChoiceBar({required this.labels, required this.selectedIndex, required this.onSelected});
+  const _SegChoiceBar({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -623,7 +877,10 @@ class _SegChoiceBar extends StatelessWidget {
     const double gap = 6;
     const double minSegWidth = 88;
     final double pillRadius = 18;
-    final double innerRadius = ((pillRadius - innerPadding).clamp(0.0, pillRadius)).toDouble();
+    final double innerRadius = ((pillRadius - innerPadding).clamp(
+      0.0,
+      pillRadius,
+    )).toDouble();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -633,9 +890,12 @@ class _SegChoiceBar extends StatelessWidget {
           minSegWidth,
           (innerAvailWidth - gap * (labels.length - 1)) / labels.length,
         );
-        final double rowWidth = segWidth * labels.length + gap * (labels.length - 1);
+        final double rowWidth =
+            segWidth * labels.length + gap * (labels.length - 1);
 
-        final Color shellBg = isDark ? Colors.white.withOpacity(0.08) : Colors.white;
+        final Color shellBg = isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.white;
 
         List<Widget> children = [];
         for (int index = 0; index < labels.length; index++) {
@@ -647,11 +907,16 @@ class _SegChoiceBar extends StatelessWidget {
               child: _TactileRow(
                 onTap: () => onSelected(index),
                 builder: (pressed) {
-                  final Color baseBg = selected ? cs.primary.withOpacity(0.14) : Colors.transparent;
+                  final Color baseBg = selected
+                      ? cs.primary.withOpacity(0.14)
+                      : Colors.transparent;
                   final Color bg = baseBg;
-                  final Color baseTextColor = selected ? cs.primary : cs.onSurface.withOpacity(0.82);
+                  final Color baseTextColor = selected
+                      ? cs.primary
+                      : cs.onSurface.withOpacity(0.82);
                   final Color targetTextColor = pressed
-                      ? Color.lerp(baseTextColor, Colors.white, 0.22) ?? baseTextColor
+                      ? Color.lerp(baseTextColor, Colors.white, 0.22) ??
+                            baseTextColor
                       : baseTextColor;
 
                   return AnimatedContainer(
@@ -686,7 +951,8 @@ class _SegChoiceBar extends StatelessWidget {
               ),
             ),
           );
-          if (index != labels.length - 1) children.add(const SizedBox(width: gap));
+          if (index != labels.length - 1)
+            children.add(const SizedBox(width: gap));
         }
 
         return Container(
@@ -703,7 +969,10 @@ class _SegChoiceBar extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: innerAvailWidth),
-                child: SizedBox(width: rowWidth, child: Row(children: children)),
+                child: SizedBox(
+                  width: rowWidth,
+                  child: Row(children: children),
+                ),
               ),
             ),
           ),
@@ -730,7 +999,10 @@ class _SegTabBar extends StatelessWidget {
     const double gap = 6;
     const double minSegWidth = 88;
     final double pillRadius = 18;
-    final double innerRadius = ((pillRadius - innerPadding).clamp(0.0, pillRadius)).toDouble();
+    final double innerRadius = ((pillRadius - innerPadding).clamp(
+      0.0,
+      pillRadius,
+    )).toDouble();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -740,9 +1012,12 @@ class _SegTabBar extends StatelessWidget {
           minSegWidth,
           (innerAvailWidth - gap * (tabs.length - 1)) / tabs.length,
         );
-        final double rowWidth = segWidth * tabs.length + gap * (tabs.length - 1);
+        final double rowWidth =
+            segWidth * tabs.length + gap * (tabs.length - 1);
 
-        final Color shellBg = isDark ? Colors.white.withOpacity(0.08) : Colors.white;
+        final Color shellBg = isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.white;
 
         List<Widget> children = [];
         for (int index = 0; index < tabs.length; index++) {
@@ -755,13 +1030,18 @@ class _SegTabBar extends StatelessWidget {
                 onTap: () => controller.animateTo(index),
                 builder: (pressed) {
                   // Background does not change on press; only selected shows subtle tint
-                  final Color baseBg = selected ? cs.primary.withOpacity(0.14) : Colors.transparent;
+                  final Color baseBg = selected
+                      ? cs.primary.withOpacity(0.14)
+                      : Colors.transparent;
                   final Color bg = baseBg;
 
                   // Text color lightens slightly on press
-                  final Color baseTextColor = selected ? cs.primary : cs.onSurface.withOpacity(0.82);
+                  final Color baseTextColor = selected
+                      ? cs.primary
+                      : cs.onSurface.withOpacity(0.82);
                   final Color targetTextColor = pressed
-                      ? Color.lerp(baseTextColor, Colors.white, 0.22) ?? baseTextColor
+                      ? Color.lerp(baseTextColor, Colors.white, 0.22) ??
+                            baseTextColor
                       : baseTextColor;
 
                   return AnimatedContainer(
@@ -796,7 +1076,8 @@ class _SegTabBar extends StatelessWidget {
               ),
             ),
           );
-          if (index != tabs.length - 1) children.add(const SizedBox(width: gap));
+          if (index != tabs.length - 1)
+            children.add(const SizedBox(width: gap));
         }
 
         return Container(
@@ -813,7 +1094,10 @@ class _SegTabBar extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: innerAvailWidth),
-                child: SizedBox(width: rowWidth, child: Row(children: children)),
+                child: SizedBox(
+                  width: rowWidth,
+                  child: Row(children: children),
+                ),
               ),
             ),
           ),

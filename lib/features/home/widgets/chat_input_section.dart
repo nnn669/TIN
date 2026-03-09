@@ -18,7 +18,8 @@ import 'model_icon.dart';
 typedef IsToolModelCallback = bool Function(String providerKey, String modelId);
 
 /// Callback for checking if a model supports reasoning.
-typedef IsReasoningModelCallback = bool Function(String providerKey, String modelId);
+typedef IsReasoningModelCallback =
+    bool Function(String providerKey, String modelId);
 
 /// Callback for checking if reasoning is enabled.
 typedef IsReasoningEnabledCallback = bool Function(int? budget);
@@ -116,7 +117,8 @@ class ChatInputSection extends StatelessWidget {
     final builtinSearchActive = _isBuiltinSearchActive(settings, a, pk, mid);
 
     final isDesktop = _isDesktopPlatform(context);
-    final hasWorldBooks = isTablet && context.watch<WorldBookProvider>().books.isNotEmpty;
+    final hasWorldBooks =
+        isTablet && context.watch<WorldBookProvider>().books.isNotEmpty;
 
     return ChatInputBar(
       key: inputBarKey,
@@ -144,9 +146,12 @@ class ChatInputSection extends StatelessWidget {
       mediaController: mediaController,
       onConfigureReasoning: onConfigureReasoning,
       reasoningActive: isReasoningEnabled(
-        (context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ?? settings.thinkingBudget,
+        (context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ??
+            settings.thinkingBudget,
       ),
-      supportsReasoning: (pk != null && mid != null) ? isReasoningModel(pk, mid) : false,
+      supportsReasoning: (pk != null && mid != null)
+          ? isReasoningModel(pk, mid)
+          : false,
       onOpenSearch: onOpenSearch,
       onSend: onSend,
       loading: isLoading,
@@ -158,7 +163,9 @@ class ChatInputSection extends StatelessWidget {
       // OCR button: show on desktop for mobile layout, always check settings for tablet layout
       showOcrButton: isTablet
           ? (settings.ocrModelProvider != null && settings.ocrModelId != null)
-          : (isDesktop && settings.ocrModelProvider != null && settings.ocrModelId != null),
+          : (isDesktop &&
+                settings.ocrModelProvider != null &&
+                settings.ocrModelId != null),
       ocrActive: settings.ocrEnabled,
       onToggleOcr: onToggleOcr,
       // Tablet-specific parameters
@@ -171,10 +178,16 @@ class ChatInputSection extends StatelessWidget {
       onOpenWorldBook: hasWorldBooks ? onOpenWorldBook : null,
       onLongPressLearning: isTablet ? onLongPressLearning : null,
       learningModeActive: isTablet
-          ? context.watch<InstructionInjectionProvider>().activeIdsFor(assistantId).isNotEmpty
+          ? context
+                .watch<InstructionInjectionProvider>()
+                .activeIdsFor(assistantId)
+                .isNotEmpty
           : false,
       worldBookActive: isTablet
-          ? context.watch<WorldBookProvider>().activeBookIdsFor(assistantId).isNotEmpty
+          ? context
+                .watch<WorldBookProvider>()
+                .activeBookIdsFor(assistantId)
+                .isNotEmpty
           : false,
       showMoreButton: !isTablet,
       onClearContext: isTablet ? onClearContext : null,
@@ -211,7 +224,9 @@ class ChatInputSection extends StatelessWidget {
 
     final supportsReasoning = isReasoningModel(pk, mid);
     if (!supportsReasoning && a != null) {
-      final enabledNow = isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
+      final enabledNow = isReasoningEnabled(
+        a.thinkingBudget ?? settings.thinkingBudget,
+      );
       if (enabledNow) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           final aa = ap.currentAssistant;
@@ -223,13 +238,19 @@ class ChatInputSection extends StatelessWidget {
     }
   }
 
-  bool _isBuiltinSearchActive(SettingsProvider settings, Assistant? a, String? pk, String? mid) {
+  bool _isBuiltinSearchActive(
+    SettingsProvider settings,
+    Assistant? a,
+    String? pk,
+    String? mid,
+  ) {
     final cfg = getActiveProviderConfig(settings, assistant: a);
     if (cfg == null || mid == null) return false;
 
     final isGemini = cfg.providerType == ProviderKind.google;
     final isClaude = cfg.providerType == ProviderKind.claude;
-    final isOpenAIResponses = cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
+    final isOpenAIResponses =
+        cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
 
     if (isGemini || isClaude || isOpenAIResponses) {
       final rawOv = cfg.modelOverrides[mid];
@@ -264,7 +285,9 @@ class ChatInputSection extends StatelessWidget {
   bool _hasQuickPhrases(BuildContext context, Assistant? a) {
     final quickPhraseProvider = context.watch<QuickPhraseProvider>();
     final globalCount = quickPhraseProvider.globalPhrases.length;
-    final assistantCount = a != null ? quickPhraseProvider.getForAssistant(a.id).length : 0;
+    final assistantCount = a != null
+        ? quickPhraseProvider.getForAssistant(a.id).length
+        : 0;
     return (globalCount + assistantCount) > 0;
   }
 }

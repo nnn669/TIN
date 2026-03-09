@@ -30,10 +30,7 @@ class AdaptiveLayout extends StatelessWidget {
         return Row(
           children: [
             if (sidePanel != null)
-              SizedBox(
-                width: tabletSideWidth,
-                child: sidePanel,
-              ),
+              SizedBox(width: tabletSideWidth, child: sidePanel),
             const VerticalDivider(width: 1),
             Expanded(child: body),
           ],
@@ -55,4 +52,3 @@ class AdaptiveLayout extends StatelessWidget {
     }
   }
 }
-

@@ -16,7 +16,10 @@ import '../../../utils/clipboard_images.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import 'dart:ui' as ui;
 
-Future<void> showImagePreviewSheet(BuildContext context, {required File file}) async {
+Future<void> showImagePreviewSheet(
+  BuildContext context, {
+  required File file,
+}) async {
   // On desktop platforms, show a custom dialog instead of bottom sheet
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await showDialog<void>(
@@ -35,10 +38,8 @@ Future<void> showImagePreviewSheet(BuildContext context, {required File file}) a
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (ctx) => SafeArea(
-      top: false,
-      child: _ImagePreviewSheet(file: file),
-    ),
+    builder: (ctx) =>
+        SafeArea(top: false, child: _ImagePreviewSheet(file: file)),
   );
 }
 
@@ -47,17 +48,22 @@ class _ImagePreviewDesktopDialog extends StatefulWidget {
   final File file;
 
   @override
-  State<_ImagePreviewDesktopDialog> createState() => _ImagePreviewDesktopDialogState();
+  State<_ImagePreviewDesktopDialog> createState() =>
+      _ImagePreviewDesktopDialogState();
 }
 
-class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> {
+class _ImagePreviewDesktopDialogState
+    extends State<_ImagePreviewDesktopDialog> {
   bool _saving = false;
   final ScrollController _scrollCtrl = ScrollController();
 
   Rect _shareAnchorRect(BuildContext context) {
     try {
       final box = context.findRenderObject() as RenderBox?;
-      if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+      if (box != null &&
+          box.hasSize &&
+          box.size.width > 0 &&
+          box.size.height > 0) {
         final offset = box.localToGlobal(Offset.zero);
         return offset & box.size;
       }
@@ -72,10 +78,9 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
         ? widget.file.uri.pathSegments.last
         : 'image.png';
     try {
-      final result = await Share.shareXFiles(
-        [XFile(widget.file.path, mimeType: 'image/png', name: filename)],
-        sharePositionOrigin: _shareAnchorRect(context),
-      );
+      final result = await Share.shareXFiles([
+        XFile(widget.file.path, mimeType: 'image/png', name: filename),
+      ], sharePositionOrigin: _shareAnchorRect(context));
       if (result.status == ShareResultStatus.success && mounted) {
         Navigator.of(context).maybePop();
       }
@@ -167,7 +172,9 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
             try {
               final codec = await ui.instantiateImageCodec(bytes);
               final frame = await codec.getNextFrame();
-              final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+              final data = await frame.image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
               if (data != null) {
                 outBytes = data.buffer.asUint8List();
                 format = 'png';
@@ -177,7 +184,8 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
 
           // Build clipboard item with suggested name
           String suggestedName = p.basename(path);
-          if (format == 'png' && !suggestedName.toLowerCase().endsWith('.png')) {
+          if (format == 'png' &&
+              !suggestedName.toLowerCase().endsWith('.png')) {
             suggestedName = p.setExtension(suggestedName, '.png');
           }
           final item = DataWriterItem(suggestedName: suggestedName);
@@ -241,7 +249,11 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720, minWidth: 520, maxHeight: 720),
+        constraints: const BoxConstraints(
+          maxWidth: 720,
+          minWidth: 520,
+          maxHeight: 720,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Material(
@@ -254,7 +266,13 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                   child: Row(
                     children: [
-                      Text(l10n.assistantEditPreviewTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.assistantEditPreviewTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       _DesktopIconButton(
                         tooltip: l10n.shareProviderSheetCopyButton,
@@ -272,7 +290,11 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
                         tooltip: l10n.imageViewerPageSaveButton,
                         onTap: _saving ? null : _onSaveDesktop,
                         icon: _saving
-                            ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 9))
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CupertinoActivityIndicator(radius: 9),
+                              )
                             : const Icon(Icons.download_outlined, size: 18),
                       ),
                       const SizedBox(width: 6),
@@ -299,7 +321,9 @@ class _ImagePreviewDesktopDialogState extends State<_ImagePreviewDesktopDialog> 
                           color: cs.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(color: cs.outline.withOpacity(0.08)),
+                            side: BorderSide(
+                              color: cs.outline.withOpacity(0.08),
+                            ),
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Image.file(widget.file, fit: BoxFit.contain),
@@ -361,7 +385,9 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
     final cs = Theme.of(context).colorScheme;
     final bool disabled = widget.onTap == null;
     final Color baseBorder = cs.outline.withOpacity(0.16);
-    final Color hoverFill = cs.onSurface.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06);
+    final Color hoverFill = cs.onSurface.withOpacity(
+      Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.06,
+    );
     final Color bg = _hovered ? hoverFill : Colors.transparent;
     final Color border = _hovered ? baseBorder : Colors.transparent;
 
@@ -393,7 +419,10 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
               decoration: BoxDecoration(
                 color: disabled ? Colors.transparent : bg,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: disabled ? Colors.transparent : border, width: 0.75),
+                border: Border.all(
+                  color: disabled ? Colors.transparent : border,
+                  width: 0.75,
+                ),
               ),
               child: Center(
                 child: IconTheme(
@@ -439,10 +468,9 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
         ? widget.file.uri.pathSegments.last
         : 'image.png';
     try {
-      final result = await Share.shareXFiles(
-        [XFile(widget.file.path, mimeType: 'image/png', name: filename)],
-        sharePositionOrigin: _shareAnchorRect(context),
-      );
+      final result = await Share.shareXFiles([
+        XFile(widget.file.path, mimeType: 'image/png', name: filename),
+      ], sharePositionOrigin: _shareAnchorRect(context));
       // Close only if sharing succeeds (when the platform reports it)
       if (result.status == ShareResultStatus.success && mounted) {
         Navigator.of(context).pop();
@@ -464,10 +492,15 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
       final l10n = AppLocalizations.of(context)!;
       final Uint8List bytes = await widget.file.readAsBytes();
       final name = 'kelivo-${DateTime.now().millisecondsSinceEpoch}';
-      final result = await ImageGallerySaverPlus.saveImage(bytes, quality: 100, name: name);
+      final result = await ImageGallerySaverPlus.saveImage(
+        bytes,
+        quality: 100,
+        name: name,
+      );
       bool success = false;
       if (result is Map) {
-        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+        final isSuccess =
+            result['isSuccess'] == true || result['isSuccess'] == 1;
         final filePath = result['filePath'] ?? result['file_path'];
         success = isSuccess || (filePath is String && filePath.isNotEmpty);
       }
@@ -543,7 +576,9 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                                   color: cs.surface,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
-                                    side: BorderSide(color: cs.outline.withOpacity(0.08)),
+                                    side: BorderSide(
+                                      color: cs.outline.withOpacity(0.08),
+                                    ),
                                   ),
                                   clipBehavior: Clip.antiAlias,
                                   child: Image.file(
@@ -551,7 +586,9 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                const SizedBox(height: 80), // leave space for action bar overlap, outside the card
+                                const SizedBox(
+                                  height: 80,
+                                ), // leave space for action bar overlap, outside the card
                               ],
                             ),
                           ),
@@ -575,7 +612,11 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, -2)),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, -2),
+                      ),
                     ],
                   ),
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -590,14 +631,22 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                             onTap: () => _onShare(btnCtx),
                             borderRadius: BorderRadius.circular(12),
                             baseColor: cs.surface,
-                            pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.14 : 0.10,
+                            pressedBlendStrength:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? 0.14
+                                : 0.10,
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: cs.outline.withOpacity(0.25)),
+                                border: Border.all(
+                                  color: cs.outline.withOpacity(0.25),
+                                ),
                               ),
                               child: Center(
-                                child: Icon(Lucide.MoreVertical, color: cs.onSurface.withOpacity(0.9)),
+                                child: Icon(
+                                  Lucide.MoreVertical,
+                                  color: cs.onSurface.withOpacity(0.9),
+                                ),
                               ),
                             ),
                           ),
@@ -612,7 +661,10 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                             onTap: _saving ? null : _onSave,
                             borderRadius: BorderRadius.circular(12),
                             baseColor: cs.primary,
-                            pressedBlendStrength: Theme.of(context).brightness == Brightness.dark ? 0.14 : 0.12,
+                            pressedBlendStrength:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? 0.14
+                                : 0.12,
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.transparent,
@@ -626,17 +678,25 @@ class _ImagePreviewSheetState extends State<_ImagePreviewSheet> {
                                           key: ValueKey('saving'),
                                           width: 18,
                                           height: 18,
-                                          child: CupertinoActivityIndicator(radius: 9),
+                                          child: CupertinoActivityIndicator(
+                                            radius: 9,
+                                          ),
                                         )
                                       : Row(
                                           key: const ValueKey('ready'),
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Lucide.Download, color: cs.onPrimary),
+                                            Icon(
+                                              Lucide.Download,
+                                              color: cs.onPrimary,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
                                               l10n.imagePreviewSheetSaveImage,
-                                              style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.w600),
+                                              style: TextStyle(
+                                                color: cs.onPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ],
                                         ),

@@ -248,9 +248,7 @@ class WorldBookStore {
     } catch (_) {}
   }
 
-  static Future<void> _persistCollapsedBooksMap(
-    Map<String, bool> map,
-  ) async {
+  static Future<void> _persistCollapsedBooksMap(Map<String, bool> map) async {
     _collapsedBooksCache = _cloneCollapsedBooksMap(map);
     final prefs = await SharedPreferences.getInstance();
     try {

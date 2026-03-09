@@ -16,9 +16,7 @@ import '../../../core/services/search/search_tool_service.dart';
 /// - Memory 工具 (create/edit/delete)
 /// - Search 工具
 class ToolHandlerService {
-  ToolHandlerService({
-    required this.contextProvider,
-  });
+  ToolHandlerService({required this.contextProvider});
 
   /// Build context (used for accessing providers)
   final BuildContext contextProvider;
@@ -61,7 +59,14 @@ class ToolHandlerService {
     }
 
     // Flatten anyOf/oneOf/allOf to first variant for simplicity
-    for (final key in ['anyOf', 'oneOf', 'allOf', 'any_of', 'one_of', 'all_of']) {
+    for (final key in [
+      'anyOf',
+      'oneOf',
+      'allOf',
+      'any_of',
+      'one_of',
+      'all_of',
+    ]) {
       if (m[key] is List && (m[key] as List).isNotEmpty) {
         final first = (m[key] as List).first;
         final flattened = _sanitizeNode(first, kind);
@@ -99,11 +104,25 @@ class ToolHandlerService {
     Set<String> allowed;
     switch (kind) {
       case ProviderKind.google:
-        allowed = {'type', 'description', 'properties', 'required', 'items', 'enum'};
+        allowed = {
+          'type',
+          'description',
+          'properties',
+          'required',
+          'items',
+          'enum',
+        };
         break;
       case ProviderKind.openai:
       case ProviderKind.claude:
-        allowed = {'type', 'description', 'properties', 'required', 'items', 'enum'};
+        allowed = {
+          'type',
+          'description',
+          'properties',
+          'required',
+          'items',
+          'enum',
+        };
         break;
     }
     m.removeWhere((k, v) => !allowed.contains(k));
@@ -168,11 +187,14 @@ class ToolHandlerService {
           'parameters': {
             'type': 'object',
             'properties': {
-              'content': {'type': 'string', 'description': 'The content of the memory record'}
+              'content': {
+                'type': 'string',
+                'description': 'The content of the memory record',
+              },
             },
-            'required': ['content']
-          }
-        }
+            'required': ['content'],
+          },
+        },
       },
       {
         'type': 'function',
@@ -182,12 +204,18 @@ class ToolHandlerService {
           'parameters': {
             'type': 'object',
             'properties': {
-              'id': {'type': 'integer', 'description': 'The id of the memory record'},
-              'content': {'type': 'string', 'description': 'The content of the memory record'}
+              'id': {
+                'type': 'integer',
+                'description': 'The id of the memory record',
+              },
+              'content': {
+                'type': 'string',
+                'description': 'The content of the memory record',
+              },
             },
-            'required': ['id', 'content']
-          }
-        }
+            'required': ['id', 'content'],
+          },
+        },
       },
       {
         'type': 'function',
@@ -197,11 +225,14 @@ class ToolHandlerService {
           'parameters': {
             'type': 'object',
             'properties': {
-              'id': {'type': 'integer', 'description': 'The id of the memory record'}
+              'id': {
+                'type': 'integer',
+                'description': 'The id of the memory record',
+              },
             },
-            'required': ['id']
-          }
-        }
+            'required': ['id'],
+          },
+        },
       },
     ];
   }
@@ -237,25 +268,28 @@ class ToolHandlerService {
         baseSchema = Map<String, dynamic>.from(t.schema!);
       } else {
         final props = <String, dynamic>{
-          for (final p in t.params) p.name: {'type': (p.type ?? 'string')}
+          for (final p in t.params) p.name: {'type': (p.type ?? 'string')},
         };
         final required = [
-          for (final p in t.params.where((e) => e.required)) p.name
+          for (final p in t.params.where((e) => e.required)) p.name,
         ];
         baseSchema = {
           'type': 'object',
           'properties': props,
-          if (required.isNotEmpty) 'required': required
+          if (required.isNotEmpty) 'required': required,
         };
       }
-      final sanitized = sanitizeToolParametersForProvider(baseSchema, providerKind);
+      final sanitized = sanitizeToolParametersForProvider(
+        baseSchema,
+        providerKind,
+      );
       return {
         'type': 'function',
         'function': {
           'name': t.name,
           if ((t.description ?? '').isNotEmpty) 'description': t.description,
           'parameters': sanitized,
-        }
+        },
       };
     }).toList();
   }

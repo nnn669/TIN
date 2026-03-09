@@ -37,7 +37,8 @@ class QuickPhraseMenu extends StatelessWidget {
     // Clamp within screen margins
     if (left.isNaN || !left.isFinite) left = margin;
     if (left < margin) left = margin;
-    if (left + menuWidth > size.width - margin) left = size.width - menuWidth - margin;
+    if (left + menuWidth > size.width - margin)
+      left = size.width - menuWidth - margin;
 
     // Place menu above input bar + keyboard with a small gap
     final double bottom = 72 + 12 + 38;
@@ -104,7 +105,9 @@ class QuickPhraseMenu extends StatelessWidget {
                               borderRadius: BorderRadius.zero,
                               baseColor: Colors.transparent,
                               onTap: () {
-                                try { Haptics.light(); } catch (_) {}
+                                try {
+                                  Haptics.light();
+                                } catch (_) {}
                                 onSelect(phrase);
                               },
                               child: Padding(
@@ -118,7 +121,9 @@ class QuickPhraseMenu extends StatelessWidget {
                                     Row(
                                       children: [
                                         Icon(
-                                          phrase.isGlobal ? Lucide.Zap : Lucide.botMessageSquare,
+                                          phrase.isGlobal
+                                              ? Lucide.Zap
+                                              : Lucide.botMessageSquare,
                                           size: 14,
                                           color: cs.primary.withOpacity(0.7),
                                         ),

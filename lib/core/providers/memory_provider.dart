@@ -28,13 +28,22 @@ class MemoryProvider extends ChangeNotifier {
     }
   }
 
-  Future<AssistantMemory> add({required String assistantId, required String content}) async {
-    final mem = await MemoryStore.add(assistantId: assistantId, content: content);
+  Future<AssistantMemory> add({
+    required String assistantId,
+    required String content,
+  }) async {
+    final mem = await MemoryStore.add(
+      assistantId: assistantId,
+      content: content,
+    );
     await loadAll();
     return mem;
   }
 
-  Future<AssistantMemory?> update({required int id, required String content}) async {
+  Future<AssistantMemory?> update({
+    required int id,
+    required String content,
+  }) async {
     final mem = await MemoryStore.update(id: id, content: content);
     await loadAll();
     return mem;
@@ -46,4 +55,3 @@ class MemoryProvider extends ChangeNotifier {
     return ok;
   }
 }
-

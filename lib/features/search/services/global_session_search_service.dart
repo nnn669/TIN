@@ -26,12 +26,18 @@ class GlobalSessionSearchService {
   const GlobalSessionSearchService._();
 
   // Hidden/internal blocks that should not participate in global search.
-  static final RegExp _geminiThoughtSigRe =
-      RegExp(r'<!--\s*gemini_thought_signatures:.*?-->', dotAll: true);
-  static final RegExp _thinkBlockRe =
-      RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false);
-  static final RegExp _reasoningBlockRe =
-      RegExp(r'<reasoning>[\s\S]*?<\/reasoning>', caseSensitive: false);
+  static final RegExp _geminiThoughtSigRe = RegExp(
+    r'<!--\s*gemini_thought_signatures:.*?-->',
+    dotAll: true,
+  );
+  static final RegExp _thinkBlockRe = RegExp(
+    r'<think>[\s\S]*?<\/think>',
+    caseSensitive: false,
+  );
+  static final RegExp _reasoningBlockRe = RegExp(
+    r'<reasoning>[\s\S]*?<\/reasoning>',
+    caseSensitive: false,
+  );
 
   static List<GlobalSessionSearchResult> search({
     required ChatService chatService,
@@ -122,7 +128,10 @@ class GlobalSessionSearchService {
           )
         : _snippetFor(title, tokens);
 
-    final titleHasVisibleHit = _containsAnyToken(displayTitle.toLowerCase(), tokens);
+    final titleHasVisibleHit = _containsAnyToken(
+      displayTitle.toLowerCase(),
+      tokens,
+    );
     var snippetHasVisibleHit = _containsAnyToken(snippet.toLowerCase(), tokens);
 
     // Guarantee each visible result has at least one highlightable token in
@@ -287,10 +296,12 @@ class GlobalSessionSearchService {
 
   static String _searchableBody(String content) {
     if (content.trim().isEmpty) return '';
-    return _normalize(content
-        .replaceAll(_geminiThoughtSigRe, ' ')
-        .replaceAll(_thinkBlockRe, ' ')
-        .replaceAll(_reasoningBlockRe, ' '));
+    return _normalize(
+      content
+          .replaceAll(_geminiThoughtSigRe, ' ')
+          .replaceAll(_thinkBlockRe, ' ')
+          .replaceAll(_reasoningBlockRe, ' '),
+    );
   }
 
   static String _snippetFor(String source, List<String> tokens) {
@@ -306,7 +317,10 @@ class GlobalSessionSearchService {
       return s.length <= 140 ? s : '${s.substring(0, 140)}...';
     }
     const maxChars = 180;
-    final start = (hit - (maxChars * 0.45).round()).clamp(0, (s.length - maxChars).clamp(0, s.length));
+    final start = (hit - (maxChars * 0.45).round()).clamp(
+      0,
+      (s.length - maxChars).clamp(0, s.length),
+    );
     final end = (start + maxChars).clamp(0, s.length);
     final frag = s.substring(start, end).trim();
     final prefix = start > 0 ? '... ' : '';

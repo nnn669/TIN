@@ -60,15 +60,15 @@ class Conversation extends HiveObject {
     Map<String, int>? versionSelections,
     this.summary,
     int? lastSummarizedMessageCount,
-  })  : id = id ?? const Uuid().v4(),
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now(),
-        messageIds = messageIds ?? [],
-        mcpServerIds = mcpServerIds ?? [],
-        assistantId = assistantId,
-        truncateIndex = truncateIndex ?? -1,
-        versionSelections = versionSelections ?? <String, int>{},
-        lastSummarizedMessageCount = lastSummarizedMessageCount ?? 0;
+  }) : id = id ?? const Uuid().v4(),
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now(),
+       messageIds = messageIds ?? [],
+       mcpServerIds = mcpServerIds ?? [],
+       assistantId = assistantId,
+       truncateIndex = truncateIndex ?? -1,
+       versionSelections = versionSelections ?? <String, int>{},
+       lastSummarizedMessageCount = lastSummarizedMessageCount ?? 0;
 
   Conversation copyWith({
     String? id,
@@ -127,12 +127,18 @@ class Conversation extends HiveObject {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       messageIds: (json['messageIds'] as List<dynamic>).cast<String>(),
       isPinned: json['isPinned'] as bool? ?? false,
-      mcpServerIds: (json['mcpServerIds'] as List?)?.cast<String>() ?? const <String>[],
+      mcpServerIds:
+          (json['mcpServerIds'] as List?)?.cast<String>() ?? const <String>[],
       assistantId: json['assistantId'] as String?,
       truncateIndex: json['truncateIndex'] as int? ?? -1,
-      versionSelections: (json['versionSelections'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v as num).toInt())) ?? <String, int>{},
+      versionSelections:
+          (json['versionSelections'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          ) ??
+          <String, int>{},
       summary: json['summary'] as String?,
-      lastSummarizedMessageCount: json['lastSummarizedMessageCount'] as int? ?? 0,
+      lastSummarizedMessageCount:
+          json['lastSummarizedMessageCount'] as int? ?? 0,
     );
   }
 }

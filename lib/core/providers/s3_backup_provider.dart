@@ -18,9 +18,9 @@ class S3BackupProvider extends ChangeNotifier {
   String? _message;
 
   S3BackupProvider({required ChatService chatService, S3Config? initialConfig})
-      : _dataSync = DataSync(chatService: chatService),
-        _client = const S3BackupClient(),
-        _cfg = initialConfig ?? const S3Config();
+    : _dataSync = DataSync(chatService: chatService),
+      _client = const S3BackupClient(),
+      _cfg = initialConfig ?? const S3Config();
 
   S3Config get config => _cfg;
   bool get busy => _busy;
@@ -62,7 +62,10 @@ class S3BackupProvider extends ChangeNotifier {
 
   WebDavConfig _scopeAsWebdavConfig() {
     // DataSync currently uses WebDavConfig for include flags; other fields are ignored.
-    return WebDavConfig(includeChats: _cfg.includeChats, includeFiles: _cfg.includeFiles);
+    return WebDavConfig(
+      includeChats: _cfg.includeChats,
+      includeFiles: _cfg.includeFiles,
+    );
   }
 
   Future<void> test() async {
@@ -116,7 +119,11 @@ class S3BackupProvider extends ChangeNotifier {
       final file = File(p.join(tmp.path, item.displayName));
       // Download directly to file to avoid holding entire object in memory.
       await _client.downloadToFile(_cfg, key: key, destination: file);
-      await _dataSync.restoreFromLocalFile(file, _scopeAsWebdavConfig(), mode: mode);
+      await _dataSync.restoreFromLocalFile(
+        file,
+        _scopeAsWebdavConfig(),
+        mode: mode,
+      );
       try {
         await file.delete();
       } catch (_) {}

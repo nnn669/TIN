@@ -17,16 +17,15 @@ Future<String?> showProviderGroupSelectSheet(
   return showModalBottomSheet<String?>(
     context: context,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (ctx) => ProviderGroupSelectSheet(rootContext: rootContext),
   );
 }
 
 class ProviderGroupSelectSheet extends StatelessWidget {
-  const ProviderGroupSelectSheet({
-    super.key,
-    required this.rootContext,
-  });
+  const ProviderGroupSelectSheet({super.key, required this.rootContext});
 
   final BuildContext rootContext;
 
@@ -43,8 +42,14 @@ class ProviderGroupSelectSheet extends StatelessWidget {
           decoration: InputDecoration(hintText: l10n.providerGroupsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerGroupsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.providerGroupsCreateDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerGroupsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.providerGroupsCreateDialogOk),
+          ),
         ],
       ),
     );
@@ -58,9 +63,9 @@ class ProviderGroupSelectSheet extends StatelessWidget {
 
   Future<void> _openGroupManager(BuildContext context) async {
     if (context.mounted) Navigator.of(context).pop();
-    await Navigator.of(rootContext).push(
-      MaterialPageRoute(builder: (_) => const ProviderGroupsPage()),
-    );
+    await Navigator.of(
+      rootContext,
+    ).push(MaterialPageRoute(builder: (_) => const ProviderGroupsPage()));
   }
 
   @override
@@ -70,10 +75,7 @@ class ProviderGroupSelectSheet extends StatelessWidget {
     final sp = context.watch<SettingsProvider>();
     final groups = sp.providerGroups;
 
-    Widget tile({
-      required String title,
-      required VoidCallback onTap,
-    }) {
+    Widget tile({required String title, required VoidCallback onTap}) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: SizedBox(
@@ -91,7 +93,11 @@ class ProviderGroupSelectSheet extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: cs.onSurface),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -112,7 +118,10 @@ class ProviderGroupSelectSheet extends StatelessWidget {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -121,7 +130,10 @@ class ProviderGroupSelectSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l10n.providerGroupsPickerTitle,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 IosIconButton(
@@ -148,7 +160,9 @@ class ProviderGroupSelectSheet extends StatelessWidget {
                 children: [
                   tile(
                     title: l10n.providerGroupsOtherUngroupedOption,
-                    onTap: () => Navigator.of(context).pop(SettingsProvider.providerUngroupedGroupKey),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(SettingsProvider.providerUngroupedGroupKey),
                   ),
                   for (final g in groups)
                     tile(
@@ -164,4 +178,3 @@ class ProviderGroupSelectSheet extends StatelessWidget {
     );
   }
 }
-

@@ -7,7 +7,7 @@ enum DrawerSide { left, right }
 /// Controller to programmatically control the drawer.
 class InteractiveDrawerController extends ChangeNotifier {
   InteractiveDrawerController({double initialValue = 0.0})
-      : _valueOffline = initialValue.clamp(0.0, 1.0);
+    : _valueOffline = initialValue.clamp(0.0, 1.0);
 
   AnimationController? _controller;
   double _valueOffline;
@@ -65,7 +65,11 @@ class InteractiveDrawerController extends ChangeNotifier {
     Curve curve = Curves.easeOutCubic,
   }) async {
     assert(target >= 0.0 && target <= 1.0);
-    await _requireAttached().animateTo(target, duration: duration, curve: curve);
+    await _requireAttached().animateTo(
+      target,
+      duration: duration,
+      curve: curve,
+    );
   }
 
   /// Jump to a specific progress without animation.
@@ -239,7 +243,10 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
       return widget.child;
     }
     final double dx = (_isLeft ? 1 : -1) * _drawerWidth * _anim.value;
-    final double scrimOpacity = (widget.maxScrimOpacity * _anim.value).clamp(0.0, 1.0);
+    final double scrimOpacity = (widget.maxScrimOpacity * _anim.value).clamp(
+      0.0,
+      1.0,
+    );
 
     return Transform.translate(
       offset: Offset(dx, 0),
@@ -262,7 +269,9 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
             if (_anim.value > 0.0)
               IgnorePointer(
                 ignoring: !widget.barrierDismissible,
-                child: Container(color: widget.scrimColor.withOpacity(scrimOpacity)),
+                child: Container(
+                  color: widget.scrimColor.withOpacity(scrimOpacity),
+                ),
               ),
           ],
         ),
@@ -275,7 +284,8 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
     if (widget.tabletMode) {
       // Slide + fade (width fixed to configured _drawerWidth). When closed: translated fully offscreen.
       final targetWidth = _drawerWidth; // already resolved in build()
-      final double translateX = (_isLeft ? -1 : 1) * (1 - _anim.value) * targetWidth;
+      final double translateX =
+          (_isLeft ? -1 : 1) * (1 - _anim.value) * targetWidth;
       final drawerBody = Material(
         elevation: widget.elevation,
         clipBehavior: Clip.none,
@@ -306,7 +316,8 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
     // When closed (value=0), drawer is fully offscreen.
     // It moves toward 0 offset as it opens.
     final double hiddenOffset = _isLeft ? -_drawerWidth : _drawerWidth;
-    final double dx = hiddenOffset * (1.0 - _anim.value); // 1->hidden, 0->onscreen
+    final double dx =
+        hiddenOffset * (1.0 - _anim.value); // 1->hidden, 0->onscreen
 
     final drawerBody = Material(
       elevation: widget.elevation,
@@ -349,7 +360,9 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
           if (widget.tabletMode) {
             _drawerWidth = widget.drawerWidth ?? 250.0; // tablet default 250
           } else {
-            _drawerWidth = widget.drawerWidth ?? math.max(300.0, constraints.maxWidth * 0.80);
+            _drawerWidth =
+                widget.drawerWidth ??
+                math.max(300.0, constraints.maxWidth * 0.80);
           }
 
           return WillPopScope(
@@ -377,7 +390,9 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
                     children: [
                       // Main content shifts via padding to make space as drawer reveals.
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 16), // near-frame for smoothness
+                        duration: const Duration(
+                          milliseconds: 16,
+                        ), // near-frame for smoothness
                         curve: Curves.linear,
                         padding: mainPadding,
                         child: _buildDraggableChild(),
@@ -388,10 +403,7 @@ class _InteractiveDrawerState extends State<InteractiveDrawer>
                 }
                 return Stack(
                   fit: StackFit.expand,
-                  children: [
-                    _buildDraggableChild(),
-                    _buildDraggableDrawer(),
-                  ],
+                  children: [_buildDraggableChild(), _buildDraggableDrawer()],
                 );
               },
             ),

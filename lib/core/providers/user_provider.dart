@@ -7,7 +7,8 @@ import '../../utils/app_directories.dart';
 
 class UserProvider extends ChangeNotifier {
   static const String _prefsUserNameKey = 'user_name';
-  static const String _prefsAvatarTypeKey = 'avatar_type'; // emoji | url | file | null
+  static const String _prefsAvatarTypeKey =
+      'avatar_type'; // emoji | url | file | null
   static const String _prefsAvatarValueKey = 'avatar_value';
 
   String _name = 'User';
@@ -33,10 +34,16 @@ class UserProvider extends ChangeNotifier {
     }
     _avatarType = prefs.getString(_prefsAvatarTypeKey);
     final rawAvatar = prefs.getString(_prefsAvatarValueKey);
-    _avatarValue = rawAvatar == null ? null : SandboxPathResolver.fix(rawAvatar);
+    _avatarValue = rawAvatar == null
+        ? null
+        : SandboxPathResolver.fix(rawAvatar);
     // Persist the fixed path back if it changed (helps desktop after imports)
-    if (rawAvatar != null && _avatarValue != null && rawAvatar != _avatarValue) {
-      try { await prefs.setString(_prefsAvatarValueKey, _avatarValue!); } catch (_) {}
+    if (rawAvatar != null &&
+        _avatarValue != null &&
+        rawAvatar != _avatarValue) {
+      try {
+        await prefs.setString(_prefsAvatarValueKey, _avatarValue!);
+      } catch (_) {}
     }
     // Only notify if avatar exists; otherwise rely on name notify above
     if (_avatarType != null && _avatarValue != null) {
@@ -85,7 +92,9 @@ class UserProvider extends ChangeNotifier {
     await prefs.setString(_prefsAvatarTypeKey, _avatarType!);
     await prefs.setString(_prefsAvatarValueKey, _avatarValue!);
     // Prefetch to enable offline display later
-    try { await AvatarCache.getPath(u); } catch (_) {}
+    try {
+      await AvatarCache.getPath(u);
+    } catch (_) {}
   }
 
   Future<void> setAvatarFilePath(String path) async {
@@ -117,7 +126,9 @@ class UserProvider extends ChangeNotifier {
       if (_avatarType == 'file' && _avatarValue != null) {
         try {
           final old = File(_avatarValue!);
-          if ((old.path.contains('/avatars/') || old.path.contains('\\avatars\\')) && await old.exists()) {
+          if ((old.path.contains('/avatars/') ||
+                  old.path.contains('\\avatars\\')) &&
+              await old.exists()) {
             await old.delete();
           }
         } catch (_) {}

@@ -29,7 +29,8 @@ class DesktopTrayController with TrayListener, WindowListener {
     required bool minimizeToTrayOnClose,
   }) async {
     if (kIsWeb) return;
-    final isDesktop = defaultTargetPlatform == TargetPlatform.windows ||
+    final isDesktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux;
     if (!isDesktop) return;
@@ -104,17 +105,19 @@ class DesktopTrayController with TrayListener, WindowListener {
       } catch (_) {}
     }
     try {
-      final menu = Menu(items: [
-        MenuItem(
-          label: l10n.desktopTrayMenuShowWindow,
-          onClick: (_) async => _showWindow(),
-        ),
-        MenuItem.separator(),
-        MenuItem(
-          label: l10n.desktopTrayMenuExit,
-          onClick: (_) async => _exitApp(),
-        ),
-      ]);
+      final menu = Menu(
+        items: [
+          MenuItem(
+            label: l10n.desktopTrayMenuShowWindow,
+            onClick: (_) async => _showWindow(),
+          ),
+          MenuItem.separator(),
+          MenuItem(
+            label: l10n.desktopTrayMenuExit,
+            onClick: (_) async => _exitApp(),
+          ),
+        ],
+      );
       await trayManager.setContextMenu(menu);
     } catch (_) {}
   }

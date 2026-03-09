@@ -25,7 +25,12 @@ Future<void> showDesktopReasoningBudgetPopover(
   if (box == null) return;
   final offset = box.localToGlobal(Offset.zero);
   final size = box.size;
-  final anchorRect = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+  final anchorRect = Rect.fromLTWH(
+    offset.dx,
+    offset.dy,
+    size.width,
+    size.height,
+  );
 
   final completer = Completer<void>();
 
@@ -37,7 +42,9 @@ Future<void> showDesktopReasoningBudgetPopover(
       modelProvider: modelProvider,
       modelId: modelId,
       onClose: () {
-        try { entry.remove(); } catch (_) {}
+        try {
+          entry.remove();
+        } catch (_) {}
         if (!completer.isCompleted) completer.complete();
       },
     ),
@@ -62,7 +69,8 @@ class _ReasoningPopoverOverlay extends StatefulWidget {
   final VoidCallback onClose;
 
   @override
-  State<_ReasoningPopoverOverlay> createState() => _ReasoningPopoverOverlayState();
+  State<_ReasoningPopoverOverlay> createState() =>
+      _ReasoningPopoverOverlayState();
 }
 
 class _ReasoningPopoverOverlayState extends State<_ReasoningPopoverOverlay>
@@ -75,12 +83,17 @@ class _ReasoningPopoverOverlayState extends State<_ReasoningPopoverOverlay>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       setState(() => _offset = Offset.zero);
-      try { await _controller.forward(); } catch (_) {}
+      try {
+        await _controller.forward();
+      } catch (_) {}
     });
   }
 
@@ -94,7 +107,9 @@ class _ReasoningPopoverOverlayState extends State<_ReasoningPopoverOverlay>
     if (_closing) return;
     _closing = true;
     setState(() => _offset = const Offset(0, 1.0));
-    try { await _controller.reverse(); } catch (_) {}
+    try {
+      await _controller.reverse();
+    } catch (_) {}
     if (mounted) widget.onClose();
   }
 
@@ -103,8 +118,11 @@ class _ReasoningPopoverOverlayState extends State<_ReasoningPopoverOverlay>
     final screen = MediaQuery.of(context).size;
     // Slightly narrower than input width
     final width = (widget.anchorWidth - 16).clamp(260.0, 720.0);
-    final left = (widget.anchorRect.left + (widget.anchorRect.width - width) / 2)
-        .clamp(8.0, screen.width - width - 8.0);
+    final left =
+        (widget.anchorRect.left + (widget.anchorRect.width - width) / 2).clamp(
+          8.0,
+          screen.width - width - 8.0,
+        );
     final clipHeight = widget.anchorRect.top.clamp(0.0, screen.height);
 
     return Stack(
@@ -135,8 +153,14 @@ class _ReasoningPopoverOverlayState extends State<_ReasoningPopoverOverlay>
                       curve: Curves.easeOutCubic,
                       offset: _offset,
                       child: _GlassPanel(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                        child: _ReasoningContent(onDone: _close, modelProvider: widget.modelProvider, modelId: widget.modelId),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
+                        child: _ReasoningContent(
+                          onDone: _close,
+                          modelProvider: widget.modelProvider,
+                          modelId: widget.modelId,
+                        ),
                       ),
                     ),
                   ),
@@ -165,17 +189,25 @@ class _GlassPanel extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             // Match the preferred grey smudge style
-            color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.28 : 0.56),
+            color: (isDark ? Colors.black : Colors.white).withOpacity(
+              isDark ? 0.28 : 0.56,
+            ),
             border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(isDark ? 0.06 : 0.18), width: 0.7),
-              left: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
-              right: BorderSide(color: Colors.white.withOpacity(isDark ? 0.04 : 0.12), width: 0.6),
+              top: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.06 : 0.18),
+                width: 0.7,
+              ),
+              left: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
+              right: BorderSide(
+                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                width: 0.6,
+              ),
             ),
           ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: child,
-          ),
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     );
@@ -183,7 +215,11 @@ class _GlassPanel extends StatelessWidget {
 }
 
 class _ReasoningContent extends StatelessWidget {
-  const _ReasoningContent({required this.onDone, this.modelProvider, this.modelId});
+  const _ReasoningContent({
+    required this.onDone,
+    this.modelProvider,
+    this.modelId,
+  });
   final VoidCallback onDone;
   final String? modelProvider;
   final String? modelId;
@@ -201,10 +237,17 @@ class _ReasoningContent extends StatelessWidget {
 
   bool _showXhighOption(BuildContext context, SettingsProvider settings) {
     final assistant = context.read<AssistantProvider>().currentAssistant;
-    final currentProvider = modelProvider ?? assistant?.chatModelProvider ?? settings.currentModelProvider;
-    final currentModelId = modelId ?? assistant?.chatModelId ?? settings.currentModelId;
+    final currentProvider =
+        modelProvider ??
+        assistant?.chatModelProvider ??
+        settings.currentModelProvider;
+    final currentModelId =
+        modelId ?? assistant?.chatModelId ?? settings.currentModelId;
     if (currentProvider == null || currentModelId == null) return false;
-    return settings.supportsOpenAIXhighReasoning(currentProvider, currentModelId);
+    return settings.supportsOpenAIXhighReasoning(
+      currentProvider,
+      currentModelId,
+    );
   }
 
   @override
@@ -233,8 +276,11 @@ class _ReasoningContent extends StatelessWidget {
             await context.read<SettingsProvider>().setThinkingBudget(value);
             onDone();
           },
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, decoration: TextDecoration.none)
-              .copyWith(color: onColor),
+          labelStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            decoration: TextDecoration.none,
+          ).copyWith(color: onColor),
         ),
       );
     }
@@ -257,23 +303,43 @@ class _ReasoningContent extends StatelessWidget {
               value: -1,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset('assets/icons/deepthink.svg', width: 16, height: 16, colorFilter: ColorFilter.mode(c, BlendMode.srcIn)),
+              leadingBuilder: (c) => SvgPicture.asset(
+                'assets/icons/deepthink.svg',
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              ),
               label: l10n.reasoningBudgetSheetLight,
               value: 1024,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset('assets/icons/deepthink.svg', width: 16, height: 16, colorFilter: ColorFilter.mode(c, BlendMode.srcIn)),
+              leadingBuilder: (c) => SvgPicture.asset(
+                'assets/icons/deepthink.svg',
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              ),
               label: l10n.reasoningBudgetSheetMedium,
               value: 16000,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset('assets/icons/deepthink.svg', width: 16, height: 16, colorFilter: ColorFilter.mode(c, BlendMode.srcIn)),
+              leadingBuilder: (c) => SvgPicture.asset(
+                'assets/icons/deepthink.svg',
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              ),
               label: l10n.reasoningBudgetSheetHeavy,
               value: 32000,
             ),
             if (showXhigh)
               tile(
-                leadingBuilder: (c) => SvgPicture.asset('assets/icons/deepthink.svg', width: 16, height: 16, colorFilter: ColorFilter.mode(c, BlendMode.srcIn)),
+                leadingBuilder: (c) => SvgPicture.asset(
+                  'assets/icons/deepthink.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+                ),
                 label: l10n.reasoningBudgetSheetXhigh,
                 value: 64000,
               ),
@@ -311,7 +377,9 @@ class _HoverRowState extends State<_HoverRow> {
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final baseBg = Colors.transparent;
-    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.12 : 0.10);
+    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(
+      isDark ? 0.12 : 0.10,
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -330,20 +398,35 @@ class _HoverRowState extends State<_HoverRow> {
           ),
           child: Row(
             children: [
-              SizedBox(width: 22, height: 22, child: Center(child: widget.leading)),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Center(child: widget.leading),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: widget.labelStyle ?? const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, decoration: TextDecoration.none),
+                  style:
+                      widget.labelStyle ??
+                      const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        decoration: TextDecoration.none,
+                      ),
                 ),
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 160),
                 child: widget.selected
-                    ? Icon(Lucide.Check, key: const ValueKey('check'), size: 16, color: cs.primary)
+                    ? Icon(
+                        Lucide.Check,
+                        key: const ValueKey('check'),
+                        size: 16,
+                        color: cs.primary,
+                      )
                     : const SizedBox(width: 16, key: ValueKey('space')),
               ),
             ],

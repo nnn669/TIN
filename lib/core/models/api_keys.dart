@@ -24,20 +24,20 @@ class ApiKeyUsage {
     int? consecutiveFailures,
     int? lastUsed,
   }) => ApiKeyUsage(
-        totalRequests: totalRequests ?? this.totalRequests,
-        successfulRequests: successfulRequests ?? this.successfulRequests,
-        failedRequests: failedRequests ?? this.failedRequests,
-        consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,
-        lastUsed: lastUsed ?? this.lastUsed,
-      );
+    totalRequests: totalRequests ?? this.totalRequests,
+    successfulRequests: successfulRequests ?? this.successfulRequests,
+    failedRequests: failedRequests ?? this.failedRequests,
+    consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,
+    lastUsed: lastUsed ?? this.lastUsed,
+  );
 
   Map<String, dynamic> toJson() => {
-        'totalRequests': totalRequests,
-        'successfulRequests': successfulRequests,
-        'failedRequests': failedRequests,
-        'consecutiveFailures': consecutiveFailures,
-        'lastUsed': lastUsed,
-      };
+    'totalRequests': totalRequests,
+    'successfulRequests': successfulRequests,
+    'failedRequests': failedRequests,
+    'consecutiveFailures': consecutiveFailures,
+    'lastUsed': lastUsed,
+  };
 
   factory ApiKeyUsage.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const ApiKeyUsage();
@@ -91,32 +91,32 @@ class ApiKeyConfig {
     int? createdAt,
     int? updatedAt,
   }) => ApiKeyConfig(
-        id: id ?? this.id,
-        key: key ?? this.key,
-        name: name ?? this.name,
-        isEnabled: isEnabled ?? this.isEnabled,
-        priority: priority ?? this.priority,
-        maxRequestsPerMinute: maxRequestsPerMinute ?? this.maxRequestsPerMinute,
-        usage: usage ?? this.usage,
-        status: status ?? this.status,
-        lastError: lastError ?? this.lastError,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+    id: id ?? this.id,
+    key: key ?? this.key,
+    name: name ?? this.name,
+    isEnabled: isEnabled ?? this.isEnabled,
+    priority: priority ?? this.priority,
+    maxRequestsPerMinute: maxRequestsPerMinute ?? this.maxRequestsPerMinute,
+    usage: usage ?? this.usage,
+    status: status ?? this.status,
+    lastError: lastError ?? this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'key': key,
-        'name': name,
-        'isEnabled': isEnabled,
-        'priority': priority,
-        'maxRequestsPerMinute': maxRequestsPerMinute,
-        'usage': usage.toJson(),
-        'status': status.name,
-        'lastError': lastError,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-      };
+    'id': id,
+    'key': key,
+    'name': name,
+    'isEnabled': isEnabled,
+    'priority': priority,
+    'maxRequestsPerMinute': maxRequestsPerMinute,
+    'usage': usage.toJson(),
+    'status': status.name,
+    'lastError': lastError,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
 
   factory ApiKeyConfig.fromJson(Map<String, dynamic> json) {
     final statusStr = (json['status'] as String?) ?? 'active';
@@ -134,8 +134,10 @@ class ApiKeyConfig {
       usage: ApiKeyUsage.fromJson(json['usage'] as Map<String, dynamic>?),
       status: st,
       lastError: json['lastError'] as String?,
-      createdAt: (json['createdAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
-      updatedAt: (json['updatedAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
+      createdAt:
+          (json['createdAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
+      updatedAt:
+          (json['updatedAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
     );
   }
 
@@ -191,20 +193,22 @@ class KeyManagementConfig {
     bool? enableAutoRecovery,
     int? roundRobinIndex,
   }) => KeyManagementConfig(
-        strategy: strategy ?? this.strategy,
-        maxFailuresBeforeDisable: maxFailuresBeforeDisable ?? this.maxFailuresBeforeDisable,
-        failureRecoveryTimeMinutes: failureRecoveryTimeMinutes ?? this.failureRecoveryTimeMinutes,
-        enableAutoRecovery: enableAutoRecovery ?? this.enableAutoRecovery,
-        roundRobinIndex: roundRobinIndex ?? this.roundRobinIndex,
-      );
+    strategy: strategy ?? this.strategy,
+    maxFailuresBeforeDisable:
+        maxFailuresBeforeDisable ?? this.maxFailuresBeforeDisable,
+    failureRecoveryTimeMinutes:
+        failureRecoveryTimeMinutes ?? this.failureRecoveryTimeMinutes,
+    enableAutoRecovery: enableAutoRecovery ?? this.enableAutoRecovery,
+    roundRobinIndex: roundRobinIndex ?? this.roundRobinIndex,
+  );
 
   Map<String, dynamic> toJson() => {
-        'strategy': strategy.name,
-        'maxFailuresBeforeDisable': maxFailuresBeforeDisable,
-        'failureRecoveryTimeMinutes': failureRecoveryTimeMinutes,
-        'enableAutoRecovery': enableAutoRecovery,
-        'roundRobinIndex': roundRobinIndex,
-      };
+    'strategy': strategy.name,
+    'maxFailuresBeforeDisable': maxFailuresBeforeDisable,
+    'failureRecoveryTimeMinutes': failureRecoveryTimeMinutes,
+    'enableAutoRecovery': enableAutoRecovery,
+    'roundRobinIndex': roundRobinIndex,
+  };
 
   factory KeyManagementConfig.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const KeyManagementConfig();
@@ -216,10 +220,10 @@ class KeyManagementConfig {
     return KeyManagementConfig(
       strategy: strat,
       maxFailuresBeforeDisable: (json['maxFailuresBeforeDisable'] as int?) ?? 3,
-      failureRecoveryTimeMinutes: (json['failureRecoveryTimeMinutes'] as int?) ?? 5,
+      failureRecoveryTimeMinutes:
+          (json['failureRecoveryTimeMinutes'] as int?) ?? 5,
       enableAutoRecovery: (json['enableAutoRecovery'] as bool?) ?? true,
       roundRobinIndex: json['roundRobinIndex'] as int?,
     );
   }
 }
-

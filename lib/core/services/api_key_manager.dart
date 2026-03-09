@@ -17,13 +17,15 @@ class ApiKeyManager {
   final Map<String, int> _keyUsageMap = {}; // keyId -> total uses (ephemeral)
 
   KeySelectionResult selectForProvider(ProviderConfig provider) {
-    final keys = List<ApiKeyConfig>.from((provider.apiKeys ?? const <ApiKeyConfig>[])
-        .where((k) => k.isEnabled));
+    final keys = List<ApiKeyConfig>.from(
+      (provider.apiKeys ?? const <ApiKeyConfig>[]).where((k) => k.isEnabled),
+    );
     if (keys.isEmpty) return const KeySelectionResult(null, 'no_keys');
 
     // Filter by status and cooldown
     final now = DateTime.now().millisecondsSinceEpoch;
-    final cooldownMs = (provider.keyManagement?.failureRecoveryTimeMinutes ?? 5) * 60 * 1000;
+    final cooldownMs =
+        (provider.keyManagement?.failureRecoveryTimeMinutes ?? 5) * 60 * 1000;
     final available = keys.where((k) {
       if (k.status == ApiKeyStatus.disabled) return false;
       if (k.status == ApiKeyStatus.error) {
@@ -38,7 +40,8 @@ class ApiKeyManager {
       return const KeySelectionResult(null, 'no_available_keys');
     }
 
-    final strategy = provider.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
+    final strategy =
+        provider.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
     ApiKeyConfig chosen;
     switch (strategy) {
       case LoadBalanceStrategy.priority:
@@ -46,8 +49,9 @@ class ApiKeyManager {
         chosen = available.first;
         break;
       case LoadBalanceStrategy.leastUsed:
-        available.sort((a, b) =>
-            (a.usage.totalRequests).compareTo(b.usage.totalRequests));
+        available.sort(
+          (a, b) => (a.usage.totalRequests).compareTo(b.usage.totalRequests),
+        );
         chosen = available.first;
         break;
       case LoadBalanceStrategy.random:
@@ -57,7 +61,9 @@ class ApiKeyManager {
       default:
         // Stable by id
         available.sort((a, b) => a.id.compareTo(b.id));
-        final cur = _roundRobinIndexMap[provider.id] ?? (provider.keyManagement?.roundRobinIndex ?? 0);
+        final cur =
+            _roundRobinIndexMap[provider.id] ??
+            (provider.keyManagement?.roundRobinIndex ?? 0);
         final idx = cur % available.length;
         chosen = available[idx];
         final next = (idx + 1) % available.length;
@@ -68,7 +74,12 @@ class ApiKeyManager {
     return KeySelectionResult(chosen, 'strategy_${strategy.name}');
   }
 
-  ApiKeyConfig updateKeyStatus(ProviderConfig provider, ApiKeyConfig key, bool success, {String? error}) {
+  ApiKeyConfig updateKeyStatus(
+    ProviderConfig provider,
+    ApiKeyConfig key,
+    bool success, {
+    String? error,
+  }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     var updated = key.copyWith(
       usage: key.usage.copyWith(
@@ -80,13 +91,14 @@ class ApiKeyManager {
       ),
       status: success
           ? ApiKeyStatus.active
-          : (key.usage.consecutiveFailures + 1) >= (provider.keyManagement?.maxFailuresBeforeDisable ?? 3)
-              ? ApiKeyStatus.error
-              : key.status,
+          : (key.usage.consecutiveFailures + 1) >=
+                (provider.keyManagement?.maxFailuresBeforeDisable ?? 3)
+          ? ApiKeyStatus.error
+          : key.status,
       lastError: success ? null : (error ?? key.lastError),
       updatedAt: now,
     );
-    _keyUsageMap[updated.id] = ( _keyUsageMap[updated.id] ?? 0) + 1;
+    _keyUsageMap[updated.id] = (_keyUsageMap[updated.id] ?? 0) + 1;
     return updated;
   }
 

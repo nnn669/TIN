@@ -20,7 +20,11 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../l10n/app_localizations.dart';
 
 class ImageViewerPage extends StatefulWidget {
-  const ImageViewerPage({super.key, required this.images, this.initialIndex = 0});
+  const ImageViewerPage({
+    super.key,
+    required this.images,
+    this.initialIndex = 0,
+  });
 
   final List<String> images; // local paths, http urls, or data urls
   final int initialIndex;
@@ -29,7 +33,8 @@ class ImageViewerPage extends StatefulWidget {
   State<ImageViewerPage> createState() => _ImageViewerPageState();
 }
 
-class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderStateMixin {
+class _ImageViewerPageState extends State<ImageViewerPage>
+    with TickerProviderStateMixin {
   late final PageController _controller;
   late int _index;
   late final AnimationController _restoreCtrl;
@@ -51,27 +56,37 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
 
   final Map<String, _SampledImage> _samples = <String, _SampledImage>{};
 
-  bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  bool get _isDesktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   @override
   void initState() {
     super.initState();
-    _index = widget.initialIndex.clamp(0, widget.images.isEmpty ? 0 : widget.images.length - 1);
+    _index = widget.initialIndex.clamp(
+      0,
+      widget.images.isEmpty ? 0 : widget.images.length - 1,
+    );
     _controller = PageController(initialPage: _index);
     _zoomCtrls = List<TransformationController>.generate(
       widget.images.length,
       (_) => TransformationController(),
       growable: false,
     );
-    _restoreCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 220))
-      ..addListener(() {
-        final t = Curves.easeOutCubic.transform(_restoreCtrl.value);
-        setState(() {
-          _dragDy = _animFrom * (1 - t);
-          _bgOpacity = 1.0 - math.min(_dragDy / 300.0, 0.7);
+    _restoreCtrl =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 220),
+        )..addListener(() {
+          final t = Curves.easeOutCubic.transform(_restoreCtrl.value);
+          setState(() {
+            _dragDy = _animFrom * (1 - t);
+            _bgOpacity = 1.0 - math.min(_dragDy / 300.0, 0.7);
+          });
         });
-      });
-    _zoomCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 230));
+    _zoomCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 230),
+    );
 
     // prepare sample for initial image
     _prepareSampleForIndex(_index);
@@ -80,13 +95,16 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   @override
   void dispose() {
     _controller.dispose();
-    for (final c in _zoomCtrls) { c.dispose(); }
+    for (final c in _zoomCtrls) {
+      c.dispose();
+    }
     _restoreCtrl.dispose();
     _zoomCtrl.dispose();
     super.dispose();
   }
 
-  void _animateZoomTo(TransformationController ctrl, {
+  void _animateZoomTo(
+    TransformationController ctrl, {
     required double toScale,
     required double toTx,
     required double toTy,
@@ -101,7 +119,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
     final storage = m.storage;
     final fromTx = storage[12];
     final fromTy = storage[13];
-    final curve = CurvedAnimation(parent: _zoomCtrl, curve: Curves.easeOutCubic);
+    final curve = CurvedAnimation(
+      parent: _zoomCtrl,
+      curve: Curves.easeOutCubic,
+    );
     _zoomTick = () {
       final t = curve.value;
       final s = fromScale + (toScale - fromScale) * t;
@@ -233,10 +254,15 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
       }
 
       final name = 'kelivo-${DateTime.now().millisecondsSinceEpoch}';
-      final result = await ImageGallerySaverPlus.saveImage(bytes, quality: 100, name: name);
+      final result = await ImageGallerySaverPlus.saveImage(
+        bytes,
+        quality: 100,
+        name: name,
+      );
       bool success = false;
       if (result is Map) {
-        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 1;
+        final isSuccess =
+            result['isSuccess'] == true || result['isSuccess'] == 1;
         final filePath = result['filePath'] ?? result['file_path'];
         success = isSuccess || (filePath is String && filePath.isNotEmpty);
       }
@@ -281,11 +307,19 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
           anchor = Rect.fromCenter(center: global, width: 1, height: 1);
         } else {
           final size = MediaQuery.sizeOf(context);
-          anchor = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
+          anchor = Rect.fromCenter(
+            center: Offset(size.width / 2, size.height / 2),
+            width: 1,
+            height: 1,
+          );
         }
       } catch (_) {
         final size = MediaQuery.sizeOf(context);
-        anchor = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
+        anchor = Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: 1,
+          height: 1,
+        );
       }
       final src = widget.images[_index];
       String? pathToSave;
@@ -295,7 +329,12 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         if (i != -1) {
           final bytes = base64Decode(src.substring(i + 7));
           final tmp = await getTemporaryDirectory();
-          temp = await File(p.join(tmp.path, 'kelivo_${DateTime.now().millisecondsSinceEpoch}.png')).create(recursive: true);
+          temp = await File(
+            p.join(
+              tmp.path,
+              'kelivo_${DateTime.now().millisecondsSinceEpoch}.png',
+            ),
+          ).create(recursive: true);
           await temp.writeAsBytes(bytes);
           pathToSave = temp.path;
         }
@@ -305,7 +344,12 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           final tmp = await getTemporaryDirectory();
           final ext = p.extension(Uri.parse(src).path);
-          temp = await File(p.join(tmp.path, 'kelivo_${DateTime.now().millisecondsSinceEpoch}${ext.isNotEmpty ? ext : '.jpg'}')).create(recursive: true);
+          temp = await File(
+            p.join(
+              tmp.path,
+              'kelivo_${DateTime.now().millisecondsSinceEpoch}${ext.isNotEmpty ? ext : '.jpg'}',
+            ),
+          ).create(recursive: true);
           await temp.writeAsBytes(resp.bodyBytes);
           pathToSave = temp.path;
         } else {
@@ -327,7 +371,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         return;
       }
       try {
-        await Share.shareXFiles([XFile(pathToSave)], sharePositionOrigin: anchor);
+        await Share.shareXFiles([
+          XFile(pathToSave),
+        ], sharePositionOrigin: anchor);
       } on MissingPluginException catch (_) {
         // Fallback: open system chooser by opening file
         final res = await OpenFilex.open(pathToSave);
@@ -335,7 +381,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         if (res.type != ResultType.done) {
           showAppSnackBar(
             context,
-            message: l10n.imageViewerPageShareFailedOpenFile(res.message ?? res.type.name),
+            message: l10n.imageViewerPageShareFailedOpenFile(
+              res.message ?? res.type.name,
+            ),
             type: NotificationType.error,
           );
         }
@@ -345,7 +393,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         if (res.type != ResultType.done) {
           showAppSnackBar(
             context,
-            message: l10n.imageViewerPageShareFailedOpenFile(res.message ?? res.type.name),
+            message: l10n.imageViewerPageShareFailedOpenFile(
+              res.message ?? res.type.name,
+            ),
             type: NotificationType.error,
           );
         }
@@ -370,7 +420,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   }
 
   bool _isSupportedClipboardFormat(String format) {
-    return format == 'png' || format == 'jpeg' || format == 'gif' || format == 'webp';
+    return format == 'png' ||
+        format == 'jpeg' ||
+        format == 'gif' ||
+        format == 'webp';
   }
 
   String _normalizeSuggestedName(String? name, String format) {
@@ -384,7 +437,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
     return trimmed;
   }
 
-  Future<_CopyPayload?> _loadCopyPayload(void Function(String reason) setError) async {
+  Future<_CopyPayload?> _loadCopyPayload(
+    void Function(String reason) setError,
+  ) async {
     final src = widget.images[_index];
     Uint8List? bytes;
     String format = '';
@@ -415,7 +470,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
           final urlExt = p.extension(uri.path);
           final fmt = _inferFormatFromHint(urlExt);
           if (fmt.isNotEmpty) format = fmt;
-          suggestedName = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+          suggestedName = uri.pathSegments.isNotEmpty
+              ? uri.pathSegments.last
+              : '';
         } else {
           setError('http-${resp.statusCode}');
           return null;
@@ -451,7 +508,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
       try {
         final codec = await ui.instantiateImageCodec(safeBytes);
         final frame = await codec.getNextFrame();
-        final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        final data = await frame.image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
         if (data != null) {
           safeBytes = data.buffer.asUint8List();
           format = 'png';
@@ -506,7 +565,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         if (path == null) {
           final dir = await getTemporaryDirectory();
           final ext = payload.format == 'jpeg' ? '.jpg' : '.${payload.format}';
-          path = p.join(dir.path, 'kelivo_clip_${DateTime.now().millisecondsSinceEpoch}$ext');
+          path = p.join(
+            dir.path,
+            'kelivo_clip_${DateTime.now().millisecondsSinceEpoch}$ext',
+          );
           await File(path).writeAsBytes(payload.bytes);
         }
         ok = await ClipboardImages.setImagePath(path);
@@ -525,7 +587,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
     bool ok = false;
 
     try {
-      final payload = await _loadCopyPayload((reason) => failureReason = reason);
+      final payload = await _loadCopyPayload(
+        (reason) => failureReason = reason,
+      );
       if (payload == null) {
         if (mounted) {
           showAppSnackBar(
@@ -608,11 +672,17 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                   final img = Image(
                     image: _providerFor(src),
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white70, size: 64),
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.white70,
+                      size: 64,
+                    ),
                   );
                   // Only transform the current page while dragging
                   final translateY = (i == _index) ? _dragDy : 0.0;
-                  final scale = (i == _index) ? (1.0 - math.min(_dragDy / 800.0, 0.15)) : 1.0;
+                  final scale = (i == _index)
+                      ? (1.0 - math.min(_dragDy / 800.0, 0.15))
+                      : 1.0;
                   return Container(
                     alignment: Alignment.center,
                     child: Transform.translate(
@@ -623,32 +693,54 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                           tag: 'img:$src',
                           child: SizedBox.expand(
                             child: GestureDetector(
-                              onDoubleTapDown: (d) => _lastDoubleTapPos = d.localPosition,
+                              onDoubleTapDown: (d) =>
+                                  _lastDoubleTapPos = d.localPosition,
                               onDoubleTap: () {
                                 final ctrl = _zoomCtrls[i];
                                 final current = ctrl.value;
-                                final double currentScale = current.getMaxScaleOnAxis();
+                                final double currentScale = current
+                                    .getMaxScaleOnAxis();
                                 // Toggle zoom
                                 if (currentScale > 1.01) {
-                                  _animateZoomTo(ctrl, toScale: 1.0, toTx: 0.0, toTy: 0.0);
+                                  _animateZoomTo(
+                                    ctrl,
+                                    toScale: 1.0,
+                                    toTx: 0.0,
+                                    toTy: 0.0,
+                                  );
                                 } else {
-                                  final focal = _lastDoubleTapPos ?? (context.size == null
-                                      ? const Offset(0, 0)
-                                      : Offset(context.size!.width / 2, context.size!.height / 2));
+                                  final focal =
+                                      _lastDoubleTapPos ??
+                                      (context.size == null
+                                          ? const Offset(0, 0)
+                                          : Offset(
+                                              context.size!.width / 2,
+                                              context.size!.height / 2,
+                                            ));
                                   // Convert focal from viewport to child coordinates
                                   final inv = Matrix4.inverted(current);
-                                  final focalVector = inv.transform3(Vector3(focal.dx, focal.dy, 0));
+                                  final focalVector = inv.transform3(
+                                    Vector3(focal.dx, focal.dy, 0),
+                                  );
                                   final double targetScale = 2; // 放大倍率
-                                  final double tx = focal.dx - targetScale * focalVector.x;
-                                  final double ty = focal.dy - targetScale * focalVector.y;
-                                  _animateZoomTo(ctrl, toScale: targetScale, toTx: tx, toTy: ty);
+                                  final double tx =
+                                      focal.dx - targetScale * focalVector.x;
+                                  final double ty =
+                                      focal.dy - targetScale * focalVector.y;
+                                  _animateZoomTo(
+                                    ctrl,
+                                    toScale: targetScale,
+                                    toTx: tx,
+                                    toTy: ty,
+                                  );
                                 }
                                 _lastDoubleTapPos = null;
                               },
                               child: AnimatedBuilder(
                                 animation: _zoomCtrls[i],
                                 builder: (context, _) {
-                                  final scale = _zoomCtrls[i].value.getMaxScaleOnAxis();
+                                  final scale = _zoomCtrls[i].value
+                                      .getMaxScaleOnAxis();
                                   final canPan = scale > 1.01;
                                   return InteractiveViewer(
                                     key: i == _index ? _viewerKey : null,
@@ -658,7 +750,9 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                                     panEnabled: canPan,
                                     scaleEnabled: true,
                                     clipBehavior: Clip.none,
-                                    boundaryMargin: canPan ? const EdgeInsets.all(80) : EdgeInsets.zero,
+                                    boundaryMargin: canPan
+                                        ? const EdgeInsets.all(80)
+                                        : EdgeInsets.zero,
                                     child: img,
                                   );
                                 },
@@ -672,109 +766,143 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
                 },
               ),
             ),
-          // Top bar
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(top: Platform.isMacOS ? 28.0 : 0.0),
-              child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.of(context).maybePop(),
+            // Top bar
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(top: Platform.isMacOS ? 28.0 : 0.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Text(
+                        '${_index + 1}/${widget.images.length}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text(
-                    '${_index + 1}/${widget.images.length}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ),
-              ],
               ),
             ),
-          ),
-          // Bottom action buttons (save + copy + share)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                child: Center(
-                  child: AnimatedBuilder(
-                    animation: _zoomCtrls[_index],
-                    builder: (context, _) {
-                      final leftColor = _smartIconColorForKey(context, _saveBtnKey);
-                      final rightColor = _smartIconColorForKey(context, _shareBtnKey);
-                      final showCopy = _isDesktop;
-                      final Color? copyColor = showCopy ? _smartIconColorForKey(context, _copyBtnKey) : null;
-                      final children = <Widget>[
-                        _GlassCircleButton(
-                          key: _saveBtnKey,
-                          onTap: _saving ? null : _saveCurrent,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-                            child: _saving
-                                ? SizedBox(
-                                    key: const ValueKey('saving'),
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      valueColor: AlwaysStoppedAnimation(leftColor),
-                                    ),
-                                  )
-                                : Icon(Icons.download, color: leftColor, size: 20, key: const ValueKey('ready')),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                      ];
-                      if (showCopy) {
-                        children.addAll([
+            // Bottom action buttons (save + copy + share)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                  child: Center(
+                    child: AnimatedBuilder(
+                      animation: _zoomCtrls[_index],
+                      builder: (context, _) {
+                        final leftColor = _smartIconColorForKey(
+                          context,
+                          _saveBtnKey,
+                        );
+                        final rightColor = _smartIconColorForKey(
+                          context,
+                          _shareBtnKey,
+                        );
+                        final showCopy = _isDesktop;
+                        final Color? copyColor = showCopy
+                            ? _smartIconColorForKey(context, _copyBtnKey)
+                            : null;
+                        final children = <Widget>[
                           _GlassCircleButton(
-                            key: _copyBtnKey,
-                            onTap: _copying ? null : _copyCurrent,
+                            key: _saveBtnKey,
+                            onTap: _saving ? null : _saveCurrent,
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
-                              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-                              child: _copying
+                              transitionBuilder: (child, anim) =>
+                                  FadeTransition(opacity: anim, child: child),
+                              child: _saving
                                   ? SizedBox(
-                                      key: const ValueKey('copying'),
+                                      key: const ValueKey('saving'),
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.2,
-                                        valueColor: AlwaysStoppedAnimation(copyColor ?? _fallbackIconColor(context)),
+                                        valueColor: AlwaysStoppedAnimation(
+                                          leftColor,
+                                        ),
                                       ),
                                     )
-                                  : Icon(Icons.copy, color: copyColor ?? _fallbackIconColor(context), size: 20, key: const ValueKey('copy-ready')),
+                                  : Icon(
+                                      Icons.download,
+                                      color: leftColor,
+                                      size: 20,
+                                      key: const ValueKey('ready'),
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 16),
-                        ]);
-                      }
-                      children.add(
-                        _GlassCircleButton(
-                          key: _shareBtnKey,
-                          onTap: _shareCurrent,
-                          child: Icon(Icons.share, color: rightColor, size: 20),
-                        ),
-                      );
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: children,
-                      );
-                    },
+                        ];
+                        if (showCopy) {
+                          children.addAll([
+                            _GlassCircleButton(
+                              key: _copyBtnKey,
+                              onTap: _copying ? null : _copyCurrent,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (child, anim) =>
+                                    FadeTransition(opacity: anim, child: child),
+                                child: _copying
+                                    ? SizedBox(
+                                        key: const ValueKey('copying'),
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            copyColor ??
+                                                _fallbackIconColor(context),
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.copy,
+                                        color:
+                                            copyColor ??
+                                            _fallbackIconColor(context),
+                                        size: 20,
+                                        key: const ValueKey('copy-ready'),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                          ]);
+                        }
+                        children.add(
+                          _GlassCircleButton(
+                            key: _shareBtnKey,
+                            onTap: _shareCurrent,
+                            child: Icon(
+                              Icons.share,
+                              color: rightColor,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: children,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -793,18 +921,24 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
   }
 
   Color _smartIconColorForKey(BuildContext context, GlobalKey key) {
-    final src = (_index >= 0 && _index < widget.images.length) ? widget.images[_index] : null;
+    final src = (_index >= 0 && _index < widget.images.length)
+        ? widget.images[_index]
+        : null;
     if (src == null) return _fallbackIconColor(context);
     final sample = _samples[src];
     final viewerCtx = _viewerKey.currentContext;
     final btnCtx = key.currentContext;
-    if (sample == null || viewerCtx == null || btnCtx == null) return _fallbackIconColor(context);
+    if (sample == null || viewerCtx == null || btnCtx == null)
+      return _fallbackIconColor(context);
     final viewerBox = viewerCtx.findRenderObject();
     final btnBox = btnCtx.findRenderObject();
-    if (viewerBox is! RenderBox || btnBox is! RenderBox || !viewerBox.hasSize) return _fallbackIconColor(context);
+    if (viewerBox is! RenderBox || btnBox is! RenderBox || !viewerBox.hasSize)
+      return _fallbackIconColor(context);
 
     try {
-      final btnCenterGlobal = btnBox.localToGlobal(btnBox.size.center(Offset.zero));
+      final btnCenterGlobal = btnBox.localToGlobal(
+        btnBox.size.center(Offset.zero),
+      );
       final viewerLocal = viewerBox.globalToLocal(btnCenterGlobal);
 
       // Invert InteractiveViewer transform to get child-space point
@@ -908,10 +1042,14 @@ class _ImageViewerPageState extends State<ImageViewerPage> with TickerProviderSt
         final mimeEnd = src.indexOf(';');
         if (mimeEnd != -1) {
           final mime = src.substring(5, mimeEnd);
-          if (mime.contains('png')) ext = '.png';
-          else if (mime.contains('jpeg') || mime.contains('jpg')) ext = '.jpg';
-          else if (mime.contains('gif')) ext = '.gif';
-          else if (mime.contains('webp')) ext = '.webp';
+          if (mime.contains('png'))
+            ext = '.png';
+          else if (mime.contains('jpeg') || mime.contains('jpg'))
+            ext = '.jpg';
+          else if (mime.contains('gif'))
+            ext = '.gif';
+          else if (mime.contains('webp'))
+            ext = '.webp';
         }
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
         final resp = await http.get(Uri.parse(src));
@@ -1009,7 +1147,10 @@ Route _buildFancyRoute(Widget page) {
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
       return FadeTransition(
         opacity: curved,
-        child: ScaleTransition(scale: Tween<double>(begin: 0.98, end: 1).animate(curved), child: child),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+          child: child,
+        ),
       );
     },
   );
@@ -1058,7 +1199,9 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
     final bool disabled = widget.onTap == null;
     final Color baseFill = Colors.white.withOpacity(disabled ? 0.10 : 0.18);
     final Color border = Colors.white.withOpacity(disabled ? 0.20 : 0.35);
-    final Color fill = _pressed ? Colors.white.withOpacity(disabled ? 0.12 : 0.24) : baseFill;
+    final Color fill = _pressed
+        ? Colors.white.withOpacity(disabled ? 0.12 : 0.24)
+        : baseFill;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

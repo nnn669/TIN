@@ -418,10 +418,7 @@ class _ToggleRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         child: Row(
           children: [
-            SizedBox(
-              width: 36,
-              child: Icon(icon, size: 18, color: labelColor),
-            ),
+            SizedBox(width: 36, child: Icon(icon, size: 18, color: labelColor)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -429,10 +426,7 @@ class _ToggleRow extends StatelessWidget {
                 style: TextStyle(fontSize: 15, color: labelColor),
               ),
             ),
-            IosSwitch(
-              value: value,
-              onChanged: onChanged,
-            ),
+            IosSwitch(value: value, onChanged: onChanged),
           ],
         ),
       ),

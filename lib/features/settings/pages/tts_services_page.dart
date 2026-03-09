@@ -43,7 +43,8 @@ class TtsServicesPage extends StatelessWidget {
                 final created = await _showAddNetworkTtsSheet(context);
                 if (created != null) {
                   final sp = context.read<SettingsProvider>();
-                  final list = List<TtsServiceOptions>.from(sp.ttsServices)..add(created);
+                  final list = List<TtsServiceOptions>.from(sp.ttsServices)
+                    ..add(created);
                   await sp.setTtsServices(list);
                   if (sp.usingSystemTts) {
                     await sp.setTtsServiceSelected(list.length - 1);
@@ -62,90 +63,136 @@ class TtsServicesPage extends StatelessWidget {
           final titleText = l10n.ttsServicesPageSystemTtsTitle;
           final subText = available
               ? l10n.ttsServicesPageSystemTtsAvailableSubtitle
-              : l10n.ttsServicesPageSystemTtsUnavailableSubtitle(tts.error ?? l10n.ttsServicesPageSystemTtsUnavailableNotInitialized);
-          final systemLetter = (titleText.trim().isEmpty ? '?' : titleText.trim().substring(0, 1)).toUpperCase();
+              : l10n.ttsServicesPageSystemTtsUnavailableSubtitle(
+                  tts.error ??
+                      l10n.ttsServicesPageSystemTtsUnavailableNotInitialized,
+                );
+          final systemLetter =
+              (titleText.trim().isEmpty
+                      ? '?'
+                      : titleText.trim().substring(0, 1))
+                  .toUpperCase();
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
               _header(context, l10n.ttsServicesPageTitle, first: true),
-              _iosSectionCard(children: [
-                // System TTS as first row
-                _TactileRow(
-                  pressedScale: 0.98,
-                  haptics: false,
-                  onTap: available
-                      ? () async {
-                          try { await sp.setTtsServiceSelected(-1); } catch (_) {}
-                        }
-                      : null,
-                  builder: (pressed) {
-                    final cs2 = Theme.of(context).colorScheme;
-                    final base = cs2.onSurface.withOpacity(0.9);
-                    return _AnimatedPressColor(
-                      pressed: pressed,
-                      base: base,
-                      builder: (c) {
-                        final isDark = Theme.of(context).brightness == Brightness.dark;
-                        final overlay = pressed
-                            ? (isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.05))
-                            : Colors.transparent;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          child: Row(
-                            children: [
-                              _AvatarBadge(letter: systemLetter, overlay: overlay),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(titleText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 3),
-                                    Text(subText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.withOpacity(0.7))),
-                                  ],
+              _iosSectionCard(
+                children: [
+                  // System TTS as first row
+                  _TactileRow(
+                    pressedScale: 0.98,
+                    haptics: false,
+                    onTap: available
+                        ? () async {
+                            try {
+                              await sp.setTtsServiceSelected(-1);
+                            } catch (_) {}
+                          }
+                        : null,
+                    builder: (pressed) {
+                      final cs2 = Theme.of(context).colorScheme;
+                      final base = cs2.onSurface.withOpacity(0.9);
+                      return _AnimatedPressColor(
+                        pressed: pressed,
+                        base: base,
+                        builder: (c) {
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          final overlay = pressed
+                              ? (isDark
+                                    ? Colors.black.withOpacity(0.06)
+                                    : Colors.white.withOpacity(0.05))
+                              : Colors.transparent;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 11,
+                            ),
+                            child: Row(
+                              children: [
+                                _AvatarBadge(
+                                  letter: systemLetter,
+                                  overlay: overlay,
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              _SmallTactileIcon(
-                                icon: Lucide.Volume2,
-                                baseColor: c,
-                                onTap: available
-                                    ? () async {
-                                        final demo = l10n.ttsServicesPageTestSpeechText;
-                                        await tts.speakSystem(demo);
-                                      }
-                                    : () {},
-                                enabled: available,
-                              ),
-                              const SizedBox(width: 6),
-                              _SmallTactileIcon(
-                                icon: Lucide.Settings2,
-                                baseColor: c,
-                                onTap: available ? () => _showSystemTtsConfig(context) : () {},
-                                enabled: available,
-                              ),
-                              const SizedBox(width: 8),
-                              // right indicator: show check only when selected
-                              Builder(builder: (_) {
-                                final sp2 = context.watch<SettingsProvider>();
-                                final sel = sp2.usingSystemTts;
-                                return sel ? Icon(Lucide.Check, size: 16, color: c) : const SizedBox(width: 16);
-                              }),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-                if (services.isNotEmpty) _iosDivider(context),
-                if (services.isNotEmpty) ...[
-                  for (int i = 0; i < services.length; i++) ...[
-                    _NetworkTtsRowMobile(service: services[i], index: i),
-                    if (i != services.length - 1) _iosDivider(context),
-                  ]
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        titleText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: c,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        subText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: c.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _SmallTactileIcon(
+                                  icon: Lucide.Volume2,
+                                  baseColor: c,
+                                  onTap: available
+                                      ? () async {
+                                          final demo = l10n
+                                              .ttsServicesPageTestSpeechText;
+                                          await tts.speakSystem(demo);
+                                        }
+                                      : () {},
+                                  enabled: available,
+                                ),
+                                const SizedBox(width: 6),
+                                _SmallTactileIcon(
+                                  icon: Lucide.Settings2,
+                                  baseColor: c,
+                                  onTap: available
+                                      ? () => _showSystemTtsConfig(context)
+                                      : () {},
+                                  enabled: available,
+                                ),
+                                const SizedBox(width: 8),
+                                // right indicator: show check only when selected
+                                Builder(
+                                  builder: (_) {
+                                    final sp2 = context
+                                        .watch<SettingsProvider>();
+                                    final sel = sp2.usingSystemTts;
+                                    return sel
+                                        ? Icon(Lucide.Check, size: 16, color: c)
+                                        : const SizedBox(width: 16);
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  if (services.isNotEmpty) _iosDivider(context),
+                  if (services.isNotEmpty) ...[
+                    for (int i = 0; i < services.length; i++) ...[
+                      _NetworkTtsRowMobile(service: services[i], index: i),
+                      if (i != services.length - 1) _iosDivider(context),
+                    ],
+                  ],
                 ],
-              ]),
+              ),
             ],
           );
         },
@@ -160,56 +207,113 @@ Widget _header(BuildContext context, String text, {bool first = false}) {
   final cs = Theme.of(context).colorScheme;
   return Padding(
     padding: EdgeInsets.fromLTRB(12, first ? 6 : 18, 12, 6),
-    child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface.withOpacity(0.8))),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: cs.onSurface.withOpacity(0.8),
+      ),
+    ),
   );
 }
 
 class _TactileIconButton extends StatefulWidget {
-  const _TactileIconButton({required this.icon, required this.color, required this.onTap, this.onLongPress, this.semanticLabel, this.size = 22, this.haptics = true});
-  final IconData icon; final Color color; final VoidCallback onTap; final VoidCallback? onLongPress; final String? semanticLabel; final double size; final bool haptics;
-  @override State<_TactileIconButton> createState() => _TactileIconButtonState();
+  const _TactileIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.onLongPress,
+    this.semanticLabel,
+    this.size = 22,
+    this.haptics = true,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final String? semanticLabel;
+  final double size;
+  final bool haptics;
+  @override
+  State<_TactileIconButton> createState() => _TactileIconButtonState();
 }
 
 class _TactileIconButtonState extends State<_TactileIconButton> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final base = widget.color; final pressColor = base.withOpacity(0.7);
-    final icon = Icon(widget.icon, size: widget.size, color: _pressed ? pressColor : base, semanticLabel: widget.semanticLabel);
+    final base = widget.color;
+    final pressColor = base.withOpacity(0.7);
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: _pressed ? pressColor : base,
+      semanticLabel: widget.semanticLabel,
+    );
     return Semantics(
-      button: true, label: widget.semanticLabel,
+      button: true,
+      label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () { if (widget.haptics) Haptics.light(); widget.onTap(); },
-        onLongPress: widget.onLongPress == null ? null : () { if (widget.haptics) Haptics.light(); widget.onLongPress!.call(); },
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), child: icon),
+        onTap: () {
+          if (widget.haptics) Haptics.light();
+          widget.onTap();
+        },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                if (widget.haptics) Haptics.light();
+                widget.onLongPress!.call();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: icon,
+        ),
       ),
     );
   }
 }
 
 class _TactileRow extends StatefulWidget {
-  const _TactileRow({required this.builder, this.onTap, this.pressedScale = 1.00, this.haptics = true});
-  final Widget Function(bool pressed) builder; final VoidCallback? onTap; final double pressedScale; final bool haptics;
-  @override State<_TactileRow> createState() => _TactileRowState();
+  const _TactileRow({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 1.00,
+    this.haptics = true,
+  });
+  final Widget Function(bool pressed) builder;
+  final VoidCallback? onTap;
+  final double pressedScale;
+  final bool haptics;
+  @override
+  State<_TactileRow> createState() => _TactileRowState();
 }
 
 class _TactileRowState extends State<_TactileRow> {
-  bool _pressed = false; void _set(bool v){ if(_pressed!=v) setState(()=>_pressed=v);} 
+  bool _pressed = false;
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap==null?null:(_)=>_set(true),
-      onTapUp: widget.onTap==null?null:(_)=>_set(false),
-      onTapCancel: widget.onTap==null?null:()=>_set(false),
-      onTap: widget.onTap==null?null:(){
-        if(widget.haptics && context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
-        widget.onTap!.call();
-      },
+      onTapDown: widget.onTap == null ? null : (_) => _set(true),
+      onTapUp: widget.onTap == null ? null : (_) => _set(false),
+      onTapCancel: widget.onTap == null ? null : () => _set(false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptics &&
+                  context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
+              widget.onTap!.call();
+            },
       child: AnimatedScale(
         scale: _pressed ? widget.pressedScale : 1.0,
         duration: const Duration(milliseconds: 110),
@@ -221,42 +325,79 @@ class _TactileRowState extends State<_TactileRow> {
 }
 
 class _AnimatedPressColor extends StatelessWidget {
-  const _AnimatedPressColor({required this.pressed, required this.base, required this.builder});
-  final bool pressed; final Color base; final Widget Function(Color c) builder;
+  const _AnimatedPressColor({
+    required this.pressed,
+    required this.base,
+    required this.builder,
+  });
+  final bool pressed;
+  final Color base;
+  final Widget Function(Color c) builder;
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
+    final target = pressed
+        ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base)
+        : base;
     return TweenAnimationBuilder<Color?>(
-      tween: ColorTween(end: target), duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic,
+      tween: ColorTween(end: target),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       builder: (context, color, _) => builder(color ?? base),
     );
   }
 }
 
 Widget _iosSectionCard({required List<Widget> children}) {
-  return Builder(builder: (context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
-    return Container(
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06), width: 0.6)),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(children: children)),
-    );
-  });
+  return Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final isDark = theme.brightness == Brightness.dark;
+      final Color bg = isDark ? Colors.white10 : Colors.white.withOpacity(0.96);
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+            width: 0.6,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: children),
+        ),
+      );
+    },
+  );
 }
 
 Widget _iosDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 6, thickness: 0.6, indent: 54, endIndent: 12, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 6,
+    thickness: 0.6,
+    indent: 54,
+    endIndent: 12,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
 class _SmallTactileIcon extends StatefulWidget {
-  const _SmallTactileIcon({required this.icon, required this.onTap, this.enabled = true, this.baseColor});
-  final IconData icon; final VoidCallback onTap; final bool enabled; final Color? baseColor;
-  @override State<_SmallTactileIcon> createState() => _SmallTactileIconState();
+  const _SmallTactileIcon({
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+    this.baseColor,
+  });
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool enabled;
+  final Color? baseColor;
+  @override
+  State<_SmallTactileIcon> createState() => _SmallTactileIconState();
 }
 
 class _SmallTactileIconState extends State<_SmallTactileIcon> {
@@ -265,36 +406,62 @@ class _SmallTactileIconState extends State<_SmallTactileIcon> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final base = widget.baseColor ?? cs.onSurface;
-    final c = widget.enabled ? base.withOpacity(_pressed ? 0.6 : 0.9) : base.withOpacity(0.3);
+    final c = widget.enabled
+        ? base.withOpacity(_pressed ? 0.6 : 0.9)
+        : base.withOpacity(0.3);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.enabled ? (_) => setState(()=>_pressed=true) : null,
-      onTapUp: widget.enabled ? (_) => setState(()=>_pressed=false) : null,
-      onTapCancel: widget.enabled ? ()=>setState(()=>_pressed=false) : null,
-      onTap: widget.enabled ? (){ Haptics.soft(); widget.onTap(); } : null,
-      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), child: Icon(widget.icon, size: 18, color: c)),
+      onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.enabled
+          ? () => setState(() => _pressed = false)
+          : null,
+      onTap: widget.enabled
+          ? () {
+              Haptics.soft();
+              widget.onTap();
+            }
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Icon(widget.icon, size: 18, color: c),
+      ),
     );
   }
 }
 
 class _AvatarBadge extends StatelessWidget {
   const _AvatarBadge({required this.letter, required this.overlay});
-  final String letter; final Color overlay;
+  final String letter;
+  final Color overlay;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseBg = isDark ? Colors.white10 : cs.primary.withOpacity(0.1);
     return Stack(
       alignment: Alignment.center,
       children: [
         Container(
-          width: 36, height: 36,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(color: baseBg, shape: BoxShape.circle),
           alignment: Alignment.center,
-          child: Text(letter, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: 14)),
+          child: Text(
+            letter,
+            style: TextStyle(
+              color: cs.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
         ),
         if (overlay != Colors.transparent)
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: overlay, shape: BoxShape.circle)),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: overlay, shape: BoxShape.circle),
+          ),
       ],
     );
   }
@@ -302,27 +469,48 @@ class _AvatarBadge extends StatelessWidget {
 
 class _AvatarBrandBadge extends StatelessWidget {
   const _AvatarBrandBadge({required this.name, required this.overlay});
-  final String name; final Color overlay;
+  final String name;
+  final Color overlay;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseBg = isDark ? Colors.white10 : cs.primary.withOpacity(0.1);
-    final asset = BrandAssets.assetForName(name) ?? BrandAssets.assetForName(name.split(' ').first);
+    final asset =
+        BrandAssets.assetForName(name) ??
+        BrandAssets.assetForName(name.split(' ').first);
     return Stack(
       alignment: Alignment.center,
       children: [
         Container(
-          width: 36, height: 36,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(color: baseBg, shape: BoxShape.circle),
           alignment: Alignment.center,
           child: asset == null
-              ? Text((name.isEmpty ? '?' : name[0]).toUpperCase(), style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: 14))
+              ? Text(
+                  (name.isEmpty ? '?' : name[0]).toUpperCase(),
+                  style: TextStyle(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                )
               : (asset.endsWith('.svg')
-                  ? SvgPicture.asset(asset, width: 20, height: 20)
-                  : Image.asset(asset, width: 20, height: 20, fit: BoxFit.contain)),
+                    ? SvgPicture.asset(asset, width: 20, height: 20)
+                    : Image.asset(
+                        asset,
+                        width: 20,
+                        height: 20,
+                        fit: BoxFit.contain,
+                      )),
         ),
         if (overlay != Colors.transparent)
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: overlay, shape: BoxShape.circle)),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: overlay, shape: BoxShape.circle),
+          ),
       ],
     );
   }
@@ -330,7 +518,8 @@ class _AvatarBrandBadge extends StatelessWidget {
 
 class _NetworkTtsRowMobile extends StatefulWidget {
   const _NetworkTtsRowMobile({required this.service, required this.index});
-  final TtsServiceOptions service; final int index;
+  final TtsServiceOptions service;
+  final int index;
   @override
   State<_NetworkTtsRowMobile> createState() => _NetworkTtsRowMobileState();
 }
@@ -341,14 +530,18 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final displayName = widget.service.name.trim().isEmpty ? networkTtsKindDisplayName(widget.service.kind) : widget.service.name.trim();
+    final displayName = widget.service.name.trim().isEmpty
+        ? networkTtsKindDisplayName(widget.service.kind)
+        : widget.service.name.trim();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _TactileRow(
           pressedScale: 0.98,
           haptics: false,
-          onTap: () async => context.read<SettingsProvider>().setTtsServiceSelected(widget.index),
+          onTap: () async => context
+              .read<SettingsProvider>()
+              .setTtsServiceSelected(widget.index),
           builder: (pressed) {
             final base = cs.onSurface.withOpacity(0.9);
             return _AnimatedPressColor(
@@ -356,9 +549,16 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
               base: base,
               builder: (c) {
                 final isDark = Theme.of(context).brightness == Brightness.dark;
-                final overlay = pressed ? (isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.05)) : Colors.transparent;
+                final overlay = pressed
+                    ? (isDark
+                          ? Colors.black.withOpacity(0.06)
+                          : Colors.white.withOpacity(0.05))
+                    : Colors.transparent;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
                   child: Row(
                     children: [
                       _AvatarBrandBadge(name: displayName, overlay: overlay),
@@ -368,7 +568,11 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
                           displayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 15, color: c, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: c,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -376,11 +580,18 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
                         icon: Lucide.Settings2,
                         baseColor: c,
                         onTap: () async {
-                          final updated = await _showEditNetworkTtsSheet(context, widget.service);
+                          final updated = await _showEditNetworkTtsSheet(
+                            context,
+                            widget.service,
+                          );
                           if (updated != null) {
-                            final list = List<TtsServiceOptions>.from(context.read<SettingsProvider>().ttsServices);
+                            final list = List<TtsServiceOptions>.from(
+                              context.read<SettingsProvider>().ttsServices,
+                            );
                             list[widget.index] = updated;
-                            await context.read<SettingsProvider>().setTtsServices(list);
+                            await context
+                                .read<SettingsProvider>()
+                                .setTtsServices(list);
                           }
                         },
                       ),
@@ -389,11 +600,21 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
                         icon: _testing ? Lucide.Loader : Lucide.Volume2,
                         baseColor: c,
                         onTap: () async {
-                          setState(() { _testing = true; _error = null; });
-                          final demo = AppLocalizations.of(context)!.ttsServicesPageTestSpeechText;
-                          final err = await context.read<TtsProvider>().testNetworkService(widget.service, demo);
+                          setState(() {
+                            _testing = true;
+                            _error = null;
+                          });
+                          final demo = AppLocalizations.of(
+                            context,
+                          )!.ttsServicesPageTestSpeechText;
+                          final err = await context
+                              .read<TtsProvider>()
+                              .testNetworkService(widget.service, demo);
                           if (!mounted) return;
-                          setState(() { _testing = false; _error = err; });
+                          setState(() {
+                            _testing = false;
+                            _error = err;
+                          });
                         },
                       ),
                       const SizedBox(width: 6),
@@ -402,20 +623,27 @@ class _NetworkTtsRowMobileState extends State<_NetworkTtsRowMobile> {
                         baseColor: c,
                         onTap: () async {
                           final sp = context.read<SettingsProvider>();
-                          final list = List<TtsServiceOptions>.from(sp.ttsServices);
+                          final list = List<TtsServiceOptions>.from(
+                            sp.ttsServices,
+                          );
                           list.removeAt(widget.index);
                           await sp.setTtsServices(list);
                           var idx = sp.ttsServiceSelected;
-                          if (idx >= list.length) idx = list.isEmpty ? -1 : list.length - 1;
+                          if (idx >= list.length)
+                            idx = list.isEmpty ? -1 : list.length - 1;
                           await sp.setTtsServiceSelected(idx);
                         },
                       ),
                       const SizedBox(width: 8),
-                      Builder(builder: (_) {
-                        final sp2 = context.watch<SettingsProvider>();
-                        final sel = (sp2.ttsServiceSelected == widget.index);
-                        return sel ? Icon(Lucide.Check, size: 16, color: c) : const SizedBox(width: 16);
-                      }),
+                      Builder(
+                        builder: (_) {
+                          final sp2 = context.watch<SettingsProvider>();
+                          final sel = (sp2.ttsServiceSelected == widget.index);
+                          return sel
+                              ? Icon(Lucide.Check, size: 16, color: c)
+                              : const SizedBox(width: 16);
+                        },
+                      ),
                     ],
                   ),
                 );
@@ -450,7 +678,12 @@ class _ErrorInlineMobile extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(oneLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: cs.error)),
+            child: Text(
+              oneLine,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: cs.error),
+            ),
           ),
           const SizedBox(width: 8),
           TextButton(
@@ -469,7 +702,9 @@ void _showMobileErrorDetails(BuildContext context, String message) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (ctx) {
       return SafeArea(
         child: Padding(
@@ -479,19 +714,41 @@ void _showMobileErrorDetails(BuildContext context, String message) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(l10n.ttsServicesDialogErrorTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                child: Text(
+                  l10n.ttsServicesDialogErrorTitle,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
-              SelectableText(message, style: TextStyle(color: cs.onSurface.withOpacity(0.9), fontSize: 13)),
+              SelectableText(
+                message,
+                style: TextStyle(
+                  color: cs.onSurface.withOpacity(0.9),
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton(onPressed: () => Navigator.of(ctx).maybePop(), child: Text(l10n.ttsServicesCloseButton)),
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).maybePop(),
+                  child: Text(l10n.ttsServicesCloseButton),
+                ),
               ),
             ],
           ),
@@ -503,60 +760,81 @@ void _showMobileErrorDetails(BuildContext context, String message) {
 
 // Removed selected tag; background highlight indicates selection
 
-Future<TtsServiceOptions?> _showAddNetworkTtsSheet(BuildContext context) => _showNetworkTtsSheet(context, null);
+Future<TtsServiceOptions?> _showAddNetworkTtsSheet(BuildContext context) =>
+    _showNetworkTtsSheet(context, null);
 
-Future<TtsServiceOptions?> _showEditNetworkTtsSheet(BuildContext context, TtsServiceOptions initial) => _showNetworkTtsSheet(context, initial);
+Future<TtsServiceOptions?> _showEditNetworkTtsSheet(
+  BuildContext context,
+  TtsServiceOptions initial,
+) => _showNetworkTtsSheet(context, initial);
 
-Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsServiceOptions? initial) async {
+Future<TtsServiceOptions?> _showNetworkTtsSheet(
+  BuildContext context,
+  TtsServiceOptions? initial,
+) async {
   final cs = Theme.of(context).colorScheme;
   final l10n = AppLocalizations.of(context)!;
   NetworkTtsKind kind = initial?.kind ?? NetworkTtsKind.openai;
   final nameCtl = TextEditingController(text: initial?.name ?? '');
-  final apiKeyCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
-      ? initial.apiKey
-      : (initial is GeminiTtsOptions)
-          ? initial.apiKey
-          : (initial is MiniMaxTtsOptions)
-              ? initial.apiKey
-              : (initial is ElevenLabsTtsOptions)
-                  ? initial.apiKey
-                  : '');
-  final baseCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
-      ? initial.baseUrl
-      : (initial is GeminiTtsOptions)
-          ? initial.baseUrl
-          : (initial is MiniMaxTtsOptions)
-              ? initial.baseUrl
-              : (initial is ElevenLabsTtsOptions)
-                  ? initial.baseUrl
-                  : '');
-  final modelCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
-      ? initial.model
-      : (initial is GeminiTtsOptions)
-          ? initial.model
-          : (initial is MiniMaxTtsOptions)
-              ? initial.model
-              : (initial is ElevenLabsTtsOptions)
-                  ? initial.modelId
-                  : '');
-  final voiceCtl = TextEditingController(text: (initial is OpenAiTtsOptions)
-      ? initial.voice
-      : (initial is GeminiTtsOptions)
-          ? initial.voiceName
-          : (initial is MiniMaxTtsOptions)
-              ? initial.voiceId
-              : (initial is ElevenLabsTtsOptions)
-                  ? initial.voiceId
-                  : '');
-  final emotionCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.emotion : 'calm');
-  final speedCtl = TextEditingController(text: (initial is MiniMaxTtsOptions) ? initial.speed.toString() : '1.0');
+  final apiKeyCtl = TextEditingController(
+    text: (initial is OpenAiTtsOptions)
+        ? initial.apiKey
+        : (initial is GeminiTtsOptions)
+        ? initial.apiKey
+        : (initial is MiniMaxTtsOptions)
+        ? initial.apiKey
+        : (initial is ElevenLabsTtsOptions)
+        ? initial.apiKey
+        : '',
+  );
+  final baseCtl = TextEditingController(
+    text: (initial is OpenAiTtsOptions)
+        ? initial.baseUrl
+        : (initial is GeminiTtsOptions)
+        ? initial.baseUrl
+        : (initial is MiniMaxTtsOptions)
+        ? initial.baseUrl
+        : (initial is ElevenLabsTtsOptions)
+        ? initial.baseUrl
+        : '',
+  );
+  final modelCtl = TextEditingController(
+    text: (initial is OpenAiTtsOptions)
+        ? initial.model
+        : (initial is GeminiTtsOptions)
+        ? initial.model
+        : (initial is MiniMaxTtsOptions)
+        ? initial.model
+        : (initial is ElevenLabsTtsOptions)
+        ? initial.modelId
+        : '',
+  );
+  final voiceCtl = TextEditingController(
+    text: (initial is OpenAiTtsOptions)
+        ? initial.voice
+        : (initial is GeminiTtsOptions)
+        ? initial.voiceName
+        : (initial is MiniMaxTtsOptions)
+        ? initial.voiceId
+        : (initial is ElevenLabsTtsOptions)
+        ? initial.voiceId
+        : '',
+  );
+  final emotionCtl = TextEditingController(
+    text: (initial is MiniMaxTtsOptions) ? initial.emotion : 'calm',
+  );
+  final speedCtl = TextEditingController(
+    text: (initial is MiniMaxTtsOptions) ? initial.speed.toString() : '1.0',
+  );
 
   TtsServiceOptions? result;
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (ctx) {
       return SafeArea(
         child: Column(
@@ -564,15 +842,37 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
           children: [
             // Drag handle + Header with only a Check on the right
             const SizedBox(height: 6),
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
               child: Row(
                 children: [
-                  _TactileIconButton(icon: Lucide.X, color: cs.onSurface, size: 20, onTap: () => Navigator.of(ctx).maybePop()),
+                  _TactileIconButton(
+                    icon: Lucide.X,
+                    color: cs.onSurface,
+                    size: 20,
+                    onTap: () => Navigator.of(ctx).maybePop(),
+                  ),
                   Expanded(
                     child: Center(
-                      child: Text(initial == null ? l10n.ttsServicesDialogAddTitle : l10n.ttsServicesDialogEditTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        initial == null
+                            ? l10n.ttsServicesDialogAddTitle
+                            : l10n.ttsServicesDialogEditTitle,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                   _TactileIconButton(
@@ -580,22 +880,66 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
                     color: cs.onSurface,
                     size: 20,
                     onTap: () {
-                      final name = (nameCtl.text.trim().isEmpty) ? networkTtsKindDisplayName(kind) : nameCtl.text.trim();
+                      final name = (nameCtl.text.trim().isEmpty)
+                          ? networkTtsKindDisplayName(kind)
+                          : nameCtl.text.trim();
                       final apiKey = apiKeyCtl.text.trim();
-                      final base = baseCtl.text.trim().isEmpty ? _defaultBaseUrl(kind) : baseCtl.text.trim();
-                      final model = modelCtl.text.trim().isEmpty ? _defaultModel(kind) : modelCtl.text.trim();
-                      final voice = voiceCtl.text.trim().isEmpty ? _defaultVoice(kind) : voiceCtl.text.trim();
-                      if (apiKey.isEmpty) { Navigator.of(ctx).maybePop(); return; }
+                      final base = baseCtl.text.trim().isEmpty
+                          ? _defaultBaseUrl(kind)
+                          : baseCtl.text.trim();
+                      final model = modelCtl.text.trim().isEmpty
+                          ? _defaultModel(kind)
+                          : modelCtl.text.trim();
+                      final voice = voiceCtl.text.trim().isEmpty
+                          ? _defaultVoice(kind)
+                          : voiceCtl.text.trim();
+                      if (apiKey.isEmpty) {
+                        Navigator.of(ctx).maybePop();
+                        return;
+                      }
                       if (kind == NetworkTtsKind.openai) {
-                        result = OpenAiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voice: voice);
+                        result = OpenAiTtsOptions(
+                          enabled: true,
+                          name: name,
+                          apiKey: apiKey,
+                          baseUrl: base,
+                          model: model,
+                          voice: voice,
+                        );
                       } else if (kind == NetworkTtsKind.gemini) {
-                        result = GeminiTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceName: voice);
+                        result = GeminiTtsOptions(
+                          enabled: true,
+                          name: name,
+                          apiKey: apiKey,
+                          baseUrl: base,
+                          model: model,
+                          voiceName: voice,
+                        );
                       } else if (kind == NetworkTtsKind.minimax) {
-                        final spd = double.tryParse(speedCtl.text.trim()) ?? 1.0;
-                        result = MiniMaxTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, model: model, voiceId: voice, emotion: emotionCtl.text.trim().isEmpty ? 'calm' : emotionCtl.text.trim(), speed: spd);
+                        final spd =
+                            double.tryParse(speedCtl.text.trim()) ?? 1.0;
+                        result = MiniMaxTtsOptions(
+                          enabled: true,
+                          name: name,
+                          apiKey: apiKey,
+                          baseUrl: base,
+                          model: model,
+                          voiceId: voice,
+                          emotion: emotionCtl.text.trim().isEmpty
+                              ? 'calm'
+                              : emotionCtl.text.trim(),
+                          speed: spd,
+                        );
                       } else {
                         // ElevenLabs
-                        result = ElevenLabsTtsOptions(enabled: true, name: name, apiKey: apiKey, baseUrl: base, modelId: model.isEmpty ? _defaultModel(kind) : model, voiceId: voice);
+                        result = ElevenLabsTtsOptions(
+                          enabled: true,
+                          name: name,
+                          apiKey: apiKey,
+                          baseUrl: base,
+                          modelId: model.isEmpty ? _defaultModel(kind) : model,
+                          voiceId: voice,
+                        );
                       }
                       Navigator.of(ctx).pop();
                     },
@@ -606,7 +950,11 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
             const SizedBox(height: 6),
             // Content
             Padding(
-              padding: EdgeInsets.only(left: 12, right: 12, bottom: MediaQuery.of(ctx).viewInsets.bottom + 12),
+              padding: EdgeInsets.only(
+                left: 12,
+                right: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 12,
+              ),
               child: StatefulBuilder(
                 builder: (ctx2, setState) {
                   return Column(
@@ -623,28 +971,73 @@ Future<TtsServiceOptions?> _showNetworkTtsSheet(BuildContext context, TtsService
                           networkTtsKindDisplayName(NetworkTtsKind.elevenlabs),
                         ],
                         onSelected: (picked) async {
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.openai)) kind = NetworkTtsKind.openai;
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.gemini)) kind = NetworkTtsKind.gemini;
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.minimax)) kind = NetworkTtsKind.minimax;
-                          if (picked == networkTtsKindDisplayName(NetworkTtsKind.elevenlabs)) kind = NetworkTtsKind.elevenlabs;
+                          if (picked ==
+                              networkTtsKindDisplayName(NetworkTtsKind.openai))
+                            kind = NetworkTtsKind.openai;
+                          if (picked ==
+                              networkTtsKindDisplayName(NetworkTtsKind.gemini))
+                            kind = NetworkTtsKind.gemini;
+                          if (picked ==
+                              networkTtsKindDisplayName(NetworkTtsKind.minimax))
+                            kind = NetworkTtsKind.minimax;
+                          if (picked ==
+                              networkTtsKindDisplayName(
+                                NetworkTtsKind.elevenlabs,
+                              ))
+                            kind = NetworkTtsKind.elevenlabs;
                           (ctx as Element).markNeedsBuild();
                         },
                       ),
                       const SizedBox(height: 6),
-                      _inputRowMobile(context, label: l10n.ttsServicesFieldNameLabel, controller: nameCtl, hint: networkTtsKindDisplayName(kind)),
+                      _inputRowMobile(
+                        context,
+                        label: l10n.ttsServicesFieldNameLabel,
+                        controller: nameCtl,
+                        hint: networkTtsKindDisplayName(kind),
+                      ),
                       const SizedBox(height: 6),
-                      _inputRowMobile(context, label: l10n.ttsServicesFieldApiKeyLabel, controller: apiKeyCtl, obscure: true),
+                      _inputRowMobile(
+                        context,
+                        label: l10n.ttsServicesFieldApiKeyLabel,
+                        controller: apiKeyCtl,
+                        obscure: true,
+                      ),
                       const SizedBox(height: 6),
-                      _inputRowMobile(context, label: l10n.ttsServicesFieldBaseUrlLabel, controller: baseCtl, hint: _defaultBaseUrl(kind)),
+                      _inputRowMobile(
+                        context,
+                        label: l10n.ttsServicesFieldBaseUrlLabel,
+                        controller: baseCtl,
+                        hint: _defaultBaseUrl(kind),
+                      ),
                       const SizedBox(height: 6),
-                      _inputRowMobile(context, label: l10n.ttsServicesFieldModelLabel, controller: modelCtl, hint: _defaultModel(kind)),
+                      _inputRowMobile(
+                        context,
+                        label: l10n.ttsServicesFieldModelLabel,
+                        controller: modelCtl,
+                        hint: _defaultModel(kind),
+                      ),
                       const SizedBox(height: 6),
-                      _inputRowMobile(context, label: _voiceLabelFor(kind, l10n), controller: voiceCtl, hint: _defaultVoice(kind)),
+                      _inputRowMobile(
+                        context,
+                        label: _voiceLabelFor(kind, l10n),
+                        controller: voiceCtl,
+                        hint: _defaultVoice(kind),
+                      ),
                       if (kind == NetworkTtsKind.minimax) ...[
                         const SizedBox(height: 6),
-                        _inputRowMobile(context, label: l10n.ttsServicesFieldEmotionLabel, controller: emotionCtl, hint: 'calm'),
+                        _inputRowMobile(
+                          context,
+                          label: l10n.ttsServicesFieldEmotionLabel,
+                          controller: emotionCtl,
+                          hint: 'calm',
+                        ),
                         const SizedBox(height: 6),
-                        _inputRowMobile(context, label: l10n.ttsServicesFieldSpeedLabel, controller: speedCtl, hint: '1.0'),
+                        _inputRowMobile(
+                          context,
+                          label: l10n.ttsServicesFieldSpeedLabel,
+                          controller: speedCtl,
+                          hint: '1.0',
+                        ),
                       ],
                     ],
                   );
@@ -681,12 +1074,25 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999))),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(l10n.ttsServicesPageSystemTtsSettingsTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                child: Text(
+                  l10n.ttsServicesPageSystemTtsSettingsTitle,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               // Engine selector
@@ -694,7 +1100,8 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
                 future: tts.listEngines(),
                 builder: (context, snap) {
                   final engines = snap.data ?? const <String>[];
-                  final cur = tts.engineId ?? (engines.isNotEmpty ? engines.first : '');
+                  final cur =
+                      tts.engineId ?? (engines.isNotEmpty ? engines.first : '');
                   return _sheetSelectRow(
                     context,
                     label: l10n.ttsServicesPageEngineLabel,
@@ -713,7 +1120,13 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
                 future: tts.listLanguages(),
                 builder: (context, snap) {
                   final langs = snap.data ?? const <String>[];
-                  final cur = tts.languageTag ?? (langs.contains('zh-CN') ? 'zh-CN' : (langs.contains('en-US') ? 'en-US' : (langs.isNotEmpty ? langs.first : '')));
+                  final cur =
+                      tts.languageTag ??
+                      (langs.contains('zh-CN')
+                          ? 'zh-CN'
+                          : (langs.contains('en-US')
+                                ? 'en-US'
+                                : (langs.isNotEmpty ? langs.first : '')));
                   return _sheetSelectRow(
                     context,
                     label: l10n.ttsServicesPageLanguageLabel,
@@ -727,7 +1140,13 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
                 },
               ),
               const SizedBox(height: 8),
-              Text(l10n.ttsServicesPageSpeechRateLabel, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+              Text(
+                l10n.ttsServicesPageSpeechRateLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
               Slider(
                 value: rate,
                 min: 0.1,
@@ -742,7 +1161,13 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
                 },
               ),
               const SizedBox(height: 4),
-              Text(l10n.ttsServicesPagePitchLabel, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+              Text(
+                l10n.ttsServicesPagePitchLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
               Slider(
                 value: pitch,
                 min: 0.5,
@@ -762,7 +1187,11 @@ Future<void> _showSystemTtsConfig(BuildContext context) async {
                   onPressed: () async {
                     final demo = l10n.ttsServicesPageSettingsSavedMessage;
                     Navigator.of(ctx).maybePop();
-                    showAppSnackBar(context, message: demo, type: NotificationType.success);
+                    showAppSnackBar(
+                      context,
+                      message: demo,
+                      type: NotificationType.success,
+                    );
                   },
                   icon: Icon(Lucide.Check, size: 16),
                   label: Text(l10n.ttsServicesPageDoneButton),
@@ -791,7 +1220,9 @@ Widget _sheetSelectRow(
             final picked = await showModalBottomSheet<String>(
               context: context,
               backgroundColor: cs.surface,
-              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
               builder: (ctx2) {
                 return SafeArea(
                   child: ConstrainedBox(
@@ -817,7 +1248,9 @@ Widget _sheetSelectRow(
             }
           },
     builder: (pressed) {
-      final baseColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.9);
+      final baseColor = Theme.of(
+        context,
+      ).colorScheme.onSurface.withOpacity(0.9);
       return _AnimatedPressColor(
         pressed: pressed,
         base: baseColor,
@@ -826,10 +1259,20 @@ Widget _sheetSelectRow(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
-                Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: c))),
+                Expanded(
+                  child: Text(label, style: TextStyle(fontSize: 15, color: c)),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
-                  child: Text(value, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
                 ),
                 Icon(Lucide.ChevronRight, size: 16, color: c),
               ],
@@ -855,17 +1298,33 @@ Widget _sheetOption(
     onTap: onTap,
     builder: (pressed) {
       final base = cs.onSurface;
-      final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
-      final bgTarget = pressed ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+      final target = pressed
+          ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ??
+                base)
+          : base;
+      final bgTarget = pressed
+          ? (isDark
+                ? Colors.white.withOpacity(0.06)
+                : Colors.black.withOpacity(0.05))
+          : Colors.transparent;
       return TweenAnimationBuilder<Color?>(
-        tween: ColorTween(end: target), duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic,
+        tween: ColorTween(end: target),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         builder: (context, color, _) {
           final c = color ?? base;
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 200), curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
             color: bgTarget,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(children: [Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: c)))]),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(label, style: TextStyle(fontSize: 15, color: c)),
+                ),
+              ],
+            ),
           );
         },
       );
@@ -875,17 +1334,32 @@ Widget _sheetOption(
 
 Widget _sheetDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 1, thickness: 0.6, indent: 16, endIndent: 16, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 1,
+    thickness: 0.6,
+    indent: 16,
+    endIndent: 16,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
 
-Widget _inputRowMobile(BuildContext context, {required String label, required TextEditingController controller, String? hint, bool obscure = false}) {
+Widget _inputRowMobile(
+  BuildContext context, {
+  required String label,
+  required TextEditingController controller,
+  String? hint,
+  bool obscure = false,
+}) {
   final cs = Theme.of(context).colorScheme;
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: cs.onSurface.withOpacity(0.7)),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,

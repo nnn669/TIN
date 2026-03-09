@@ -70,12 +70,8 @@ class _HtmlPreviewPageState extends State<HtmlPreviewPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.assistantEditPreviewTitle),
-      ),
-      body: SafeArea(
-        child: WebViewWidget(controller: _controller),
-      ),
+      appBar: AppBar(title: Text(l10n.assistantEditPreviewTitle)),
+      body: SafeArea(child: WebViewWidget(controller: _controller)),
     );
   }
 }

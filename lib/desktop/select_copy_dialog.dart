@@ -5,7 +5,10 @@ import '../icons/lucide_adapter.dart';
 import '../shared/widgets/snackbar.dart';
 import 'package:flutter/services.dart';
 
-Future<void> showSelectCopyDesktopDialog(BuildContext context, {required ChatMessage message}) async {
+Future<void> showSelectCopyDesktopDialog(
+  BuildContext context, {
+  required ChatMessage message,
+}) async {
   await showDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -21,7 +24,11 @@ class _SelectCopyDesktopDialog extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     await Clipboard.setData(ClipboardData(text: message.content));
     if (!context.mounted) return;
-    showAppSnackBar(context, message: l10n.selectCopyPageCopiedAll, type: NotificationType.success);
+    showAppSnackBar(
+      context,
+      message: l10n.selectCopyPageCopiedAll,
+      type: NotificationType.success,
+    );
   }
 
   @override
@@ -34,7 +41,11 @@ class _SelectCopyDesktopDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 420, maxWidth: 720, maxHeight: 640),
+        constraints: const BoxConstraints(
+          minWidth: 420,
+          maxWidth: 720,
+          maxHeight: 640,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Material(
@@ -46,17 +57,33 @@ class _SelectCopyDesktopDialog extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                   child: Row(
                     children: [
-                      Text(l10n.selectCopyPageTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.selectCopyPageTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: () => _copyAll(context),
                         icon: Icon(Lucide.Copy, size: 18, color: cs.primary),
-                        label: Text(l10n.selectCopyPageCopyAll, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+                        label: Text(
+                          l10n.selectCopyPageCopyAll,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       IconButton(
                         tooltip: l10n.mcpPageClose,
                         onPressed: () => Navigator.of(context).maybePop(),
-                        icon: Icon(Lucide.X, size: 18, color: cs.onSurface.withOpacity(0.75)),
+                        icon: Icon(
+                          Lucide.X,
+                          size: 18,
+                          color: cs.onSurface.withOpacity(0.75),
+                        ),
                       ),
                     ],
                   ),
@@ -67,9 +94,14 @@ class _SelectCopyDesktopDialog extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
+                        color: isDark
+                            ? Colors.white10
+                            : const Color(0xFFF2F3F5),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.outlineVariant.withOpacity(0.18), width: 0.6),
+                        border: Border.all(
+                          color: cs.outlineVariant.withOpacity(0.18),
+                          width: 0.6,
+                        ),
                       ),
                       child: Scrollbar(
                         child: SingleChildScrollView(
@@ -93,4 +125,3 @@ class _SelectCopyDesktopDialog extends StatelessWidget {
     );
   }
 }
-

@@ -27,8 +27,14 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
           decoration: InputDecoration(hintText: l10n.assistantTagsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsCreateDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsCreateDialogOk),
+          ),
         ],
       ),
     );
@@ -41,7 +47,11 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
     }
   }
 
-  Future<void> _renameTag(BuildContext context, String tagId, String oldName) async {
+  Future<void> _renameTag(
+    BuildContext context,
+    String tagId,
+    String oldName,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final TextEditingController c = TextEditingController(text: oldName);
     final ok = await showDialog<bool>(
@@ -54,8 +64,14 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
           decoration: InputDecoration(hintText: l10n.assistantTagsNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsCreateDialogCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsRenameDialogOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsCreateDialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsRenameDialogOk),
+          ),
         ],
       ),
     );
@@ -76,8 +92,14 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
         title: Text(l10n.assistantTagsDeleteConfirmTitle),
         content: Text(l10n.assistantTagsDeleteConfirmContent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.assistantTagsDeleteConfirmCancel)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.assistantTagsDeleteConfirmOk)),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.assistantTagsDeleteConfirmCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.assistantTagsDeleteConfirmOk),
+          ),
         ],
       ),
     );
@@ -119,7 +141,10 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
         buildDefaultDragHandles: false,
         proxyDecorator: (child, index, animation) {
           // No shadow during drag; slight scale only
-          return ScaleTransition(scale: Tween<double>(begin: 1.0, end: 1.02).animate(animation), child: child);
+          return ScaleTransition(
+            scale: Tween<double>(begin: 1.0, end: 1.02).animate(animation),
+            child: child,
+          );
         },
         onReorder: (oldIndex, newIndex) async {
           if (newIndex > oldIndex) newIndex -= 1;
@@ -136,7 +161,10 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
                 child: _MobileTagCard(
                   title: t.name,
                   onTap: () async {
-                    await context.read<TagProvider>().assignAssistantToTag(widget.assistantId, t.id);
+                    await context.read<TagProvider>().assignAssistantToTag(
+                      widget.assistantId,
+                      t.id,
+                    );
                     if (mounted) Navigator.of(context).maybePop();
                   },
                   onRename: () => _renameTag(context, t.id, t.name),
@@ -152,11 +180,20 @@ class _TagsManagerPageState extends State<TagsManagerPage> {
 }
 
 class _MobileTagCard extends StatelessWidget {
-  const _MobileTagCard({required this.title, required this.onTap, required this.onRename, required this.onDelete});
-  final String title; final VoidCallback onTap; final VoidCallback onRename; final VoidCallback onDelete;
+  const _MobileTagCard({
+    required this.title,
+    required this.onTap,
+    required this.onRename,
+    required this.onDelete,
+  });
+  final String title;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme; final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? Colors.white10 : const Color(0xFFF7F7F9);
     final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.12 : 0.10);
     Widget iconBtn(IconData icon, VoidCallback onPressed, {Color? color}) {
@@ -168,6 +205,7 @@ class _MobileTagCard extends StatelessWidget {
         child: Icon(icon, size: 18, color: color ?? cs.onSurface),
       );
     }
+
     return IosCardPress(
       baseColor: bg,
       borderRadius: BorderRadius.circular(14),
@@ -187,7 +225,10 @@ class _MobileTagCard extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             iconBtn(Lucide.Pencil, onRename),

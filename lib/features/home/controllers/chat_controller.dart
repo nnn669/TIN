@@ -13,7 +13,8 @@ import '../../../core/services/chat/chat_service.dart';
 /// - Conversation stream subscriptions
 /// - Message grouping and collapsing logic
 class ChatController extends ChangeNotifier {
-  ChatController({required ChatService chatService}) : _chatService = chatService;
+  ChatController({required ChatService chatService})
+    : _chatService = chatService;
 
   final ChatService _chatService;
 
@@ -38,8 +39,10 @@ class ChatController extends ChangeNotifier {
   Set<String> get loadingConversationIds => _loadingConversationIds;
 
   /// Active stream subscriptions per conversation.
-  final Map<String, StreamSubscription<dynamic>> _conversationStreams = <String, StreamSubscription<dynamic>>{};
-  Map<String, StreamSubscription<dynamic>> get conversationStreams => _conversationStreams;
+  final Map<String, StreamSubscription<dynamic>> _conversationStreams =
+      <String, StreamSubscription<dynamic>>{};
+  Map<String, StreamSubscription<dynamic>> get conversationStreams =>
+      _conversationStreams;
 
   // ============================================================================
   // Getters
@@ -286,7 +289,10 @@ class ChatController extends ChangeNotifier {
   }
 
   /// Set a stream subscription for a conversation.
-  void setStreamSubscription(String conversationId, StreamSubscription<dynamic> subscription) {
+  void setStreamSubscription(
+    String conversationId,
+    StreamSubscription<dynamic> subscription,
+  ) {
     _conversationStreams[conversationId] = subscription;
   }
 
@@ -313,7 +319,8 @@ class ChatController extends ChangeNotifier {
   /// This groups messages by their groupId and returns only the message
   /// at the selected version index for each group.
   List<ChatMessage> collapseVersions(List<ChatMessage> items) {
-    final Map<String, List<ChatMessage>> byGroup = <String, List<ChatMessage>>{};
+    final Map<String, List<ChatMessage>> byGroup =
+        <String, List<ChatMessage>>{};
     final List<String> order = <String>[];
 
     for (final m in items) {
@@ -349,7 +356,8 @@ class ChatController extends ChangeNotifier {
 
   /// Group all messages by their groupId.
   Map<String, List<ChatMessage>> groupMessagesByGroup() {
-    final Map<String, List<ChatMessage>> byGroup = <String, List<ChatMessage>>{};
+    final Map<String, List<ChatMessage>> byGroup =
+        <String, List<ChatMessage>>{};
     for (final m in _messages) {
       final gid = (m.groupId ?? m.id);
       byGroup.putIfAbsent(gid, () => <ChatMessage>[]).add(m);

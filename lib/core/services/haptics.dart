@@ -12,7 +12,9 @@ class Haptics {
   // Global master switch controlled by settings. When false, all haptics are disabled.
   static bool _enabled = true;
   static bool get enabled => _enabled;
-  static void setEnabled(bool v) { _enabled = v; }
+  static void setEnabled(bool v) {
+    _enabled = v;
+  }
 
   /// Very light tap feedback (e.g., small UI taps or success tick).
   static void light() {
@@ -55,7 +57,9 @@ class Haptics {
   }
 
   /// Cancel any ongoing vibration (rarely needed in our use cases).
-  static void cancel() { /* no-op */ }
+  static void cancel() {
+    /* no-op */
+  }
 
   // Fire-and-forget wrapper to avoid exceptions on unsupported platforms.
   static void _safe(Future<void> Function() action) {
@@ -69,6 +73,8 @@ class Haptics {
     }
   }
 
-  static bool get _isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-  static bool get _isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  static bool get _isIOS =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+  static bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 }

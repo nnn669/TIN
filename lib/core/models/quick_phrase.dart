@@ -30,18 +30,18 @@ class QuickPhrase {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'content': content,
-        'isGlobal': isGlobal,
-        'assistantId': assistantId,
-      };
+    'id': id,
+    'title': title,
+    'content': content,
+    'isGlobal': isGlobal,
+    'assistantId': assistantId,
+  };
 
   static QuickPhrase fromJson(Map<String, dynamic> json) => QuickPhrase(
-        id: json['id'] as String,
-        title: (json['title'] as String?) ?? '',
-        content: (json['content'] as String?) ?? '',
-        isGlobal: json['isGlobal'] as bool? ?? true,
-        assistantId: json['assistantId'] as String?,
-      );
+    id: json['id'] as String,
+    title: (json['title'] as String?) ?? '',
+    content: (json['content'] as String?) ?? '',
+    isGlobal: json['isGlobal'] as bool? ?? true,
+    assistantId: json['assistantId'] as String?,
+  );
 }

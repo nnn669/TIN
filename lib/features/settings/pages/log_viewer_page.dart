@@ -1817,11 +1817,15 @@ class _LogSettingsSheet extends StatelessWidget {
                   ? l10n.logSettingsAutoDeleteDisabled
                   : l10n.logSettingsAutoDeleteDays(settings.logAutoDeleteDays),
               options: _autoDeleteOptions
-                  .map((d) => d == 0
-                      ? l10n.logSettingsAutoDeleteDisabled
-                      : l10n.logSettingsAutoDeleteDays(d))
+                  .map(
+                    (d) => d == 0
+                        ? l10n.logSettingsAutoDeleteDisabled
+                        : l10n.logSettingsAutoDeleteDays(d),
+                  )
                   .toList(),
-              selectedIndex: _autoDeleteOptions.indexOf(settings.logAutoDeleteDays).clamp(0, _autoDeleteOptions.length - 1),
+              selectedIndex: _autoDeleteOptions
+                  .indexOf(settings.logAutoDeleteDays)
+                  .clamp(0, _autoDeleteOptions.length - 1),
               onSelected: (i) {
                 settings.setLogAutoDeleteDays(_autoDeleteOptions[i]);
                 onChanged();
@@ -1839,10 +1843,13 @@ class _LogSettingsSheet extends StatelessWidget {
                   ? l10n.logSettingsMaxSizeUnlimited
                   : '${settings.logMaxSizeMB} MB',
               options: _maxSizeOptions
-                  .map((s) =>
-                      s == 0 ? l10n.logSettingsMaxSizeUnlimited : '$s MB')
+                  .map(
+                    (s) => s == 0 ? l10n.logSettingsMaxSizeUnlimited : '$s MB',
+                  )
                   .toList(),
-              selectedIndex: _maxSizeOptions.indexOf(settings.logMaxSizeMB).clamp(0, _maxSizeOptions.length - 1),
+              selectedIndex: _maxSizeOptions
+                  .indexOf(settings.logMaxSizeMB)
+                  .clamp(0, _maxSizeOptions.length - 1),
               onSelected: (i) {
                 settings.setLogMaxSizeMB(_maxSizeOptions[i]);
                 onChanged();
@@ -1938,20 +1945,21 @@ class _SettingTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: selected
                           ? cs.primary.withValues(alpha: isDark ? 0.22 : 0.14)
-                          : cs.onSurface.withValues(alpha: isDark ? 0.08 : 0.05),
+                          : cs.onSurface.withValues(
+                              alpha: isDark ? 0.08 : 0.05,
+                            ),
                       borderRadius: BorderRadius.circular(10),
                       border: selected
-                          ? Border.all(
-                              color: cs.primary.withValues(alpha: 0.5),
-                            )
+                          ? Border.all(color: cs.primary.withValues(alpha: 0.5))
                           : null,
                     ),
                     child: Text(
                       options[i],
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: selected
                             ? cs.primary
                             : cs.onSurface.withValues(alpha: 0.72),

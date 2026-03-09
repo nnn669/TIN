@@ -9,7 +9,9 @@ class ModelOverridePayloadParser {
     final ov = modelOverrides[modelId];
     if (ov is Map<String, dynamic>) return ov;
     if (ov is Map) {
-      return {for (final entry in ov.entries) entry.key.toString(): entry.value};
+      return {
+        for (final entry in ov.entries) entry.key.toString(): entry.value,
+      };
     }
     return const <String, dynamic>{};
   }

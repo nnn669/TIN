@@ -28,7 +28,10 @@ class ProviderAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cfg = context.watch<SettingsProvider>().getProviderConfig(providerKey, defaultName: displayName);
+    final cfg = context.watch<SettingsProvider>().getProviderConfig(
+      providerKey,
+      defaultName: displayName,
+    );
 
     Widget avatar;
     final type = cfg.avatarType;
@@ -38,9 +41,16 @@ class ProviderAvatar extends StatelessWidget {
       avatar = Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: cs.primary.withOpacity(0.15), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
-        child: EmojiText(value.characters.take(1).toString(), fontSize: size * 0.5, optimizeEmojiAlign: true),
+        child: EmojiText(
+          value.characters.take(1).toString(),
+          fontSize: size * 0.5,
+          optimizeEmojiAlign: true,
+        ),
       );
     } else if (type == 'url' && value != null && value.isNotEmpty) {
       avatar = FutureBuilder<String?>(
@@ -63,7 +73,10 @@ class ProviderAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _brandOrInitial(context, cfg.name.isNotEmpty ? cfg.name : displayName),
+              errorBuilder: (_, __, ___) => _brandOrInitial(
+                context,
+                cfg.name.isNotEmpty ? cfg.name : displayName,
+              ),
             ),
           );
         },
@@ -81,10 +94,16 @@ class ProviderAvatar extends StatelessWidget {
           ),
         );
       } else {
-        avatar = _brandOrInitial(context, cfg.name.isNotEmpty ? cfg.name : displayName);
+        avatar = _brandOrInitial(
+          context,
+          cfg.name.isNotEmpty ? cfg.name : displayName,
+        );
       }
     } else {
-      avatar = _brandOrInitial(context, cfg.name.isNotEmpty ? cfg.name : displayName);
+      avatar = _brandOrInitial(
+        context,
+        cfg.name.isNotEmpty ? cfg.name : displayName,
+      );
     }
 
     final child = Container(
@@ -92,7 +111,10 @@ class ProviderAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: isDark ? Colors.white24 : Colors.black12, width: 0.5),
+        border: Border.all(
+          color: isDark ? Colors.white24 : Colors.black12,
+          width: 0.5,
+        ),
       ),
       child: avatar,
     );
@@ -112,16 +134,27 @@ class ProviderAvatar extends StatelessWidget {
     final asset = BrandAssets.assetForName(name);
     if (asset == null) {
       return Container(
-        decoration: BoxDecoration(color: cs.primary.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
         alignment: Alignment.center,
         child: Text(
           name.isNotEmpty ? name.characters.first.toUpperCase() : '?',
-          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.42),
+          style: TextStyle(
+            color: cs.primary,
+            fontWeight: FontWeight.w700,
+            fontSize: size * 0.42,
+          ),
         ),
       );
     }
     final lower = name.toLowerCase();
-    final mono = isDark && (RegExp(r'openai|gpt|o\\d').hasMatch(lower) || RegExp(r'grok|xai').hasMatch(lower) || RegExp(r'openrouter').hasMatch(lower));
+    final mono =
+        isDark &&
+        (RegExp(r'openai|gpt|o\\d').hasMatch(lower) ||
+            RegExp(r'grok|xai').hasMatch(lower) ||
+            RegExp(r'openrouter').hasMatch(lower));
     return CircleAvatar(
       backgroundColor: isDark ? Colors.white10 : cs.primary.withOpacity(0.1),
       child: asset.endsWith('.svg')
@@ -129,7 +162,9 @@ class ProviderAvatar extends StatelessWidget {
               asset,
               width: size * 0.7,
               height: size * 0.7,
-              colorFilter: mono ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) : null,
+              colorFilter: mono
+                  ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+                  : null,
             )
           : Image.asset(
               asset,
@@ -142,4 +177,3 @@ class ProviderAvatar extends StatelessWidget {
     );
   }
 }
-

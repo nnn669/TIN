@@ -49,7 +49,8 @@ class StreamingContentNotifier {
   }
 
   /// Update reasoning content for a streaming message.
-  void updateReasoning(String messageId, {
+  void updateReasoning(
+    String messageId, {
     String? reasoningText,
     DateTime? reasoningStartAt,
     DateTime? reasoningFinishedAt,
@@ -143,8 +144,10 @@ class StreamingContentData {
   final String? reasoningText;
   final DateTime? reasoningStartAt;
   final DateTime? reasoningFinishedAt;
+
   /// Version counter for tool parts updates. Incrementing this triggers rebuild.
   final int toolPartsVersion;
+
   /// Version counter for UI state changes (e.g., reasoning expanded toggle).
   final int uiVersion;
 

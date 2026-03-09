@@ -85,7 +85,11 @@ class AppDirectories {
   /// Save base64 image data to images directory.
   /// [prefix] is used for filename (e.g. 'img', 'mcp_img').
   /// Returns the saved file path, or null if failed.
-  static Future<String?> saveBase64Image(String mime, String base64Data, {String prefix = 'img'}) async {
+  static Future<String?> saveBase64Image(
+    String mime,
+    String base64Data, {
+    String prefix = 'img',
+  }) async {
     try {
       final dir = await getImagesDirectory();
       if (!await dir.exists()) {
@@ -100,7 +104,8 @@ class AppDirectories {
         bytes = base64Decode(cleaned);
       }
       final ext = extFromMime(mime);
-      final path = '${dir.path}/${prefix}_${DateTime.now().microsecondsSinceEpoch}.$ext';
+      final path =
+          '${dir.path}/${prefix}_${DateTime.now().microsecondsSinceEpoch}.$ext';
       final file = File(path);
       await file.writeAsBytes(bytes, flush: true);
       return path;

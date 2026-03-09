@@ -3,7 +3,11 @@ class DocumentAttachment {
   final String fileName;
   final String mime; // e.g. application/pdf, text/plain
 
-  const DocumentAttachment({required this.path, required this.fileName, required this.mime});
+  const DocumentAttachment({
+    required this.path,
+    required this.fileName,
+    required this.mime,
+  });
 }
 
 class ChatInputData {

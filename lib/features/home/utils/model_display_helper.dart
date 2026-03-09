@@ -52,7 +52,8 @@ ModelDisplayInfo getModelDisplayInfo(
   Assistant? assistant,
 }) {
   // Determine provider and model from assistant or global defaults
-  final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
+  final providerKey =
+      assistant?.chatModelProvider ?? settings.currentModelProvider;
   final modelId = assistant?.chatModelId ?? settings.currentModelId;
 
   if (providerKey == null || modelId == null) {
@@ -104,7 +105,8 @@ ProviderConfig? getActiveProviderConfig(
   SettingsProvider settings, {
   Assistant? assistant,
 }) {
-  final providerKey = assistant?.chatModelProvider ?? settings.currentModelProvider;
+  final providerKey =
+      assistant?.chatModelProvider ?? settings.currentModelProvider;
   if (providerKey == null) return null;
   return settings.getProviderConfig(providerKey);
 }

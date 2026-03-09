@@ -10,7 +10,8 @@ class InstructionInjectionStore {
   static const String _itemsKey = 'instruction_injections_v1';
   static const String _activeIdKey = 'instruction_injections_active_id_v1';
   static const String _activeIdsKey = 'instruction_injections_active_ids_v1';
-  static const String _activeIdsByAssistantKey = 'instruction_injections_active_ids_by_assistant_v1';
+  static const String _activeIdsByAssistantKey =
+      'instruction_injections_active_ids_by_assistant_v1';
   static const String _defaultAssistantKey = '__global__';
 
   static List<InstructionInjection>? _cache;
@@ -24,10 +25,16 @@ class InstructionInjectionStore {
   }
 
   static List<String> _cleanIds(Iterable<dynamic> ids) {
-    return ids.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toSet().toList(growable: false);
+    return ids
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
   }
 
-  static Map<String, List<String>> _cloneActiveIdsMap(Map<String, List<String>> src) {
+  static Map<String, List<String>> _cloneActiveIdsMap(
+    Map<String, List<String>> src,
+  ) {
     return {for (final e in src.entries) e.key: List<String>.from(e.value)};
   }
 
@@ -44,7 +51,11 @@ class InstructionInjectionStore {
     try {
       final list = jsonDecode(json) as List;
       _cache = list
-          .map((e) => InstructionInjection.fromJson((e as Map).cast<String, dynamic>()))
+          .map(
+            (e) => InstructionInjection.fromJson(
+              (e as Map).cast<String, dynamic>(),
+            ),
+          )
           .toList(growable: true);
       return List<InstructionInjection>.from(_cache!);
     } catch (_) {
@@ -53,7 +64,9 @@ class InstructionInjectionStore {
     }
   }
 
-  static Future<List<InstructionInjection>> _seedDefaultFromLearningMode(SharedPreferences prefs) async {
+  static Future<List<InstructionInjection>> _seedDefaultFromLearningMode(
+    SharedPreferences prefs,
+  ) async {
     // Use existing learning mode prompt and enabled flag to create a default card.
     String prompt;
     bool enabled;
@@ -68,26 +81,29 @@ class InstructionInjectionStore {
       enabled = false;
     }
     final id = const Uuid().v4();
-    final item = InstructionInjection(
-      id: id,
-      title: '',
-      prompt: prompt,
-    );
+    final item = InstructionInjection(id: id, title: '', prompt: prompt);
     final list = <InstructionInjection>[item];
-    final encoded = jsonEncode(list.map((e) => e.toJson()).toList(growable: false));
+    final encoded = jsonEncode(
+      list.map((e) => e.toJson()).toList(growable: false),
+    );
     await prefs.setString(_itemsKey, encoded);
     _cache = list;
     if (enabled) {
       final active = <String>[id];
       _activeIdsCache = active;
       _activeIdCache = id;
-      _activeIdsByAssistantCache = <String, List<String>>{_defaultAssistantKey: active};
+      _activeIdsByAssistantCache = <String, List<String>>{
+        _defaultAssistantKey: active,
+      };
       await prefs.setString(_activeIdKey, id);
       try {
         await prefs.setString(_activeIdsKey, jsonEncode(active));
       } catch (_) {}
       try {
-        await prefs.setString(_activeIdsByAssistantKey, jsonEncode(<String, List<String>>{_defaultAssistantKey: active}));
+        await prefs.setString(
+          _activeIdsByAssistantKey,
+          jsonEncode(<String, List<String>>{_defaultAssistantKey: active}),
+        );
       } catch (_) {}
     }
     return list;
@@ -96,7 +112,9 @@ class InstructionInjectionStore {
   static Future<void> save(List<InstructionInjection> items) async {
     _cache = List<InstructionInjection>.from(items);
     final prefs = await SharedPreferences.getInstance();
-    final json = jsonEncode(items.map((e) => e.toJson()).toList(growable: false));
+    final json = jsonEncode(
+      items.map((e) => e.toJson()).toList(growable: false),
+    );
     await prefs.setString(_itemsKey, json);
   }
 
@@ -137,7 +155,9 @@ class InstructionInjectionStore {
       bool removed = false;
       final next = <String, List<String>>{};
       for (final entry in map.entries) {
-        final filtered = entry.value.where((e) => e != id).toList(growable: false);
+        final filtered = entry.value
+            .where((e) => e != id)
+            .toList(growable: false);
         if (filtered.length != entry.value.length) removed = true;
         next[entry.key] = filtered;
       }
@@ -159,7 +179,10 @@ class InstructionInjectionStore {
     await prefs.remove(_activeIdsByAssistantKey);
   }
 
-  static Future<void> reorder({required int oldIndex, required int newIndex}) async {
+  static Future<void> reorder({
+    required int oldIndex,
+    required int newIndex,
+  }) async {
     final list = await getAll();
     if (oldIndex < 0 || oldIndex >= list.length) return;
     if (newIndex < 0 || newIndex >= list.length) return;
@@ -198,7 +221,10 @@ class InstructionInjectionStore {
     return _cloneActiveIdsMap(map);
   }
 
-  static Future<void> setActiveIds(List<String> ids, {String? assistantId}) async {
+  static Future<void> setActiveIds(
+    List<String> ids, {
+    String? assistantId,
+  }) async {
     final key = assistantKey(assistantId);
     final clean = _cleanIds(ids);
     final map = await _loadActiveIdsMap();
@@ -220,7 +246,9 @@ class InstructionInjectionStore {
     return list.first;
   }
 
-  static Future<List<InstructionInjection>> getActives({String? assistantId}) async {
+  static Future<List<InstructionInjection>> getActives({
+    String? assistantId,
+  }) async {
     final ids = await getActiveIds(assistantId: assistantId);
     if (ids.isEmpty) return const <InstructionInjection>[];
     final all = await getAll();
@@ -265,11 +293,15 @@ class InstructionInjectionStore {
     return _cloneActiveIdsMap(map);
   }
 
-  static Future<List<String>> _loadLegacyActiveIds(SharedPreferences prefs) async {
+  static Future<List<String>> _loadLegacyActiveIds(
+    SharedPreferences prefs,
+  ) async {
     final json = prefs.getString(_activeIdsKey);
     if (json != null && json.isNotEmpty) {
       try {
-        final list = (jsonDecode(json) as List).map((e) => e.toString()).toList();
+        final list = (jsonDecode(json) as List)
+            .map((e) => e.toString())
+            .toList();
         return _cleanIds(list);
       } catch (_) {}
     }
@@ -280,7 +312,9 @@ class InstructionInjectionStore {
     return const <String>[];
   }
 
-  static Future<void> _persistActiveIdsMap(Map<String, List<String>> map) async {
+  static Future<void> _persistActiveIdsMap(
+    Map<String, List<String>> map,
+  ) async {
     _activeIdsByAssistantCache = _cloneActiveIdsMap(map);
     final prefs = await SharedPreferences.getInstance();
     try {

@@ -19,20 +19,24 @@ class MacOSWindowPosition {
     final dx = (res[0] as num).toDouble();
     final dy = (res[1] as num).toDouble();
     return Offset(dx, dy);
-    
   }
 
   /// Sets the window origin (frame.origin.x/y) with clamping to visible frame.
   static Future<bool> setOrigin(Offset origin) async {
     if (!isSupported) return false;
-    final ok = await _chan.invokeMethod('setWindowOrigin', <double>[origin.dx, origin.dy]);
+    final ok = await _chan.invokeMethod('setWindowOrigin', <double>[
+      origin.dx,
+      origin.dy,
+    ]);
     return ok == true;
   }
 
   /// Visible frame for current screen (x,y,width,height) in Cocoa coordinates.
   static Future<Rect?> getCurrentVisibleFrame() async {
     if (!isSupported) return null;
-    final List<dynamic> res = await _chan.invokeMethod('getVisibleFrameForCurrentScreen');
+    final List<dynamic> res = await _chan.invokeMethod(
+      'getVisibleFrameForCurrentScreen',
+    );
     final x = (res[0] as num).toDouble();
     final y = (res[1] as num).toDouble();
     final w = (res[2] as num).toDouble();
@@ -40,4 +44,3 @@ class MacOSWindowPosition {
     return Rect.fromLTWH(x, y, w, h);
   }
 }
-

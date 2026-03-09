@@ -7,13 +7,16 @@ import '../search_service.dart';
 class MetasoSearchService extends SearchService<MetasoOptions> {
   @override
   String get name => 'Metaso (秘塔)';
-  
+
   @override
   Widget description(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Text(l10n.searchProviderMetasoDescription, style: const TextStyle(fontSize: 12));
+    return Text(
+      l10n.searchProviderMetasoDescription,
+      style: const TextStyle(fontSize: 12),
+    );
   }
-  
+
   @override
   Future<SearchResult> search({
     required String query,
@@ -27,21 +30,23 @@ class MetasoSearchService extends SearchService<MetasoOptions> {
         'size': commonOptions.resultSize,
         'includeSummary': false,
       });
-      
-      final response = await http.post(
-        Uri.parse('https://metaso.cn/api/v1/search'),
-        headers: {
-          'Authorization': 'Bearer ${serviceOptions.apiKey}',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: body,
-      ).timeout(Duration(milliseconds: commonOptions.timeout));
-      
+
+      final response = await http
+          .post(
+            Uri.parse('https://metaso.cn/api/v1/search'),
+            headers: {
+              'Authorization': 'Bearer ${serviceOptions.apiKey}',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: body,
+          )
+          .timeout(Duration(milliseconds: commonOptions.timeout));
+
       if (response.statusCode != 200) {
         throw Exception('API request failed: ${response.statusCode}');
       }
-      
+
       final data = jsonDecode(response.body);
       final webpages = data['webpages'] as List? ?? [];
       final results = webpages.map((item) {
@@ -51,7 +56,7 @@ class MetasoSearchService extends SearchService<MetasoOptions> {
           text: item['snippet'] ?? '',
         );
       }).toList();
-      
+
       return SearchResult(items: results);
     } catch (e) {
       throw Exception('Metaso search failed: $e');

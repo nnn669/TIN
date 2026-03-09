@@ -27,7 +27,8 @@ Future<void> showDesktopMcpJsonEditDialog(BuildContext context) async {
 class _DesktopMcpJsonEditDialog extends StatefulWidget {
   const _DesktopMcpJsonEditDialog();
   @override
-  State<_DesktopMcpJsonEditDialog> createState() => _DesktopMcpJsonEditDialogState();
+  State<_DesktopMcpJsonEditDialog> createState() =>
+      _DesktopMcpJsonEditDialogState();
 }
 
 class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
@@ -51,7 +52,11 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
       jsonDecode(_controller.text);
     } catch (e) {
       setState(() => _error = e.toString());
-      showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpJsonEditParseFailed, type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: AppLocalizations.of(context)!.mcpJsonEditParseFailed,
+        type: NotificationType.warning,
+      );
       return;
     }
 
@@ -59,11 +64,18 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
       await context.read<McpProvider>().replaceAllFromJson(_controller.text);
       if (!mounted) return;
       Navigator.of(context).maybePop();
-      showAppSnackBar(context, message: AppLocalizations.of(context)!.mcpJsonEditSavedApplied);
+      showAppSnackBar(
+        context,
+        message: AppLocalizations.of(context)!.mcpJsonEditSavedApplied,
+      );
     } catch (e) {
       setState(() => _error = e.toString());
       if (!mounted) return;
-      showAppSnackBar(context, message: e.toString(), type: NotificationType.warning);
+      showAppSnackBar(
+        context,
+        message: e.toString(),
+        type: NotificationType.warning,
+      );
     }
   }
 
@@ -86,6 +98,7 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
       }
       return fam;
     }
+
     final codeFontFamily = resolveCodeFont();
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 860, maxHeight: 720),
@@ -101,11 +114,19 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    Text(AppLocalizations.of(context)!.mcpJsonEditTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(
+                      AppLocalizations.of(context)!.mcpJsonEditTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const Spacer(),
                     _SmallIconBtn(
                       icon: lucide.Lucide.X,
-                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
                       onTap: () => Navigator.of(context).maybePop(),
                     ),
                   ],
@@ -120,7 +141,9 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
                   decoration: BoxDecoration(
                     color: isDark ? Colors.white10 : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+                    border: Border.all(
+                      color: cs.outlineVariant.withOpacity(0.3),
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -128,7 +151,11 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
                       controller: _controller,
                       keyboardType: TextInputType.multiline,
                       maxLines: null,
-                      style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5, height: 1.35),
+                      style: TextStyle(
+                        fontFamily: codeFontFamily,
+                        fontSize: 13.5,
+                        height: 1.35,
+                      ),
                       decoration: const InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
@@ -143,7 +170,13 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ),
             Padding(
@@ -151,17 +184,29 @@ class _DesktopMcpJsonEditDialogState extends State<_DesktopMcpJsonEditDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _TextBtn(label: AppLocalizations.of(context)!.mcpServerEditSheetCancel, onTap: () => Navigator.of(context).maybePop()),
+                  _TextBtn(
+                    label: AppLocalizations.of(
+                      context,
+                    )!.mcpServerEditSheetCancel,
+                    onTap: () => Navigator.of(context).maybePop(),
+                  ),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _save,
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       backgroundColor: cs.primary,
                       foregroundColor: cs.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: Text(AppLocalizations.of(context)!.mcpServerEditSheetSave),
+                    child: Text(
+                      AppLocalizations.of(context)!.mcpServerEditSheetSave,
+                    ),
                   ),
                 ],
               ),
@@ -188,11 +233,18 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     final btn = Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       alignment: Alignment.center,
       child: Icon(widget.icon, size: 18, color: cs.onSurface),
     );
@@ -202,7 +254,9 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: widget.tooltip == null ? btn : Tooltip(message: widget.tooltip!, child: btn),
+        child: widget.tooltip == null
+            ? btn
+            : Tooltip(message: widget.tooltip!, child: btn),
       ),
     );
   }
@@ -222,7 +276,11 @@ class _TextBtnState extends State<_TextBtn> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _hover ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05)) : Colors.transparent;
+    final bg = _hover
+        ? (isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -231,7 +289,10 @@ class _TextBtnState extends State<_TextBtn> {
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Text(widget.label, style: TextStyle(color: cs.onSurface)),
         ),
       ),
