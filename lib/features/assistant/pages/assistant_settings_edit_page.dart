@@ -821,11 +821,13 @@ class _TactileRow extends StatefulWidget {
     this.onTap,
     this.haptics = true,
     this.pressedScale = 1.0,
+    this.releaseDelayMs = 60,
   });
   final Widget Function(bool pressed) builder;
   final VoidCallback? onTap;
   final bool haptics;
   final double pressedScale;
+  final int releaseDelayMs;
 
   @override
   State<_TactileRow> createState() => _TactileRowState();
@@ -855,7 +857,11 @@ class _TactileRowState extends State<_TactileRow> {
       onTapUp: widget.onTap == null
           ? null
           : (_) async {
-              await Future.delayed(const Duration(milliseconds: 60));
+              if (widget.releaseDelayMs > 0) {
+                await Future.delayed(
+                  Duration(milliseconds: widget.releaseDelayMs),
+                );
+              }
               if (mounted) _setPressed(false);
             },
       onTapCancel: widget.onTap == null ? null : () => _setPressed(false),

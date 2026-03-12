@@ -1186,64 +1186,111 @@ class _RecentChatsSummaryFrequencySection extends StatelessWidget {
               children: [
                 ...options.map((count) {
                   final isSelected = count == selected;
-                  return ChoiceChip(
-                    label: Text(
-                      l10n.assistantEditRecentChatsSummaryFrequencyOption(
-                        count,
-                      ),
+                  return _FrequencyChipButton(
+                    label: l10n.assistantEditRecentChatsSummaryFrequencyOption(
+                      count,
                     ),
                     selected: isSelected,
-                    showCheckmark: false,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    backgroundColor: isDark
-                        ? Colors.white10
-                        : const Color(0xFFF2F3F5),
-                    selectedColor: cs.primary.withOpacity(isDark ? 0.24 : 0.14),
-                    side: BorderSide(
-                      color: isSelected
-                          ? cs.primary.withOpacity(0.35)
-                          : cs.outlineVariant.withOpacity(isDark ? 0.18 : 0.14),
-                    ),
-                    labelStyle: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected
-                          ? cs.primary
-                          : cs.onSurface.withOpacity(0.78),
-                    ),
-                    onSelected: (_) async {
-                      if (isSelected) return;
-                      await ap.updateAssistant(
-                        assistant.copyWith(
-                          recentChatsSummaryMessageCount: count,
-                        ),
-                      );
-                    },
+                    onTap: isSelected
+                        ? null
+                        : () async {
+                            await ap.updateAssistant(
+                              assistant.copyWith(
+                                recentChatsSummaryMessageCount: count,
+                              ),
+                            );
+                          },
                   );
                 }),
-                ActionChip(
-                  label: Text(
-                    l10n.assistantEditRecentChatsSummaryFrequencyCustomButton,
-                  ),
-                  avatar: Icon(Lucide.Pencil, size: 14, color: cs.primary),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: isDark
-                      ? Colors.white10
-                      : const Color(0xFFF2F3F5),
-                  side: BorderSide(
-                    color: cs.outlineVariant.withOpacity(isDark ? 0.18 : 0.14),
-                  ),
-                  labelStyle: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: cs.primary,
-                  ),
-                  onPressed: () => _showCustomCountInput(context),
+                _FrequencyChipButton(
+                  label:
+                      l10n.assistantEditRecentChatsSummaryFrequencyCustomButton,
+                  icon: Lucide.Pencil,
+                  emphasized: true,
+                  onTap: () => _showCustomCountInput(context),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FrequencyChipButton extends StatelessWidget {
+  const _FrequencyChipButton({
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+    this.emphasized = false,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final bool selected;
+  final bool emphasized;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseBackground = selected
+        ? cs.primary.withOpacity(isDark ? 0.22 : 0.12)
+        : (isDark ? Colors.white10 : const Color(0xFFF2F3F5));
+    final borderColor = selected
+        ? cs.primary.withOpacity(0.38)
+        : (emphasized
+              ? cs.primary.withOpacity(isDark ? 0.24 : 0.18)
+              : cs.outlineVariant.withOpacity(isDark ? 0.18 : 0.14));
+    final foregroundColor = selected || emphasized
+        ? cs.primary
+        : cs.onSurface.withOpacity(0.8);
+
+    return MouseRegion(
+      cursor: onTap == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      child: _TactileRow(
+        onTap: onTap,
+        haptics: true,
+        pressedScale: 0.985,
+        releaseDelayMs: 0,
+        builder: (pressed) {
+          return AnimatedOpacity(
+            duration: const Duration(milliseconds: 90),
+            curve: Curves.easeOutCubic,
+            opacity: pressed ? (selected ? 0.94 : 0.82) : 1.0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: baseBackground,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 14, color: foregroundColor),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: foregroundColor,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
