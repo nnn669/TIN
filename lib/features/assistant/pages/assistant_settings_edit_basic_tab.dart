@@ -997,10 +997,11 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                         label: value.toString(),
                         customLabelStops: const <double>[
                           1.0,
-                          32.0,
                           64.0,
                           128.0,
                           256.0,
+                          512.0,
+                          1024.0,
                         ],
                         onLabelTap: () async {
                           final chosen = await _showContextMessageInputDialog(

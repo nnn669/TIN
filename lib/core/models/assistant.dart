@@ -4,6 +4,8 @@ import 'preset_message.dart';
 
 class Assistant {
   static const int defaultRecentChatsSummaryMessageCount = 5;
+  static const int minContextMessageSize = 1;
+  static const int maxContextMessageSize = 1024;
   static const List<int> recentChatsSummaryMessageCountOptions = <int>[
     1,
     3,

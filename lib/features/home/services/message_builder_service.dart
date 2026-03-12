@@ -818,7 +818,10 @@ class MessageBuilderService {
   ) {
     if ((assistant?.limitContextMessages ?? true) &&
         (assistant?.contextMessageSize ?? 0) > 0) {
-      final int keep = (assistant!.contextMessageSize).clamp(1, 512);
+      final int keep = (assistant!.contextMessageSize).clamp(
+        Assistant.minContextMessageSize,
+        Assistant.maxContextMessageSize,
+      );
       int startIdx = 0;
       if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
         startIdx = 1;
