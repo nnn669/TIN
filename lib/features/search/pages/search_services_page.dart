@@ -1018,7 +1018,43 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
           ),
         ];
       case 'tavily':
+        return [
+          _buildTextField(
+            key: 'apiKey',
+            label: 'API Key',
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return l10n.searchServicesAddDialogApiKeyRequired;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            key: 'tavilyUrl',
+            label: l10n.searchServicesFieldCustomUrlOptional,
+            hint: TavilyOptions.defaultUrl,
+          ),
+        ];
       case 'exa':
+        return [
+          _buildTextField(
+            key: 'apiKey',
+            label: 'API Key',
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return l10n.searchServicesAddDialogApiKeyRequired;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            key: 'exaUrl',
+            label: l10n.searchServicesFieldCustomUrlOptional,
+            hint: ExaOptions.defaultUrl,
+          ),
+        ];
       case 'zhipu':
       case 'linkup':
       case 'brave':
@@ -1094,9 +1130,17 @@ class _AddServiceBottomSheetState extends State<_AddServiceBottomSheet> {
           region: region.isEmpty ? 'us-en' : region,
         );
       case 'tavily':
-        return TavilyOptions(id: id, apiKey: _controllers['apiKey']!.text);
+        return TavilyOptions(
+          id: id,
+          apiKey: _controllers['apiKey']!.text,
+          url: _controllers['tavilyUrl']!.text.trim(),
+        );
       case 'exa':
-        return ExaOptions(id: id, apiKey: _controllers['apiKey']!.text);
+        return ExaOptions(
+          id: id,
+          apiKey: _controllers['apiKey']!.text,
+          url: _controllers['exaUrl']!.text.trim(),
+        );
       case 'zhipu':
         return ZhipuOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'searxng':
@@ -1153,10 +1197,12 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
     final service = widget.service;
     if (service is TavilyOptions) {
       _controllers['apiKey'] = TextEditingController(text: service.apiKey);
+      _controllers['url'] = TextEditingController(text: service.url);
     } else if (service is DuckDuckGoOptions) {
       _controllers['region'] = TextEditingController(text: service.region);
     } else if (service is ExaOptions) {
       _controllers['apiKey'] = TextEditingController(text: service.apiKey);
+      _controllers['url'] = TextEditingController(text: service.url);
     } else if (service is ZhipuOptions) {
       _controllers['apiKey'] = TextEditingController(text: service.apiKey);
     } else if (service is SearXNGOptions) {
@@ -1320,9 +1366,45 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
           hint: 'us-en',
         ),
       ];
-    } else if (service is TavilyOptions ||
-        service is ExaOptions ||
-        service is ZhipuOptions ||
+    } else if (service is TavilyOptions) {
+      return [
+        _buildTextField(
+          key: 'apiKey',
+          label: 'API Key',
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return l10n.searchServicesEditDialogApiKeyRequired;
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          key: 'url',
+          label: l10n.searchServicesFieldCustomUrlOptional,
+          hint: TavilyOptions.defaultUrl,
+        ),
+      ];
+    } else if (service is ExaOptions) {
+      return [
+        _buildTextField(
+          key: 'apiKey',
+          label: 'API Key',
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return l10n.searchServicesEditDialogApiKeyRequired;
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          key: 'url',
+          label: l10n.searchServicesFieldCustomUrlOptional,
+          hint: ExaOptions.defaultUrl,
+        ),
+      ];
+    } else if (service is ZhipuOptions ||
         service is LinkUpOptions ||
         service is BraveOptions ||
         service is MetasoOptions ||
@@ -1389,6 +1471,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
       return TavilyOptions(
         id: service.id,
         apiKey: _controllers['apiKey']!.text,
+        url: _controllers['url']!.text.trim(),
       );
     } else if (service is DuckDuckGoOptions) {
       final region = (_controllers['region']?.text ?? service.region).trim();
@@ -1397,7 +1480,11 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
         region: region.isEmpty ? 'us-en' : region,
       );
     } else if (service is ExaOptions) {
-      return ExaOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
+      return ExaOptions(
+        id: service.id,
+        apiKey: _controllers['apiKey']!.text,
+        url: _controllers['url']!.text.trim(),
+      );
     } else if (service is ZhipuOptions) {
       return ZhipuOptions(id: service.id, apiKey: _controllers['apiKey']!.text);
     } else if (service is SearXNGOptions) {

@@ -2899,6 +2899,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchServicesAddDialogApiKeyRequired => 'API Key 必填';
 
   @override
+  String get searchServicesFieldCustomUrlOptional => '自定义 URL（可选）';
+
+  @override
   String get searchServicesAddDialogInstanceUrl => '实例 URL';
 
   @override
@@ -7011,6 +7014,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get searchServicesAddDialogApiKeyRequired => 'API Key 必填';
+
+  @override
+  String get searchServicesFieldCustomUrlOptional => '自定义 URL（可选）';
 
   @override
   String get searchServicesAddDialogInstanceUrl => '实例 URL';
@@ -11130,6 +11136,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchServicesAddDialogApiKeyRequired => 'API Key 必填';
+
+  @override
+  String get searchServicesFieldCustomUrlOptional => '自訂 URL（可選）';
 
   @override
   String get searchServicesAddDialogInstanceUrl => '實例 URL';

@@ -5642,6 +5642,12 @@ abstract class AppLocalizations {
   /// **'API Key is required'**
   String get searchServicesAddDialogApiKeyRequired;
 
+  /// No description provided for @searchServicesFieldCustomUrlOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom URL (optional)'**
+  String get searchServicesFieldCustomUrlOptional;
+
   /// No description provided for @searchServicesAddDialogInstanceUrl.
   ///
   /// In en, this message translates to:

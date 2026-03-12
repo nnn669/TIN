@@ -202,31 +202,61 @@ class BingLocalOptions extends SearchServiceOptions {
 }
 
 class TavilyOptions extends SearchServiceOptions {
-  final String apiKey;
+  static const String defaultUrl = 'https://api.tavily.com/search';
 
-  TavilyOptions({required String id, required this.apiKey}) : super(id: id);
+  final String apiKey;
+  final String url;
+
+  TavilyOptions({required String id, required this.apiKey, this.url = ''})
+    : super(id: id);
+
+  String get resolvedUrl {
+    final trimmed = url.trim();
+    return trimmed.isEmpty ? defaultUrl : trimmed;
+  }
 
   @override
   Map<String, dynamic> toJson() => {
     'type': 'tavily',
     'id': id,
     'apiKey': apiKey,
+    'url': url.trim(),
   };
 
-  factory TavilyOptions.fromJson(Map<String, dynamic> json) =>
-      TavilyOptions(id: json['id'], apiKey: json['apiKey']);
+  factory TavilyOptions.fromJson(Map<String, dynamic> json) => TavilyOptions(
+    id: json['id'],
+    apiKey: json['apiKey'],
+    url: json['url'] ?? '',
+  );
 }
 
 class ExaOptions extends SearchServiceOptions {
-  final String apiKey;
+  static const String defaultUrl = 'https://api.exa.ai/search';
 
-  ExaOptions({required String id, required this.apiKey}) : super(id: id);
+  final String apiKey;
+  final String url;
+
+  ExaOptions({required String id, required this.apiKey, this.url = ''})
+    : super(id: id);
+
+  String get resolvedUrl {
+    final trimmed = url.trim();
+    return trimmed.isEmpty ? defaultUrl : trimmed;
+  }
 
   @override
-  Map<String, dynamic> toJson() => {'type': 'exa', 'id': id, 'apiKey': apiKey};
+  Map<String, dynamic> toJson() => {
+    'type': 'exa',
+    'id': id,
+    'apiKey': apiKey,
+    'url': url.trim(),
+  };
 
-  factory ExaOptions.fromJson(Map<String, dynamic> json) =>
-      ExaOptions(id: json['id'], apiKey: json['apiKey']);
+  factory ExaOptions.fromJson(Map<String, dynamic> json) => ExaOptions(
+    id: json['id'],
+    apiKey: json['apiKey'],
+    url: json['url'] ?? '',
+  );
 }
 
 class ZhipuOptions extends SearchServiceOptions {

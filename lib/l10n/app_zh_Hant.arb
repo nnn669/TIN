@@ -938,6 +938,7 @@
   "searchServicesAddDialogCancel": "取消",
   "searchServicesAddDialogAdd": "新增",
   "searchServicesAddDialogApiKeyRequired": "API Key 必填",
+  "searchServicesFieldCustomUrlOptional": "自訂 URL（可選）",
   "searchServicesAddDialogInstanceUrl": "實例 URL",
   "searchServicesAddDialogUrlRequired": "URL 必填",
   "searchServicesAddDialogEnginesOptional": "搜尋引擎（可選）",

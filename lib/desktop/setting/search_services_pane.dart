@@ -758,6 +758,8 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
   final Map<String, TextEditingController> _controllers = {
     'apiKey': TextEditingController(),
     'url': TextEditingController(),
+    'tavilyUrl': TextEditingController(),
+    'exaUrl': TextEditingController(),
     'engines': TextEditingController(),
     'language': TextEditingController(),
     'username': TextEditingController(),
@@ -850,7 +852,35 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
           ),
         ];
       case 'tavily':
+        return [
+          TextField(
+            controller: _controllers['apiKey'],
+            decoration: deco('API Key'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['tavilyUrl'],
+            decoration: _deskInputDecoration(context).copyWith(
+              labelText: l10n.searchServicesFieldCustomUrlOptional,
+              hintText: TavilyOptions.defaultUrl,
+            ),
+          ),
+        ];
       case 'exa':
+        return [
+          TextField(
+            controller: _controllers['apiKey'],
+            decoration: deco('API Key'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['exaUrl'],
+            decoration: _deskInputDecoration(context).copyWith(
+              labelText: l10n.searchServicesFieldCustomUrlOptional,
+              hintText: ExaOptions.defaultUrl,
+            ),
+          ),
+        ];
       case 'zhipu':
       case 'linkup':
       case 'brave':
@@ -903,7 +933,11 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
     final id = const Uuid().v4().substring(0, 8);
     switch (_selectedType) {
       case 'tavily':
-        return TavilyOptions(id: id, apiKey: _controllers['apiKey']!.text);
+        return TavilyOptions(
+          id: id,
+          apiKey: _controllers['apiKey']!.text,
+          url: _controllers['tavilyUrl']!.text.trim(),
+        );
       case 'duckduckgo':
         final region = (_controllers['region']?.text ?? 'us-en').trim();
         return DuckDuckGoOptions(
@@ -911,7 +945,11 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
           region: region.isEmpty ? 'us-en' : region,
         );
       case 'exa':
-        return ExaOptions(id: id, apiKey: _controllers['apiKey']!.text);
+        return ExaOptions(
+          id: id,
+          apiKey: _controllers['apiKey']!.text,
+          url: _controllers['exaUrl']!.text.trim(),
+        );
       case 'zhipu':
         return ZhipuOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'searxng':
@@ -963,10 +1001,12 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
     final s = widget.service;
     if (s is TavilyOptions) {
       _controllers['apiKey'] = TextEditingController(text: s.apiKey);
+      _controllers['url'] = TextEditingController(text: s.url);
     } else if (s is DuckDuckGoOptions) {
       _controllers['region'] = TextEditingController(text: s.region);
     } else if (s is ExaOptions) {
       _controllers['apiKey'] = TextEditingController(text: s.apiKey);
+      _controllers['url'] = TextEditingController(text: s.url);
     } else if (s is ZhipuOptions) {
       _controllers['apiKey'] = TextEditingController(text: s.apiKey);
     } else if (s is SearXNGOptions) {
@@ -1063,9 +1103,37 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
     final s = widget.service;
     InputDecoration deco(String hint) =>
         _deskInputDecoration(context).copyWith(hintText: hint);
-    if (s is TavilyOptions ||
-        s is ExaOptions ||
-        s is ZhipuOptions ||
+    if (s is TavilyOptions) {
+      return [
+        TextField(
+          controller: _controllers['apiKey'],
+          decoration: deco('API Key'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['url'],
+          decoration: _deskInputDecoration(context).copyWith(
+            labelText: l10n.searchServicesFieldCustomUrlOptional,
+            hintText: TavilyOptions.defaultUrl,
+          ),
+        ),
+      ];
+    } else if (s is ExaOptions) {
+      return [
+        TextField(
+          controller: _controllers['apiKey'],
+          decoration: deco('API Key'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['url'],
+          decoration: _deskInputDecoration(context).copyWith(
+            labelText: l10n.searchServicesFieldCustomUrlOptional,
+            hintText: ExaOptions.defaultUrl,
+          ),
+        ),
+      ];
+    } else if (s is ZhipuOptions ||
         s is LinkUpOptions ||
         s is BraveOptions ||
         s is MetasoOptions ||
@@ -1121,7 +1189,11 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
   SearchServiceOptions _updateService() {
     final s = widget.service;
     if (s is TavilyOptions)
-      return TavilyOptions(id: s.id, apiKey: _controllers['apiKey']!.text);
+      return TavilyOptions(
+        id: s.id,
+        apiKey: _controllers['apiKey']!.text,
+        url: _controllers['url']!.text.trim(),
+      );
     if (s is DuckDuckGoOptions) {
       final region = (_controllers['region']?.text ?? s.region).trim();
       return DuckDuckGoOptions(
@@ -1130,7 +1202,11 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
       );
     }
     if (s is ExaOptions)
-      return ExaOptions(id: s.id, apiKey: _controllers['apiKey']!.text);
+      return ExaOptions(
+        id: s.id,
+        apiKey: _controllers['apiKey']!.text,
+        url: _controllers['url']!.text.trim(),
+      );
     if (s is ZhipuOptions)
       return ZhipuOptions(id: s.id, apiKey: _controllers['apiKey']!.text);
     if (s is SearXNGOptions)

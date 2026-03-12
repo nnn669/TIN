@@ -31,7 +31,7 @@ class TavilySearchService extends SearchService<TavilyOptions> {
 
       final response = await http
           .post(
-            Uri.parse('https://api.tavily.com/search'),
+            Uri.parse(serviceOptions.resolvedUrl),
             headers: {
               'Authorization': 'Bearer ${serviceOptions.apiKey}',
               'Content-Type': 'application/json',

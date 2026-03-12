@@ -32,7 +32,7 @@ class ExaSearchService extends SearchService<ExaOptions> {
 
       final response = await http
           .post(
-            Uri.parse('https://api.exa.ai/search'),
+            Uri.parse(serviceOptions.resolvedUrl),
             headers: {
               'Authorization': 'Bearer ${serviceOptions.apiKey}',
               'Content-Type': 'application/json',

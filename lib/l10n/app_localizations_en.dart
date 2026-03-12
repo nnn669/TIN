@@ -2996,6 +2996,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchServicesAddDialogApiKeyRequired => 'API Key is required';
 
   @override
+  String get searchServicesFieldCustomUrlOptional => 'Custom URL (optional)';
+
+  @override
   String get searchServicesAddDialogInstanceUrl => 'Instance URL';
 
   @override
