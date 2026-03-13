@@ -107,64 +107,32 @@ class _SearchSettingsSheet extends StatelessWidget {
         : null;
     final isGeminiProvider =
         cfg != null && cfg.providerType == ProviderKind.google;
-    final isClaude = cfg != null && cfg.providerType == ProviderKind.claude;
-    final isOpenAIResponses =
-        cfg != null &&
-        cfg.providerType == ProviderKind.openai &&
-        (cfg.useResponseApi == true);
-    final isGrok =
-        cfg != null &&
-        cfg.providerType == ProviderKind.openai &&
-        (modelId ?? '').toLowerCase().contains('grok');
+    final supportsBuiltInSearch =
+        BuiltInToolsHelper.supportsBuiltInSearchForModel(
+          cfg: cfg,
+          modelId: modelId,
+        );
 
     // Read current built-in search/url_context toggle from modelOverrides
-    bool hasBuiltInSearch = false;
+    final hasBuiltInSearch = BuiltInToolsHelper.isBuiltInSearchEnabled(
+      cfg: cfg,
+      modelId: modelId,
+    );
     bool hasUrlContext = false;
-    if ((isGeminiProvider || isClaude || isOpenAIResponses || isGrok) &&
+    if (cfg != null &&
+        isGeminiProvider &&
         providerKey != null &&
         (modelId ?? '').isNotEmpty) {
       final mid = modelId!;
-      final rawOv = cfg!.modelOverrides[mid];
+      final rawOv = cfg.modelOverrides[mid];
       final ov = rawOv is Map ? rawOv : null;
       final builtInSet = BuiltInToolNames.parseAndNormalize(
         ov?['builtInTools'],
       );
-      hasBuiltInSearch = builtInSet.contains(BuiltInToolNames.search);
       hasUrlContext = builtInSet.contains(BuiltInToolNames.urlContext);
     }
     // When url_context is active, treat as built-in search mode (hide external search options)
     final builtInMode = hasBuiltInSearch || hasUrlContext;
-    // Claude supported models per Anthropic docs
-    final claudeSupportedModels = <String>{
-      'claude-opus-4-6',
-      'claude-sonnet-4-5-20250929',
-      'claude-sonnet-4-20250514',
-      'claude-3-7-sonnet-20250219',
-      'claude-haiku-4-5-20251001',
-      'claude-3-5-haiku-latest',
-      'claude-sonnet-4-6',
-      'claude-opus-4-1-20250805',
-      'claude-opus-4-20250514',
-    };
-    final isClaudeSupportedModel =
-        isClaude &&
-        (modelId != null) &&
-        claudeSupportedModels.contains(modelId.toLowerCase());
-    // OpenAI Responses supported models for web_search tool
-    bool _isOpenAIResponsesSupportedModel(String id) {
-      final m = id.toLowerCase();
-      return m.startsWith('gpt-4o') ||
-          m.startsWith('gpt-4.1') ||
-          m.startsWith('o4-mini') ||
-          m == 'o3' ||
-          m.startsWith('o3-') ||
-          m.startsWith('gpt-5');
-    }
-
-    final isOpenAIResponsesSupportedModel =
-        isOpenAIResponses &&
-        (modelId != null) &&
-        _isOpenAIResponsesSupportedModel(modelId!);
 
     final maxHeight = MediaQuery.of(context).size.height * 0.8;
     return SafeArea(
@@ -201,132 +169,138 @@ class _SearchSettingsSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Built-in search toggle (Gemini, Claude supported, or OpenAI Responses supported)
-                if ((isGeminiProvider ||
-                        isClaudeSupportedModel ||
-                        isOpenAIResponsesSupportedModel ||
-                        isGrok) &&
+                // Built-in search toggle
+                if (cfg != null &&
+                    supportsBuiltInSearch &&
                     (providerKey != null) &&
                     (modelId ?? '').isNotEmpty) ...[
-                  IosCardPress(
-                    borderRadius: BorderRadius.circular(14),
-                    baseColor: cs.surface,
-                    duration: const Duration(milliseconds: 260),
-                    onTap: () async {
-                      if (providerKey == null || (modelId ?? '').isEmpty)
-                        return;
-                      Haptics.light();
-                      final bool v = !hasBuiltInSearch;
+                  Builder(
+                    builder: (context) {
+                      final providerCfg = cfg;
                       final mid = modelId!;
-                      final overrides = Map<String, dynamic>.from(
-                        cfg!.modelOverrides,
-                      );
-                      final rawMo = overrides[mid];
-                      final baseMo = rawMo is Map ? rawMo : null;
-                      final mo = Map<String, dynamic>.from(
-                        baseMo?.map((k, val) => MapEntry(k.toString(), val)) ??
-                            const <String, dynamic>{},
-                      );
-                      final builtIns = BuiltInToolNames.parseAndNormalize(
-                        mo['builtInTools'],
-                      );
-                      if (v) {
-                        builtIns.add(BuiltInToolNames.search);
-                      } else {
-                        builtIns.remove(BuiltInToolNames.search);
-                      }
-                      if (builtIns.isEmpty) {
-                        mo.remove('builtInTools');
-                      } else {
-                        mo['builtInTools'] = BuiltInToolNames.orderedForStorage(
-                          builtIns,
-                        );
-                      }
-                      overrides[mid] = mo;
-                      await context.read<SettingsProvider>().setProviderConfig(
-                        providerKey,
-                        cfg.copyWith(modelOverrides: overrides),
-                      );
-                      if (v) {
-                        await context.read<SettingsProvider>().setSearchEnabled(
-                          false,
-                        );
-                      }
-                    },
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Lucide.Search, size: 20, color: cs.primary),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                l10n.searchSettingsSheetBuiltinSearchTitle,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        IosSwitch(
-                          value: hasBuiltInSearch,
-                          onChanged: (v) async {
-                            if (providerKey == null || (modelId ?? '').isEmpty)
-                              return;
-                            Haptics.light();
-                            final mid = modelId!;
-                            final overrides = Map<String, dynamic>.from(
-                              cfg!.modelOverrides,
-                            );
-                            final rawMo = overrides[mid];
-                            final baseMo = rawMo is Map ? rawMo : null;
-                            final mo = Map<String, dynamic>.from(
-                              baseMo?.map(
-                                    (k, val) => MapEntry(k.toString(), val),
-                                  ) ??
-                                  const <String, dynamic>{},
-                            );
-                            final builtIns = BuiltInToolNames.parseAndNormalize(
-                              mo['builtInTools'],
-                            );
-                            if (v) {
-                              builtIns.add(BuiltInToolNames.search);
-                            } else {
-                              builtIns.remove(BuiltInToolNames.search);
-                            }
-                            if (builtIns.isEmpty) {
-                              mo.remove('builtInTools');
-                            } else {
-                              mo['builtInTools'] =
-                                  BuiltInToolNames.orderedForStorage(builtIns);
-                            }
-                            overrides[mid] = mo;
+                      return IosCardPress(
+                        borderRadius: BorderRadius.circular(14),
+                        baseColor: cs.surface,
+                        duration: const Duration(milliseconds: 260),
+                        onTap: () async {
+                          Haptics.light();
+                          final bool v = !hasBuiltInSearch;
+                          final overrides = Map<String, dynamic>.from(
+                            providerCfg.modelOverrides,
+                          );
+                          final rawMo = overrides[mid];
+                          final baseMo = rawMo is Map ? rawMo : null;
+                          final mo = Map<String, dynamic>.from(
+                            baseMo?.map(
+                                  (k, val) => MapEntry(k.toString(), val),
+                                ) ??
+                                const <String, dynamic>{},
+                          );
+                          final builtIns = BuiltInToolNames.parseAndNormalize(
+                            mo['builtInTools'],
+                          );
+                          if (v) {
+                            builtIns.add(BuiltInToolNames.search);
+                          } else {
+                            builtIns.remove(BuiltInToolNames.search);
+                          }
+                          if (builtIns.isEmpty) {
+                            mo.remove('builtInTools');
+                          } else {
+                            mo['builtInTools'] =
+                                BuiltInToolNames.orderedForStorage(builtIns);
+                          }
+                          overrides[mid] = mo;
+                          await context
+                              .read<SettingsProvider>()
+                              .setProviderConfig(
+                                providerKey,
+                                providerCfg.copyWith(modelOverrides: overrides),
+                              );
+                          if (v) {
                             await context
                                 .read<SettingsProvider>()
-                                .setProviderConfig(
-                                  providerKey,
-                                  cfg.copyWith(modelOverrides: overrides),
-                                );
-                            if (v) {
-                              await context
-                                  .read<SettingsProvider>()
-                                  .setSearchEnabled(false);
-                            }
-                          },
+                                .setSearchEnabled(false);
+                          }
+                        },
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Icon(Lucide.Search, size: 20, color: cs.primary),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    l10n.searchSettingsSheetBuiltinSearchTitle,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            IosSwitch(
+                              value: hasBuiltInSearch,
+                              onChanged: (v) async {
+                                Haptics.light();
+                                final overrides = Map<String, dynamic>.from(
+                                  providerCfg.modelOverrides,
+                                );
+                                final rawMo = overrides[mid];
+                                final baseMo = rawMo is Map ? rawMo : null;
+                                final mo = Map<String, dynamic>.from(
+                                  baseMo?.map(
+                                        (k, val) => MapEntry(k.toString(), val),
+                                      ) ??
+                                      const <String, dynamic>{},
+                                );
+                                final builtIns =
+                                    BuiltInToolNames.parseAndNormalize(
+                                      mo['builtInTools'],
+                                    );
+                                if (v) {
+                                  builtIns.add(BuiltInToolNames.search);
+                                } else {
+                                  builtIns.remove(BuiltInToolNames.search);
+                                }
+                                if (builtIns.isEmpty) {
+                                  mo.remove('builtInTools');
+                                } else {
+                                  mo['builtInTools'] =
+                                      BuiltInToolNames.orderedForStorage(
+                                        builtIns,
+                                      );
+                                }
+                                overrides[mid] = mo;
+                                await context
+                                    .read<SettingsProvider>()
+                                    .setProviderConfig(
+                                      providerKey,
+                                      providerCfg.copyWith(
+                                        modelOverrides: overrides,
+                                      ),
+                                    );
+                                if (v) {
+                                  await context
+                                      .read<SettingsProvider>()
+                                      .setSearchEnabled(false);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                 ],

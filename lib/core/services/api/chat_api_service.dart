@@ -512,13 +512,7 @@ class ChatApiService {
     final safePrompt = UnicodeSanitizer.sanitize(prompt);
     try {
       if (kind == ProviderKind.openai) {
-        final base = config.baseUrl.endsWith('/')
-            ? config.baseUrl.substring(0, config.baseUrl.length - 1)
-            : config.baseUrl;
-        final path = (config.useResponseApi == true)
-            ? '/responses'
-            : (config.chatPath ?? '/chat/completions');
-        final url = Uri.parse('$base$path');
+        final url = _openAICompatibleUrl(config);
         Map<String, dynamic> body;
         final effectiveInfo = _effectiveModelInfo(config, modelId);
         final isReasoning = effectiveInfo.abilities.contains(
@@ -534,45 +528,53 @@ class ChatApiService {
         if (config.useResponseApi == true) {
           // Inject built-in web_search tool when enabled and supported
           final toolsList = <Map<String, dynamic>>[];
-          bool _isResponsesWebSearchSupported(String id) {
-            final m = id.toLowerCase();
-            if (m.startsWith('gpt-4o')) return true;
-            if (m == 'gpt-4.1' || m == 'gpt-4.1-mini') return true;
-            if (m.startsWith('o4-mini')) return true;
-            if (m == 'o3' || m.startsWith('o3-')) return true;
-            if (m.startsWith('gpt-5')) return true;
+          bool isResponsesWebSearchSupported(String id) {
+            if (BuiltInToolsHelper.isOpenAIResponsesBuiltInSearchSupportedModel(
+              id,
+            )) {
+              return true;
+            }
+            if (BuiltInToolsHelper.isDashScopeProvider(config)) {
+              return BuiltInToolsHelper.isDashScopeResponsesBuiltInSearchSupportedModel(
+                id,
+              );
+            }
             return false;
           }
 
-          if (_isResponsesWebSearchSupported(upstreamModelId)) {
+          if (isResponsesWebSearchSupported(upstreamModelId)) {
             final builtIns = _builtInTools(config, modelId);
             if (builtIns.contains(BuiltInToolNames.search)) {
-              Map<String, dynamic> ws = const <String, dynamic>{};
-              try {
-                final ov = config.modelOverrides[modelId];
-                if (ov is Map && ov['webSearch'] is Map)
-                  ws = (ov['webSearch'] as Map).cast<String, dynamic>();
-              } catch (_) {}
-              final usePreview =
-                  (ws['preview'] == true) ||
-                  ((ws['tool'] ?? '').toString() == 'preview');
-              final entry = <String, dynamic>{
-                'type': usePreview ? 'web_search_preview' : 'web_search',
-              };
-              if (ws['allowed_domains'] is List &&
-                  (ws['allowed_domains'] as List).isNotEmpty) {
-                entry['filters'] = {
-                  'allowed_domains': List<String>.from(
-                    (ws['allowed_domains'] as List).map((e) => e.toString()),
-                  ),
+              if (BuiltInToolsHelper.isDashScopeProvider(config)) {
+                toolsList.add({'type': 'web_search'});
+              } else {
+                Map<String, dynamic> ws = const <String, dynamic>{};
+                try {
+                  final ov = config.modelOverrides[modelId];
+                  if (ov is Map && ov['webSearch'] is Map)
+                    ws = (ov['webSearch'] as Map).cast<String, dynamic>();
+                } catch (_) {}
+                final usePreview =
+                    (ws['preview'] == true) ||
+                    ((ws['tool'] ?? '').toString() == 'preview');
+                final entry = <String, dynamic>{
+                  'type': usePreview ? 'web_search_preview' : 'web_search',
                 };
+                if (ws['allowed_domains'] is List &&
+                    (ws['allowed_domains'] as List).isNotEmpty) {
+                  entry['filters'] = {
+                    'allowed_domains': List<String>.from(
+                      (ws['allowed_domains'] as List).map((e) => e.toString()),
+                    ),
+                  };
+                }
+                if (ws['user_location'] is Map)
+                  entry['user_location'] = (ws['user_location'] as Map)
+                      .cast<String, dynamic>();
+                if (usePreview && ws['search_context_size'] is String)
+                  entry['search_context_size'] = ws['search_context_size'];
+                toolsList.add(entry);
               }
-              if (ws['user_location'] is Map)
-                entry['user_location'] = (ws['user_location'] as Map)
-                    .cast<String, dynamic>();
-              if (usePreview && ws['search_context_size'] is String)
-                entry['search_context_size'] = ws['search_context_size'];
-              toolsList.add(entry);
             }
           }
           body = {
@@ -600,6 +602,20 @@ class ChatApiService {
               'reasoning_effort': effort,
           };
         }
+        _applyCompatibleBuiltInSearch(
+          body,
+          config: config,
+          modelId: modelId,
+          upstreamModelId: upstreamModelId,
+        );
+        _applyCompatibleResponsesReasoning(
+          body,
+          config: config,
+          modelId: modelId,
+          upstreamModelId: upstreamModelId,
+          isReasoning: isReasoning,
+          thinkingBudget: thinkingBudget,
+        );
         final headers = <String, String>{
           'Authorization': 'Bearer ${_apiKeyForRequest(config, modelId)}',
           'Content-Type': 'application/json',

@@ -852,19 +852,18 @@ class MessageBuilderService {
     }
   }
 
-  /// Check if Gemini built-in search is enabled for the given provider/model.
-  bool hasBuiltInGeminiSearch(
+  /// Check if built-in search is enabled for the given provider/model.
+  bool hasBuiltInSearch(
     SettingsProvider settings,
     String providerKey,
     String modelId,
   ) {
     try {
       final cfg = settings.getProviderConfig(providerKey);
-      if (cfg.providerType != ProviderKind.google) return false;
-      final rawOv = cfg.modelOverrides[modelId];
-      final ov = rawOv is Map ? rawOv : null;
-      final builtIns = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
-      return builtIns.contains(BuiltInToolNames.search);
+      return BuiltInToolsHelper.isBuiltInSearchEnabled(
+        cfg: cfg,
+        modelId: modelId,
+      );
     } catch (_) {
       return false;
     }

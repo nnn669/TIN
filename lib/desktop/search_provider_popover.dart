@@ -216,44 +216,10 @@ class _SearchContent extends StatelessWidget {
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || (modelId ?? '').isEmpty) return false;
     final cfg = settings.getProviderConfig(providerKey);
-    final isGemini = cfg.providerType == ProviderKind.google;
-    final isClaude = cfg.providerType == ProviderKind.claude;
-    final isOpenAIResponses =
-        cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-    final isGrok =
-        cfg.providerType == ProviderKind.openai &&
-        (modelId ?? '').toLowerCase().contains('grok');
-    if (!(isGemini || isClaude || isOpenAIResponses || isGrok)) return false;
-    final mid = modelId!.toLowerCase();
-    if (isGrok) return true; // All Grok models assumed to support search
-    if (isClaude) {
-      const supported = <String>{
-        'claude-opus-4-6',
-        'claude-sonnet-4-5-20250929',
-        'claude-sonnet-4-20250514',
-        'claude-3-7-sonnet-20250219',
-        'claude-haiku-4-5-20251001',
-        'claude-3-5-haiku-latest',
-        'claude-sonnet-4-6',
-        'claude-opus-4-1-20250805',
-        'claude-opus-4-20250514',
-      };
-      if (!supported.contains(mid)) return false;
-    }
-    if (isOpenAIResponses) {
-      bool isSupportedOpenAI(String id) {
-        final m = id.toLowerCase();
-        return m.startsWith('gpt-4o') ||
-            m.startsWith('gpt-4.1') ||
-            m.startsWith('o4-mini') ||
-            m == 'o3' ||
-            m.startsWith('o3-') ||
-            m.startsWith('gpt-5');
-      }
-
-      if (!isSupportedOpenAI(mid)) return false;
-    }
-    return true;
+    return BuiltInToolsHelper.supportsBuiltInSearchForModel(
+      cfg: cfg,
+      modelId: modelId,
+    );
   }
 
   bool _hasUrlContextEnabled(SettingsProvider settings, AssistantProvider ap) {
@@ -277,10 +243,10 @@ class _SearchContent extends StatelessWidget {
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || (modelId ?? '').isEmpty) return false;
     final cfg = settings.getProviderConfig(providerKey);
-    final rawOv = cfg.modelOverrides[modelId!];
-    final ov = rawOv is Map ? rawOv : null;
-    final tools = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
-    return tools.contains(BuiltInToolNames.search);
+    return BuiltInToolsHelper.isBuiltInSearchEnabled(
+      cfg: cfg,
+      modelId: modelId,
+    );
   }
 
   Future<void> _enableBuiltInSearch(BuildContext context) async {

@@ -246,19 +246,7 @@ class ChatInputSection extends StatelessWidget {
   ) {
     final cfg = getActiveProviderConfig(settings, assistant: a);
     if (cfg == null || mid == null) return false;
-
-    final isGemini = cfg.providerType == ProviderKind.google;
-    final isClaude = cfg.providerType == ProviderKind.claude;
-    final isOpenAIResponses =
-        cfg.providerType == ProviderKind.openai && (cfg.useResponseApi == true);
-
-    if (isGemini || isClaude || isOpenAIResponses) {
-      final rawOv = cfg.modelOverrides[mid];
-      final ov = rawOv is Map ? rawOv : null;
-      final builtIns = BuiltInToolNames.parseAndNormalize(ov?['builtInTools']);
-      return builtIns.contains(BuiltInToolNames.search);
-    }
-    return false;
+    return BuiltInToolsHelper.isBuiltInSearchEnabled(cfg: cfg, modelId: mid);
   }
 
   bool _shouldShowMcpButton(

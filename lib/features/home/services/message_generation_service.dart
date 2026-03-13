@@ -142,7 +142,7 @@ class MessageGenerationService {
       currentConversationId: currentConversation?.id,
     );
 
-    final hasBuiltInSearch = messageBuilderService.hasBuiltInGeminiSearch(
+    final hasBuiltInSearch = messageBuilderService.hasBuiltInSearch(
       settings,
       providerKey,
       modelId,
