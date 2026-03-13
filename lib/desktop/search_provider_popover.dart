@@ -20,7 +20,6 @@ Future<void> showDesktopSearchProviderPopover(
   required GlobalKey anchorKey,
 }) async {
   final overlay = Overlay.of(context);
-  if (overlay == null) return;
   final keyContext = anchorKey.currentContext;
   if (keyContext == null) return;
 
@@ -111,7 +110,6 @@ class _SearchPopoverOverlayState extends State<_SearchPopoverOverlay>
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-    final cs = Theme.of(context).colorScheme;
     // Slightly narrower than input width
     final width = (widget.anchorWidth - 16).clamp(260.0, 720.0);
     final left =
@@ -181,20 +179,20 @@ class _GlassPanel extends StatelessWidget {
         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black : Colors.white).withOpacity(
-              isDark ? 0.28 : 0.56,
+            color: (isDark ? Colors.black : Colors.white).withValues(
+              alpha: isDark ? 0.28 : 0.56,
             ),
             border: Border(
               top: BorderSide(
-                color: Colors.white.withOpacity(isDark ? 0.06 : 0.18),
+                color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.18),
                 width: 0.7,
               ),
               left: BorderSide(
-                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                color: Colors.white.withValues(alpha: isDark ? 0.04 : 0.12),
                 width: 0.6,
               ),
               right: BorderSide(
-                color: Colors.white.withOpacity(isDark ? 0.04 : 0.12),
+                color: Colors.white.withValues(alpha: isDark ? 0.04 : 0.12),
                 width: 0.6,
               ),
             ),
@@ -249,9 +247,10 @@ class _SearchContent extends StatelessWidget {
     );
   }
 
-  Future<void> _enableBuiltInSearch(BuildContext context) async {
-    final sp = context.read<SettingsProvider>();
-    final ap = context.read<AssistantProvider>();
+  Future<void> _enableBuiltInSearch(
+    SettingsProvider sp,
+    AssistantProvider ap,
+  ) async {
     final a = ap.currentAssistant;
     final providerKey = a?.chatModelProvider ?? sp.currentModelProvider;
     final modelId = a?.chatModelId ?? sp.currentModelId;
@@ -276,9 +275,10 @@ class _SearchContent extends StatelessWidget {
     await sp.setSearchEnabled(false);
   }
 
-  Future<void> _disableBuiltInSearch(BuildContext context) async {
-    final sp = context.read<SettingsProvider>();
-    final ap = context.read<AssistantProvider>();
+  Future<void> _disableBuiltInSearch(
+    SettingsProvider sp,
+    AssistantProvider ap,
+  ) async {
     final a = ap.currentAssistant;
     final providerKey = a?.chatModelProvider ?? sp.currentModelProvider;
     final modelId = a?.chatModelId ?? sp.currentModelId;
@@ -318,6 +318,8 @@ class _SearchContent extends StatelessWidget {
       services.isNotEmpty ? services.length - 1 : 0,
     );
     final enabled = sp.searchEnabled;
+    final settingsNotifier = context.read<SettingsProvider>();
+    final done = onDone;
     final supportsBuiltIn = _supportsBuiltInSearch(sp, ap);
     final builtInEnabled = _hasBuiltInSearchEnabled(sp, ap);
     final hasUrlContext = _hasUrlContextEnabled(sp, ap);
@@ -333,9 +335,9 @@ class _SearchContent extends StatelessWidget {
         label: l10n.homePageCancel,
         selected: false,
         onTap: () async {
-          await _disableBuiltInSearch(context);
-          await context.read<SettingsProvider>().setSearchEnabled(false);
-          onDone();
+          await _disableBuiltInSearch(sp, ap);
+          await settingsNotifier.setSearchEnabled(false);
+          done();
         },
       ),
     );
@@ -348,8 +350,8 @@ class _SearchContent extends StatelessWidget {
           label: l10n.searchSettingsSheetBuiltinSearchTitle,
           selected: builtInEnabled,
           onTap: () async {
-            await _enableBuiltInSearch(context);
-            onDone();
+            await _enableBuiltInSearch(sp, ap);
+            done();
           },
         ),
       );
@@ -368,12 +370,10 @@ class _SearchContent extends StatelessWidget {
             label: name,
             selected: isSelectedActive,
             onTap: () async {
-              await context.read<SettingsProvider>().setSearchServiceSelected(
-                i,
-              );
-              await _disableBuiltInSearch(context);
-              await context.read<SettingsProvider>().setSearchEnabled(true);
-              onDone();
+              await settingsNotifier.setSearchServiceSelected(i);
+              await _disableBuiltInSearch(sp, ap);
+              await settingsNotifier.setSearchEnabled(true);
+              done();
             },
           ),
         );
@@ -430,8 +430,8 @@ class _RowItemState extends State<_RowItem> {
     final onColor = widget.selected ? cs.primary : cs.onSurface;
     // Use stronger overlay for hover to be clearly visible on glass
     final baseBg = Colors.transparent;
-    final hoverBg = (isDark ? Colors.white : Colors.black).withOpacity(
-      isDark ? 0.12 : 0.10,
+    final hoverBg = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: isDark ? 0.12 : 0.10,
     );
 
     return MouseRegion(

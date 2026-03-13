@@ -188,8 +188,9 @@ class ChatApiService {
   static Future<bool> _isValidRemoteImageUrl(String url) async {
     try {
       final uri = Uri.tryParse(url);
-      if (uri == null || !(uri.isScheme('http') || uri.isScheme('https')))
+      if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) {
         return false;
+      }
       final client = http.Client();
       try {
         final resp = await client.head(uri).timeout(const Duration(seconds: 5));
@@ -551,8 +552,9 @@ class ChatApiService {
                 Map<String, dynamic> ws = const <String, dynamic>{};
                 try {
                   final ov = config.modelOverrides[modelId];
-                  if (ov is Map && ov['webSearch'] is Map)
+                  if (ov is Map && ov['webSearch'] is Map) {
                     ws = (ov['webSearch'] as Map).cast<String, dynamic>();
+                  }
                 } catch (_) {}
                 final usePreview =
                     (ws['preview'] == true) ||
@@ -568,11 +570,13 @@ class ChatApiService {
                     ),
                   };
                 }
-                if (ws['user_location'] is Map)
+                if (ws['user_location'] is Map) {
                   entry['user_location'] = (ws['user_location'] as Map)
                       .cast<String, dynamic>();
-                if (usePreview && ws['search_context_size'] is String)
+                }
+                if (usePreview && ws['search_context_size'] is String) {
                   entry['search_context_size'] = ws['search_context_size'];
+                }
                 toolsList.add(entry);
               }
             }
@@ -621,8 +625,9 @@ class ChatApiService {
           'Content-Type': 'application/json',
         };
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty)
+        if (extraHeaders != null && extraHeaders.isNotEmpty) {
           headers.addAll(extraHeaders);
+        }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);
         if (extraBody != null && extraBody.isNotEmpty) {
@@ -720,8 +725,9 @@ class ChatApiService {
           'Content-Type': 'application/json',
         };
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty)
+        if (extraHeaders != null && extraHeaders.isNotEmpty) {
           headers.addAll(extraHeaders);
+        }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);
         if (extraBody != null && extraBody.isNotEmpty) {
@@ -829,8 +835,9 @@ class ChatApiService {
           if (proj.isNotEmpty) headers['X-Goog-User-Project'] = proj;
         }
         headers.addAll(_customHeaders(config, modelId));
-        if (extraHeaders != null && extraHeaders.isNotEmpty)
+        if (extraHeaders != null && extraHeaders.isNotEmpty) {
           headers.addAll(extraHeaders);
+        }
         final extra = _customBody(config, modelId);
         if (extra.isNotEmpty) body.addAll(extra);
         if (extraBody != null && extraBody.isNotEmpty) {

@@ -615,8 +615,9 @@ class MessageBuilderService {
             if (entry.caseSensitive) {
               if (context.contains(keyword)) return true;
             } else {
-              if (context.toLowerCase().contains(keyword.toLowerCase()))
+              if (context.toLowerCase().contains(keyword.toLowerCase())) {
                 return true;
+              }
             }
           }
         }
@@ -805,7 +806,7 @@ class MessageBuilderService {
   ) {
     if (apiMessages.isNotEmpty && apiMessages.first['role'] == 'system') {
       apiMessages[0]['content'] =
-          ((apiMessages[0]['content'] ?? '') as String) + '\n\n' + content;
+          '${(apiMessages[0]['content'] ?? '') as String}\n\n$content';
     } else {
       apiMessages.insert(0, {'role': 'system', 'content': content});
     }
