@@ -9,11 +9,9 @@ import '../../../l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../utils/file_import_helper.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../../shared/responsive/breakpoints.dart';
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:io';
 import '../../../core/models/chat_input_data.dart';
 import '../../../utils/clipboard_images.dart';
@@ -21,6 +19,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/services/search/search_service.dart';
 import '../../../core/services/api/builtin_tools.dart';
+import '../../../core/utils/multimodal_input_utils.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/app_directories.dart';
@@ -1251,17 +1250,9 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   String _inferMimeByExtension(String name) {
+    final mediaMime = inferMediaMimeFromSource(name);
+    if (mediaMime.isNotEmpty) return mediaMime;
     final lower = name.toLowerCase();
-    // Video
-    if (lower.endsWith('.mp4')) return 'video/mp4';
-    if (lower.endsWith('.mov')) return 'video/quicktime';
-    if (lower.endsWith('.mpeg') || lower.endsWith('.mpg')) return 'video/mpeg';
-    if (lower.endsWith('.avi')) return 'video/x-msvideo';
-    if (lower.endsWith('.mkv')) return 'video/x-matroska';
-    if (lower.endsWith('.flv')) return 'video/x-flv';
-    if (lower.endsWith('.wmv')) return 'video/x-ms-wmv';
-    if (lower.endsWith('.webm')) return 'video/webm';
-    if (lower.endsWith('.3gp') || lower.endsWith('.3gpp')) return 'video/3gpp';
     // Documents / text
     if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.docx'))
