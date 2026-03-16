@@ -969,6 +969,10 @@ class ChatActions {
       );
       onMessagesChanged?.call();
     }
+
+    // Remove notifier AFTER onMessagesChanged so the UI rebuild sees final content
+    streamController.removeStreamingNotifier(messageId);
+
     _setConversationLoading(conversationId, false);
 
     // Use unified reasoning completion method
@@ -1036,6 +1040,10 @@ class ChatActions {
       );
       onMessagesChanged?.call();
     }
+
+    // Remove notifier AFTER onMessagesChanged so the UI rebuild sees final content
+    streamController.removeStreamingNotifier(messageId);
+
     _setConversationLoading(conversationId, false);
 
     // Use unified reasoning completion method on error
@@ -1079,6 +1087,8 @@ class ChatActions {
         generateTitle: state.ctx.generateTitleOnFinish,
       );
     }
+    // Idempotent: ensure notifier is removed even if _finishStreaming was skipped
+    streamController.removeStreamingNotifier(state.messageId);
     onStreamFinished?.call();
     await _conversationStreams.remove(conversationId)?.cancel();
   }
