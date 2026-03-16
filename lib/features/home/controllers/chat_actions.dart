@@ -111,6 +111,11 @@ class ChatActions {
   // Private Helpers
   // ============================================================================
 
+  /// Track in-flight _finishStreaming futures so _handleStreamDone can await
+  /// completion before removing notifiers or triggering rebuild.
+  final Map<String, Future<void>> _finishStreamingFutures =
+      <String, Future<void>>{};
+
   List<ChatMessage> get _messages => chatController.messages;
   Map<String, int> get _versionSelections => chatController.versionSelections;
   Conversation? get _currentConversation => chatController.currentConversation;
@@ -620,8 +625,18 @@ class ChatActions {
       );
 
       await _conversationStreams[conversationId]?.cancel();
-      final sub = stream.listen(
-        (chunk) => _handleStreamChunk(chunk, state),
+      // Use a StreamSubscription that processes chunks sequentially.
+      // With the default listen() + async callback, Dart does NOT await the
+      // returned Future, so multiple chunks interleave at await points. This
+      // causes later-resuming handlers to overwrite final content with stale
+      // partial snapshots. By pausing/resuming the subscription around each
+      // async handler, we ensure serial processing.
+      late final StreamSubscription<ChatStreamChunk> sub;
+      sub = stream.listen(
+        (chunk) {
+          sub.pause();
+          _handleStreamChunk(chunk, state).whenComplete(() => sub.resume());
+        },
         onError: (e) => _handleStreamError(e, state),
         onDone: () => _handleStreamDone(state),
         cancelOnError: true,
@@ -754,6 +769,9 @@ class ChatActions {
     stream_ctrl.StreamingState state,
     String chunkContent,
   ) async {
+    // Fast bail-out: if _finishStreaming already ran, don't touch state at all.
+    if (state.finishHandled) return;
+
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
@@ -782,6 +800,13 @@ class ChatActions {
         // ignore
       }
     }
+
+    // After any await point, _finishStreaming may have already run and
+    // updated _messages[index] with the FULL final content. If we continue
+    // with this stale streamingProcessed we would overwrite the final content
+    // with a partial snapshot. Bail out early to prevent that.
+    if (state.finishHandled) return;
+
     onScheduleImageSanitize?.call(
       messageId,
       streamingProcessed,
@@ -795,6 +820,10 @@ class ChatActions {
       totalTokens: state.totalTokens,
     );
 
+    // Re-check after await: _finishStreaming may have completed during the
+    // DB write above and already set the definitive content on _messages[index].
+    if (state.finishHandled) return;
+
     if (state.ctx.streamOutput && _currentConversation?.id == conversationId) {
       final index = _messages.indexWhere((m) => m.id == messageId);
       if (index != -1) {
@@ -802,10 +831,6 @@ class ChatActions {
           content: streamingProcessed,
           totalTokens: state.totalTokens,
         );
-        // NOTE: Do NOT call onMessagesChanged here!
-        // Streaming content updates are handled by StreamingContentNotifier
-        // via ValueListenableBuilder, which only rebuilds the streaming message widget.
-        // Calling onMessagesChanged would trigger a full page rebuild and cause lag.
       }
     }
 
@@ -813,6 +838,11 @@ class ChatActions {
     if (state.ctx.streamOutput && chunkContent.isNotEmpty) {
       await _finishReasoningOnContent(state);
     }
+
+    // Re-check before scheduling timer — timer creation after _finishStreaming
+    // would create a new timer that periodically overwrites _messages[index]
+    // with stale partial content.
+    if (state.finishHandled) return;
 
     // Schedule throttled UI update via StreamController
     if (state.ctx.streamOutput) {
@@ -880,7 +910,13 @@ class ChatActions {
       state.totalTokens = state.usage!.totalTokens;
     }
 
-    await _finishStreaming(state);
+    // Track the _finishStreaming future so _handleStreamDone can await it
+    // if it fires concurrently (stream.onDone can fire while we're still
+    // awaiting async work inside _finishStreaming).
+    final finishFuture = _finishStreaming(state);
+    _finishStreamingFutures[messageId] = finishFuture;
+    await finishFuture;
+    _finishStreamingFutures.remove(messageId);
 
     // Notify for background notification if needed
     onStreamFinished?.call();
@@ -949,6 +985,17 @@ class ChatActions {
 
     // Replace extremely long inline base64 images with local files to avoid jank
     final processedContent = _transformAssistantContent(state);
+
+    // Flush final content to the streaming notifier before async operations.
+    // This ensures any intermediate rebuild (e.g., from isProcessingFiles change
+    // or onDone firing concurrently) still shows the correct content via the
+    // notifier-based streaming path.
+    streamController.streamingContentNotifier.updateContent(
+      messageId,
+      processedContent,
+      state.totalTokens,
+    );
+
     final sanitizedContent =
         await MarkdownMediaSanitizer.replaceInlineBase64Images(
           processedContent,
@@ -1076,19 +1123,28 @@ class ChatActions {
     onFileProcessingFinished?.call();
 
     final conversationId = state.conversationId;
+    final messageId = state.messageId;
 
     // Ensure streaming is marked as ended
-    streamController.markStreamingEnded(state.messageId);
+    streamController.markStreamingEnded(messageId);
 
-    streamController.cleanupTimers(state.messageId);
-    if (_loadingConversationIds.contains(conversationId)) {
+    streamController.cleanupTimers(messageId);
+
+    // If _finishStreaming is already in-flight (started by _handleStreamFinish),
+    // wait for it to complete before removing notifiers or triggering rebuild.
+    // This prevents a race where the notifier is removed and a rebuild is
+    // triggered while _finishStreaming hasn't yet updated _messages[index].
+    final inFlight = _finishStreamingFutures[messageId];
+    if (inFlight != null) {
+      await inFlight;
+    } else if (_loadingConversationIds.contains(conversationId)) {
       await _finishStreaming(
         state,
         generateTitle: state.ctx.generateTitleOnFinish,
       );
     }
     // Idempotent: ensure notifier is removed even if _finishStreaming was skipped
-    streamController.removeStreamingNotifier(state.messageId);
+    streamController.removeStreamingNotifier(messageId);
     onStreamFinished?.call();
     await _conversationStreams.remove(conversationId)?.cancel();
   }
