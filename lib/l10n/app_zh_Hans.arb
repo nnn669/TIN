@@ -851,6 +851,7 @@
   "providerDetailPageProjectIdLabel": "项目 ID",
   "providerDetailPageServiceAccountJsonLabel": "服务账号 JSON（粘贴或导入）",
   "providerDetailPageImportJsonButton": "导入 JSON",
+  "providerDetailPageImportJsonReadFailedMessage": "读取文件失败",
   "providerDetailPageTestButton": "测试",
   "providerDetailPageSaveButton": "保存",
   "providerDetailPageProviderRemovedMessage": "供应商已删除",

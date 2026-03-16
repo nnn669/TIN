@@ -166,7 +166,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
     final enabled = cfg.enabled;
     final selected = item.key == _selectedKey;
     final bg = selected
-        ? colorScheme.primary.withOpacity(0.08)
+        ? colorScheme.primary.withValues(alpha: 0.08)
         : Colors.transparent;
     return _ProviderListRow(
       name: item.name,
@@ -194,6 +194,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
           ? null
           : () async {
               final l10n = AppLocalizations.of(context)!;
+              final ap = context.read<AssistantProvider>();
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -216,7 +217,6 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
               );
               if (ok != true) return;
               try {
-                final ap = context.read<AssistantProvider>();
                 for (final assistant in ap.assistants) {
                   if (assistant.chatModelProvider == item.key) {
                     await ap.updateAssistant(
@@ -557,7 +557,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
               VerticalDivider(
                 width: 1,
                 thickness: 0.5,
-                color: cs.outlineVariant.withOpacity(0.12),
+                color: cs.outlineVariant.withValues(alpha: 0.12),
               ),
               // Right detail pane
               Expanded(child: rightPane),
@@ -628,7 +628,7 @@ class _DesktopProvidersSearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          color: cs.onSurface.withOpacity(0.5),
+          color: cs.onSurface.withValues(alpha: 0.5),
           fontSize: 13.5,
         ),
         isDense: true,
@@ -636,7 +636,7 @@ class _DesktopProvidersSearchField extends StatelessWidget {
         prefixIcon: Icon(
           lucide.Lucide.Search,
           size: 16,
-          color: cs.onSurface.withOpacity(0.5),
+          color: cs.onSurface.withValues(alpha: 0.5),
         ),
         prefixIconConstraints: const BoxConstraints(
           minWidth: 34,
@@ -648,7 +648,7 @@ class _DesktopProvidersSearchField extends StatelessWidget {
                 icon: Icon(
                   lucide.Lucide.X,
                   size: 14,
-                  color: cs.onSurface.withOpacity(0.48),
+                  color: cs.onSurface.withValues(alpha: 0.48),
                 ),
                 tooltip: hintText,
                 splashColor: Colors.transparent,
@@ -662,7 +662,7 @@ class _DesktopProvidersSearchField extends StatelessWidget {
         ),
         filled: true,
         fillColor: isDark
-            ? Colors.white.withOpacity(0.12)
+            ? Colors.white.withValues(alpha: 0.12)
             : const Color(0xFFEBEBEB),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -709,8 +709,8 @@ class _DesktopProviderGroupHeaderRowState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
         ? (isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.04))
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.04))
         : Colors.transparent;
 
     return MouseRegion(
@@ -739,7 +739,7 @@ class _DesktopProviderGroupHeaderRowState
                 child: Icon(
                   lucide.Lucide.ChevronRight,
                   size: 16,
-                  color: cs.onSurface.withOpacity(0.7),
+                  color: cs.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(width: 8),
@@ -751,7 +751,7 @@ class _DesktopProviderGroupHeaderRowState
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: cs.onSurface.withOpacity(0.9),
+                    color: cs.onSurface.withValues(alpha: 0.9),
                   ),
                 ),
               ),
@@ -969,6 +969,7 @@ class _DesktopProviderDetailPaneState
                 IosSwitch(
                   value: cfg.enabled,
                   onChanged: (v) async {
+                    final ap = context.read<AssistantProvider>();
                     final old = sp.getProviderConfig(
                       widget.providerKey,
                       defaultName: widget.displayName,
@@ -981,7 +982,6 @@ class _DesktopProviderDetailPaneState
                     if (!v && old.enabled) {
                       await sp.clearSelectionsForProvider(widget.providerKey);
                       try {
-                        final ap = context.read<AssistantProvider>();
                         for (final a in ap.assistants) {
                           if (a.chatModelProvider == widget.providerKey) {
                             await ap.updateAssistant(
@@ -1002,7 +1002,7 @@ class _DesktopProviderDetailPaneState
           child: Divider(
             height: 1,
             thickness: 0.5,
-            color: cs.outlineVariant.withOpacity(0.12),
+            color: cs.outlineVariant.withValues(alpha: 0.12),
           ),
         ),
         Expanded(
@@ -1017,23 +1017,27 @@ class _DesktopProviderDetailPaneState
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.08),
+                    color: cs.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: cs.primary.withOpacity(0.35)),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '革命性竞价 AI MaaS 平台，价格由市场供需决定，告别高成本固定定价。',
-                        style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
+                        style: TextStyle(
+                          color: cs.onSurface.withValues(alpha: 0.8),
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text.rich(
                         TextSpan(
                           text: '官网：',
                           style: TextStyle(
-                            color: cs.onSurface.withOpacity(0.8),
+                            color: cs.onSurface.withValues(alpha: 0.8),
                           ),
                           children: [
                             TextSpan(
@@ -1076,23 +1080,27 @@ class _DesktopProviderDetailPaneState
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.08),
+                    color: cs.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: cs.primary.withOpacity(0.35)),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '已内置硅基流动的免费模型，无需 API Key。若需更强大的模型，请申请并在此配置你自己的 API Key。',
-                        style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
+                        style: TextStyle(
+                          color: cs.onSurface.withValues(alpha: 0.8),
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text.rich(
                         TextSpan(
                           text: '官网：',
                           style: TextStyle(
-                            color: cs.onSurface.withOpacity(0.8),
+                            color: cs.onSurface.withValues(alpha: 0.8),
                           ),
                           children: [
                             TextSpan(
@@ -1212,8 +1220,8 @@ class _DesktopProviderDetailPaneState
                               color: _eyeHover
                                   ? (Theme.of(context).brightness ==
                                             Brightness.dark
-                                        ? Colors.white.withOpacity(0.06)
-                                        : Colors.black.withOpacity(0.04))
+                                        ? Colors.white.withValues(alpha: 0.06)
+                                        : Colors.black.withValues(alpha: 0.04))
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -1231,9 +1239,8 @@ class _DesktopProviderDetailPaneState
                                       ? lucide.Lucide.EyeOff
                                       : lucide.Lucide.Eye,
                                   size: 18,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.8),
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.8),
                                 ),
                               ),
                             ),
@@ -1513,10 +1520,12 @@ class _DesktopProviderDetailPaneState
                           content = await File(file.path!).readAsString();
                         } catch (_) {}
                       }
+                      if (!context.mounted) return;
                       if (content == null || content.trim().isEmpty) {
                         showAppSnackBar(
                           context,
-                          message: 'Failed to read file',
+                          message: l10n
+                              .providerDetailPageImportJsonReadFailedMessage,
                           type: NotificationType.error,
                         );
                         return;
@@ -1667,10 +1676,11 @@ class _DesktopProviderDetailPaneState
                                         onTap: () => setState(() {
                                           _showSearch = true;
                                           _searchFocus.addListener(() {
-                                            if (!_searchFocus.hasFocus)
+                                            if (!_searchFocus.hasFocus) {
                                               setState(
                                                 () => _showSearch = false,
                                               );
+                                            }
                                           });
                                         }),
                                       ),
@@ -1704,7 +1714,7 @@ class _DesktopProviderDetailPaneState
                           icon: allSelected
                               ? lucide.Lucide.Square
                               : lucide.Lucide.CheckSquare,
-                          color: cs.onSurface.withOpacity(0.85),
+                          color: cs.onSurface.withValues(alpha: 0.85),
                           onTap: () {
                             setState(() {
                               if (allSelected) {
@@ -1732,7 +1742,7 @@ class _DesktopProviderDetailPaneState
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             color: _detectUseStream
-                                ? cs.onSurface.withOpacity(0.08)
+                                ? cs.onSurface.withValues(alpha: 0.08)
                                 : Colors.transparent,
                           ),
                           child: AnimatedSwitcher(
@@ -1745,7 +1755,7 @@ class _DesktopProviderDetailPaneState
                                   : lucide.Lucide.SquareEqual,
                               key: ValueKey(_detectUseStream),
                               size: 18,
-                              color: cs.onSurface.withOpacity(0.85),
+                              color: cs.onSurface.withValues(alpha: 0.85),
                             ),
                           ),
                         ),
@@ -1764,7 +1774,7 @@ class _DesktopProviderDetailPaneState
                             ? l10n.providerDetailPageBatchDetecting
                             : l10n.providerDetailPageBatchDetectButton,
                         color: _selectedModels.isEmpty
-                            ? cs.onSurface.withOpacity(0.4)
+                            ? cs.onSurface.withValues(alpha: 0.4)
                             : null,
                         onTap: () {
                           if (_selectedModels.isEmpty) return;
@@ -1803,7 +1813,7 @@ class _DesktopProviderDetailPaneState
                         message: '删除全部模型',
                         child: _IconBtn(
                           icon: lucide.Lucide.Trash2,
-                          color: cs.onSurface.withOpacity(0.85),
+                          color: cs.onSurface.withValues(alpha: 0.85),
                           onTap: _confirmDeleteAllModels,
                         ),
                       ),
@@ -1862,13 +1872,14 @@ class _DesktopProviderDetailPaneState
     final map = <String, List<String>>{};
     for (final m in models) {
       var g = m;
-      if (m.contains('/'))
+      if (m.contains('/')) {
         g = m.split('/').first;
-      else if (m.contains(':'))
+      } else if (m.contains(':')) {
         g = m.split(':').first;
-      else if (m.contains('-'))
+      } else if (m.contains('-')) {
         g = m.split('-').first;
-      (map[g] ??= <String>[])..add(m);
+      }
+      (map[g] ??= <String>[]).add(m);
     }
     // Keep stable order by key
     final entries = map.entries.toList()
@@ -1895,20 +1906,23 @@ class _DesktopProviderDetailPaneState
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: cs.outlineVariant.withOpacity(0.12),
+          color: cs.outlineVariant.withValues(alpha: 0.12),
           width: 0.6,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: cs.outlineVariant.withOpacity(0.12),
+          color: cs.outlineVariant.withValues(alpha: 0.12),
           width: 0.6,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: cs.primary.withOpacity(0.35), width: 0.8),
+        borderSide: BorderSide(
+          color: cs.primary.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
@@ -1921,24 +1935,30 @@ class _DesktopProviderDetailPaneState
       isDense: true,
       filled: true,
       fillColor: isDark ? Colors.white10 : const Color(0xFFF7F7F9),
-      hintStyle: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.5)),
+      hintStyle: TextStyle(
+        fontSize: 14,
+        color: cs.onSurface.withValues(alpha: 0.5),
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: cs.outlineVariant.withOpacity(0.12),
+          color: cs.outlineVariant.withValues(alpha: 0.12),
           width: 0.6,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: cs.outlineVariant.withOpacity(0.12),
+          color: cs.outlineVariant.withValues(alpha: 0.12),
           width: 0.6,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: cs.primary.withOpacity(0.35), width: 0.8),
+        borderSide: BorderSide(
+          color: cs.primary.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     );
@@ -1948,22 +1968,15 @@ class _DesktopProviderDetailPaneState
     final cs = Theme.of(context).colorScheme;
     final sp = context.read<SettingsProvider>();
     final l10n = AppLocalizations.of(context)!;
-    ProviderConfig cfg = sp.getProviderConfig(
-      widget.providerKey,
-      defaultName: widget.displayName,
-    );
-    ProviderKind kind = ProviderConfig.classify(
-      widget.providerKey,
-      explicitType: cfg.providerType,
-    );
-    bool multi = cfg.multiKeyEnabled ?? false;
-    bool openaiResp = cfg.useResponseApi ?? false;
-    bool googleVertex = cfg.vertexAI ?? false;
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (ctx) {
-        final GlobalKey _avatarKey = GlobalKey();
+        final cfg = sp.getProviderConfig(
+          widget.providerKey,
+          defaultName: widget.displayName,
+        );
+        final GlobalKey avatarKey = GlobalKey();
         final nameCtrl = TextEditingController(text: cfg.name);
         final proxyHostCtrl = TextEditingController(text: cfg.proxyHost ?? '');
         final proxyPortCtrl = TextEditingController(
@@ -1975,10 +1988,6 @@ class _DesktopProviderDetailPaneState
         final proxyPassCtrl = TextEditingController(
           text: cfg.proxyPassword ?? '',
         );
-        ProviderKind tmpKind = kind;
-        bool tmpMulti = multi;
-        bool tmpResp = openaiResp;
-        bool tmpVertex = googleVertex;
         return Dialog(
           backgroundColor: cs.surface,
           shape: RoundedRectangleBorder(
@@ -2062,7 +2071,7 @@ class _DesktopProviderDetailPaneState
                           label,
                           style: TextStyle(
                             fontSize: 14,
-                            color: cs.onSurface.withOpacity(0.9),
+                            color: cs.onSurface.withValues(alpha: 0.9),
                           ),
                         ),
                       ),
@@ -2106,7 +2115,7 @@ class _DesktopProviderDetailPaneState
                         child: Divider(
                           height: 1,
                           thickness: 0.5,
-                          color: cs.outlineVariant.withOpacity(0.12),
+                          color: cs.outlineVariant.withValues(alpha: 0.12),
                         ),
                       ),
                       // Centered provider avatar (smaller than user dialog)
@@ -2114,13 +2123,13 @@ class _DesktopProviderDetailPaneState
                         padding: const EdgeInsets.only(top: 14, bottom: 6),
                         child: Center(
                           child: GestureDetector(
-                            key: _avatarKey,
+                            key: avatarKey,
                             onTapDown: (_) async {
                               // Open avatar menu (anchored)
                               final l10n2 = AppLocalizations.of(context)!;
                               await showDesktopAnchoredMenu(
                                 context,
-                                anchorKey: _avatarKey,
+                                anchorKey: avatarKey,
                                 offset: const Offset(0, 8),
                                 items: [
                                   DesktopContextMenuItem(
@@ -2150,12 +2159,10 @@ class _DesktopProviderDetailPaneState
                                             : null;
                                         final path = f?.path;
                                         if (path != null && path.isNotEmpty) {
-                                          await context
-                                              .read<SettingsProvider>()
-                                              .setProviderAvatarFilePath(
-                                                widget.providerKey,
-                                                path,
-                                              );
+                                          await sp.setProviderAvatarFilePath(
+                                            widget.providerKey,
+                                            path,
+                                          );
                                         }
                                       } catch (_) {}
                                     },
@@ -2255,8 +2262,9 @@ class _DesktopProviderDetailPaneState
                                   },
                                   onChanged: (_) async {
                                     // Avoid saving during IME composing to prevent glitches with Pinyin input
-                                    if (nameCtrl.value.composing.isValid)
+                                    if (nameCtrl.value.composing.isValid) {
                                       return;
+                                    }
                                     final v = nameCtrl.text.trim();
                                     final old = spWatch.getProviderConfig(
                                       widget.providerKey,
@@ -2315,8 +2323,8 @@ class _DesktopProviderDetailPaneState
                                           TextEditingController();
                                       final ok = await showDialog<bool>(
                                         context: ctx,
-                                        barrierColor: Colors.black.withOpacity(
-                                          0.12,
+                                        barrierColor: Colors.black.withValues(
+                                          alpha: 0.12,
                                         ),
                                         builder: (dctx) => AlertDialog(
                                           title: Text(
@@ -2368,8 +2376,8 @@ class _DesktopProviderDetailPaneState
                                       showDialog<void>(
                                         context: ctx,
                                         barrierDismissible: true,
-                                        barrierColor: Colors.black.withOpacity(
-                                          0.12,
+                                        barrierColor: Colors.black.withValues(
+                                          alpha: 0.12,
                                         ),
                                         builder: (_) =>
                                             const _DesktopProviderGroupsDialog(),
@@ -2495,7 +2503,9 @@ class _DesktopProviderDetailPaneState
                                       child: Icon(
                                         Icons.help_outline,
                                         size: 16,
-                                        color: cs.onSurface.withOpacity(0.6),
+                                        color: cs.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -2597,8 +2607,9 @@ class _DesktopProviderDetailPaneState
                                             if (proxyHostCtrl
                                                 .value
                                                 .composing
-                                                .isValid)
+                                                .isValid) {
                                               return;
+                                            }
                                             final old = spWatch
                                                 .getProviderConfig(
                                                   widget.providerKey,
@@ -2646,8 +2657,9 @@ class _DesktopProviderDetailPaneState
                                             if (proxyPortCtrl
                                                 .value
                                                 .composing
-                                                .isValid)
+                                                .isValid) {
                                               return;
+                                            }
                                             final old = spWatch
                                                 .getProviderConfig(
                                                   widget.providerKey,
@@ -2694,8 +2706,9 @@ class _DesktopProviderDetailPaneState
                                             if (proxyUserCtrl
                                                 .value
                                                 .composing
-                                                .isValid)
+                                                .isValid) {
                                               return;
+                                            }
                                             final old = spWatch
                                                 .getProviderConfig(
                                                   widget.providerKey,
@@ -2744,8 +2757,9 @@ class _DesktopProviderDetailPaneState
                                             if (proxyPassCtrl
                                                 .value
                                                 .composing
-                                                .isValid)
+                                                .isValid) {
                                               return;
+                                            }
                                             final old = spWatch
                                                 .getProviderConfig(
                                                   widget.providerKey,
@@ -2792,6 +2806,7 @@ class _DesktopProviderDetailPaneState
     String providerKey,
   ) async {
     final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
     final controller = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -2827,7 +2842,9 @@ class _DesktopProviderDetailPaneState
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.primary.withOpacity(0.4)),
+                    borderSide: BorderSide(
+                      color: cs.primary.withValues(alpha: 0.4),
+                    ),
                   ),
                 ),
                 onChanged: (v) => setLocal(() => value = v),
@@ -2849,7 +2866,7 @@ class _DesktopProviderDetailPaneState
                     style: TextStyle(
                       color: valid(value)
                           ? cs.primary
-                          : cs.onSurface.withOpacity(0.38),
+                          : cs.onSurface.withValues(alpha: 0.38),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2863,10 +2880,7 @@ class _DesktopProviderDetailPaneState
     if (ok == true) {
       final url = controller.text.trim();
       if (url.isNotEmpty) {
-        await context.read<SettingsProvider>().setProviderAvatarUrl(
-          providerKey,
-          url,
-        );
+        await settings.setProviderAvatarUrl(providerKey, url);
       }
     }
   }
@@ -2877,276 +2891,6 @@ class _DesktopProviderDetailPaneState
     return key.contains('aihubmix') || base.contains('aihubmix.com');
   }
 
-  Future<void> _showNetworkDialog(BuildContext context) async {
-    final cs = Theme.of(context).colorScheme;
-    final sp = context.read<SettingsProvider>();
-    final cfg = sp.getProviderConfig(
-      widget.providerKey,
-      defaultName: widget.displayName,
-    );
-    bool enabled = cfg.proxyEnabled ?? false;
-    final host = TextEditingController(text: cfg.proxyHost ?? '');
-    final port = TextEditingController(text: cfg.proxyPort ?? '8080');
-    final user = TextEditingController(text: cfg.proxyUsername ?? '');
-    final pass = TextEditingController(text: cfg.proxyPassword ?? '');
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: cs.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: StatefulBuilder(
-            builder: (ctx, setSt) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: 44,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(
-                                ctx,
-                              )!.providerDetailPageNetworkTab,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(lucide.Lucide.X, size: 18),
-                            color: cs.onSurface,
-                            onPressed: () => Navigator.of(ctx).maybePop(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Divider(
-                      height: 1,
-                      thickness: 0.5,
-                      color: cs.outlineVariant.withOpacity(0.12),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _rowSwitch(
-                          ctx,
-                          label: AppLocalizations.of(
-                            ctx,
-                          )!.providerDetailPageEnableProxyTitle,
-                          value: enabled,
-                          onChanged: (v) async {
-                            setSt(() => enabled = v);
-                            final old = sp.getProviderConfig(
-                              widget.providerKey,
-                              defaultName: widget.displayName,
-                            );
-                            await sp.setProviderConfig(
-                              widget.providerKey,
-                              old.copyWith(proxyEnabled: v),
-                            );
-                          },
-                        ),
-                        AnimatedCrossFade(
-                          firstChild: const SizedBox.shrink(),
-                          secondChild: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: 12),
-                              _sectionLabel(
-                                ctx,
-                                AppLocalizations.of(
-                                  ctx,
-                                )!.providerDetailPageHostLabel,
-                              ),
-                              const SizedBox(height: 6),
-                              Focus(
-                                onFocusChange: (has) async {
-                                  if (!has) {
-                                    final v = host.text.trim();
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyHost: v),
-                                    );
-                                  }
-                                },
-                                child: TextField(
-                                  controller: host,
-                                  style: const TextStyle(fontSize: 13),
-                                  decoration: _inputDecoration(
-                                    ctx,
-                                  ).copyWith(hintText: '127.0.0.1'),
-                                  onChanged: (_) async {
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyHost: host.text.trim()),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _sectionLabel(
-                                ctx,
-                                AppLocalizations.of(
-                                  ctx,
-                                )!.providerDetailPagePortLabel,
-                              ),
-                              const SizedBox(height: 6),
-                              Focus(
-                                onFocusChange: (has) async {
-                                  if (!has) {
-                                    final v = port.text.trim();
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyPort: v),
-                                    );
-                                  }
-                                },
-                                child: TextField(
-                                  controller: port,
-                                  style: const TextStyle(fontSize: 13),
-                                  decoration: _inputDecoration(
-                                    ctx,
-                                  ).copyWith(hintText: '8080'),
-                                  onChanged: (_) async {
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyPort: port.text.trim()),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _sectionLabel(
-                                ctx,
-                                AppLocalizations.of(
-                                  ctx,
-                                )!.providerDetailPageUsernameOptionalLabel,
-                              ),
-                              const SizedBox(height: 6),
-                              Focus(
-                                onFocusChange: (has) async {
-                                  if (!has) {
-                                    final v = user.text.trim();
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyUsername: v),
-                                    );
-                                  }
-                                },
-                                child: TextField(
-                                  controller: user,
-                                  style: const TextStyle(fontSize: 13),
-                                  decoration: _inputDecoration(ctx),
-                                  onChanged: (_) async {
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(
-                                        proxyUsername: user.text.trim(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _sectionLabel(
-                                ctx,
-                                AppLocalizations.of(
-                                  ctx,
-                                )!.providerDetailPagePasswordOptionalLabel,
-                              ),
-                              const SizedBox(height: 6),
-                              Focus(
-                                onFocusChange: (has) async {
-                                  if (!has) {
-                                    final v = pass.text.trim();
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(proxyPassword: v),
-                                    );
-                                  }
-                                },
-                                child: TextField(
-                                  controller: pass,
-                                  style: const TextStyle(fontSize: 13),
-                                  obscureText: true,
-                                  decoration: _inputDecoration(ctx),
-                                  onChanged: (_) async {
-                                    final old = sp.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await sp.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(
-                                        proxyPassword: pass.text.trim(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          crossFadeState: enabled
-                              ? CrossFadeState.showSecond
-                              : CrossFadeState.showFirst,
-                          duration: const Duration(milliseconds: 180),
-                          sizeCurve: Curves.easeOutCubic,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _showMultiKeyDialog(BuildContext context) async {
     final cs = Theme.of(context).colorScheme;
     final sp = context.read<SettingsProvider>();
@@ -3155,15 +2899,6 @@ class _DesktopProviderDetailPaneState
       context: context,
       barrierDismissible: true,
       builder: (ctx) {
-        ProviderConfig cfg = sp.getProviderConfig(
-          widget.providerKey,
-          defaultName: widget.displayName,
-        );
-        LoadBalanceStrategy strat =
-            cfg.keyManagement?.strategy ?? LoadBalanceStrategy.roundRobin;
-        final keys = List<ApiKeyConfig>.from(
-          cfg.apiKeys ?? const <ApiKeyConfig>[],
-        );
         final listCtrl = ScrollController();
         Future<void> saveStrategy(LoadBalanceStrategy s) async {
           final old = sp.getProviderConfig(
@@ -3183,20 +2918,20 @@ class _DesktopProviderDetailPaneState
         String? detectModelId;
         bool detecting = false;
         String? testingKeyId;
-        StateSetter? _setDRef;
+        StateSetter? setDRef;
 
-        Future<void> _pickDetectModel(BuildContext dctx) async {
+        Future<void> pickDetectModel(BuildContext dctx) async {
           final sel = await showModelSelector(
             dctx,
             limitProviderKey: widget.providerKey,
           );
           if (sel != null) {
             detectModelId = sel.modelId;
-            _setDRef?.call(() {});
+            setDRef?.call(() {});
           }
         }
 
-        Future<void> _testSingleKey(
+        Future<void> testSingleKey(
           ProviderConfig baseCfg,
           String modelId,
           ApiKeyConfig key,
@@ -3210,7 +2945,7 @@ class _DesktopProviderDetailPaneState
           await ProviderManager.testConnection(cfg2, modelId);
         }
 
-        Future<void> _testKeysAndSave(
+        Future<void> testKeysAndSave(
           BuildContext dctx,
           List<ApiKeyConfig> fullList,
           List<ApiKeyConfig> toTest,
@@ -3226,12 +2961,12 @@ class _DesktopProviderDetailPaneState
             final k = toTest[i];
             bool ok = true;
             try {
-              await _testSingleKey(base, modelId, k);
+              await testSingleKey(base, modelId, k);
             } catch (_) {
               ok = false;
             }
             final idx = out.indexWhere((e) => e.id == k.id);
-            if (idx >= 0)
+            if (idx >= 0) {
               out[idx] = k.copyWith(
                 status: ok ? ApiKeyStatus.active : ApiKeyStatus.error,
                 usage: k.usage.copyWith(
@@ -3246,6 +2981,7 @@ class _DesktopProviderDetailPaneState
                 lastError: ok ? null : 'Test failed',
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
               );
+            }
             await Future.delayed(const Duration(milliseconds: 120));
           }
           await settings.setProviderConfig(
@@ -3254,7 +2990,7 @@ class _DesktopProviderDetailPaneState
           );
         }
 
-        Future<void> _detectAll(BuildContext dctx) async {
+        Future<void> detectAll(BuildContext dctx) async {
           if (detecting) return;
           final settings = dctx.read<SettingsProvider>();
           final cfgX = settings.getProviderConfig(
@@ -3274,19 +3010,19 @@ class _DesktopProviderDetailPaneState
             detectModelId = models.first;
           }
           detecting = true;
-          _setDRef?.call(() {});
+          setDRef?.call(() {});
           try {
             final list = List<ApiKeyConfig>.from(
               cfgX.apiKeys ?? const <ApiKeyConfig>[],
             );
-            await _testKeysAndSave(dctx, list, list, detectModelId!);
+            await testKeysAndSave(dctx, list, list, detectModelId!);
           } finally {
             detecting = false;
-            _setDRef?.call(() {});
+            setDRef?.call(() {});
           }
         }
 
-        Future<void> _detectOnly(BuildContext dctx, List<String> keys) async {
+        Future<void> detectOnly(BuildContext dctx, List<String> keys) async {
           final settings = dctx.read<SettingsProvider>();
           final cfgX = settings.getProviderConfig(
             widget.providerKey,
@@ -3308,10 +3044,10 @@ class _DesktopProviderDetailPaneState
             cfgX.apiKeys ?? const <ApiKeyConfig>[],
           );
           final toTest = list.where((e) => keys.contains(e.key)).toList();
-          await _testKeysAndSave(dctx, list, toTest, detectModelId!);
+          await testKeysAndSave(dctx, list, toTest, detectModelId!);
         }
 
-        Future<void> _detectOne(BuildContext dctx, ApiKeyConfig key) async {
+        Future<void> detectOne(BuildContext dctx, ApiKeyConfig key) async {
           if (detecting || testingKeyId != null) return;
           final settings = dctx.read<SettingsProvider>();
           final cfgX = settings.getProviderConfig(
@@ -3331,20 +3067,20 @@ class _DesktopProviderDetailPaneState
             detectModelId = models.first;
           }
           testingKeyId = key.id;
-          _setDRef?.call(() {});
+          setDRef?.call(() {});
           try {
             final list = List<ApiKeyConfig>.from(
               cfgX.apiKeys ?? const <ApiKeyConfig>[],
             );
             final toTest = list.where((e) => e.id == key.id).toList();
-            await _testKeysAndSave(dctx, list, toTest, detectModelId!);
+            await testKeysAndSave(dctx, list, toTest, detectModelId!);
           } finally {
             testingKeyId = null;
-            _setDRef?.call(() {});
+            setDRef?.call(() {});
           }
         }
 
-        Future<void> _deleteAllErrorKeys(BuildContext dctx) async {
+        Future<void> deleteAllErrorKeys(BuildContext dctx) async {
           final settings = dctx.read<SettingsProvider>();
           final cfgX = settings.getProviderConfig(
             widget.providerKey,
@@ -3385,15 +3121,16 @@ class _DesktopProviderDetailPaneState
             widget.providerKey,
             cfgX.copyWith(apiKeys: remain),
           );
+          if (!dctx.mounted) return;
           showAppSnackBar(
             dctx,
             message: l10nX.multiKeyPageDeletedErrorsSnackbar(errorKeys.length),
             type: NotificationType.success,
           );
-          _setDRef?.call(() {});
+          setDRef?.call(() {});
         }
 
-        Future<ApiKeyConfig?> _showEditKeyDialog(
+        Future<ApiKeyConfig?> showEditKeyDialog(
           BuildContext dctx,
           ApiKeyConfig k,
         ) async {
@@ -3448,7 +3185,7 @@ class _DesktopProviderDetailPaneState
                         Divider(
                           height: 1,
                           thickness: 0.5,
-                          color: cs2.outlineVariant.withOpacity(0.12),
+                          color: cs2.outlineVariant.withValues(alpha: 0.12),
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -3490,7 +3227,7 @@ class _DesktopProviderDetailPaneState
                                     final p =
                                         int.tryParse(priCtrl.text.trim()) ??
                                         k.priority;
-                                    final clamped = p.clamp(1, 10) as int;
+                                    final clamped = p.clamp(1, 10);
                                     Navigator.of(c2).pop(
                                       k.copyWith(
                                         name: aliasCtrl.text.trim().isEmpty
@@ -3557,13 +3294,14 @@ class _DesktopProviderDetailPaneState
             widget.providerKey,
             old.copyWith(apiKeys: list, multiKeyEnabled: true),
           );
+          if (!c.mounted) return;
           if (uniqueAdded.isNotEmpty) {
             showAppSnackBar(
               c,
               message: l10n.multiKeyPageImportedSnackbar(uniqueAdded.length),
               type: NotificationType.success,
             );
-            await _detectOnly(c, uniqueAdded);
+            await detectOnly(c, uniqueAdded);
           } else {
             showAppSnackBar(c, message: l10n.multiKeyPageImportedSnackbar(0));
           }
@@ -3582,7 +3320,7 @@ class _DesktopProviderDetailPaneState
             constraints: const BoxConstraints(maxWidth: 680, maxHeight: 620),
             child: StatefulBuilder(
               builder: (dctx, setD) {
-                _setDRef = setD;
+                setDRef = setD;
                 ProviderConfig cfg2 = sp.getProviderConfig(
                   widget.providerKey,
                   defaultName: widget.displayName,
@@ -3617,7 +3355,7 @@ class _DesktopProviderDetailPaneState
                               message: l10n.multiKeyPageDeleteErrorsTooltip,
                               child: _IconBtn(
                                 icon: lucide.Lucide.Trash2,
-                                onTap: () => _deleteAllErrorKeys(dctx),
+                                onTap: () => deleteAllErrorKeys(dctx),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -3641,8 +3379,8 @@ class _DesktopProviderDetailPaneState
                                 message: l10n.multiKeyPageDetect,
                                 child: _IconBtn(
                                   icon: lucide.Lucide.HeartPulse,
-                                  onTap: () => _detectAll(dctx),
-                                  onLongPress: () => _pickDetectModel(dctx),
+                                  onTap: () => detectAll(dctx),
+                                  onLongPress: () => pickDetectModel(dctx),
                                 ),
                               ),
                             const SizedBox(width: 6),
@@ -3657,7 +3395,7 @@ class _DesktopProviderDetailPaneState
                     Divider(
                       height: 1,
                       thickness: 0.5,
-                      color: cs.outlineVariant.withOpacity(0.12),
+                      color: cs.outlineVariant.withValues(alpha: 0.12),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -3668,7 +3406,7 @@ class _DesktopProviderDetailPaneState
                               l10n.multiKeyPageStrategyTitle,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: cs.onSurface.withOpacity(0.9),
+                                color: cs.onSurface.withValues(alpha: 0.9),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -3725,12 +3463,13 @@ class _DesktopProviderDetailPaneState
                                         final idx = list.indexWhere(
                                           (e) => e.id == keyList[i].id,
                                         );
-                                        if (idx >= 0)
+                                        if (idx >= 0) {
                                           list[idx] = keyList[i].copyWith(
                                             isEnabled: v,
                                             updatedAt: DateTime.now()
                                                 .millisecondsSinceEpoch,
                                           );
+                                        }
                                         await sp.setProviderConfig(
                                           widget.providerKey,
                                           old.copyWith(apiKeys: list),
@@ -3738,12 +3477,12 @@ class _DesktopProviderDetailPaneState
                                         setD(() {});
                                       },
                                       onEdit: () async {
-                                        final updated =
-                                            await _showEditKeyDialog(
-                                              dctx,
-                                              keyList[i],
-                                            );
+                                        final updated = await showEditKeyDialog(
+                                          dctx,
+                                          keyList[i],
+                                        );
                                         if (updated == null) return;
+                                        if (!dctx.mounted) return;
                                         // Prevent duplicate keys
                                         final latest = sp.getProviderConfig(
                                           widget.providerKey,
@@ -3779,8 +3518,7 @@ class _DesktopProviderDetailPaneState
                                         );
                                         setD(() {});
                                       },
-                                      onTest: () =>
-                                          _detectOne(dctx, keyList[i]),
+                                      onTest: () => detectOne(dctx, keyList[i]),
                                       testing: testingKeyId == keyList[i].id,
                                       onDelete: () async {
                                         final old = sp.getProviderConfig(
@@ -3890,7 +3628,7 @@ class _DesktopProviderDetailPaneState
             state = _TestState.error;
             errorMessage = e.toString();
           }
-          (ctx as Element).markNeedsBuild();
+          (ctx).markNeedsBuild();
         }
 
         final l10n = AppLocalizations.of(ctx)!;
@@ -3902,7 +3640,7 @@ class _DesktopProviderDetailPaneState
             message = selectedModelId == null
                 ? l10n.modelSelectSheetSearchHint
                 : l10n.providerDetailPageTestingMessage;
-            color = cs.onSurface.withOpacity(0.8);
+            color = cs.onSurface.withValues(alpha: 0.8);
             break;
           case _TestState.loading:
             message = l10n.providerDetailPageTestingMessage;
@@ -3959,7 +3697,7 @@ class _DesktopProviderDetailPaneState
                                 : const Color(0xFFF7F7F9),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: cs.outlineVariant.withOpacity(0.12),
+                              color: cs.outlineVariant.withValues(alpha: 0.12),
                               width: 0.6,
                             ),
                           ),
@@ -3993,7 +3731,7 @@ class _DesktopProviderDetailPaneState
                               l10n.providerDetailPageUseStreamingLabel,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: cs.onSurface.withOpacity(0.9),
+                                color: cs.onSurface.withValues(alpha: 0.9),
                               ),
                             ),
                           ),
@@ -4121,7 +3859,7 @@ class _DesktopProviderDetailPaneState
               Divider(
                 height: 1,
                 thickness: 0.5,
-                color: cs.outlineVariant.withOpacity(0.12),
+                color: cs.outlineVariant.withValues(alpha: 0.12),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -4129,7 +3867,9 @@ class _DesktopProviderDetailPaneState
                   alignment: Alignment.centerLeft,
                   child: Text(
                     l10n.providerDetailPageDeleteAllModelsWarning,
-                    style: TextStyle(color: cs.onSurface.withOpacity(0.85)),
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.85),
+                    ),
                   ),
                 ),
               ),
@@ -4263,11 +4003,10 @@ class _ProviderTypeDropdownState extends State<_ProviderTypeDropdown> {
     if (_entry != null) return;
     final rb = _key.currentContext?.findRenderObject() as RenderBox?;
     final overlayBox =
-        Overlay.of(context)?.context.findRenderObject() as RenderBox?;
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (rb == null || overlayBox == null) return;
     final size = rb.size;
     final triggerW = size.width;
-    const maxW = 280.0; // unused after width sync, kept for reference
     final items = const [
       (ProviderKind.openai, 'OpenAI'),
       (ProviderKind.google, 'Google'),
@@ -4290,12 +4029,12 @@ class _ProviderTypeDropdownState extends State<_ProviderTypeDropdown> {
                   : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: cs.outlineVariant.withOpacity(0.12),
+                color: cs.outlineVariant.withValues(alpha: 0.12),
                 width: 0.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -4346,7 +4085,7 @@ class _ProviderTypeDropdownState extends State<_ProviderTypeDropdown> {
         );
       },
     );
-    Overlay.of(context)?.insert(_entry!);
+    Overlay.of(context).insert(_entry!);
     setState(() => _open = true);
   }
 
@@ -4402,7 +4141,7 @@ class _StrategyDropdownState extends State<_StrategyDropdown> {
     if (rb == null) return;
     final size = rb.size;
     final triggerW = size.width;
-    final labelFor = (LoadBalanceStrategy s) =>
+    String labelFor(LoadBalanceStrategy s) =>
         s == LoadBalanceStrategy.roundRobin
         ? AppLocalizations.of(context)!.multiKeyPageStrategyRoundRobin
         : AppLocalizations.of(context)!.multiKeyPageStrategyRandom;
@@ -4444,12 +4183,12 @@ class _StrategyDropdownState extends State<_StrategyDropdown> {
                         : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: cs.outlineVariant.withOpacity(0.12),
+                      color: cs.outlineVariant.withValues(alpha: 0.12),
                       width: 0.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -4482,7 +4221,7 @@ class _StrategyDropdownState extends State<_StrategyDropdown> {
         );
       },
     );
-    Overlay.of(context)?.insert(_entry!);
+    Overlay.of(context).insert(_entry!);
     setState(() => _open = true);
   }
 
@@ -4509,60 +4248,6 @@ class _StrategyDropdownState extends State<_StrategyDropdown> {
   }
 }
 
-Widget _rowSwitch(
-  BuildContext context, {
-  required String label,
-  required bool value,
-  required ValueChanged<bool> onChanged,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  return Row(
-    children: [
-      Expanded(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: cs.onSurface.withOpacity(0.9),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      IosSwitch(value: value, onChanged: onChanged),
-    ],
-  );
-}
-
-Widget _rowButton(
-  BuildContext context, {
-  required String label,
-  required VoidCallback onTap,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  return GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: cs.onSurface.withOpacity(0.9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const Icon(lucide.Lucide.ChevronRight, size: 16),
-        ],
-      ),
-    ),
-  );
-}
-
 // Small, consistent section label used in providers pane dialogs
 Widget _sectionLabel(BuildContext context, String text, {bool bold = false}) {
   final cs = Theme.of(context).colorScheme;
@@ -4570,7 +4255,7 @@ Widget _sectionLabel(BuildContext context, String text, {bool bold = false}) {
     text,
     style: TextStyle(
       fontSize: 13,
-      color: cs.onSurface.withOpacity(0.8),
+      color: cs.onSurface.withValues(alpha: 0.8),
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
     ),
   );
@@ -4583,9 +4268,9 @@ class _GreyCapsule extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark
-        ? Colors.white.withOpacity(0.06)
+        ? Colors.white.withValues(alpha: 0.06)
         : const Color(0xFFF2F3F5);
-    final fg = Theme.of(context).colorScheme.onSurface.withOpacity(0.85);
+    final fg = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -4624,8 +4309,8 @@ class _IconBtnState extends State<_IconBtn> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
         ? (isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.05))
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.05))
         : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -4655,7 +4340,6 @@ class _IconBtnState extends State<_IconBtn> {
 
 class _IconTextBtn extends StatefulWidget {
   const _IconTextBtn({
-    super.key,
     required this.icon,
     required this.label,
     required this.onTap,
@@ -4677,8 +4361,8 @@ class _IconTextBtnState extends State<_IconTextBtn> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
         ? (isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.05))
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.05))
         : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -4733,7 +4417,7 @@ class _DesktopProviderGroupsDialogState
     final controller = TextEditingController(text: initialText);
     final ok = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.12),
+      barrierColor: Colors.black.withValues(alpha: 0.12),
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: TextField(
@@ -4800,7 +4484,7 @@ class _DesktopProviderGroupsDialogState
     final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.12),
+      barrierColor: Colors.black.withValues(alpha: 0.12),
       builder: (ctx) => AlertDialog(
         title: Text(l10n.providerGroupsDeleteConfirmTitle),
         content: Text(l10n.providerGroupsDeleteConfirmContent),
@@ -4887,7 +4571,7 @@ class _DesktopProviderGroupsDialogState
                       child: Text(
                         l10n.providerGroupsEmptyState,
                         style: TextStyle(
-                          color: cs.onSurface.withOpacity(0.7),
+                          color: cs.onSurface.withValues(alpha: 0.7),
                           fontSize: 13,
                         ),
                       ),
@@ -4967,7 +4651,9 @@ class _DesktopProviderGroupCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? Colors.white10 : const Color(0xFFF7F7F9);
-    final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.12 : 0.10);
+    final borderColor = cs.outlineVariant.withValues(
+      alpha: isDark ? 0.12 : 0.10,
+    );
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -5009,7 +4695,7 @@ class _DesktopCountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final bg = cs.primary.withOpacity(0.12);
+    final bg = cs.primary.withValues(alpha: 0.12);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -5044,8 +4730,8 @@ class _DesktopDragHandleState extends State<_DesktopDragHandle> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = _hover
         ? (isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.05))
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.05))
         : Colors.transparent;
     return MouseRegion(
       cursor: SystemMouseCursors.grab,
@@ -5062,7 +4748,7 @@ class _DesktopDragHandleState extends State<_DesktopDragHandle> {
         child: Icon(
           lucide.Lucide.GripVertical,
           size: 18,
-          color: cs.onSurface.withOpacity(0.7),
+          color: cs.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -5209,7 +4895,7 @@ class _DesktopProviderShareDialogState
                 l10n.shareProviderSheetDescription,
                 style: TextStyle(
                   fontSize: 13,
-                  color: cs.onSurface.withOpacity(0.85),
+                  color: cs.onSurface.withValues(alpha: 0.85),
                 ),
               ),
               const SizedBox(height: 12),
@@ -5222,14 +4908,18 @@ class _DesktopProviderShareDialogState
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: cs.outlineVariant.withOpacity(0.2),
+                        color: cs.outlineVariant.withValues(alpha: 0.2),
                       ),
                     ),
-                    child: PrettyQr(
-                      data: _code,
-                      size: 180,
-                      roundEdges: true,
-                      errorCorrectLevel: QrErrorCorrectLevel.M,
+                    child: SizedBox.square(
+                      dimension: 180,
+                      child: PrettyQrView.data(
+                        data: _code,
+                        errorCorrectLevel: QrErrorCorrectLevel.M,
+                        decoration: const PrettyQrDecoration(
+                          shape: PrettyQrSmoothSymbol(roundFactor: 1),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -5239,11 +4929,11 @@ class _DesktopProviderShareDialogState
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withOpacity(0.04)
-                      : Colors.black.withOpacity(0.03),
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: cs.outlineVariant.withOpacity(0.25),
+                    color: cs.outlineVariant.withValues(alpha: 0.25),
                   ),
                 ),
                 child: ConstrainedBox(
@@ -5320,15 +5010,15 @@ class _DialogActionButtonState extends State<_DialogActionButton> {
     final enabled = widget.onTap != null;
     final baseBg = widget.filled ? cs.primary : Colors.transparent;
     final hoverOverlay = widget.filled
-        ? Colors.white.withOpacity(isDark ? 0.08 : 0.10)
-        : cs.primary.withOpacity(isDark ? 0.12 : 0.10);
+        ? Colors.white.withValues(alpha: isDark ? 0.08 : 0.10)
+        : cs.primary.withValues(alpha: isDark ? 0.12 : 0.10);
     final bg = Color.alphaBlend(
       (_hover ? hoverOverlay : Colors.transparent),
       baseBg,
     );
     final borderColor = widget.filled
-        ? cs.primary.withOpacity(isDark ? 0.30 : 0.25)
-        : cs.primary.withOpacity(0.35);
+        ? cs.primary.withValues(alpha: isDark ? 0.30 : 0.25)
+        : cs.primary.withValues(alpha: 0.35);
     final fg = widget.filled ? cs.onPrimary : cs.primary;
 
     return MouseRegion(
@@ -5353,7 +5043,7 @@ class _DialogActionButtonState extends State<_DialogActionButton> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: enabled ? bg : baseBg.withOpacity(0.4),
+              color: enabled ? bg : baseBg.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: borderColor),
             ),
@@ -5368,7 +5058,7 @@ class _DialogActionButtonState extends State<_DialogActionButton> {
                 Text(
                   widget.label,
                   style: TextStyle(
-                    color: enabled ? fg : fg.withOpacity(0.5),
+                    color: enabled ? fg : fg.withValues(alpha: 0.5),
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -5420,7 +5110,7 @@ class _BrandCircle extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white10 : cs.primary.withOpacity(0.10),
+        color: isDark ? Colors.white10 : cs.primary.withValues(alpha: 0.10),
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
@@ -5458,11 +5148,10 @@ class _ProviderListRowState extends State<_ProviderListRow> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final hoverBg = _hover && !widget.selected
         ? Theme.of(context).brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.04)
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.04)
         : Colors.transparent;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -5534,7 +5223,7 @@ class _ProviderListRowState extends State<_ProviderListRow> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: (widget.enabled ? Colors.green : Colors.orange)
-                      .withOpacity(0.12),
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                   // No border for left list status
                 ),
@@ -5580,11 +5269,11 @@ class _AddFullWidthButtonState extends State<_AddFullWidthButton> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseBg = isDark
-        ? Colors.white.withOpacity(0.06)
-        : Colors.black.withOpacity(0.04);
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.04);
     final hoverBg = isDark
-        ? Colors.white.withOpacity(0.10)
-        : Colors.black.withOpacity(0.06);
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.06);
     final bg = _hover ? hoverBg : baseBg;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -5606,7 +5295,9 @@ class _AddFullWidthButtonState extends State<_AddFullWidthButton> {
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -5647,7 +5338,7 @@ class _DesktopIosSectionCard extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: cs.outlineVariant.withOpacity(isDark ? 0.08 : 0.06),
+          color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.06),
           width: 0.6,
         ),
       ),
@@ -5692,7 +5383,7 @@ class _DesktopKeyRow extends StatelessWidget {
         case ApiKeyStatus.active:
           return Colors.green;
         case ApiKeyStatus.disabled:
-          return cs.onSurface.withOpacity(0.6);
+          return cs.onSurface.withValues(alpha: 0.6);
         case ApiKeyStatus.error:
           return cs.error;
         case ApiKeyStatus.rateLimited:
@@ -5723,7 +5414,7 @@ class _DesktopKeyRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor(keyConfig.status).withOpacity(0.12),
+                  color: statusColor(keyConfig.status).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -5788,7 +5479,10 @@ class _DesktopKeyRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Container(height: 0.6, color: cs.outlineVariant.withOpacity(0.25)),
+          Container(
+            height: 0.6,
+            color: cs.outlineVariant.withValues(alpha: 0.25),
+          ),
       ],
     );
   }
@@ -5831,7 +5525,7 @@ class _ModelGroupAccordionState extends State<_ModelGroupAccordion> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -5852,8 +5546,8 @@ class _ModelGroupAccordionState extends State<_ModelGroupAccordion> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withOpacity(0.03)
-                        : Colors.black.withOpacity(0.02),
+                        ? Colors.white.withValues(alpha: 0.03)
+                        : Colors.black.withValues(alpha: 0.02),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
@@ -5868,7 +5562,7 @@ class _ModelGroupAccordionState extends State<_ModelGroupAccordion> {
                         child: Icon(
                           lucide.Lucide.ChevronRight,
                           size: 16,
-                          color: cs.onSurface.withOpacity(0.9),
+                          color: cs.onSurface.withValues(alpha: 0.9),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -5954,7 +5648,7 @@ class _ModelRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final sp = context.watch<SettingsProvider>();
     final cfg = sp.getProviderConfig(providerKey);
-    ModelInfo _infer(String id) =>
+    ModelInfo infer(String id) =>
         ModelRegistry.infer(ModelInfo(id: id, displayName: id));
     // Resolve upstream/api model id for inference + capsules
     String baseId = modelId;
@@ -5969,13 +5663,13 @@ class _ModelRow extends StatelessWidget {
       }
     }
 
-    ModelInfo _effective() {
-      final base = _infer(baseId);
+    ModelInfo effective() {
+      final base = infer(baseId);
       if (ov == null) return base;
       return ModelOverrideResolver.applyModelOverride(base, ov);
     }
 
-    final info = _effective();
+    final info = effective();
     // Display label: prefer override name, then upstream model id, then logical key
     String displayName = modelId;
     if (ov != null) {
@@ -6032,7 +5726,7 @@ class _ModelRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: cs.onSurface.withOpacity(0.3),
+                    color: cs.onSurface.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -6075,6 +5769,7 @@ class _ModelRow extends StatelessWidget {
                 icon: lucide.Lucide.Minus,
                 onTap: () async {
                   final sp = context.read<SettingsProvider>();
+                  final ap = context.read<AssistantProvider>();
                   final old = sp.getProviderConfig(providerKey);
                   final list = List<String>.from(old.models)
                     ..removeWhere((e) => e == modelId);
@@ -6085,7 +5780,6 @@ class _ModelRow extends StatelessWidget {
                   // Clear global and assistant-level model selections that reference the deleted model
                   await sp.clearSelectionsForModel(providerKey, modelId);
                   try {
-                    final ap = context.read<AssistantProvider>();
                     for (final a in ap.assistants) {
                       if (a.chatModelProvider == providerKey &&
                           a.chatModelId == modelId) {
@@ -6125,8 +5819,8 @@ class _CardPressState extends State<_CardPress> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final overlay = _pressed
         ? (isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.04))
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.04))
         : Colors.transparent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

@@ -1760,8 +1760,9 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setGroupCollapsed(String groupIdOrUngrouped, bool value) async {
     if (groupIdOrUngrouped != providerUngroupedGroupKey &&
-        groupById(groupIdOrUngrouped) == null)
+        groupById(groupIdOrUngrouped) == null) {
       return;
+    }
     _providerGroupCollapsed[groupIdOrUngrouped] = value;
     _cleanupProviderOrderAndGrouping();
     notifyListeners();
@@ -3710,10 +3711,12 @@ class ProviderConfig {
 
     // Otherwise, infer from the key
     final k = key.toLowerCase();
-    if (k.contains('gemini') || k.contains('google'))
+    if (k.contains('gemini') || k.contains('google')) {
       return ProviderKind.google;
-    if (k.contains('claude') || k.contains('anthropic'))
+    }
+    if (k.contains('claude') || k.contains('anthropic')) {
       return ProviderKind.claude;
+    }
     return ProviderKind.openai;
   }
 
@@ -3723,25 +3726,31 @@ class ProviderConfig {
     if (k.contains('kelivoin')) return 'https://text.pollinations.ai/openai';
     if (k.contains('openrouter')) return 'https://openrouter.ai/api/v1';
     if (k.contains('aihubmix')) return 'https://aihubmix.com/v1';
-    if (RegExp(r'qwen|aliyun|dashscope').hasMatch(k))
+    if (RegExp(r'qwen|aliyun|dashscope').hasMatch(k)) {
       return 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-    if (RegExp(r'bytedance|doubao|volces|ark').hasMatch(k))
+    }
+    if (RegExp(r'bytedance|doubao|volces|ark').hasMatch(k)) {
       return 'https://ark.cn-beijing.volces.com/api/v3';
+    }
     if (k.contains('silicon')) return 'https://api.siliconflow.cn/v1';
-    if (k.contains('grok') || k.contains('x.ai') || k.contains('xai'))
+    if (k.contains('grok') || k.contains('x.ai') || k.contains('xai')) {
       return 'https://api.x.ai/v1';
+    }
     if (k.contains('deepseek')) return 'https://api.deepseek.com/v1';
-    if (RegExp(r'zhipu|智谱|glm').hasMatch(k))
+    if (RegExp(r'zhipu|智谱|glm').hasMatch(k)) {
       return 'https://open.bigmodel.cn/api/paas/v4';
-    if (k.contains('gemini') || k.contains('google'))
+    }
+    if (k.contains('gemini') || k.contains('google')) {
       return 'https://generativelanguage.googleapis.com/v1beta';
-    if (k.contains('claude') || k.contains('anthropic'))
+    }
+    if (k.contains('claude') || k.contains('anthropic')) {
       return 'https://api.anthropic.com/v1';
+    }
     return 'https://api.openai.com/v1';
   }
 
   static ProviderConfig defaultsFor(String key, {String? displayName}) {
-    bool _defaultEnabled(String k) {
+    bool defaultEnabled(String k) {
       final s = k.toLowerCase();
       if (s.contains('tensdaq')) return true;
       if (s.contains('openai')) return true;
@@ -3758,7 +3767,7 @@ class ProviderConfig {
       case ProviderKind.google:
         return ProviderConfig(
           id: key,
-          enabled: _defaultEnabled(key),
+          enabled: defaultEnabled(key),
           name: displayName ?? key,
           apiKey: '',
           baseUrl: _defaultBase(key),
@@ -3782,7 +3791,7 @@ class ProviderConfig {
       case ProviderKind.claude:
         return ProviderConfig(
           id: key,
-          enabled: _defaultEnabled(key),
+          enabled: defaultEnabled(key),
           name: displayName ?? key,
           apiKey: '',
           baseUrl: _defaultBase(key),
@@ -3804,7 +3813,7 @@ class ProviderConfig {
         if (lowerKey.contains('kelivoin')) {
           return ProviderConfig(
             id: key,
-            enabled: _defaultEnabled(key),
+            enabled: defaultEnabled(key),
             name: displayName ?? key,
             apiKey: 'kelivo',
             baseUrl: _defaultBase(key),
@@ -3852,7 +3861,7 @@ class ProviderConfig {
         if (lowerKey.contains('silicon')) {
           return ProviderConfig(
             id: key,
-            enabled: _defaultEnabled(key),
+            enabled: defaultEnabled(key),
             name: displayName ?? key,
             apiKey: '',
             baseUrl: _defaultBase(key),
@@ -3887,7 +3896,7 @@ class ProviderConfig {
         }
         return ProviderConfig(
           id: key,
-          enabled: _defaultEnabled(key),
+          enabled: defaultEnabled(key),
           name: displayName ?? key,
           apiKey: '',
           baseUrl: _defaultBase(key),

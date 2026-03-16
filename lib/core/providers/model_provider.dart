@@ -87,10 +87,12 @@ class ModelRegistry {
     if (vision.hasMatch(id)) {
       if (!inMods.contains(Modality.image)) inMods.add(Modality.image);
     }
-    if (tool.hasMatch(id) && !ab.contains(ModelAbility.tool))
+    if (tool.hasMatch(id) && !ab.contains(ModelAbility.tool)) {
       ab.add(ModelAbility.tool);
-    if (reasoning.hasMatch(id) && !ab.contains(ModelAbility.reasoning))
+    }
+    if (reasoning.hasMatch(id) && !ab.contains(ModelAbility.reasoning)) {
       ab.add(ModelAbility.reasoning);
+    }
     return base.copyWith(input: inMods, output: outMods, abilities: ab);
   }
 }
@@ -351,7 +353,6 @@ class ProviderManager {
       case ProviderKind.claude:
         return ClaudeProvider();
       case ProviderKind.openai:
-      default:
         return OpenAIProvider();
     }
   }

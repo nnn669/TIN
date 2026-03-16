@@ -813,6 +813,7 @@
   "providerDetailPageProjectIdLabel": "專案 ID",
   "providerDetailPageServiceAccountJsonLabel": "服務帳號 JSON（貼上或匯入）",
   "providerDetailPageImportJsonButton": "匯入 JSON",
+  "providerDetailPageImportJsonReadFailedMessage": "讀取檔案失敗",
   "providerDetailPageTestButton": "測試",
   "providerDetailPageSaveButton": "儲存",
   "providerDetailPageProviderRemovedMessage": "供應商已刪除",

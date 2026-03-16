@@ -2597,6 +2597,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerDetailPageImportJsonButton => 'Import JSON';
 
   @override
+  String get providerDetailPageImportJsonReadFailedMessage =>
+      'Failed to read file';
+
+  @override
   String get providerDetailPageTestButton => 'Test';
 
   @override

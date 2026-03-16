@@ -4868,6 +4868,12 @@ abstract class AppLocalizations {
   /// **'Import JSON'**
   String get providerDetailPageImportJsonButton;
 
+  /// No description provided for @providerDetailPageImportJsonReadFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read file'**
+  String get providerDetailPageImportJsonReadFailedMessage;
+
   /// No description provided for @providerDetailPageTestButton.
   ///
   /// In en, this message translates to:

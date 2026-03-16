@@ -2506,6 +2506,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerDetailPageImportJsonButton => '导入 JSON';
 
   @override
+  String get providerDetailPageImportJsonReadFailedMessage => '读取文件失败';
+
+  @override
   String get providerDetailPageTestButton => '测试';
 
   @override
@@ -6621,6 +6624,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get providerDetailPageImportJsonButton => '导入 JSON';
+
+  @override
+  String get providerDetailPageImportJsonReadFailedMessage => '读取文件失败';
 
   @override
   String get providerDetailPageTestButton => '测试';
@@ -10747,6 +10753,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get providerDetailPageImportJsonButton => '匯入 JSON';
+
+  @override
+  String get providerDetailPageImportJsonReadFailedMessage => '讀取檔案失敗';
 
   @override
   String get providerDetailPageTestButton => '測試';

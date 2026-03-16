@@ -1138,6 +1138,7 @@
   "providerDetailPageProjectIdLabel": "Project ID",
   "providerDetailPageServiceAccountJsonLabel": "Service Account JSON (paste or import)",
   "providerDetailPageImportJsonButton": "Import JSON",
+  "providerDetailPageImportJsonReadFailedMessage": "Failed to read file",
   "providerDetailPageTestButton": "Test",
   "providerDetailPageSaveButton": "Save",
   "providerDetailPageProviderRemovedMessage": "Provider removed",

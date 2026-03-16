@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -218,15 +217,12 @@ class DioHttpClient extends http.BaseClient {
       }
 
       final body = resp.data!;
-      final int? contentLength =
-          (body.contentLength != null && body.contentLength! >= 0)
+      final int? contentLength = (body.contentLength >= 0)
           ? body.contentLength
           : null;
-      StreamSubscription<Uint8List>? sub;
-
       final controller = StreamController<List<int>>(sync: true);
       controller.onListen = () {
-        sub = body.stream.listen(
+        body.stream.listen(
           (chunk) {
             controller.add(chunk);
             if (RequestLogger.enabled && RequestLogger.saveOutput) {
@@ -275,7 +271,7 @@ class DioHttpClient extends http.BaseClient {
         contentLength: contentLength,
         request: request,
         headers: headers,
-        isRedirect: resp.isRedirect ?? false,
+        isRedirect: resp.isRedirect,
         reasonPhrase: resp.statusMessage,
       );
     } on DioException catch (e) {

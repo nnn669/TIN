@@ -164,7 +164,10 @@ class _ProviderNetworkPageState extends State<ProviderNetworkPage> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.8)),
+          style: TextStyle(
+            fontSize: 13,
+            color: cs.onSurface.withValues(alpha: 0.8),
+          ),
         ),
         const SizedBox(height: 6),
         child,
@@ -199,24 +202,30 @@ InputDecoration _proxyInputDecoration(BuildContext context) {
     isDense: true,
     filled: true,
     fillColor: isDark ? Colors.white10 : const Color(0xFFF7F7F9),
-    hintStyle: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.5)),
+    hintStyle: TextStyle(
+      fontSize: 14,
+      color: cs.onSurface.withValues(alpha: 0.5),
+    ),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(
-        color: cs.outlineVariant.withOpacity(0.12),
+        color: cs.outlineVariant.withValues(alpha: 0.12),
         width: 0.6,
       ),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(
-        color: cs.outlineVariant.withOpacity(0.12),
+        color: cs.outlineVariant.withValues(alpha: 0.12),
         width: 0.6,
       ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: cs.primary.withOpacity(0.35), width: 0.8),
+      borderSide: BorderSide(
+        color: cs.primary.withValues(alpha: 0.35),
+        width: 0.8,
+      ),
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
   );
@@ -290,7 +299,7 @@ class _ProxyTypeSheetField extends StatelessWidget {
           color: fillColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: cs.outlineVariant.withOpacity(0.12),
+            color: cs.outlineVariant.withValues(alpha: 0.12),
             width: 0.6,
           ),
         ),
@@ -301,7 +310,7 @@ class _ProxyTypeSheetField extends StatelessWidget {
                 labelOf(value),
                 style: TextStyle(
                   fontSize: 14,
-                  color: cs.onSurface.withOpacity(0.88),
+                  color: cs.onSurface.withValues(alpha: 0.88),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -310,7 +319,7 @@ class _ProxyTypeSheetField extends StatelessWidget {
             Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 18,
-              color: cs.onSurface.withOpacity(0.55),
+              color: cs.onSurface.withValues(alpha: 0.55),
             ),
           ],
         ),
@@ -339,8 +348,8 @@ class _ProxyTypeSheetField extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected
                   ? (isDark
-                        ? Colors.white.withOpacity(0.06)
-                        : cs.primary.withOpacity(0.08))
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : cs.primary.withValues(alpha: 0.08))
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
@@ -352,7 +361,7 @@ class _ProxyTypeSheetField extends StatelessWidget {
                     text,
                     style: TextStyle(
                       fontSize: 15,
-                      color: cs.onSurface.withOpacity(0.92),
+                      color: cs.onSurface.withValues(alpha: 0.92),
                       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
@@ -374,7 +383,7 @@ class _ProxyTypeSheetField extends StatelessWidget {
       child: Divider(
         height: 1,
         thickness: 0.5,
-        color: cs.outlineVariant.withOpacity(0.12),
+        color: cs.outlineVariant.withValues(alpha: 0.12),
       ),
     );
   }
