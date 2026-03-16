@@ -1914,6 +1914,36 @@ class _DesktopProviderDetailPaneState
     );
   }
 
+  InputDecoration _proxyInputDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    return InputDecoration(
+      isDense: true,
+      filled: true,
+      fillColor: isDark ? Colors.white10 : const Color(0xFFF7F7F9),
+      hintStyle: TextStyle(fontSize: 14, color: cs.onSurface.withOpacity(0.5)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: cs.outlineVariant.withOpacity(0.12),
+          width: 0.6,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: cs.outlineVariant.withOpacity(0.12),
+          width: 0.6,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: cs.primary.withOpacity(0.35), width: 0.8),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    );
+  }
+
   Future<void> _showProviderSettingsDialog(BuildContext context) async {
     final cs = Theme.of(context).colorScheme;
     final sp = context.read<SettingsProvider>();
@@ -1959,7 +1989,10 @@ class _DesktopProviderDetailPaneState
             vertical: 24,
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: BoxConstraints(
+              maxWidth: 520,
+              maxHeight: MediaQuery.of(ctx).size.height * 0.82,
+            ),
             child: Consumer<SettingsProvider>(
               builder: (c, spWatch, _) {
                 final cfgNow = spWatch.getProviderConfig(
@@ -1993,6 +2026,9 @@ class _DesktopProviderDetailPaneState
                 final respNow = cfgNow.useResponseApi ?? false;
                 final vertexNow = cfgNow.vertexAI ?? false;
                 final proxyEnabledNow = cfgNow.proxyEnabled ?? false;
+                final proxyTypeNow = ProviderConfig.resolveProxyType(
+                  cfgNow.proxyType,
+                );
                 final aihubmixAppCodeEnabled =
                     cfgNow.aihubmixAppCodeEnabled ?? false;
                 final groupsNow = spWatch.providerGroups;
@@ -2006,6 +2042,16 @@ class _DesktopProviderDetailPaneState
                   ),
                   for (final g in groupsNow)
                     DesktopSelectOption(value: g.id, label: g.name),
+                ];
+                final proxyTypeOptions = <DesktopSelectOption<String>>[
+                  DesktopSelectOption(
+                    value: 'http',
+                    label: l10n.networkProxyTypeHttp,
+                  ),
+                  DesktopSelectOption(
+                    value: 'socks5',
+                    label: l10n.networkProxyTypeSocks5,
+                  ),
                 ];
                 Widget row(String label, Widget trailing) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
@@ -2025,645 +2071,713 @@ class _DesktopProviderDetailPaneState
                     ],
                   ),
                 );
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 44,
-                      child: Padding(
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 44,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  cfgNow.name.isNotEmpty
+                                      ? cfgNow.name
+                                      : widget.providerKey,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              _IconBtn(
+                                icon: lucide.Lucide.X,
+                                onTap: () => Navigator.of(ctx).maybePop(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
+                        child: Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: cs.outlineVariant.withOpacity(0.12),
+                        ),
+                      ),
+                      // Centered provider avatar (smaller than user dialog)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 14, bottom: 6),
+                        child: Center(
+                          child: GestureDetector(
+                            key: _avatarKey,
+                            onTapDown: (_) async {
+                              // Open avatar menu (anchored)
+                              final l10n2 = AppLocalizations.of(context)!;
+                              await showDesktopAnchoredMenu(
+                                context,
+                                anchorKey: _avatarKey,
+                                offset: const Offset(0, 8),
+                                items: [
+                                  DesktopContextMenuItem(
+                                    icon: lucide.Lucide.Image,
+                                    label: l10n2.sideDrawerChooseImage,
+                                    onTap: () async {
+                                      try {
+                                        final res = await FilePicker.platform
+                                            .pickFiles(
+                                              allowMultiple: false,
+                                              withData: false,
+                                              type: FileType.custom,
+                                              allowedExtensions: const [
+                                                'png',
+                                                'jpg',
+                                                'jpeg',
+                                                'gif',
+                                                'webp',
+                                                'heic',
+                                                'heif',
+                                              ],
+                                            );
+                                        final f =
+                                            (res != null &&
+                                                res.files.isNotEmpty)
+                                            ? res.files.first
+                                            : null;
+                                        final path = f?.path;
+                                        if (path != null && path.isNotEmpty) {
+                                          await context
+                                              .read<SettingsProvider>()
+                                              .setProviderAvatarFilePath(
+                                                widget.providerKey,
+                                                path,
+                                              );
+                                        }
+                                      } catch (_) {}
+                                    },
+                                  ),
+                                  DesktopContextMenuItem(
+                                    icon: lucide.Lucide.Link,
+                                    label: l10n2.sideDrawerEnterLink,
+                                    onTap: () async {
+                                      await _inputProviderAvatarUrl(
+                                        context,
+                                        widget.providerKey,
+                                      );
+                                    },
+                                  ),
+                                  DesktopContextMenuItem(
+                                    icon: lucide.Lucide.RotateCw,
+                                    label: l10n2.desktopAvatarMenuReset,
+                                    onTap: () async {
+                                      await context
+                                          .read<SettingsProvider>()
+                                          .resetProviderAvatar(
+                                            widget.providerKey,
+                                          );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                            child: ProviderAvatar(
+                              providerKey: widget.providerKey,
+                              displayName: widget.displayName,
+                              size: 64,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              child: Text(
-                                cfgNow.name.isNotEmpty
-                                    ? cfgNow.name
-                                    : widget.providerKey,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
+                            // 1) Name
+                            row(
+                              l10n.providerDetailPageNameLabel,
+                              Focus(
+                                onFocusChange: (has) async {
+                                  if (!has) {
+                                    final v = nameCtrl.text.trim();
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(
+                                        name: v.isEmpty
+                                            ? widget.displayName
+                                            : v,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: TextField(
+                                  controller: nameCtrl,
+                                  style: const TextStyle(fontSize: 14),
+                                  decoration: _inputDecoration(ctx),
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) async {
+                                    final v = nameCtrl.text.trim();
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(
+                                        name: v.isEmpty
+                                            ? widget.displayName
+                                            : v,
+                                      ),
+                                    );
+                                  },
+                                  onEditingComplete: () async {
+                                    final v = nameCtrl.text.trim();
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(
+                                        name: v.isEmpty
+                                            ? widget.displayName
+                                            : v,
+                                      ),
+                                    );
+                                  },
+                                  onChanged: (_) async {
+                                    // Avoid saving during IME composing to prevent glitches with Pinyin input
+                                    if (nameCtrl.value.composing.isValid)
+                                      return;
+                                    final v = nameCtrl.text.trim();
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(
+                                        name: v.isEmpty
+                                            ? widget.displayName
+                                            : v,
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
-                            _IconBtn(
-                              icon: lucide.Lucide.X,
-                              onTap: () => Navigator.of(ctx).maybePop(),
+                            const SizedBox(height: 4),
+                            // 1.5) Group
+                            row(
+                              l10n.providerGroupsGroupLabel,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DesktopSelectDropdown<String>(
+                                      value: groupValue,
+                                      options: groupOptions,
+                                      maxLabelWidth: 150,
+                                      triggerFillColor:
+                                          Theme.of(ctx).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white10
+                                          : const Color(0xFFF7F7F9),
+                                      onSelected: (v) async {
+                                        if (v ==
+                                            SettingsProvider
+                                                .providerUngroupedGroupKey) {
+                                          await spWatch.setProviderGroup(
+                                            widget.providerKey,
+                                            null,
+                                          );
+                                        } else {
+                                          await spWatch.setProviderGroup(
+                                            widget.providerKey,
+                                            v,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _IconBtn(
+                                    icon: lucide.Lucide.Plus,
+                                    onTap: () => unawaited(() async {
+                                      final controller =
+                                          TextEditingController();
+                                      final ok = await showDialog<bool>(
+                                        context: ctx,
+                                        barrierColor: Colors.black.withOpacity(
+                                          0.12,
+                                        ),
+                                        builder: (dctx) => AlertDialog(
+                                          title: Text(
+                                            l10n.providerGroupsCreateDialogTitle,
+                                          ),
+                                          content: TextField(
+                                            controller: controller,
+                                            autofocus: true,
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  l10n.providerGroupsNameHint,
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(dctx).pop(false),
+                                              child: Text(
+                                                l10n.providerGroupsCreateDialogCancel,
+                                              ),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(dctx).pop(true),
+                                              child: Text(
+                                                l10n.providerGroupsCreateDialogOk,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (ok != true) return;
+                                      final name = controller.text.trim();
+                                      if (name.isEmpty) return;
+                                      final id = await spWatch.createGroup(
+                                        name,
+                                      );
+                                      if (id.isEmpty) return;
+                                      await spWatch.setProviderGroup(
+                                        widget.providerKey,
+                                        id,
+                                      );
+                                    }()),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _IconBtn(
+                                    icon: lucide.Lucide.Settings,
+                                    onTap: () => unawaited(
+                                      showDialog<void>(
+                                        context: ctx,
+                                        barrierDismissible: true,
+                                        barrierColor: Colors.black.withOpacity(
+                                          0.12,
+                                        ),
+                                        builder: (_) =>
+                                            const _DesktopProviderGroupsDialog(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // 2) Provider type
+                            row(
+                              l10n.providerDetailPageProviderTypeTitle,
+                              _ProviderTypeDropdown(
+                                value: kindNow,
+                                onChanged: (k) async {
+                                  final old = spWatch.getProviderConfig(
+                                    widget.providerKey,
+                                    defaultName: widget.displayName,
+                                  );
+                                  await spWatch.setProviderConfig(
+                                    widget.providerKey,
+                                    old.copyWith(providerType: k),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // 3) Multi-Key
+                            row(
+                              l10n.providerDetailPageMultiKeyModeTitle,
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: IosSwitch(
+                                  value: multiNow,
+                                  onChanged: (v) async {
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(multiKeyEnabled: v),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // 4) Response (OpenAI) or Vertex (Google). Hide for Claude, with animation.
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              child: () {
+                                if (kindNow == ProviderKind.openai) {
+                                  return KeyedSubtree(
+                                    key: const ValueKey('openai-resp'),
+                                    child: row(
+                                      l10n.providerDetailPageResponseApiTitle,
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: IosSwitch(
+                                          value: respNow,
+                                          onChanged: (v) async {
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(useResponseApi: v),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (kindNow == ProviderKind.google) {
+                                  return KeyedSubtree(
+                                    key: const ValueKey('google-vertex'),
+                                    child: row(
+                                      l10n.providerDetailPageVertexAiTitle,
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: IosSwitch(
+                                          value: vertexNow,
+                                          onChanged: (v) async {
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(vertexAI: v),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink(
+                                  key: ValueKey('none'),
+                                );
+                              }(),
+                            ),
+                            const SizedBox(height: 4),
+                            if (_isAihubmix(cfgNow))
+                              row(
+                                l10n.providerDetailPageAihubmixAppCodeLabel,
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Tooltip(
+                                      message: l10n
+                                          .providerDetailPageAihubmixAppCodeHelp,
+                                      child: Icon(
+                                        Icons.help_outline,
+                                        size: 16,
+                                        color: cs.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IosSwitch(
+                                      value: aihubmixAppCodeEnabled,
+                                      onChanged: (v) async {
+                                        final old = spWatch.getProviderConfig(
+                                          widget.providerKey,
+                                          defaultName: widget.displayName,
+                                        );
+                                        await spWatch.setProviderConfig(
+                                          widget.providerKey,
+                                          old.copyWith(
+                                            aihubmixAppCodeEnabled: v,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            // 5) Network proxy inline
+                            row(
+                              l10n.providerDetailPageNetworkTab,
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: IosSwitch(
+                                  value: proxyEnabledNow,
+                                  onChanged: (v) async {
+                                    final old = spWatch.getProviderConfig(
+                                      widget.providerKey,
+                                      defaultName: widget.displayName,
+                                    );
+                                    await spWatch.setProviderConfig(
+                                      widget.providerKey,
+                                      old.copyWith(proxyEnabled: v),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            AnimatedCrossFade(
+                              firstChild: const SizedBox.shrink(),
+                              secondChild: Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    row(
+                                      l10n.networkProxyType,
+                                      DesktopSelectDropdown<String>(
+                                        value: proxyTypeNow,
+                                        options: proxyTypeOptions,
+                                        triggerFillColor:
+                                            Theme.of(ctx).brightness ==
+                                                Brightness.dark
+                                            ? Colors.white10
+                                            : const Color(0xFFF7F7F9),
+                                        onSelected: (value) async {
+                                          final old = spWatch.getProviderConfig(
+                                            widget.providerKey,
+                                            defaultName: widget.displayName,
+                                          );
+                                          await spWatch.setProviderConfig(
+                                            widget.providerKey,
+                                            old.copyWith(proxyType: value),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    row(
+                                      l10n.providerDetailPageHostLabel,
+                                      Focus(
+                                        onFocusChange: (has) async {
+                                          if (!has) {
+                                            final v = proxyHostCtrl.text.trim();
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(proxyHost: v),
+                                            );
+                                          }
+                                        },
+                                        child: TextField(
+                                          controller: proxyHostCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ).copyWith(hintText: '127.0.0.1'),
+                                          onChanged: (_) async {
+                                            if (proxyHostCtrl
+                                                .value
+                                                .composing
+                                                .isValid)
+                                              return;
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                proxyHost: proxyHostCtrl.text
+                                                    .trim(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    row(
+                                      l10n.providerDetailPagePortLabel,
+                                      Focus(
+                                        onFocusChange: (has) async {
+                                          if (!has) {
+                                            final v = proxyPortCtrl.text.trim();
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(proxyPort: v),
+                                            );
+                                          }
+                                        },
+                                        child: TextField(
+                                          controller: proxyPortCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ).copyWith(hintText: '8080'),
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (_) async {
+                                            if (proxyPortCtrl
+                                                .value
+                                                .composing
+                                                .isValid)
+                                              return;
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                proxyPort: proxyPortCtrl.text
+                                                    .trim(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    row(
+                                      l10n.providerDetailPageUsernameOptionalLabel,
+                                      Focus(
+                                        onFocusChange: (has) async {
+                                          if (!has) {
+                                            final v = proxyUserCtrl.text.trim();
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(proxyUsername: v),
+                                            );
+                                          }
+                                        },
+                                        child: TextField(
+                                          controller: proxyUserCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ),
+                                          onChanged: (_) async {
+                                            if (proxyUserCtrl
+                                                .value
+                                                .composing
+                                                .isValid)
+                                              return;
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                proxyUsername: proxyUserCtrl
+                                                    .text
+                                                    .trim(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    row(
+                                      l10n.providerDetailPagePasswordOptionalLabel,
+                                      Focus(
+                                        onFocusChange: (has) async {
+                                          if (!has) {
+                                            final v = proxyPassCtrl.text.trim();
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(proxyPassword: v),
+                                            );
+                                          }
+                                        },
+                                        child: TextField(
+                                          controller: proxyPassCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          obscureText: true,
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ),
+                                          onChanged: (_) async {
+                                            if (proxyPassCtrl
+                                                .value
+                                                .composing
+                                                .isValid)
+                                              return;
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                proxyPassword: proxyPassCtrl
+                                                    .text
+                                                    .trim(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              crossFadeState: proxyEnabledNow
+                                  ? CrossFadeState.showSecond
+                                  : CrossFadeState.showFirst,
+                              duration: const Duration(milliseconds: 180),
+                              sizeCurve: Curves.easeOutCubic,
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Divider(
-                        height: 1,
-                        thickness: 0.5,
-                        color: cs.outlineVariant.withOpacity(0.12),
-                      ),
-                    ),
-                    // Centered provider avatar (smaller than user dialog)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 14, bottom: 6),
-                      child: Center(
-                        child: GestureDetector(
-                          key: _avatarKey,
-                          onTapDown: (_) async {
-                            // Open avatar menu (anchored)
-                            final l10n2 = AppLocalizations.of(context)!;
-                            await showDesktopAnchoredMenu(
-                              context,
-                              anchorKey: _avatarKey,
-                              offset: const Offset(0, 8),
-                              items: [
-                                DesktopContextMenuItem(
-                                  icon: lucide.Lucide.Image,
-                                  label: l10n2.sideDrawerChooseImage,
-                                  onTap: () async {
-                                    try {
-                                      final res = await FilePicker.platform
-                                          .pickFiles(
-                                            allowMultiple: false,
-                                            withData: false,
-                                            type: FileType.custom,
-                                            allowedExtensions: const [
-                                              'png',
-                                              'jpg',
-                                              'jpeg',
-                                              'gif',
-                                              'webp',
-                                              'heic',
-                                              'heif',
-                                            ],
-                                          );
-                                      final f =
-                                          (res != null && res.files.isNotEmpty)
-                                          ? res.files.first
-                                          : null;
-                                      final path = f?.path;
-                                      if (path != null && path.isNotEmpty) {
-                                        await context
-                                            .read<SettingsProvider>()
-                                            .setProviderAvatarFilePath(
-                                              widget.providerKey,
-                                              path,
-                                            );
-                                      }
-                                    } catch (_) {}
-                                  },
-                                ),
-                                DesktopContextMenuItem(
-                                  icon: lucide.Lucide.Link,
-                                  label: l10n2.sideDrawerEnterLink,
-                                  onTap: () async {
-                                    await _inputProviderAvatarUrl(
-                                      context,
-                                      widget.providerKey,
-                                    );
-                                  },
-                                ),
-                                DesktopContextMenuItem(
-                                  icon: lucide.Lucide.RotateCw,
-                                  label: l10n2.desktopAvatarMenuReset,
-                                  onTap: () async {
-                                    await context
-                                        .read<SettingsProvider>()
-                                        .resetProviderAvatar(
-                                          widget.providerKey,
-                                        );
-                                  },
-                                ),
-                              ],
-                            );
-                          },
-                          child: ProviderAvatar(
-                            providerKey: widget.providerKey,
-                            displayName: widget.displayName,
-                            size: 64,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 1) Name
-                          row(
-                            l10n.providerDetailPageNameLabel,
-                            Focus(
-                              onFocusChange: (has) async {
-                                if (!has) {
-                                  final v = nameCtrl.text.trim();
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(
-                                      name: v.isEmpty ? widget.displayName : v,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: TextField(
-                                controller: nameCtrl,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: _inputDecoration(ctx),
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) async {
-                                  final v = nameCtrl.text.trim();
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(
-                                      name: v.isEmpty ? widget.displayName : v,
-                                    ),
-                                  );
-                                },
-                                onEditingComplete: () async {
-                                  final v = nameCtrl.text.trim();
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(
-                                      name: v.isEmpty ? widget.displayName : v,
-                                    ),
-                                  );
-                                },
-                                onChanged: (_) async {
-                                  // Avoid saving during IME composing to prevent glitches with Pinyin input
-                                  if (nameCtrl.value.composing.isValid) return;
-                                  final v = nameCtrl.text.trim();
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(
-                                      name: v.isEmpty ? widget.displayName : v,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // 1.5) Group
-                          row(
-                            l10n.providerGroupsGroupLabel,
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DesktopSelectDropdown<String>(
-                                    value: groupValue,
-                                    options: groupOptions,
-                                    maxLabelWidth: 150,
-                                    triggerFillColor:
-                                        Theme.of(ctx).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white10
-                                        : const Color(0xFFF7F7F9),
-                                    onSelected: (v) async {
-                                      if (v ==
-                                          SettingsProvider
-                                              .providerUngroupedGroupKey) {
-                                        await spWatch.setProviderGroup(
-                                          widget.providerKey,
-                                          null,
-                                        );
-                                      } else {
-                                        await spWatch.setProviderGroup(
-                                          widget.providerKey,
-                                          v,
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _IconBtn(
-                                  icon: lucide.Lucide.Plus,
-                                  onTap: () => unawaited(() async {
-                                    final controller = TextEditingController();
-                                    final ok = await showDialog<bool>(
-                                      context: ctx,
-                                      barrierColor: Colors.black.withOpacity(
-                                        0.12,
-                                      ),
-                                      builder: (dctx) => AlertDialog(
-                                        title: Text(
-                                          l10n.providerGroupsCreateDialogTitle,
-                                        ),
-                                        content: TextField(
-                                          controller: controller,
-                                          autofocus: true,
-                                          decoration: InputDecoration(
-                                            hintText:
-                                                l10n.providerGroupsNameHint,
-                                          ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(dctx).pop(false),
-                                            child: Text(
-                                              l10n.providerGroupsCreateDialogCancel,
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(dctx).pop(true),
-                                            child: Text(
-                                              l10n.providerGroupsCreateDialogOk,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (ok != true) return;
-                                    final name = controller.text.trim();
-                                    if (name.isEmpty) return;
-                                    final id = await spWatch.createGroup(name);
-                                    if (id.isEmpty) return;
-                                    await spWatch.setProviderGroup(
-                                      widget.providerKey,
-                                      id,
-                                    );
-                                  }()),
-                                ),
-                                const SizedBox(width: 4),
-                                _IconBtn(
-                                  icon: lucide.Lucide.Settings,
-                                  onTap: () => unawaited(
-                                    showDialog<void>(
-                                      context: ctx,
-                                      barrierDismissible: true,
-                                      barrierColor: Colors.black.withOpacity(
-                                        0.12,
-                                      ),
-                                      builder: (_) =>
-                                          const _DesktopProviderGroupsDialog(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // 2) Provider type
-                          row(
-                            l10n.providerDetailPageProviderTypeTitle,
-                            _ProviderTypeDropdown(
-                              value: kindNow,
-                              onChanged: (k) async {
-                                final old = spWatch.getProviderConfig(
-                                  widget.providerKey,
-                                  defaultName: widget.displayName,
-                                );
-                                await spWatch.setProviderConfig(
-                                  widget.providerKey,
-                                  old.copyWith(providerType: k),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // 3) Multi-Key
-                          row(
-                            l10n.providerDetailPageMultiKeyModeTitle,
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: IosSwitch(
-                                value: multiNow,
-                                onChanged: (v) async {
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(multiKeyEnabled: v),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // 4) Response (OpenAI) or Vertex (Google). Hide for Claude, with animation.
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            child: () {
-                              if (kindNow == ProviderKind.openai) {
-                                return KeyedSubtree(
-                                  key: const ValueKey('openai-resp'),
-                                  child: row(
-                                    l10n.providerDetailPageResponseApiTitle,
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: IosSwitch(
-                                        value: respNow,
-                                        onChanged: (v) async {
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(useResponseApi: v),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              if (kindNow == ProviderKind.google) {
-                                return KeyedSubtree(
-                                  key: const ValueKey('google-vertex'),
-                                  child: row(
-                                    l10n.providerDetailPageVertexAiTitle,
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: IosSwitch(
-                                        value: vertexNow,
-                                        onChanged: (v) async {
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(vertexAI: v),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const SizedBox.shrink(
-                                key: ValueKey('none'),
-                              );
-                            }(),
-                          ),
-                          const SizedBox(height: 4),
-                          if (_isAihubmix(cfgNow))
-                            row(
-                              l10n.providerDetailPageAihubmixAppCodeLabel,
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Tooltip(
-                                    message: l10n
-                                        .providerDetailPageAihubmixAppCodeHelp,
-                                    child: Icon(
-                                      Icons.help_outline,
-                                      size: 16,
-                                      color: cs.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IosSwitch(
-                                    value: aihubmixAppCodeEnabled,
-                                    onChanged: (v) async {
-                                      final old = spWatch.getProviderConfig(
-                                        widget.providerKey,
-                                        defaultName: widget.displayName,
-                                      );
-                                      await spWatch.setProviderConfig(
-                                        widget.providerKey,
-                                        old.copyWith(aihubmixAppCodeEnabled: v),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: 4),
-                          // 5) Network proxy inline
-                          row(
-                            l10n.providerDetailPageNetworkTab,
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: IosSwitch(
-                                value: proxyEnabledNow,
-                                onChanged: (v) async {
-                                  final old = spWatch.getProviderConfig(
-                                    widget.providerKey,
-                                    defaultName: widget.displayName,
-                                  );
-                                  await spWatch.setProviderConfig(
-                                    widget.providerKey,
-                                    old.copyWith(proxyEnabled: v),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          AnimatedCrossFade(
-                            firstChild: const SizedBox.shrink(),
-                            secondChild: Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  row(
-                                    l10n.providerDetailPageHostLabel,
-                                    Focus(
-                                      onFocusChange: (has) async {
-                                        if (!has) {
-                                          final v = proxyHostCtrl.text.trim();
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(proxyHost: v),
-                                          );
-                                        }
-                                      },
-                                      child: TextField(
-                                        controller: proxyHostCtrl,
-                                        style: const TextStyle(fontSize: 13),
-                                        decoration: _inputDecoration(
-                                          ctx,
-                                        ).copyWith(hintText: '127.0.0.1'),
-                                        onChanged: (_) async {
-                                          if (proxyHostCtrl
-                                              .value
-                                              .composing
-                                              .isValid)
-                                            return;
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(
-                                              proxyHost: proxyHostCtrl.text
-                                                  .trim(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  row(
-                                    l10n.providerDetailPagePortLabel,
-                                    Focus(
-                                      onFocusChange: (has) async {
-                                        if (!has) {
-                                          final v = proxyPortCtrl.text.trim();
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(proxyPort: v),
-                                          );
-                                        }
-                                      },
-                                      child: TextField(
-                                        controller: proxyPortCtrl,
-                                        style: const TextStyle(fontSize: 13),
-                                        decoration: _inputDecoration(
-                                          ctx,
-                                        ).copyWith(hintText: '8080'),
-                                        onChanged: (_) async {
-                                          if (proxyPortCtrl
-                                              .value
-                                              .composing
-                                              .isValid)
-                                            return;
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(
-                                              proxyPort: proxyPortCtrl.text
-                                                  .trim(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  row(
-                                    l10n.providerDetailPageUsernameOptionalLabel,
-                                    Focus(
-                                      onFocusChange: (has) async {
-                                        if (!has) {
-                                          final v = proxyUserCtrl.text.trim();
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(proxyUsername: v),
-                                          );
-                                        }
-                                      },
-                                      child: TextField(
-                                        controller: proxyUserCtrl,
-                                        style: const TextStyle(fontSize: 13),
-                                        decoration: _inputDecoration(ctx),
-                                        onChanged: (_) async {
-                                          if (proxyUserCtrl
-                                              .value
-                                              .composing
-                                              .isValid)
-                                            return;
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(
-                                              proxyUsername: proxyUserCtrl.text
-                                                  .trim(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  row(
-                                    l10n.providerDetailPagePasswordOptionalLabel,
-                                    Focus(
-                                      onFocusChange: (has) async {
-                                        if (!has) {
-                                          final v = proxyPassCtrl.text.trim();
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(proxyPassword: v),
-                                          );
-                                        }
-                                      },
-                                      child: TextField(
-                                        controller: proxyPassCtrl,
-                                        style: const TextStyle(fontSize: 13),
-                                        obscureText: true,
-                                        decoration: _inputDecoration(ctx),
-                                        onChanged: (_) async {
-                                          if (proxyPassCtrl
-                                              .value
-                                              .composing
-                                              .isValid)
-                                            return;
-                                          final old = spWatch.getProviderConfig(
-                                            widget.providerKey,
-                                            defaultName: widget.displayName,
-                                          );
-                                          await spWatch.setProviderConfig(
-                                            widget.providerKey,
-                                            old.copyWith(
-                                              proxyPassword: proxyPassCtrl.text
-                                                  .trim(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            crossFadeState: proxyEnabledNow
-                                ? CrossFadeState.showSecond
-                                : CrossFadeState.showFirst,
-                            duration: const Duration(milliseconds: 180),
-                            sizeCurve: Curves.easeOutCubic,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),

@@ -3512,6 +3512,7 @@ class ProviderConfig {
   final Map<String, dynamic> modelOverrides;
   // Per-provider proxy
   final bool? proxyEnabled;
+  final String? proxyType; // http|https|socks5
   final String? proxyHost;
   final String? proxyPort;
   final String? proxyUsername;
@@ -3525,6 +3526,16 @@ class ProviderConfig {
   final KeyManagementConfig? keyManagement;
   // AIhubmix promo header opt-in
   final bool? aihubmixAppCodeEnabled;
+
+  static String resolveProxyType(String? value) {
+    switch (value?.trim().toLowerCase()) {
+      case 'socks5':
+        return 'socks5';
+      case 'http':
+      default:
+        return 'http';
+    }
+  }
 
   ProviderConfig({
     required this.id,
@@ -3542,6 +3553,7 @@ class ProviderConfig {
     this.models = const [],
     this.modelOverrides = const {},
     this.proxyEnabled,
+    this.proxyType,
     this.proxyHost,
     this.proxyPort,
     this.proxyUsername,
@@ -3573,6 +3585,7 @@ class ProviderConfig {
     List<String>? models,
     Map<String, dynamic>? modelOverrides,
     bool? proxyEnabled,
+    String? proxyType,
     String? proxyHost,
     String? proxyPort,
     String? proxyUsername,
@@ -3599,6 +3612,7 @@ class ProviderConfig {
     models: models ?? this.models,
     modelOverrides: modelOverrides ?? this.modelOverrides,
     proxyEnabled: proxyEnabled ?? this.proxyEnabled,
+    proxyType: proxyType ?? this.proxyType,
     proxyHost: proxyHost ?? this.proxyHost,
     proxyPort: proxyPort ?? this.proxyPort,
     proxyUsername: proxyUsername ?? this.proxyUsername,
@@ -3632,6 +3646,7 @@ class ProviderConfig {
     'models': models,
     'modelOverrides': modelOverrides,
     'proxyEnabled': proxyEnabled,
+    'proxyType': proxyType,
     'proxyHost': proxyHost,
     'proxyPort': proxyPort,
     'proxyUsername': proxyUsername,
@@ -3671,6 +3686,7 @@ class ProviderConfig {
         ) ??
         const {},
     proxyEnabled: json['proxyEnabled'] as bool?,
+    proxyType: json['proxyType'] as String?,
     proxyHost: json['proxyHost'] as String?,
     proxyPort: json['proxyPort'] as String?,
     proxyUsername: json['proxyUsername'] as String?,

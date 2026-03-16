@@ -330,6 +330,7 @@ class ChatApiService {
       return DioHttpClient(
         proxy: NetworkProxyConfig(
           enabled: true,
+          type: ProviderConfig.resolveProxyType(cfg.proxyType),
           host: host,
           port: port,
           username: user.isEmpty ? null : user,
