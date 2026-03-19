@@ -1513,7 +1513,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reasoningBudgetSheetXhighSubtitle => '使用最大推理深度，适合最复杂的问题';
 
   @override
-  String get reasoningBudgetSheetCustomLabel => '自定义推理预算 (tokens)';
+  String get reasoningBudgetSheetCustomLabel => '自定义推理预算';
 
   @override
   String get reasoningBudgetSheetCustomHint => '例如：2048 (-1 自动，0 关闭)';
@@ -5714,7 +5714,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get reasoningBudgetSheetXhighSubtitle => '使用最大推理深度，适合最复杂的问题';
 
   @override
-  String get reasoningBudgetSheetCustomLabel => '自定义推理预算 (tokens)';
+  String get reasoningBudgetSheetCustomLabel => '自定义推理预算';
 
   @override
   String get reasoningBudgetSheetCustomHint => '例如：2048 (-1 自动，0 关闭)';
@@ -9862,7 +9862,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get reasoningBudgetSheetXhighSubtitle => '使用最大推理深度，適合最複雜的問題';
 
   @override
-  String get reasoningBudgetSheetCustomLabel => '自訂推理預算 (tokens)';
+  String get reasoningBudgetSheetCustomLabel => '自訂推理預算';
 
   @override
   String get reasoningBudgetSheetCustomHint => '例如：2048 (-1 自動，0 關閉)';

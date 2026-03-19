@@ -553,7 +553,7 @@
   "reasoningBudgetSheetMediumSubtitle": "使用较多推理来回答问题",
   "reasoningBudgetSheetHeavySubtitle": "使用大量推理来回答问题，适合复杂问题",
   "reasoningBudgetSheetXhighSubtitle": "使用最大推理深度，适合最复杂的问题",
-  "reasoningBudgetSheetCustomLabel": "自定义推理预算 (tokens)",
+  "reasoningBudgetSheetCustomLabel": "自定义推理预算",
   "reasoningBudgetSheetCustomHint": "例如：2048 (-1 自动，0 关闭)",
   "chatMessageWidgetFileNotFound": "文件不存在: {fileName}",
   "chatMessageWidgetCannotOpenFile": "无法打开文件: {message}",

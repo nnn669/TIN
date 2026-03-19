@@ -1557,8 +1557,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use maximum reasoning depth for the toughest problems';
 
   @override
-  String get reasoningBudgetSheetCustomLabel =>
-      'Custom Reasoning Budget (tokens)';
+  String get reasoningBudgetSheetCustomLabel => 'Custom Reasoning Budget';
 
   @override
   String get reasoningBudgetSheetCustomHint => 'e.g. 2048 (-1 auto, 0 off)';

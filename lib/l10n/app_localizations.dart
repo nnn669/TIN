@@ -3020,7 +3020,7 @@ abstract class AppLocalizations {
   /// No description provided for @reasoningBudgetSheetCustomLabel.
   ///
   /// In en, this message translates to:
-  /// **'Custom Reasoning Budget (tokens)'**
+  /// **'Custom Reasoning Budget'**
   String get reasoningBudgetSheetCustomLabel;
 
   /// No description provided for @reasoningBudgetSheetCustomHint.
