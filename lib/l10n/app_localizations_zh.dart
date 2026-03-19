@@ -286,6 +286,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sponsorPageWeChatSubtitle => '微信赞助码';
 
   @override
+  String get sponsorPageScanQrHint => '扫描二维码赞助';
+
+  @override
   String get languageDisplaySimplifiedChinese => '简体中文';
 
   @override
@@ -424,6 +427,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mcpTransportTagInmemory => '内置';
+
+  @override
+  String get mcpTransportTagSse => 'SSE';
+
+  @override
+  String get mcpTransportTagHttp => 'HTTP';
 
   @override
   String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 仅在桌面端可用';
@@ -2993,6 +3002,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPageEasterEggButton => '好的';
 
   @override
+  String get aboutPageAppName => 'Kelivo';
+
+  @override
   String get aboutPageAppDescription => '开源AI 助手';
 
   @override
@@ -3002,10 +3014,44 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPageVersion => '版本';
 
   @override
+  String aboutPageVersionDetail(String version, String buildNumber) {
+    return '$version / $buildNumber';
+  }
+
+  @override
   String get aboutPageSystem => '系统';
 
   @override
+  String get aboutPageLoadingPlaceholder => '...';
+
+  @override
+  String get aboutPageUnknownPlaceholder => '-';
+
+  @override
+  String get aboutPagePlatformMacos => 'macOS';
+
+  @override
+  String get aboutPagePlatformWindows => 'Windows';
+
+  @override
+  String get aboutPagePlatformLinux => 'Linux';
+
+  @override
+  String get aboutPagePlatformAndroid => 'Android';
+
+  @override
+  String get aboutPagePlatformIos => 'iOS';
+
+  @override
+  String aboutPagePlatformOther(String os) {
+    return '其他（$os）';
+  }
+
+  @override
   String get aboutPageWebsite => '官网';
+
+  @override
+  String get aboutPageGithub => 'GitHub';
 
   @override
   String get aboutPageLicense => '许可证';
@@ -4441,6 +4487,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sponsorPageWeChatSubtitle => '微信赞助码';
 
   @override
+  String get sponsorPageScanQrHint => '扫描二维码赞助';
+
+  @override
   String get languageDisplaySimplifiedChinese => '简体中文';
 
   @override
@@ -4579,6 +4628,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get mcpTransportTagInmemory => '内置';
+
+  @override
+  String get mcpTransportTagSse => 'SSE';
+
+  @override
+  String get mcpTransportTagHttp => 'HTTP';
 
   @override
   String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 仅在桌面端可用';
@@ -7117,6 +7172,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get aboutPageEasterEggButton => '好的';
 
   @override
+  String get aboutPageAppName => 'Kelivo';
+
+  @override
   String get aboutPageAppDescription => '开源 AI 助手';
 
   @override
@@ -7126,10 +7184,44 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get aboutPageVersion => '版本';
 
   @override
+  String aboutPageVersionDetail(String version, String buildNumber) {
+    return '$version / $buildNumber';
+  }
+
+  @override
   String get aboutPageSystem => '系统';
 
   @override
+  String get aboutPageLoadingPlaceholder => '...';
+
+  @override
+  String get aboutPageUnknownPlaceholder => '-';
+
+  @override
+  String get aboutPagePlatformMacos => 'macOS';
+
+  @override
+  String get aboutPagePlatformWindows => 'Windows';
+
+  @override
+  String get aboutPagePlatformLinux => 'Linux';
+
+  @override
+  String get aboutPagePlatformAndroid => 'Android';
+
+  @override
+  String get aboutPagePlatformIos => 'iOS';
+
+  @override
+  String aboutPagePlatformOther(String os) {
+    return '其他（$os）';
+  }
+
+  @override
   String get aboutPageWebsite => '官网';
+
+  @override
+  String get aboutPageGithub => 'GitHub';
 
   @override
   String get aboutPageLicense => '许可证';
@@ -8544,6 +8636,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sponsorPageWeChatSubtitle => '微信贊助碼';
 
   @override
+  String get sponsorPageScanQrHint => '掃描二維碼贊助';
+
+  @override
   String get languageDisplaySimplifiedChinese => '简体中文';
 
   @override
@@ -8682,6 +8777,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get mcpTransportTagInmemory => '內建';
+
+  @override
+  String get mcpTransportTagSse => 'SSE';
+
+  @override
+  String get mcpTransportTagHttp => 'HTTP';
 
   @override
   String get mcpServerEditSheetStdioOnlyDesktop => 'STDIO 僅在桌面端可用';
@@ -11246,6 +11347,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutPageEasterEggButton => '好的';
 
   @override
+  String get aboutPageAppName => 'Kelivo';
+
+  @override
   String get aboutPageAppDescription => '開源 AI 助理';
 
   @override
@@ -11255,10 +11359,44 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aboutPageVersion => '版本';
 
   @override
+  String aboutPageVersionDetail(String version, String buildNumber) {
+    return '$version / $buildNumber';
+  }
+
+  @override
   String get aboutPageSystem => '系統';
 
   @override
+  String get aboutPageLoadingPlaceholder => '...';
+
+  @override
+  String get aboutPageUnknownPlaceholder => '-';
+
+  @override
+  String get aboutPagePlatformMacos => 'macOS';
+
+  @override
+  String get aboutPagePlatformWindows => 'Windows';
+
+  @override
+  String get aboutPagePlatformLinux => 'Linux';
+
+  @override
+  String get aboutPagePlatformAndroid => 'Android';
+
+  @override
+  String get aboutPagePlatformIos => 'iOS';
+
+  @override
+  String aboutPagePlatformOther(String os) {
+    return '其他（$os）';
+  }
+
+  @override
   String get aboutPageWebsite => '官網';
+
+  @override
+  String get aboutPageGithub => 'GitHub';
 
   @override
   String get aboutPageLicense => '授權';
