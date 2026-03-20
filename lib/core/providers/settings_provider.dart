@@ -731,7 +731,7 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getBool(_displayAutoCollapseThinkingKey) ?? true;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
     _useNewAssistantAvatarUx =
-        prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? true;
+        prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
     _showProviderInModelCapsule =
         prefs.getBool(_displayShowProviderInModelCapsuleKey) ?? true;
     _showProviderInChatMessage =
@@ -2684,7 +2684,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   }
 
   // Display: use the new assistant avatar UX in app bars.
-  bool _useNewAssistantAvatarUx = true;
+  bool _useNewAssistantAvatarUx = false;
   bool get useNewAssistantAvatarUx => _useNewAssistantAvatarUx;
   Future<void> setUseNewAssistantAvatarUx(bool v) async {
     if (_useNewAssistantAvatarUx == v) return;

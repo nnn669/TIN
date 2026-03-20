@@ -200,7 +200,7 @@ class HomeMobileScaffold extends StatelessWidget {
                                 text: '$modelDisplay ($providerName)',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: cs.onSurface.withOpacity(0.6),
+                                  color: cs.onSurface.withValues(alpha: 0.6),
                                   fontWeight: FontWeight.w500,
                                 ),
                                 maxLines: 1,
