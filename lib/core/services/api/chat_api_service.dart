@@ -789,8 +789,9 @@ class ChatApiService {
         // Gemini 3: all built-in tools can coexist.
         final builtIns = _builtInTools(config, modelId);
         if (builtIns.isNotEmpty) {
-          final bool isGemini3 =
-              upstreamModelId.toLowerCase().contains('gemini-3');
+          final bool isGemini3 = upstreamModelId.toLowerCase().contains(
+            'gemini-3',
+          );
           final toolsArr = _buildGeminiToolsArray(
             builtIns: builtIns,
             allowCoexistence: isGemini3,

@@ -332,8 +332,9 @@ Stream<ChatStreamChunk> _sendGoogleStream(
       }
       final cand = (candidates.first as Map).cast<String, dynamic>();
       final parts = (cand['content']?['parts'] as List?) ?? const <dynamic>[];
-      final functionCallParts =
-          parts.where((e) => e is Map && e.containsKey('functionCall')).toList();
+      final functionCallParts = parts
+          .where((e) => e is Map && e.containsKey('functionCall'))
+          .toList();
       if (functionCallParts.isNotEmpty && onToolCall != null) {
         final responseParts = <Map<String, dynamic>>[];
         for (int idx = 0; idx < functionCallParts.length; idx++) {
@@ -350,9 +351,7 @@ Stream<ChatStreamChunk> _sendGoogleStream(
             isDone: false,
             totalTokens: totalUsage?.totalTokens ?? 0,
             usage: totalUsage,
-            toolCalls: [
-              ToolCallInfo(id: partId, name: name, arguments: args),
-            ],
+            toolCalls: [ToolCallInfo(id: partId, name: name, arguments: args)],
           );
           final res = await onToolCall(name, args);
           yield ChatStreamChunk(
@@ -419,8 +418,9 @@ Stream<ChatStreamChunk> _sendGoogleStream(
         if (cr is Map) {
           final outcome = (cr['outcome'] ?? '').toString();
           final output = (cr['output'] ?? '').toString();
-          final resultId =
-              codeExecIdx > 0 ? 'code_exec_${codeExecIdx - 1}' : 'code_exec_0';
+          final resultId = codeExecIdx > 0
+              ? 'code_exec_${codeExecIdx - 1}'
+              : 'code_exec_0';
           yield ChatStreamChunk(
             content: '',
             isDone: false,
@@ -827,7 +827,8 @@ Stream<ChatStreamChunk> _sendGoogleStream(
     final List<Map<String, dynamic>> calls =
         <Map<String, dynamic>>[]; // {id,name,args,res}
     // Capture server-side tool parts (Gemini 3 tool combination)
-    final List<Map<String, dynamic>> roundServerParts = <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> roundServerParts =
+        <Map<String, dynamic>>[];
     // Accumulate text for model turn in convo (needed for Gemini 3 full-parts rebuild)
     final StringBuffer roundAccumulatedText = StringBuffer();
     // Counter for server-side code execution tool cards
@@ -1060,11 +1061,11 @@ Stream<ChatStreamChunk> _sendGoogleStream(
                 // Emit server-side code execution parts as tool cards.
                 // Assumes executableCode and codeExecutionResult alternate in
                 // 1:1 pairs (matching current Gemini API behavior).
-                final codeExec =
-                    p['executableCode'] ?? p['executable_code'];
+                final codeExec = p['executableCode'] ?? p['executable_code'];
                 if (codeExec is Map) {
-                  final lang =
-                      (codeExec['language'] ?? '').toString().toLowerCase();
+                  final lang = (codeExec['language'] ?? '')
+                      .toString()
+                      .toLowerCase();
                   final code = (codeExec['code'] ?? '').toString();
                   if (code.isNotEmpty) {
                     final ceId = 'code_exec_$codeExecCounter';
@@ -1087,10 +1088,8 @@ Stream<ChatStreamChunk> _sendGoogleStream(
                 final codeResult =
                     p['codeExecutionResult'] ?? p['code_execution_result'];
                 if (codeResult is Map) {
-                  final outcome =
-                      (codeResult['outcome'] ?? '').toString();
-                  final output =
-                      (codeResult['output'] ?? '').toString();
+                  final outcome = (codeResult['outcome'] ?? '').toString();
+                  final output = (codeResult['output'] ?? '').toString();
                   final resultId = codeExecCounter > 0
                       ? 'code_exec_${codeExecCounter - 1}'
                       : 'code_exec_0';
