@@ -17,18 +17,18 @@ class ModelRegistry {
   // Vision-capable models (text + image input)
   static final RegExp vision = RegExp(
     // GPT family incl. 4o, 4.1, 5 (exclude gpt-5-chat), and OpenAI o* series
-    r'(gpt-4o|gpt-4\.1|gpt-5(?!-chat)|o\d|gemini|claude|doubao.+1([-.])6|grok-4|step-3|intern-s1)',
+    r'(gpt-4o|gpt-4\.1|gpt-5(?!-chat)|o\d|gemini|claude|qwen-?3([-.])5|kimi-k2([-.])5|doubao.+1([-.])(?:6|8)|grok-4|step-3|intern-s1)',
     caseSensitive: false,
   );
   // Tool-using models
   static final RegExp tool = RegExp(
     (r'(gpt-4o|gpt-4\.1|gpt-oss|gpt-5(?!-chat)|o\d|'
             r'gemini|claude|'
-            r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
-            r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
+            r'qwen-?3|doubao.+1([-.])(?:6|8)|grok-4|kimi-k2|'
+            r'step-3|intern-s1|glm-4([-.])(?:5|6|7)|glm-5|minimax-m2|'
             r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2)|'
             r'deepseek-reasoner|'
-            r'mimo-v2-flash'
+            r'mimo-v2'
             r')')
         .replaceAll(' ', ''),
     caseSensitive: false,
@@ -38,11 +38,11 @@ class ModelRegistry {
             r'gemini-(?:2\.5|3).*|gemini-(?:flash-latest|pro-latest)|'
             r'gemini-3-pro-image-preview|'
             r'claude|'
-            r'qwen-?3|doubao.+1([-.])6|grok-4|kimi-k2|'
-            r'step-3|intern-s1|glm-4\.5|glm-4\.6|minimax-m2|'
+            r'qwen-?3|doubao.+1([-.])(?:6|8)|grok-4|kimi-k2|'
+            r'step-3|intern-s1|glm-4([-.])(?:5|6|7)|glm-5|minimax-m2|'
             r'deepseek-(?:r1|v3\.1|v3\.2)|'
             r'deepseek-reasoner|'
-            r'mimo-v2-flash'
+            r'mimo-v2'
             r')')
         .replaceAll(' ', ''),
     caseSensitive: false,
