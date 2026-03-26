@@ -38,6 +38,33 @@ import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
 
+final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
+
+Uri? _tryNormalizeExternalUri(String raw) {
+  var u = raw.trim();
+  if (u.isEmpty) return null;
+
+  // Handle JSON-ish values like `"example.com"` defensively.
+  if ((u.startsWith('"') && u.endsWith('"')) ||
+      (u.startsWith("'") && u.endsWith("'"))) {
+    u = u.substring(1, u.length - 1).trim();
+    if (u.isEmpty) return null;
+  }
+
+  if (u.startsWith('//')) {
+    u = 'https:$u';
+  } else if (!_urlSchemeRe.hasMatch(u)) {
+    u = 'https://$u';
+  }
+
+  final uri = Uri.tryParse(u);
+  if (uri == null) return null;
+  if ((uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isEmpty) {
+    return null;
+  }
+  return uri;
+}
+
 /// Extract image paths from tool result content.
 /// Returns (cleanText, imagePaths). Supports local file paths and HTTP URLs.
 (String, List<String>) _parseMcpImagePaths(String? content) {
@@ -2024,12 +2051,33 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   // Try resolve citation id -> url from the latest search_web tool results of this assistant message
   void _handleCitationTap(String id) async {
     final l10n = AppLocalizations.of(context)!;
-    final items = _latestSearchItems();
-    final match = items.cast<Map<String, dynamic>?>().firstWhere(
-      (e) => (e?['id']?.toString() ?? '') == id,
-      orElse: () => null,
-    );
-    final url = match?['url']?.toString();
+    final items = _allSearchItems();
+    Map<String, dynamic>? match = items
+        .cast<Map<String, dynamic>?>()
+        .firstWhere(
+          (e) => (e?['id']?.toString() ?? '') == id,
+          orElse: () => null,
+        );
+
+    // Fallbacks for models that don't strictly follow "index:id":
+    // 1) If id is actually an index number, match by item.index.
+    // 2) If id itself looks like a URL, open it directly.
+    String? url = match?['url']?.toString();
+    if (url == null || url.isEmpty) {
+      final idx = int.tryParse(id.trim());
+      if (idx != null) {
+        match = items.cast<Map<String, dynamic>?>().firstWhere(
+          (e) => (e?['index']?.toString() ?? '') == idx.toString(),
+          orElse: () => null,
+        );
+        url = match?['url']?.toString();
+      }
+    }
+    if ((url == null || url.isEmpty) &&
+        (id.contains('/') || id.contains('.'))) {
+      url = id;
+    }
+
     if (url == null || url.isEmpty) {
       if (context.mounted) {
         showAppSnackBar(
@@ -2041,15 +2089,22 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       return;
     }
     try {
-      final ok = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
+      final uri = _tryNormalizeExternalUri(url);
+      if (uri == null) {
+        if (!mounted) return;
+        showAppSnackBar(
+          context,
+          message: l10n.chatMessageWidgetOpenLinkError,
+          type: NotificationType.error,
+        );
+        return;
+      }
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok) {
         if (!mounted) return;
         showAppSnackBar(
           context,
-          message: l10n.chatMessageWidgetCannotOpenUrl(url),
+          message: l10n.chatMessageWidgetCannotOpenUrl(uri.toString()),
           type: NotificationType.error,
         );
       }
@@ -2061,6 +2116,41 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         type: NotificationType.error,
       );
     }
+  }
+
+  // Extract items from all search_web or builtin_search tool results for this assistant message.
+  // We scan from end to start so "latest" items win when there are duplicates.
+  List<Map<String, dynamic>> _allSearchItems() {
+    final parts = widget.toolParts ?? const <ToolUIPart>[];
+    if (parts.isEmpty) return const <Map<String, dynamic>>[];
+
+    final out = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    for (int i = parts.length - 1; i >= 0; i--) {
+      final p = parts[i];
+      if ((p.toolName != 'search_web' && p.toolName != 'builtin_search') ||
+          (p.content?.isNotEmpty ?? false) == false) {
+        continue;
+      }
+      try {
+        final obj = jsonDecode(p.content!) as Map<String, dynamic>;
+        final arr = obj['items'] as List? ?? const <dynamic>[];
+        for (final it in arr) {
+          if (it is! Map) continue;
+          final m = it.cast<String, dynamic>();
+          final key = (m['id'] ?? m['url'] ?? '')
+              .toString(); // builtin_search no id
+          if (key.isNotEmpty) {
+            if (!seen.add(key)) continue;
+          }
+          out.add(m);
+        }
+      } catch (_) {
+        // ignore broken tool payload
+      }
+    }
+    return out;
   }
 
   // Extract items from the last search_web or builtin_search tool result for this assistant message
@@ -3217,7 +3307,7 @@ class _SearchResultCard extends StatelessWidget {
 
   String _domain(String url) {
     try {
-      return Uri.parse(url).host;
+      return _tryNormalizeExternalUri(url)?.host ?? '';
     } catch (_) {
       return '';
     }
@@ -3245,12 +3335,36 @@ class _SearchResultCard extends StatelessWidget {
         pressedScale: 1.0,
         duration: const Duration(milliseconds: 200),
         onTap: () async {
+          final l10n = AppLocalizations.of(context)!;
+          final uri = _tryNormalizeExternalUri(url);
+          if (uri == null) {
+            showAppSnackBar(
+              context,
+              message: l10n.chatMessageWidgetOpenLinkError,
+              type: NotificationType.error,
+            );
+            return;
+          }
           try {
-            await launchUrl(
-              Uri.parse(url),
+            final ok = await launchUrl(
+              uri,
               mode: LaunchMode.externalApplication,
             );
-          } catch (_) {}
+            if (!ok && context.mounted) {
+              showAppSnackBar(
+                context,
+                message: l10n.chatMessageWidgetCannotOpenUrl(uri.toString()),
+                type: NotificationType.error,
+              );
+            }
+          } catch (_) {
+            if (!context.mounted) return;
+            showAppSnackBar(
+              context,
+              message: l10n.chatMessageWidgetOpenLinkError,
+              type: NotificationType.error,
+            );
+          }
         },
         padding: const EdgeInsets.all(12),
         child: Row(

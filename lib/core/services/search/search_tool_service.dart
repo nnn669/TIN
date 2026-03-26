@@ -7,6 +7,27 @@ class SearchToolService {
   static const String toolName = 'search_web';
   static const String toolDescription = 'Search the web for information';
 
+  static final RegExp _schemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
+
+  static String _normalizeUrl(String raw) {
+    var u = raw.trim();
+    if (u.isEmpty) return u;
+
+    // Strip surrounding quotes if the backend returns a JSON-ish value.
+    if ((u.startsWith('"') && u.endsWith('"')) ||
+        (u.startsWith("'") && u.endsWith("'"))) {
+      u = u.substring(1, u.length - 1).trim();
+    }
+    if (u.isEmpty) return u;
+
+    // Protocol-relative URL (e.g. //example.com/path)
+    if (u.startsWith('//')) return 'https:$u';
+
+    // No scheme => default to https.
+    if (!_schemeRe.hasMatch(u)) return 'https://$u';
+    return u;
+  }
+
   static Map<String, dynamic> getToolDefinition() {
     return {
       'type': 'function',
@@ -54,9 +75,13 @@ class SearchToolService {
       // Add unique IDs to each result item
       final itemsWithIds = result.items.asMap().entries.map((entry) {
         final item = entry.value;
-        item.id = const Uuid().v4().substring(0, 6);
-        item.index = entry.key + 1;
-        return item;
+        return SearchResultItem(
+          title: item.title,
+          url: _normalizeUrl(item.url),
+          text: item.text,
+          id: const Uuid().v4().substring(0, 6),
+          index: entry.key + 1,
+        );
       }).toList();
 
       // Return formatted result
