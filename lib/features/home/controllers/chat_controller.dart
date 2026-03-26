@@ -34,6 +34,11 @@ class ChatController extends ChangeNotifier {
   Map<String, int> _versionSelections = <String, int>{};
   Map<String, int> get versionSelections => _versionSelections;
 
+  /// Cached collapsed messages (invalidated on notifyListeners).
+  List<ChatMessage>? _collapsedCache;
+  Map<String, int>? _collapsedIdToIndex;
+  Map<String, List<ChatMessage>>? _groupCache;
+
   /// Conversation IDs that are currently generating (streaming).
   final Set<String> _loadingConversationIds = <String>{};
   Set<String> get loadingConversationIds => _loadingConversationIds;
@@ -351,8 +356,27 @@ class ChatController extends ChangeNotifier {
     return out;
   }
 
-  /// Get messages collapsed by version (convenience method).
-  List<ChatMessage> get collapsedMessages => collapseVersions(_messages);
+  /// Get messages collapsed by version (cached).
+  List<ChatMessage> get collapsedMessages {
+    if (_collapsedCache != null) return _collapsedCache!;
+    _collapsedCache = collapseVersions(_messages);
+    _collapsedIdToIndex = <String, int>{};
+    for (int i = 0; i < _collapsedCache!.length; i++) {
+      _collapsedIdToIndex![_collapsedCache![i].id] = i;
+    }
+    return _collapsedCache!;
+  }
+
+  /// O(1) lookup of a message's index in the collapsed list.
+  int indexOfCollapsedMessageId(String id) {
+    collapsedMessages; // ensure cache is built
+    return _collapsedIdToIndex?[id] ?? -1;
+  }
+
+  /// Get messages grouped by groupId (cached).
+  Map<String, List<ChatMessage>> get groupedMessages {
+    return _groupCache ??= groupMessagesByGroup();
+  }
 
   /// Group all messages by their groupId.
   Map<String, List<ChatMessage>> groupMessagesByGroup() {
@@ -363,6 +387,26 @@ class ChatController extends ChangeNotifier {
       byGroup.putIfAbsent(gid, () => <ChatMessage>[]).add(m);
     }
     return byGroup;
+  }
+
+  // ============================================================================
+  // Cache Invalidation
+  // ============================================================================
+
+  /// Invalidate collapsed/grouped caches without firing listeners.
+  ///
+  /// Call this when _messages is mutated externally (e.g. by ChatActions)
+  /// and the caller will fire its own notifyListeners().
+  void invalidateCache() {
+    _collapsedCache = null;
+    _collapsedIdToIndex = null;
+    _groupCache = null;
+  }
+
+  @override
+  void notifyListeners() {
+    invalidateCache();
+    super.notifyListeners();
   }
 
   // ============================================================================

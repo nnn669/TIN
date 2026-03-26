@@ -144,6 +144,7 @@ class HomeViewModel extends ChangeNotifier {
   // ============================================================================
 
   void _onMessagesChanged() {
+    _chatController.invalidateCache();
     notifyListeners();
   }
 
@@ -158,6 +159,7 @@ class HomeViewModel extends ChangeNotifier {
         content: content,
         totalTokens: totalTokens,
       );
+      _chatController.invalidateCache();
       // NOTE: Do NOT call notifyListeners() here!
       // Streaming content updates are now handled by StreamingContentNotifier
       // via ValueListenableBuilder, which only rebuilds the streaming message widget.

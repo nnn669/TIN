@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:scrollview_observer/scrollview_observer.dart';
 
 import '../../../core/models/chat_message.dart';
-import '../../../core/models/conversation.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -59,16 +59,18 @@ class TranslationUiState {
 
 /// Widget that displays the chat message list.
 ///
-/// This widget extracts the ListView.builder logic from HomePageState
-/// to reduce coupling and improve maintainability.
+/// Accepts pre-collapsed messages and pre-computed byGroup from the controller
+/// to avoid redundant computation on every build. Wraps the ListView with
+/// ListViewObserver for precise index-based scroll navigation.
 class MessageListView extends StatelessWidget {
   const MessageListView({
     super.key,
     required this.scrollController,
+    required this.observerController,
     required this.messages,
+    required this.byGroup,
     required this.versionSelections,
-    required this.currentConversation,
-    required this.messageKeys,
+    this.truncCollapsedIndex = -1,
     required this.reasoning,
     required this.reasoningSegments,
     required this.toolParts,
@@ -99,10 +101,20 @@ class MessageListView extends StatelessWidget {
   });
 
   final ScrollController scrollController;
+  final ListObserverController observerController;
+
+  /// Pre-collapsed messages (from ChatController.collapsedMessages).
   final List<ChatMessage> messages;
+
+  /// All messages grouped by groupId (from ChatController.groupedMessages).
+  final Map<String, List<ChatMessage>> byGroup;
+
+  /// Selected version per message group (for version navigation controls).
   final Map<String, int> versionSelections;
-  final Conversation? currentConversation;
-  final Map<String, GlobalKey> messageKeys;
+
+  /// Pre-computed truncate index in collapsed message space (-1 = none).
+  final int truncCollapsedIndex;
+
   final Map<String, stream_ctrl.ReasoningData> reasoning;
   final Map<String, List<stream_ctrl.ReasoningSegmentData>> reasoningSegments;
   final Map<String, List<ToolUIPart>> toolParts;
@@ -143,45 +155,6 @@ class MessageListView extends StatelessWidget {
   onToggleReasoningSegment;
   final Widget Function()? buildPinnedStreamingIndicator;
 
-  /// Collapse message versions to show only selected version per group.
-  List<ChatMessage> _collapseVersions(List<ChatMessage> items) {
-    final Map<String, List<ChatMessage>> byGroup =
-        <String, List<ChatMessage>>{};
-    final List<String> order = <String>[];
-    for (final m in items) {
-      final gid = (m.groupId ?? m.id);
-      if (!byGroup.containsKey(gid)) {
-        byGroup[gid] = <ChatMessage>[];
-        order.add(gid);
-      }
-      byGroup[gid]!.add(m);
-    }
-    for (final e in byGroup.entries) {
-      e.value.sort((a, b) => a.version.compareTo(b.version));
-    }
-    final out = <ChatMessage>[];
-    for (final gid in order) {
-      final vers = byGroup[gid]!;
-      final sel = versionSelections[gid];
-      final idx = (sel != null && sel >= 0 && sel < vers.length)
-          ? sel
-          : (vers.length - 1);
-      out.add(vers[idx]);
-    }
-    return out;
-  }
-
-  /// Group messages by their group ID for version navigation.
-  Map<String, List<ChatMessage>> _groupMessages(List<ChatMessage> items) {
-    final Map<String, List<ChatMessage>> byGroup =
-        <String, List<ChatMessage>>{};
-    for (final m in items) {
-      final gid = (m.groupId ?? m.id);
-      byGroup.putIfAbsent(gid, () => <ChatMessage>[]).add(m);
-    }
-    return byGroup;
-  }
-
   /// Build the context divider widget shown at truncate position.
   Widget _buildContextDivider(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -217,29 +190,8 @@ class MessageListView extends StatelessWidget {
     );
   }
 
-  GlobalKey _keyForMessage(String id) =>
-      messageKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg:$id'));
-
   @override
   Widget build(BuildContext context) {
-    // Stable snapshot for this build (collapse versions)
-    final collapsedMessages = _collapseVersions(messages);
-    final byGroup = _groupMessages(messages);
-
-    // Map persisted truncateIndex (raw message count) to collapsed index
-    final int truncRaw = currentConversation?.truncateIndex ?? -1;
-    int truncCollapsed = -1;
-    if (truncRaw > 0) {
-      final seen = <String>{};
-      final int limit = truncRaw < messages.length ? truncRaw : messages.length;
-      int count = 0;
-      for (int i = 0; i < limit; i++) {
-        final gid0 = (messages[i].groupId ?? messages[i].id);
-        if (seen.add(gid0)) count++;
-      }
-      truncCollapsed = count - 1;
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPad =
@@ -257,26 +209,28 @@ class MessageListView extends StatelessWidget {
                 horizontalPad,
                 isPinnedIndicatorActive ? 28 : 16,
               ),
-              itemCount: collapsedMessages.length,
+              itemCount: messages.length,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               itemBuilder: (context, index) {
-                if (index < 0 || index >= collapsedMessages.length) {
+                if (index < 0 || index >= messages.length) {
                   return const SizedBox.shrink();
                 }
                 return _buildMessageItem(
                   context,
                   index: index,
-                  messages: collapsedMessages,
-                  byGroup: byGroup,
-                  truncCollapsed: truncCollapsed,
                   isProcessingFiles: isProcessing,
                 );
               },
             );
 
+            final observedList = ListViewObserver(
+              controller: observerController,
+              child: list,
+            );
+
             return Stack(
               children: [
-                list,
+                observedList,
                 if (isPinnedIndicatorActive &&
                     buildPinnedStreamingIndicator != null)
                   buildPinnedStreamingIndicator!(),
@@ -291,9 +245,6 @@ class MessageListView extends StatelessWidget {
   Widget _buildMessageItem(
     BuildContext context, {
     required int index,
-    required List<ChatMessage> messages,
-    required Map<String, List<ChatMessage>> byGroup,
-    required int truncCollapsed,
     required bool isProcessingFiles,
   }) {
     final message = messages[index];
@@ -303,7 +254,8 @@ class MessageListView extends StatelessWidget {
     final assistant = context.watch<AssistantProvider>().currentAssistant;
     final useAssistAvatar = assistant?.useAssistantAvatar == true;
     final useAssistName = assistant?.useAssistantName == true;
-    final showDivider = truncCollapsed >= 0 && index == truncCollapsed;
+    final showDivider =
+        truncCollapsedIndex >= 0 && index == truncCollapsedIndex;
     final gid = (message.groupId ?? message.id);
     final vers = (byGroup[gid] ?? const <ChatMessage>[]).toList()
       ..sort((a, b) => a.version.compareTo(b.version));
@@ -321,7 +273,7 @@ class MessageListView extends StatelessWidget {
         streamingContentNotifier!.hasNotifier(message.id);
 
     final messageColumn = Column(
-      key: _keyForMessage(message.id),
+      key: ValueKey(message.id),
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
@@ -359,8 +311,6 @@ class MessageListView extends StatelessWidget {
                               context,
                               message: message,
                               index: index,
-                              messages: messages,
-                              byGroup: byGroup,
                               r: r,
                               t: t,
                               useAssistAvatar: useAssistAvatar,
@@ -375,8 +325,6 @@ class MessageListView extends StatelessWidget {
                               context,
                               message: message,
                               index: index,
-                              messages: messages,
-                              byGroup: byGroup,
                               r: r,
                               t: t,
                               useAssistAvatar: useAssistAvatar,
@@ -455,8 +403,6 @@ class MessageListView extends StatelessWidget {
     BuildContext context, {
     required ChatMessage message,
     required int index,
-    required List<ChatMessage> messages,
-    required Map<String, List<ChatMessage>> byGroup,
     required stream_ctrl.ReasoningData? r,
     required TranslationUiState? t,
     required bool useAssistAvatar,
@@ -489,8 +435,6 @@ class MessageListView extends StatelessWidget {
         stream_ctrl.ReasoningData? streamingReasoning = r;
         if (data.reasoningText != null && data.reasoningText!.isNotEmpty) {
           if (r != null) {
-            // Update the existing ReasoningData object's text fields
-            // but preserve the expanded state that user may have toggled
             r.text = data.reasoningText!;
             r.startAt = data.reasoningStartAt;
             if (data.reasoningFinishedAt != null) {
@@ -498,7 +442,6 @@ class MessageListView extends StatelessWidget {
             }
             streamingReasoning = r;
           } else {
-            // No existing reasoning data, create new one
             streamingReasoning = stream_ctrl.ReasoningData()
               ..text = data.reasoningText!
               ..startAt = data.reasoningStartAt
@@ -513,8 +456,6 @@ class MessageListView extends StatelessWidget {
             context,
             message: streamingMessage,
             index: index,
-            messages: messages,
-            byGroup: byGroup,
             r: streamingReasoning,
             t: t,
             useAssistAvatar: useAssistAvatar,
@@ -535,8 +476,6 @@ class MessageListView extends StatelessWidget {
     BuildContext context, {
     required ChatMessage message,
     required int index,
-    required List<ChatMessage> messages,
-    required Map<String, List<ChatMessage>> byGroup,
     required stream_ctrl.ReasoningData? r,
     required TranslationUiState? t,
     required bool useAssistAvatar,

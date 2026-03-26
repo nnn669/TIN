@@ -722,6 +722,23 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  /// Map persisted truncateIndex (raw message count) to collapsed index.
+  int _computeTruncCollapsedIndex() {
+    final int truncRaw = _controller.currentConversation?.truncateIndex ?? -1;
+    if (truncRaw <= 0) return -1;
+    final rawMessages = _controller.messages;
+    final seen = <String>{};
+    final int limit = truncRaw < rawMessages.length
+        ? truncRaw
+        : rawMessages.length;
+    int count = 0;
+    for (int i = 0; i < limit; i++) {
+      final gid = (rawMessages[i].groupId ?? rawMessages[i].id);
+      if (seen.add(gid)) count++;
+    }
+    return count - 1;
+  }
+
   Widget _buildMessageListView(
     BuildContext context, {
     required EdgeInsetsGeometry dividerPadding,
@@ -731,10 +748,11 @@ class _HomePageState extends State<HomePage>
       child: MessageListView(
         isProcessingFiles: _controller.isProcessingFiles,
         scrollController: _scrollController,
-        messages: _controller.messages,
+        observerController: _controller.scrollCtrl.observerController,
+        messages: _controller.chatController.collapsedMessages,
+        byGroup: _controller.chatController.groupedMessages,
         versionSelections: _controller.versionSelections,
-        currentConversation: _controller.currentConversation,
-        messageKeys: _controller.messageKeys,
+        truncCollapsedIndex: _computeTruncCollapsedIndex(),
         reasoning: _controller.reasoning,
         reasoningSegments: _controller.reasoningSegments,
         toolParts: _controller.toolParts,

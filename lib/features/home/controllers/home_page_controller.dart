@@ -125,8 +125,7 @@ class HomePageController extends ChangeNotifier {
   final Map<String, TranslationData> _translations =
       <String, TranslationData>{};
 
-  // Message widget keys for navigation
-  final Map<String, GlobalKey> _messageKeys = <String, GlobalKey>{};
+  // Note: GlobalKey-based message navigation removed; using ListObserverController instead.
 
   // Selection mode
   bool _selecting = false;
@@ -181,7 +180,7 @@ class HomePageController extends ChangeNotifier {
   AnimationController get convoFadeController => _convoFadeController;
 
   Map<String, TranslationData> get translations => _translations;
-  Map<String, GlobalKey> get messageKeys => _messageKeys;
+  ChatController get chatController => _chatController;
   bool get selecting => _selecting;
   Set<String> get selectedItems => _selectedItems;
   int get selectedCount => _selectedItems.length;
@@ -495,7 +494,7 @@ class HomePageController extends ChangeNotifier {
   }) async {
     await switchConversationAnimated(conversationId);
     // Wait one extra frame so the new conversation's message widgets have
-    // had a chance to build and register their GlobalKeys in _messageKeys.
+    // had a chance to build for the observer controller.
     try {
       await WidgetsBinding.instance.endOfFrame;
     } catch (_) {}
@@ -625,6 +624,7 @@ class HomePageController extends ChangeNotifier {
     }
 
     await _viewModel.switchConversation(id);
+    _scrollCtrl.clearObserverCache();
     notifyListeners();
     try {
       await WidgetsBinding.instance.endOfFrame;
@@ -653,6 +653,7 @@ class HomePageController extends ChangeNotifier {
       } catch (_) {}
     }
     await _createNewConversation();
+    _scrollCtrl.clearObserverCache();
     if (!isDesktopPlatform) {
       try {
         await _convoFadeController.forward();
@@ -895,7 +896,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   void selectAll() {
-    final collapsed = collapseVersions(messages);
+    final collapsed = _chatController.collapsedMessages;
     for (final m in collapsed) {
       if (m.role == 'user' || m.role == 'assistant') {
         _selectedItems.add(m.id);
@@ -905,7 +906,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   void toggleSelectAll() {
-    final collapsed = collapseVersions(messages);
+    final collapsed = _chatController.collapsedMessages;
     final selectable = collapsed
         .where((m) => m.role == 'user' || m.role == 'assistant')
         .toList();
@@ -925,7 +926,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   void invertSelection() {
-    final collapsed = collapseVersions(messages);
+    final collapsed = _chatController.collapsedMessages;
     for (final m in collapsed) {
       if (m.role != 'user' && m.role != 'assistant') continue;
       if (_selectedItems.contains(m.id)) {
@@ -950,7 +951,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   List<ChatMessage> _selectedCollapsedMessages() {
-    final collapsed = collapseVersions(messages);
+    final collapsed = _chatController.collapsedMessages;
     final selected = <ChatMessage>[];
     for (final m in collapsed) {
       if (_selectedItems.contains(m.id)) selected.add(m);
@@ -1042,7 +1043,7 @@ class HomePageController extends ChangeNotifier {
   Future<void> confirmSelection() async {
     final convo = currentConversation;
     if (convo == null) return;
-    final collapsed = collapseVersions(messages);
+    final collapsed = _chatController.collapsedMessages;
     final selected = <ChatMessage>[];
     for (final m in collapsed) {
       if (_selectedItems.contains(m.id)) selected.add(m);
@@ -1324,31 +1325,22 @@ class HomePageController extends ChangeNotifier {
       );
 
   Future<void> scrollToMessageId(String targetId) async {
-    final collapsed = collapseVersions(messages);
-    await _scrollCtrl.scrollToMessageId(
-      targetId: targetId,
-      messages: collapsed,
-      messageKeys: _messageKeys,
-      getViewportBounds: _getViewportBounds,
-      getViewHeight: () => MediaQuery.sizeOf(_context).height,
-    );
+    final index = _chatController.indexOfCollapsedMessageId(targetId);
+    if (index < 0) return;
+    await _scrollCtrl.scrollToMessageId(targetId: targetId, targetIndex: index);
   }
 
   Future<void> jumpToPreviousQuestion() async {
-    final collapsed = collapseVersions(messages);
     await _scrollCtrl.jumpToPreviousQuestion(
-      messages: collapsed,
-      messageKeys: _messageKeys,
-      getViewportBounds: _getViewportBounds,
+      messages: _chatController.collapsedMessages,
+      indexOfId: (id) => _chatController.indexOfCollapsedMessageId(id),
     );
   }
 
   Future<void> jumpToNextQuestion() async {
-    final collapsed = collapseVersions(messages);
     await _scrollCtrl.jumpToNextQuestion(
-      messages: collapsed,
-      messageKeys: _messageKeys,
-      getViewportBounds: _getViewportBounds,
+      messages: _chatController.collapsedMessages,
+      indexOfId: (id) => _chatController.indexOfCollapsedMessageId(id),
     );
   }
 
@@ -1454,14 +1446,7 @@ class HomePageController extends ChangeNotifier {
   void _scrollToBottomSoon({bool animate = true}) =>
       _scrollCtrl.scrollToBottomSoon(animate: animate);
 
-  (double, double) _getViewportBounds() {
-    final size = MediaQuery.sizeOf(_context);
-    final padding = MediaQuery.paddingOf(_context);
-    final double listTop = kToolbarHeight + padding.top;
-    final double listBottom =
-        size.height - padding.bottom - _inputBarHeight - 8;
-    return (listTop, listBottom);
-  }
+  // _getViewportBounds removed: ListObserverController handles visibility.
 
   void _restoreMessageUiState() {
     for (int i = 0; i < messages.length; i++) {
