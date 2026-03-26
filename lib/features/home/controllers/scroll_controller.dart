@@ -3,10 +3,71 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:scrollview_observer/scrollview_observer.dart';
 
+// ============================================================================
+// Auto-follow ScrollController / ScrollPosition
+// ============================================================================
+
+/// ScrollController whose positions auto-pin to maxScrollExtent during layout.
+///
+/// When [shouldAutoFollow] returns true, the created [ScrollPosition] corrects
+/// its pixel value to maxScrollExtent inside [applyContentDimensions] — i.e.
+/// BEFORE paint — so there is zero visual lag between content growth and scroll
+/// position update. This eliminates the 1-frame flicker that post-frame
+/// `jumpTo(max)` cannot avoid.
+class ChatAutoFollowScrollController extends ScrollController {
+  /// Callback checked during layout to decide whether to auto-follow bottom.
+  bool Function() shouldAutoFollow = () => false;
+
+  @override
+  ScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) {
+    return _AutoFollowScrollPosition(
+      physics: physics,
+      context: context,
+      oldPosition: oldPosition,
+      controller: this,
+    );
+  }
+}
+
+class _AutoFollowScrollPosition extends ScrollPositionWithSingleContext {
+  _AutoFollowScrollPosition({
+    required super.physics,
+    required super.context,
+    super.oldPosition,
+    required this.controller,
+  });
+
+  final ChatAutoFollowScrollController controller;
+
+  @override
+  bool applyContentDimensions(double minScrollExtent, double maxScrollExtent) {
+    final result = super.applyContentDimensions(
+      minScrollExtent,
+      maxScrollExtent,
+    );
+    if (controller.shouldAutoFollow()) {
+      final gap = this.maxScrollExtent - pixels;
+      if (gap > 0.5) {
+        correctPixels(this.maxScrollExtent);
+        return false; // Force viewport re-layout with corrected position
+      }
+    }
+    return result;
+  }
+}
+
+// ============================================================================
+// ChatScrollController
+// ============================================================================
+
 /// Controller for managing scroll behavior in the chat home page.
 ///
 /// This controller handles:
-/// - Auto-scroll to bottom during streaming
+/// - Auto-scroll to bottom during streaming (zero-lag via custom ScrollPosition)
 /// - Jump to previous question navigation
 /// - Scroll to specific message by ID (via ListObserverController)
 /// - Scroll state monitoring (user scrolling detection)
@@ -24,6 +85,12 @@ class ChatScrollController {
     _scrollController.addListener(_onScrollControllerChanged);
     _observerController = ListObserverController(controller: scrollController)
       ..cacheJumpIndexOffset = false;
+
+    // Wire auto-follow callback for zero-lag bottom pinning
+    if (scrollController is ChatAutoFollowScrollController) {
+      scrollController.shouldAutoFollow = () =>
+          _autoStickToBottom && !_isUserScrolling;
+    }
   }
 
   final ScrollController _scrollController;
@@ -61,10 +128,8 @@ class ChatScrollController {
   /// Timer for detecting end of user scroll.
   Timer? _userScrollTimer;
 
-  /// Scheduling state for batched auto-scroll.
+  /// Scheduling state for batched auto-scroll (used by explicit scroll-to-bottom).
   bool _autoScrollScheduled = false;
-  bool _autoScrollForceNext = false;
-  bool _autoScrollAnimateNext = true;
 
   /// Anchor for chained "jump to previous question" navigation.
   String? _lastJumpUserMessageId;
@@ -208,7 +273,7 @@ class ChatScrollController {
   /// [animate] - Whether to animate the scroll (default: true).
   void scrollToBottom({bool animate = true}) {
     _autoStickToBottom = true;
-    _scheduleAutoScrollToBottom(force: true, animate: animate);
+    _scheduleExplicitScrollToBottom(animate: animate);
   }
 
   /// Force scroll to bottom (used when user explicitly clicks the button).
@@ -244,55 +309,48 @@ class ChatScrollController {
     );
   }
 
-  /// Auto-scroll to bottom if conditions are met.
+  /// Auto-scroll to bottom if conditions are met (called from onStreamTick).
+  ///
+  /// With [ChatAutoFollowScrollController], the custom [ScrollPosition] handles
+  /// bottom-pinning during layout automatically. This method is kept as a
+  /// lightweight safety-net for edge cases (e.g. plain ScrollController).
   void autoScrollToBottomIfNeeded() {
     final enabled = _getAutoScrollEnabled();
     if (!enabled && !_autoStickToBottom) return;
-    _scheduleAutoScrollToBottom(force: false);
+    // With the custom ScrollPosition, bottom-pinning happens inside
+    // applyContentDimensions (during layout, before paint). No post-frame
+    // callback needed for the streaming path.
+    // Only schedule an explicit jump as fallback for plain ScrollControllers.
+    if (_scrollController is! ChatAutoFollowScrollController) {
+      _scheduleExplicitScrollToBottom(animate: false);
+    }
   }
 
-  /// Schedule an auto-scroll to bottom (batched via post-frame callback).
-  void _scheduleAutoScrollToBottom({required bool force, bool animate = true}) {
-    if (!force) {
-      final enabled = _getAutoScrollEnabled();
-      if (!enabled && !_autoStickToBottom) return;
-    }
-    _autoScrollForceNext = _autoScrollForceNext || force;
-    _autoScrollAnimateNext = _autoScrollAnimateNext && animate;
+  /// Schedule an explicit scroll to bottom (batched via post-frame callback).
+  ///
+  /// Used for user-triggered "go to bottom" and as fallback for streaming
+  /// auto-scroll when the custom [ScrollPosition] is not available.
+  void _scheduleExplicitScrollToBottom({bool animate = true}) {
     if (_autoScrollScheduled) return;
     _autoScrollScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _autoScrollScheduled = false;
-      final forceNow = _autoScrollForceNext;
-      final animateNow = _autoScrollAnimateNext;
-      _autoScrollForceNext = false;
-      _autoScrollAnimateNext = true;
-      await _animateToBottom(force: forceNow, animate: animateNow);
+      await _animateToBottom(animate: animate);
     });
   }
 
   /// Animate or jump to the bottom of the scroll view.
   ///
-  /// Optimized for streaming: uses jumpTo when close to bottom (< 300px)
-  /// to avoid animation flickering from rapid animateTo calls. Content growth
-  /// provides the visual scrolling effect naturally.
-  /// Uses animateTo only for explicit user-triggered "scroll to bottom".
-  Future<void> _animateToBottom({
-    required bool force,
-    bool animate = true,
-  }) async {
+  /// Used for explicit scroll-to-bottom requests (user-triggered button,
+  /// conversation switch, etc.). Streaming auto-scroll is handled by the
+  /// custom [ScrollPosition] instead.
+  Future<void> _animateToBottom({bool animate = true}) async {
     try {
       if (!_scrollController.hasClients) return;
-      if (!force) {
-        if (_isUserScrolling) return;
-        if (!_autoStickToBottom && !isNearBottom()) return;
-      }
 
       // Prevent using controller while it is still attached to old/new list
       if (_scrollController.positions.length != 1) {
-        Future.microtask(
-          () => _animateToBottom(force: force, animate: animate),
-        );
+        Future.microtask(() => _animateToBottom(animate: animate));
         return;
       }
       final pos = _scrollController.position;
@@ -303,12 +361,7 @@ class ChatScrollController {
         return;
       }
 
-      // Streaming path: distance < 300px → jumpTo for smooth content growth
-      // User-triggered path: force + animate → animateTo for smooth navigation
-      // No-animate path: jumpTo (conversation switch, etc.)
-      if (!animate || (!force && distance < 300)) {
-        pos.jumpTo(max);
-      } else {
+      if (animate) {
         final durationMs = distance < 500
             ? 250
             : distance < 2000
@@ -319,6 +372,8 @@ class ChatScrollController {
           duration: Duration(milliseconds: durationMs),
           curve: Curves.easeOutCubic,
         );
+      } else {
+        pos.jumpTo(max);
       }
 
       _updateJumpToBottomVisibility(false);
