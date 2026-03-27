@@ -2372,8 +2372,15 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               }
               currentInput.addAll(followUpOutputs);
 
-              // Iteratively request until no more tool calls
-              for (int round = 0; round < 3; round++) {
+              // Iteratively request until the model stops issuing tool calls,
+              // consistent with how Claude, Gemini and OpenAI Chat Completions
+              // providers handle the tool-call loop (while-true until done).
+              // Guard: break if the exact same tool-call set repeats 3 times
+              // consecutively, which indicates the model is stuck in a loop.
+              const int maxConsecutiveDupes = 3;
+              String? lastToolSignature;
+              int consecutiveDupeCount = 0;
+              while (true) {
                 final body2 = <String, dynamic>{
                   'model': upstreamModelId,
                   'input': currentInput,
@@ -2560,10 +2567,30 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                   return;
                 }
 
+                // Detect consecutive duplicate tool-call patterns
+                final sorted2 = respCalls2.keys.toList()..sort();
+                final sigParts = <String>[];
+                for (final idx2 in sorted2) {
+                  final m2 = respCalls2[idx2]!;
+                  sigParts.add(
+                    '${m2['name'] ?? ''}:${m2['args'] ?? ''}',
+                  );
+                }
+                final currentSig = sigParts.join('|');
+                if (currentSig == lastToolSignature) {
+                  consecutiveDupeCount += 1;
+                  if (consecutiveDupeCount >= maxConsecutiveDupes) {
+                    // Break out of loop – model is stuck repeating the same calls
+                    break;
+                  }
+                } else {
+                  lastToolSignature = currentSig;
+                  consecutiveDupeCount = 1;
+                }
+
                 // Execute next round of tool calls
                 final callInfos2 = <ToolCallInfo>[];
                 final msgs2 = <Map<String, dynamic>>[];
-                final sorted2 = respCalls2.keys.toList()..sort();
                 for (final idx2 in sorted2) {
                   final m2 = respCalls2[idx2]!;
                   final callId2 = (m2['call_id'] ?? '').toString();
