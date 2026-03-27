@@ -49,7 +49,13 @@ class _AutoFollowScrollPosition extends ScrollPositionWithSingleContext {
       minScrollExtent,
       maxScrollExtent,
     );
-    if (controller.shouldAutoFollow()) {
+    // Also guard on userScrollDirection here in the layout phase, because it
+    // updates immediately via the scroll activity — earlier than the scroll-
+    // controller listener that sets _isUserScrolling.  Without this check,
+    // correctPixels would override the user's drag for one frame, causing a
+    // "stuck / can't scroll up" feeling.
+    if (controller.shouldAutoFollow() &&
+        userScrollDirection == ScrollDirection.idle) {
       final gap = this.maxScrollExtent - pixels;
       if (gap > 0.5) {
         correctPixels(this.maxScrollExtent);
@@ -220,8 +226,14 @@ class ChatScrollController {
       final atBottom = isNearBottom(24);
       if (!atBottom) {
         _autoStickToBottom = false;
-      } else if (!_isUserScrolling &&
-          (autoScrollEnabled || _autoStickToBottom)) {
+      } else if (_isUserScrolling) {
+        // User actively scrolled back to bottom → re-engage auto-follow
+        // immediately so streaming content keeps pinning without waiting
+        // for the idle timer.
+        _isUserScrolling = false;
+        _userScrollTimer?.cancel();
+        _autoStickToBottom = true;
+      } else if (autoScrollEnabled || _autoStickToBottom) {
         _autoStickToBottom = true;
       }
       final shouldShow = !atBottom;
