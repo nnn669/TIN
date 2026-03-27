@@ -1601,6 +1601,18 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 ),
                               );
                             }
+
+                            final media = MediaQuery.maybeOf(context);
+                            final bool reduceMotion =
+                                (media?.disableAnimations ?? false) ||
+                                (media?.accessibleNavigation ?? false);
+                            assistantContent = _StreamingAssistantMessageMotion(
+                              enabled:
+                                  widget.message.isStreaming &&
+                                  !reduceMotion &&
+                                  visualContent.isNotEmpty,
+                              child: assistantContent,
+                            );
                             return RepaintBoundary(
                               child: SelectionArea(
                                 key: ValueKey('assistant_${widget.message.id}'),
@@ -2654,6 +2666,34 @@ class _LoadingIndicatorState extends State<LoadingIndicator>
           );
         },
       ),
+    );
+  }
+}
+
+/// Streaming visual wrapper for assistant message content.
+///
+/// Goals:
+/// - Make streaming output feel less "chunky" by smoothing size growth.
+/// - Respect reduce-motion settings.
+class _StreamingAssistantMessageMotion extends StatelessWidget {
+  const _StreamingAssistantMessageMotion({
+    required this.enabled,
+    required this.child,
+  });
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topLeft,
+      clipBehavior: Clip.hardEdge,
+      child: child,
     );
   }
 }
