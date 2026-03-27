@@ -279,7 +279,7 @@ class HomePageController extends ChangeNotifier {
     _ocrService = OcrService();
     _translationService = TranslationService(
       chatService: _chatService,
-      contextProvider: _context,
+      getContext: () => _scaffoldKey.currentContext ?? _context,
     );
     _fileUploadService = FileUploadService(
       getContext: () => _context,
@@ -761,7 +761,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   Future<void> translateMessage(ChatMessage message) async {
-    final ctx = _context;
+    final ctx = _scaffoldKey.currentContext ?? _context;
     final l10n = AppLocalizations.of(ctx)!;
 
     final result = await _translationService.translateMessage(
@@ -774,6 +774,9 @@ class HomePageController extends ChangeNotifier {
         if (index != -1) {
           messages[index] = loadingMessage;
         }
+        // Messages are mutated externally; invalidate ChatController caches so
+        // collapsed/grouped views reflect updates immediately.
+        _chatController.invalidateCache();
         _translations[message.id] = TranslationData();
         notifyListeners();
       },
@@ -783,6 +786,7 @@ class HomePageController extends ChangeNotifier {
         if (index != -1) {
           messages[index] = updatingMessage;
         }
+        _chatController.invalidateCache();
         notifyListeners();
       },
       onTranslationCleared: () {
@@ -791,6 +795,7 @@ class HomePageController extends ChangeNotifier {
         if (index != -1) {
           messages[index] = clearedMessage;
         }
+        _chatController.invalidateCache();
         _translations.remove(message.id);
         notifyListeners();
       },

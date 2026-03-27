@@ -1957,6 +1957,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                           child: Center(
                             child: GestureDetector(
                               key: _translateBtnKey2,
+                              behavior: HitTestBehavior.opaque,
                               onTapDown: (d) {
                                 final isDesktop =
                                     defaultTargetPlatform ==

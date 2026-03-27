@@ -48,11 +48,11 @@ class TranslationResult {
 class TranslationService {
   TranslationService({
     required this.chatService,
-    required this.contextProvider,
-  });
+    required BuildContext Function() getContext,
+  }) : _getContext = getContext;
 
   final ChatService chatService;
-  final BuildContext contextProvider;
+  final BuildContext Function() _getContext;
 
   /// 翻译消息
   ///
@@ -68,14 +68,13 @@ class TranslationService {
     required void Function(String translation) onTranslationUpdate,
     required void Function() onTranslationCleared,
   }) async {
-    // This service holds a BuildContext; avoid using it across async gaps.
-    final settings = contextProvider.read<SettingsProvider>();
-    final assistant = contextProvider
-        .read<AssistantProvider>()
-        .currentAssistant;
+    // Resolve a fresh context per call to avoid holding on to a stale BuildContext.
+    final context = _getContext();
+    final settings = context.read<SettingsProvider>();
+    final assistant = context.read<AssistantProvider>().currentAssistant;
 
     // 显示语言选择器
-    final language = await showLanguageSelector(contextProvider);
+    final language = await showLanguageSelector(context);
     if (language == null) {
       return TranslationResult(type: TranslationResultType.cancelled);
     }
