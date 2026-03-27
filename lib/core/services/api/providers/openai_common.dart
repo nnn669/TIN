@@ -493,12 +493,15 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
 
   final effort = _openAIEffortForBudget(thinkingBudget, upstreamModelId);
   final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase() ?? '';
+  final providerId = config.id.toLowerCase();
   final modelLower = upstreamModelId.toLowerCase();
   final bool isAzureOpenAI = host.contains('openai.azure.com');
   final bool isMimoHost = host.contains('xiaomimimo');
   final bool isMimoModel =
       modelLower.startsWith('mimo-') || modelLower.contains('/mimo-');
   final bool isMimo = isMimoHost || isMimoModel;
+  final bool isSiliconFlow =
+      providerId.contains('siliconflow') || host.contains('siliconflow');
   final bool useLongCatOmniPayload = _shouldUseLongCatOmniPayload(
     config,
     upstreamModelId,
@@ -1062,16 +1065,23 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
         body.remove('thinking_mode');
       }
       body.remove('reasoning_effort');
-    } else if (host.contains('siliconflow')) {
-      // SiliconFlow: OFF -> enable_thinking: false; otherwise omit
+    } else if (isSiliconFlow) {
+      // SiliconFlow: OFF -> enable_thinking: false; ON -> pass thinking_budget when provided
       if (isReasoning) {
         if (off) {
           body['enable_thinking'] = false;
+          body.remove('thinking_budget');
         } else {
           body.remove('enable_thinking');
+          if (thinkingBudget != null && thinkingBudget > 0) {
+            body['thinking_budget'] = thinkingBudget;
+          } else {
+            body.remove('thinking_budget');
+          }
         }
       } else {
         body.remove('enable_thinking');
+        body.remove('thinking_budget');
       }
       body.remove('reasoning_effort');
     } else if (host.contains('deepseek') ||
@@ -1665,15 +1675,22 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 body2.remove('thinking_mode');
               }
               body2.remove('reasoning_effort');
-            } else if (host.contains('siliconflow')) {
+            } else if (isSiliconFlow) {
               if (isReasoning) {
                 if (off) {
                   body2['enable_thinking'] = false;
+                  body2.remove('thinking_budget');
                 } else {
                   body2.remove('enable_thinking');
+                  if (thinkingBudget != null && thinkingBudget > 0) {
+                    body2['thinking_budget'] = thinkingBudget;
+                  } else {
+                    body2.remove('thinking_budget');
+                  }
                 }
               } else {
                 body2.remove('enable_thinking');
+                body2.remove('thinking_budget');
               }
               body2.remove('reasoning_effort');
             } else if (host.contains('deepseek') ||
@@ -3090,15 +3107,22 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 body2.remove('thinking_mode');
               }
               body2.remove('reasoning_effort');
-            } else if (host.contains('siliconflow')) {
+            } else if (isSiliconFlow) {
               if (isReasoning) {
                 if (off) {
                   body2['enable_thinking'] = false;
+                  body2.remove('thinking_budget');
                 } else {
                   body2.remove('enable_thinking');
+                  if (thinkingBudget != null && thinkingBudget > 0) {
+                    body2['thinking_budget'] = thinkingBudget;
+                  } else {
+                    body2.remove('thinking_budget');
+                  }
                 }
               } else {
                 body2.remove('enable_thinking');
+                body2.remove('thinking_budget');
               }
               body2.remove('reasoning_effort');
             } else if (host.contains('deepseek') ||
@@ -3154,7 +3178,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             );
             final req2 = http.Request('POST', url);
             final headers2 = <String, String>{
-              'Authorization': 'Bearer ${_effectiveApiKey(config)}',
+              'Authorization': 'Bearer ${_apiKeyForRequest(config, modelId)}',
               'Content-Type': 'application/json',
               'Accept': 'text/event-stream',
             };
@@ -3684,15 +3708,22 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     body2.remove('thinking_mode');
                   }
                   body2.remove('reasoning_effort');
-                } else if (host.contains('siliconflow')) {
+                } else if (isSiliconFlow) {
                   if (isReasoning) {
                     if (off) {
                       body2['enable_thinking'] = false;
+                      body2.remove('thinking_budget');
                     } else {
                       body2.remove('enable_thinking');
+                      if (thinkingBudget != null && thinkingBudget > 0) {
+                        body2['thinking_budget'] = thinkingBudget;
+                      } else {
+                        body2.remove('thinking_budget');
+                      }
                     }
                   } else {
                     body2.remove('enable_thinking');
+                    body2.remove('thinking_budget');
                   }
                   body2.remove('reasoning_effort');
                 } else if (host.contains('deepseek') ||
@@ -3748,7 +3779,8 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 );
                 final req2 = http.Request('POST', url);
                 final headers2 = <String, String>{
-                  'Authorization': 'Bearer ${_effectiveApiKey(config)}',
+                  'Authorization':
+                      'Bearer ${_apiKeyForRequest(config, modelId)}',
                   'Content-Type': 'application/json',
                   'Accept': 'text/event-stream',
                 };
