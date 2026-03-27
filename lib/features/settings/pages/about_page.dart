@@ -658,10 +658,10 @@ class _AboutPageState extends State<AboutPage> {
                 },
               ),
               _iosDivider(context),
-              _iosNavRow(
+              _iosNavRowSvgLeading(
                 context,
-                icon: Lucide.Github,
-                label: 'GitHub',
+                svgAsset: 'assets/icons/github.svg',
+                label: l10n.aboutPageGithub,
                 onTap: () => _openUrl('https://github.com/Chevey339/kelivo'),
               ),
               _iosDivider(context),
