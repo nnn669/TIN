@@ -80,6 +80,70 @@ void _applyCompatibleResponsesReasoning(
   body['enable_thinking'] = forceThinkingForQwen3Max || !_isOff(thinkingBudget);
 }
 
+bool _isKimiK25Model(String upstreamModelId) {
+  return upstreamModelId.toLowerCase().contains('kimi-k2.5');
+}
+
+bool _isKimiThinkingModel(String upstreamModelId) {
+  final lower = upstreamModelId.toLowerCase();
+  return lower.contains('kimi-k2-thinking') || lower.contains('kimi-k2.5');
+}
+
+void _normalizeMoonshotKimiChatBody(
+  Map<String, dynamic> body, {
+  required String upstreamModelId,
+  required bool isReasoning,
+  int? thinkingBudget,
+}) {
+  if (!_isKimiThinkingModel(upstreamModelId)) return;
+
+  body.remove('reasoning_effort');
+  if (!isReasoning) {
+    body.remove('thinking');
+    return;
+  }
+
+  if (_isKimiK25Model(upstreamModelId)) {
+    body['thinking'] = {
+      'type': _isOff(thinkingBudget) ? 'disabled' : 'enabled',
+    };
+    body.remove('temperature');
+    body.remove('top_p');
+    body.remove('n');
+    body.remove('presence_penalty');
+    body.remove('frequency_penalty');
+    return;
+  }
+
+  body.remove('thinking');
+}
+
+Map<String, dynamic> _buildAssistantToolCallMessage({
+  required List<Map<String, dynamic>> calls,
+  dynamic content,
+  String? reasoningContent,
+  dynamic reasoningDetails,
+}) {
+  final normalizedContent = switch (content) {
+    String value when value.isNotEmpty => value,
+    List<dynamic> value when value.isNotEmpty => value,
+    _ => '\n\n',
+  };
+
+  final msg = <String, dynamic>{
+    'role': 'assistant',
+    'content': normalizedContent,
+    'tool_calls': calls,
+  };
+  if (reasoningContent != null && reasoningContent.isNotEmpty) {
+    msg['reasoning_content'] = reasoningContent;
+  }
+  if (reasoningDetails is List && reasoningDetails.isNotEmpty) {
+    msg['reasoning_details'] = reasoningDetails;
+  }
+  return msg;
+}
+
 String _openAIEffortForBudget(int? budget, String upstreamModelId) {
   final baseEffort = _effortForBudget(budget);
   final requestedEffort =
@@ -443,7 +507,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
       (host.contains('deepseek') ||
           modelLower.contains('deepseek') ||
           isMimo ||
-          modelLower.contains('kimi-k2.5')) &&
+          _isKimiThinkingModel(upstreamModelId)) &&
       isReasoning;
   // OpenRouter reasoning models require preserving `reasoning_details` across tool-calling turns.
   final bool preserveReasoningDetails =
@@ -1028,6 +1092,13 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
         body.remove('reasoning_content');
         body.remove('reasoning_budget');
       }
+    } else if (_isKimiThinkingModel(upstreamModelId)) {
+      _normalizeMoonshotKimiChatBody(
+        body,
+        upstreamModelId: upstreamModelId,
+        isReasoning: isReasoning,
+        thinkingBudget: thinkingBudget,
+      );
     }
   }
 
@@ -1071,6 +1142,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
     body,
     upstreamModelId,
     fallbackEffort: effort,
+  );
+  _normalizeMoonshotKimiChatBody(
+    body,
+    upstreamModelId: upstreamModelId,
+    isReasoning: isReasoning,
+    thinkingBudget: thinkingBudget,
   );
   request.body = jsonEncode(body);
 
@@ -1274,20 +1351,14 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
           for (final m in messages) {
             next.add(_copyChatCompletionMessage(m));
           }
-          final assistantToolCallMsg = <String, dynamic>{
-            'role': 'assistant',
-            'content': '\n\n',
-            'tool_calls': calls,
-          };
-          if (needsReasoningEcho) {
-            assistantToolCallMsg['reasoning_content'] = reasoningForTools;
-          }
-          if (preserveReasoningDetails &&
-              reasoningDetailsForTools is List &&
-              reasoningDetailsForTools.isNotEmpty) {
-            assistantToolCallMsg['reasoning_details'] =
-                reasoningDetailsForTools;
-          }
+          final assistantToolCallMsg = _buildAssistantToolCallMessage(
+            calls: calls,
+            content: msg['content'],
+            reasoningContent: needsReasoningEcho ? reasoningForTools : null,
+            reasoningDetails: preserveReasoningDetails
+                ? reasoningDetailsForTools
+                : null,
+          );
           next.add(assistantToolCallMsg);
           for (final r in results) {
             final id = r['tool_call_id'];
@@ -1383,6 +1454,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
   int approxCompletionChars = 0;
   String reasoningBuffer = '';
   dynamic reasoningDetailsBuffer;
+  String assistantContentBuffer = '';
 
   // Track potential tool calls (OpenAI Chat Completions)
   final Map<int, Map<String, String>> toolAcc =
@@ -1474,19 +1546,14 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
           for (final m in messages) {
             mm2.add(_copyChatCompletionMessage(m));
           }
-          final assistantToolCallMsg = <String, dynamic>{
-            'role': 'assistant',
-            'content': '\n\n',
-            'tool_calls': calls,
-          };
-          if (needsReasoningEcho) {
-            assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
-          }
-          if (preserveReasoningDetails &&
-              reasoningDetailsBuffer is List &&
-              reasoningDetailsBuffer.isNotEmpty) {
-            assistantToolCallMsg['reasoning_details'] = reasoningDetailsBuffer;
-          }
+          final assistantToolCallMsg = _buildAssistantToolCallMessage(
+            calls: calls,
+            content: assistantContentBuffer,
+            reasoningContent: needsReasoningEcho ? reasoningBuffer : null,
+            reasoningDetails: preserveReasoningDetails
+                ? reasoningDetailsBuffer
+                : null,
+          );
           mm2.add(assistantToolCallMsg);
           for (final r in results) {
             final id = r['tool_call_id'];
@@ -1658,6 +1725,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               body2,
               upstreamModelId,
               fallbackEffort: effort,
+            );
+            _normalizeMoonshotKimiChatBody(
+              body2,
+              upstreamModelId: upstreamModelId,
+              isReasoning: isReasoning,
+              thinkingBudget: thinkingBudget,
             );
 
             final req2 = http.Request('POST', url);
@@ -1947,24 +2020,16 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 );
               }
               // Append for next loop - including any content accumulated in this round
-              final nextAssistantToolCall = <String, dynamic>{
-                'role': 'assistant',
-                'content': '\n\n',
-                'tool_calls': calls2,
-              };
-              if (needsReasoningEcho) {
-                nextAssistantToolCall['reasoning_content'] = reasoningAccum;
-              }
-              if (preserveReasoningDetails &&
-                  reasoningDetailsAccum is List &&
-                  reasoningDetailsAccum.isNotEmpty) {
-                nextAssistantToolCall['reasoning_details'] =
-                    reasoningDetailsAccum;
-              }
+              final nextAssistantToolCall = _buildAssistantToolCallMessage(
+                calls: calls2,
+                content: contentAccum,
+                reasoningContent: needsReasoningEcho ? reasoningAccum : null,
+                reasoningDetails: preserveReasoningDetails
+                    ? reasoningDetailsAccum
+                    : null,
+              );
               currentMessages = [
                 ...currentMessages,
-                if (contentAccum.isNotEmpty)
-                  {'role': 'assistant', 'content': contentAccum},
                 nextAssistantToolCall,
                 for (final r in results2)
                   {
@@ -2825,6 +2890,9 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
         if (content.isNotEmpty || (reasoning?.isNotEmpty ?? false)) {
           final approxTotal =
               approxPromptTokens + approxTokensFromChars(approxCompletionChars);
+          if (content.isNotEmpty) {
+            assistantContentBuffer += content;
+          }
           yield ChatStreamChunk(
             content: content,
             reasoning: reasoning,
@@ -2906,19 +2974,14 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
           for (final m in messages) {
             mm2.add(_copyChatCompletionMessage(m));
           }
-          final assistantToolCallMsg = <String, dynamic>{
-            'role': 'assistant',
-            'content': '\n\n',
-            'tool_calls': calls,
-          };
-          if (needsReasoningEcho) {
-            assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
-          }
-          if (preserveReasoningDetails &&
-              reasoningDetailsBuffer is List &&
-              reasoningDetailsBuffer.isNotEmpty) {
-            assistantToolCallMsg['reasoning_details'] = reasoningDetailsBuffer;
-          }
+          final assistantToolCallMsg = _buildAssistantToolCallMessage(
+            calls: calls,
+            content: assistantContentBuffer,
+            reasoningContent: needsReasoningEcho ? reasoningBuffer : null,
+            reasoningDetails: preserveReasoningDetails
+                ? reasoningDetailsBuffer
+                : null,
+          );
           mm2.add(assistantToolCallMsg);
           for (final r in results) {
             final id = r['tool_call_id'];
@@ -3082,6 +3145,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               body2,
               upstreamModelId,
               fallbackEffort: effort,
+            );
+            _normalizeMoonshotKimiChatBody(
+              body2,
+              upstreamModelId: upstreamModelId,
+              isReasoning: isReasoning,
+              thinkingBudget: thinkingBudget,
             );
             final req2 = http.Request('POST', url);
             final headers2 = <String, String>{
@@ -3390,24 +3459,16 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                   toolResults: resultsInfo2,
                 );
               }
-              final nextAssistantToolCall = <String, dynamic>{
-                'role': 'assistant',
-                'content': '\n\n',
-                'tool_calls': calls2,
-              };
-              if (needsReasoningEcho) {
-                nextAssistantToolCall['reasoning_content'] = reasoningAccum;
-              }
-              if (preserveReasoningDetails &&
-                  reasoningDetailsAccum is List &&
-                  reasoningDetailsAccum.isNotEmpty) {
-                nextAssistantToolCall['reasoning_details'] =
-                    reasoningDetailsAccum;
-              }
+              final nextAssistantToolCall = _buildAssistantToolCallMessage(
+                calls: calls2,
+                content: contentAccum,
+                reasoningContent: needsReasoningEcho ? reasoningAccum : null,
+                reasoningDetails: preserveReasoningDetails
+                    ? reasoningDetailsAccum
+                    : null,
+              );
               currentMessages = [
                 ...currentMessages,
-                if (contentAccum.isNotEmpty)
-                  {'role': 'assistant', 'content': contentAccum},
                 nextAssistantToolCall,
                 for (final r in results2)
                   {
@@ -3514,20 +3575,14 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               for (final m in messages) {
                 mm2.add(_copyChatCompletionMessage(m));
               }
-              final assistantToolCallMsg = <String, dynamic>{
-                'role': 'assistant',
-                'content': '\n\n',
-                'tool_calls': calls,
-              };
-              if (needsReasoningEcho) {
-                assistantToolCallMsg['reasoning_content'] = reasoningBuffer;
-              }
-              if (preserveReasoningDetails &&
-                  reasoningDetailsBuffer is List &&
-                  reasoningDetailsBuffer.isNotEmpty) {
-                assistantToolCallMsg['reasoning_details'] =
-                    reasoningDetailsBuffer;
-              }
+              final assistantToolCallMsg = _buildAssistantToolCallMessage(
+                calls: calls,
+                content: assistantContentBuffer,
+                reasoningContent: needsReasoningEcho ? reasoningBuffer : null,
+                reasoningDetails: preserveReasoningDetails
+                    ? reasoningDetailsBuffer
+                    : null,
+              );
               mm2.add(assistantToolCallMsg);
               for (final r in results) {
                 final id = r['tool_call_id'];
@@ -3684,6 +3739,12 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                   body2,
                   upstreamModelId,
                   fallbackEffort: effort,
+                );
+                _normalizeMoonshotKimiChatBody(
+                  body2,
+                  upstreamModelId: upstreamModelId,
+                  isReasoning: isReasoning,
+                  thinkingBudget: thinkingBudget,
                 );
                 final req2 = http.Request('POST', url);
                 final headers2 = <String, String>{
@@ -3970,24 +4031,18 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                       toolResults: resultsInfo2,
                     );
                   }
-                  final nextAssistantToolCall = <String, dynamic>{
-                    'role': 'assistant',
-                    'content': '\n\n',
-                    'tool_calls': calls2,
-                  };
-                  if (needsReasoningEcho) {
-                    nextAssistantToolCall['reasoning_content'] = reasoningAccum;
-                  }
-                  if (preserveReasoningDetails &&
-                      reasoningDetailsAccum is List &&
-                      reasoningDetailsAccum.isNotEmpty) {
-                    nextAssistantToolCall['reasoning_details'] =
-                        reasoningDetailsAccum;
-                  }
+                  final nextAssistantToolCall = _buildAssistantToolCallMessage(
+                    calls: calls2,
+                    content: contentAccum,
+                    reasoningContent: needsReasoningEcho
+                        ? reasoningAccum
+                        : null,
+                    reasoningDetails: preserveReasoningDetails
+                        ? reasoningDetailsAccum
+                        : null,
+                  );
                   currentMessages = [
                     ...currentMessages,
-                    if (contentAccum.isNotEmpty)
-                      {'role': 'assistant', 'content': contentAccum},
                     nextAssistantToolCall,
                     for (final r in results2)
                       {

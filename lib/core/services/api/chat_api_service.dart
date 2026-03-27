@@ -634,6 +634,13 @@ class ChatApiService {
               body.remove('thinking');
             }
             body.remove('reasoning_effort');
+          } else if (_isKimiThinkingModel(upstreamModelId)) {
+            _normalizeMoonshotKimiChatBody(
+              body,
+              upstreamModelId: upstreamModelId,
+              isReasoning: isReasoning,
+              thinkingBudget: thinkingBudget,
+            );
           }
         }
         // Ensure Responses tools use the flattened schema even if supplied via overrides
@@ -649,6 +656,12 @@ class ChatApiService {
           body,
           upstreamModelId,
           fallbackEffort: effort,
+        );
+        _normalizeMoonshotKimiChatBody(
+          body,
+          upstreamModelId: upstreamModelId,
+          isReasoning: isReasoning,
+          thinkingBudget: thinkingBudget,
         );
         final resp = await client.post(
           url,
