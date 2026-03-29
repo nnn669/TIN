@@ -116,6 +116,7 @@ class HomePageController extends ChangeNotifier {
 
   late AnimationController _convoFadeController;
   late Animation<double> _convoFade;
+  bool _chatControllerReady = false;
 
   // ============================================================================
   // State Fields
@@ -235,6 +236,14 @@ class HomePageController extends ChangeNotifier {
 
   ValueNotifier<bool> get isProcessingFiles => _viewModel.isProcessingFiles;
 
+  @override
+  void notifyListeners() {
+    if (_chatControllerReady) {
+      _chatController.invalidateCache();
+    }
+    super.notifyListeners();
+  }
+
   // ============================================================================
   // Initialization
   // ============================================================================
@@ -266,6 +275,7 @@ class HomePageController extends ChangeNotifier {
   void _initializeControllers() {
     _chatService = _context.read<ChatService>();
     _chatController = ChatController(chatService: _chatService);
+    _chatControllerReady = true;
     _streamController = stream_ctrl.StreamController(
       chatService: _chatService,
       onStateChanged: () => notifyListeners(),
