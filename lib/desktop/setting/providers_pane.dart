@@ -2020,7 +2020,6 @@ class _DesktopProviderDetailPaneState
                   }
                 }
 
-                syncCtrl(nameCtrl, cfgNow.name);
                 syncCtrl(proxyHostCtrl, cfgNow.proxyHost ?? '');
                 syncCtrl(proxyPortCtrl, cfgNow.proxyPort ?? '8080');
                 syncCtrl(proxyUserCtrl, cfgNow.proxyUsername ?? '');
@@ -2260,25 +2259,12 @@ class _DesktopProviderDetailPaneState
                                       ),
                                     );
                                   },
-                                  onChanged: (_) async {
-                                    // Avoid saving during IME composing to prevent glitches with Pinyin input
-                                    if (nameCtrl.value.composing.isValid) {
-                                      return;
-                                    }
-                                    final v = nameCtrl.text.trim();
-                                    final old = spWatch.getProviderConfig(
-                                      widget.providerKey,
-                                      defaultName: widget.displayName,
-                                    );
-                                    await spWatch.setProviderConfig(
-                                      widget.providerKey,
-                                      old.copyWith(
-                                        name: v.isEmpty
-                                            ? widget.displayName
-                                            : v,
-                                      ),
-                                    );
-                                  },
+                                  // onChanged intentionally omitted:
+                                  // Saving on every keystroke triggers
+                                  // Consumer rebuild which recreates the
+                                  // widget tree and steals focus on desktop.
+                                  // Saving is handled by onSubmitted,
+                                  // onEditingComplete and Focus.onFocusChange.
                                 ),
                               ),
                             ),
