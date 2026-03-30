@@ -33,6 +33,7 @@ dependencies:
   logging: ^1.2.0
   
   window_manager: ^0.5.1
+  screen_retriever: ^0.2.0
   tray_manager:
     path: ./dependencies/tray_manager/packages/tray_manager
   desktop_drop: ^0.7.0
