@@ -1463,5 +1463,12 @@
   "worldBookInjectionPositionBottomOfChat": "對話底部",
   "worldBookInjectionPositionAtDepth": "指定深度",
   "worldBookInjectionRoleUser": "使用者",
-  "worldBookInjectionRoleAssistant": "助手"
+  "worldBookInjectionRoleAssistant": "助手",
+  "mcpToolNeedsApproval": "需要審批",
+  "toolApprovalPending": "等待審批",
+  "toolApprovalApprove": "批准",
+  "toolApprovalDeny": "拒絕",
+  "toolApprovalDenyTitle": "拒絕工具調用",
+  "toolApprovalDenyHint": "原因（可選）",
+  "toolApprovalDeniedMessage": "工具調用 \"{toolName}\" 已被使用者拒絕。原因：{reason}"
 }

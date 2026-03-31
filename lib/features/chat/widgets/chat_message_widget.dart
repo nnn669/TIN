@@ -37,6 +37,7 @@ import '../../../shared/widgets/ios_tactile.dart';
 import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
+import '../../home/services/tool_approval_service.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
 
@@ -2874,6 +2875,23 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
     final hasImages = _imagePaths.isNotEmpty;
 
+    // Check if this tool call is pending approval
+    final approvalService = context.watch<ToolApprovalService>();
+    final isPendingApproval = widget.part.loading &&
+        approvalService.pendingRequests.values.any(
+          (req) => req.toolName == widget.part.toolName,
+        );
+    // Find the matching approval request
+    String? pendingToolCallId;
+    if (isPendingApproval) {
+      try {
+        final req = approvalService.pendingRequests.values.firstWhere(
+          (req) => req.toolName == widget.part.toolName,
+        );
+        pendingToolCallId = req.toolCallId;
+      } catch (_) {}
+    }
+
     return IosCardPress(
       borderRadius: BorderRadius.circular(16),
       baseColor: bg,
@@ -2887,7 +2905,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              widget.part.loading
+              widget.part.loading && !isPendingApproval
                   ? SizedBox(
                       width: 18,
                       height: 18,
@@ -2896,33 +2914,48 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                         valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
                       ),
                     )
-                  : SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: Center(
-                        child: Icon(
-                          _iconFor(widget.part.toolName),
-                          size: 18,
-                          color: cs.secondary,
+                  : isPendingApproval
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: Center(
+                            child: Icon(
+                              Lucide.Shield,
+                              size: 18,
+                              color: cs.tertiary,
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: Center(
+                            child: Icon(
+                              _iconFor(widget.part.toolName),
+                              size: 18,
+                              color: cs.secondary,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _titleFor(
-                        context,
-                        widget.part.toolName,
-                        widget.part.arguments,
-                        isResult: !widget.part.loading,
-                      ),
+                      isPendingApproval
+                          ? AppLocalizations.of(context)!
+                                .toolApprovalPending
+                          : _titleFor(
+                              context,
+                              widget.part.toolName,
+                              widget.part.arguments,
+                              isResult: !widget.part.loading,
+                            ),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: cs.secondary,
+                        color: isPendingApproval ? cs.tertiary : cs.secondary,
                       ),
                     ),
                   ],
@@ -2930,6 +2963,30 @@ class _ToolCallItemState extends State<_ToolCallItem> {
               ),
             ],
           ),
+          // Approval buttons
+          if (isPendingApproval && pendingToolCallId != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _ApprovalButton(
+                  label: AppLocalizations.of(context)!.toolApprovalDeny,
+                  color: cs.error,
+                  onTap: () => _showDenyDialog(
+                    context,
+                    approvalService,
+                    pendingToolCallId!,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _ApprovalButton(
+                  label: AppLocalizations.of(context)!.toolApprovalApprove,
+                  color: cs.primary,
+                  onTap: () => approvalService.approve(pendingToolCallId!),
+                ),
+              ],
+            ),
+          ],
           // Show image thumbnails if available
           if (hasImages) ...[
             const SizedBox(height: 10),
@@ -2952,6 +3009,43 @@ class _ToolCallItemState extends State<_ToolCallItem> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showDenyDialog(
+    BuildContext context,
+    ToolApprovalService approvalService,
+    String toolCallId,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final reasonCtrl = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.toolApprovalDenyTitle),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: InputDecoration(
+            hintText: l10n.toolApprovalDenyHint,
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          TextButton(
+            onPressed: () {
+              final reason =
+                  reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim();
+              approvalService.deny(toolCallId, reason);
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.toolApprovalDeny),
+          ),
         ],
       ),
     );
@@ -3325,6 +3419,42 @@ class _ToolCallItemState extends State<_ToolCallItem> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Small tactile button used for tool approval actions.
+class _ApprovalButton extends StatelessWidget {
+  const _ApprovalButton({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
       ),
     );
   }

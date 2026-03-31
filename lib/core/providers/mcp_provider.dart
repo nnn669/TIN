@@ -49,6 +49,8 @@ class McpToolConfig {
   final List<McpParamSpec> params;
   // Raw JSON schema for parameters, if provided by the server
   final Map<String, dynamic>? schema;
+  /// Whether this tool requires user approval before execution.
+  final bool needsApproval;
 
   McpToolConfig({
     required this.enabled,
@@ -56,6 +58,7 @@ class McpToolConfig {
     this.description,
     this.params = const [],
     this.schema,
+    this.needsApproval = false,
   });
 
   McpToolConfig copyWith({
@@ -64,12 +67,14 @@ class McpToolConfig {
     String? description,
     List<McpParamSpec>? params,
     Map<String, dynamic>? schema,
+    bool? needsApproval,
   }) => McpToolConfig(
     enabled: enabled ?? this.enabled,
     name: name ?? this.name,
     description: description ?? this.description,
     params: params ?? this.params,
     schema: schema ?? this.schema,
+    needsApproval: needsApproval ?? this.needsApproval,
   );
 
   Map<String, dynamic> toJson() => {
@@ -78,6 +83,7 @@ class McpToolConfig {
     'description': description,
     'params': params.map((e) => e.toJson()).toList(),
     if (schema != null) 'schema': schema,
+    if (needsApproval) 'needsApproval': true,
   };
 
   factory McpToolConfig.fromJson(Map<String, dynamic> json) => McpToolConfig(
@@ -94,6 +100,7 @@ class McpToolConfig {
     schema: (json['schema'] is Map)
         ? (json['schema'] as Map).cast<String, dynamic>()
         : null,
+    needsApproval: json['needsApproval'] as bool? ?? false,
   );
 }
 
@@ -695,6 +702,37 @@ class McpProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set whether a tool requires user approval before execution.
+  Future<void> setToolNeedsApproval(
+    String serverId,
+    String toolName,
+    bool needsApproval,
+  ) async {
+    final idx = _servers.indexWhere((e) => e.id == serverId);
+    if (idx < 0) return;
+    final server = _servers[idx];
+    final tools = server.tools
+        .map((t) =>
+            t.name == toolName ? t.copyWith(needsApproval: needsApproval) : t)
+        .toList();
+    _servers[idx] = server.copyWith(tools: tools);
+    await _persist();
+    notifyListeners();
+  }
+
+  /// Check if a tool (by name) requires approval across all connected servers.
+  /// Conservative: returns true if ANY connected server marks the tool as needing approval.
+  bool toolNeedsApproval(String toolName) {
+    for (final s in _servers) {
+      if (statusFor(s.id) != McpStatus.connected) continue;
+      if (!s.enabled) continue;
+      for (final t in s.tools) {
+        if (t.name == toolName && t.enabled && t.needsApproval) return true;
+      }
+    }
+    return false;
+  }
+
   Future<void> connect(String id) async {
     final server = _servers.firstWhere(
       (e) => e.id == id,
@@ -1250,6 +1288,7 @@ class McpProvider extends ChangeNotifier {
             description: t.description,
             params: params,
             schema: schemaJson,
+            needsApproval: prior?.needsApproval ?? false,
           ),
         );
       }

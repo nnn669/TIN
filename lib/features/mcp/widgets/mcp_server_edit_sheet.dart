@@ -654,6 +654,45 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet>
                                         ],
                                       ),
                                     ),
+                                    // Approval toggle row
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16,
+                                        right: 16,
+                                        bottom: 4,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              l10n.mcpToolNeedsApproval,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: tool.enabled
+                                                    ? cs.onSurface
+                                                        .withValues(alpha: 0.7)
+                                                    : cs.onSurface
+                                                        .withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                          ),
+                                          IosSwitch(
+                                            value: tool.needsApproval,
+                                            onChanged: tool.enabled
+                                                ? (v) => context
+                                                    .read<McpProvider>()
+                                                    .setToolNeedsApproval(
+                                                      server!.id,
+                                                      tool.name,
+                                                      v,
+                                                    )
+                                                : null,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                   const SizedBox(height: 10),
                                 ],

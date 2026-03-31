@@ -13,6 +13,7 @@ import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import '../services/message_generation_service.dart';
+import '../services/tool_approval_service.dart';
 import 'chat_controller.dart';
 import 'generation_controller.dart';
 import 'home_view_model.dart';
@@ -251,6 +252,11 @@ class ChatActions {
         .read<AssistantProvider>()
         .currentAssistant;
     final assistantId = assistant?.id;
+    // Capture approval service reference before async gap
+    ToolApprovalService? approvalService;
+    try {
+      approvalService = contextProvider.read<ToolApprovalService>();
+    } catch (_) {}
     final modelConfig = messageGenerationService.getModelConfig(
       settings,
       assistant,
@@ -327,6 +333,7 @@ class ChatActions {
             assistantId: assistantId,
             providerKey: providerKey,
             modelId: modelId,
+            approvalService: approvalService,
           );
 
       // Build user image paths
@@ -383,6 +390,11 @@ class ChatActions {
     final assistant = contextProvider
         .read<AssistantProvider>()
         .currentAssistant;
+    // Capture approval service reference before async gap
+    ToolApprovalService? regenApprovalService;
+    try {
+      regenApprovalService = contextProvider.read<ToolApprovalService>();
+    } catch (_) {}
 
     await cancelStreaming(conversation);
 
@@ -491,6 +503,7 @@ class ChatActions {
           assistantId: assistantId,
           providerKey: providerKey,
           modelId: modelId,
+          approvalService: regenApprovalService,
         );
 
     // Build user image paths
@@ -528,6 +541,13 @@ class ChatActions {
   Future<void> cancelStreaming(Conversation? conversation) async {
     final cid = conversation?.id;
     if (cid == null) return;
+
+    // Cancel any pending tool approval requests to prevent deadlock
+    try {
+      contextProvider.read<ToolApprovalService>().cancelAll();
+    } catch (_) {
+      // ToolApprovalService may not be registered yet
+    }
 
     // Reset file processing state on cancel
     onFileProcessingFinished?.call();

@@ -9,6 +9,7 @@ import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../services/message_builder_service.dart';
 import '../services/tool_handler_service.dart';
+import '../services/tool_approval_service.dart';
 import 'chat_controller.dart';
 import 'stream_controller.dart' as stream_ctrl;
 
@@ -138,9 +139,14 @@ class GenerationController {
   /// Delegates to ToolHandlerService.buildToolCallHandler.
   Future<String> Function(String, Map<String, dynamic>)? buildToolCallHandler(
     SettingsProvider settings,
-    Assistant? assistant,
-  ) {
-    return toolHandlerService.buildToolCallHandler(settings, assistant);
+    Assistant? assistant, {
+    ToolApprovalService? approvalService,
+  }) {
+    return toolHandlerService.buildToolCallHandler(
+      settings,
+      assistant,
+      approvalService: approvalService,
+    );
   }
 
   // ============================================================================

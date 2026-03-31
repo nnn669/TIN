@@ -1817,5 +1817,12 @@
   "worldBookInjectionPositionBottomOfChat": "Bottom of chat",
   "worldBookInjectionPositionAtDepth": "At depth",
   "worldBookInjectionRoleUser": "User",
-  "worldBookInjectionRoleAssistant": "Assistant"
+  "worldBookInjectionRoleAssistant": "Assistant",
+  "mcpToolNeedsApproval": "Require approval",
+  "toolApprovalPending": "Waiting for approval",
+  "toolApprovalApprove": "Approve",
+  "toolApprovalDeny": "Deny",
+  "toolApprovalDenyTitle": "Deny tool call",
+  "toolApprovalDenyHint": "Reason (optional)",
+  "toolApprovalDeniedMessage": "Tool call \"{toolName}\" was denied by user. Reason: {reason}"
 }

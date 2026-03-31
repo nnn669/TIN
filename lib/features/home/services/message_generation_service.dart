@@ -14,6 +14,7 @@ import '../../../core/models/assistant_regex.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/generation_controller.dart';
 import 'message_builder_service.dart';
+import 'tool_approval_service.dart';
 
 /// Callback types for UI updates from MessageGenerationService
 typedef OnMessagesChanged = void Function();
@@ -96,6 +97,7 @@ class MessageGenerationService {
     required String? assistantId,
     required String providerKey,
     required String modelId,
+    ToolApprovalService? approvalService,
   }) async {
     final cfg = settings.getProviderConfig(providerKey);
     final kind = ProviderConfig.classify(
@@ -177,7 +179,11 @@ class MessageGenerationService {
       hasBuiltInSearch,
     );
     final onToolCall = toolDefs.isNotEmpty
-        ? generationController.buildToolCallHandler(settings, assistant)
+        ? generationController.buildToolCallHandler(
+            settings,
+            assistant,
+            approvalService: approvalService,
+          )
         : null;
 
     return PreparedGeneration(

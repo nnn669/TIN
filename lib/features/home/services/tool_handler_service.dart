@@ -8,6 +8,7 @@ import '../../../core/providers/memory_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
 import '../../../core/services/search/search_tool_service.dart';
+import 'tool_approval_service.dart';
 
 /// 工具调用处理服务
 ///
@@ -307,8 +308,9 @@ class ToolHandlerService {
   /// - MCP tool calls
   Future<String> Function(String, Map<String, dynamic>)? buildToolCallHandler(
     SettingsProvider settings,
-    Assistant? assistant,
-  ) {
+    Assistant? assistant, {
+    ToolApprovalService? approvalService,
+  }) {
     final mcp = contextProvider.read<McpProvider>();
     final toolSvc = contextProvider.read<McpToolService>();
     // Capture AssistantProvider reference before async gap to avoid
@@ -326,6 +328,20 @@ class ToolHandlerService {
       final memoryResult = await _handleMemoryToolCall(name, args, assistant);
       if (memoryResult != null) {
         return memoryResult;
+      }
+
+      // Approval gate for MCP tools
+      if (approvalService != null && mcp.toolNeedsApproval(name)) {
+        // Generate a unique id for this tool call approval request
+        final toolCallId = '${name}_${DateTime.now().microsecondsSinceEpoch}';
+        final result = await approvalService.requestApproval(
+          toolCallId: toolCallId,
+          toolName: name,
+          arguments: args,
+        );
+        if (!result.approved) {
+          return 'Tool call "$name" denied. Reason: ${result.denyReason ?? "User denied"}';
+        }
       }
 
       // MCP tools

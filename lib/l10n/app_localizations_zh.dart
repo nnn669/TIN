@@ -4202,6 +4202,29 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get worldBookInjectionRoleAssistant => '助手';
+
+  @override
+  String get mcpToolNeedsApproval => '需要审批';
+
+  @override
+  String get toolApprovalPending => '等待审批';
+
+  @override
+  String get toolApprovalApprove => '批准';
+
+  @override
+  String get toolApprovalDeny => '拒绝';
+
+  @override
+  String get toolApprovalDenyTitle => '拒绝工具调用';
+
+  @override
+  String get toolApprovalDenyHint => '原因（可选）';
+
+  @override
+  String toolApprovalDeniedMessage(Object reason, Object toolName) {
+    return '工具调用 \"$toolName\" 已被用户拒绝。原因：$reason';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -8350,6 +8373,29 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get worldBookInjectionRoleAssistant => '助手';
+
+  @override
+  String get mcpToolNeedsApproval => '需要审批';
+
+  @override
+  String get toolApprovalPending => '等待审批';
+
+  @override
+  String get toolApprovalApprove => '批准';
+
+  @override
+  String get toolApprovalDeny => '拒绝';
+
+  @override
+  String get toolApprovalDenyTitle => '拒绝工具调用';
+
+  @override
+  String get toolApprovalDenyHint => '原因（可选）';
+
+  @override
+  String toolApprovalDeniedMessage(Object reason, Object toolName) {
+    return '工具调用 \"$toolName\" 已被用户拒绝。原因：$reason';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -12544,4 +12590,27 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get worldBookInjectionRoleAssistant => '助手';
+
+  @override
+  String get mcpToolNeedsApproval => '需要審批';
+
+  @override
+  String get toolApprovalPending => '等待審批';
+
+  @override
+  String get toolApprovalApprove => '批准';
+
+  @override
+  String get toolApprovalDeny => '拒絕';
+
+  @override
+  String get toolApprovalDenyTitle => '拒絕工具調用';
+
+  @override
+  String get toolApprovalDenyHint => '原因（可選）';
+
+  @override
+  String toolApprovalDeniedMessage(Object reason, Object toolName) {
+    return '工具調用 \"$toolName\" 已被使用者拒絕。原因：$reason';
+  }
 }

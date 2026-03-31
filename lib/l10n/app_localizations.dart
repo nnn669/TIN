@@ -8143,6 +8143,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assistant'**
   String get worldBookInjectionRoleAssistant;
+
+  /// No description provided for @mcpToolNeedsApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Require approval'**
+  String get mcpToolNeedsApproval;
+
+  /// No description provided for @toolApprovalPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval'**
+  String get toolApprovalPending;
+
+  /// No description provided for @toolApprovalApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get toolApprovalApprove;
+
+  /// No description provided for @toolApprovalDeny.
+  ///
+  /// In en, this message translates to:
+  /// **'Deny'**
+  String get toolApprovalDeny;
+
+  /// No description provided for @toolApprovalDenyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deny tool call'**
+  String get toolApprovalDenyTitle;
+
+  /// No description provided for @toolApprovalDenyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get toolApprovalDenyHint;
+
+  /// No description provided for @toolApprovalDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool call \"{toolName}\" was denied by user. Reason: {reason}'**
+  String toolApprovalDeniedMessage(Object reason, Object toolName);
 }
 
 class _AppLocalizationsDelegate

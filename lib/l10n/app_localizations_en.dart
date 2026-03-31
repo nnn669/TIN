@@ -4360,4 +4360,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get worldBookInjectionRoleAssistant => 'Assistant';
+
+  @override
+  String get mcpToolNeedsApproval => 'Require approval';
+
+  @override
+  String get toolApprovalPending => 'Waiting for approval';
+
+  @override
+  String get toolApprovalApprove => 'Approve';
+
+  @override
+  String get toolApprovalDeny => 'Deny';
+
+  @override
+  String get toolApprovalDenyTitle => 'Deny tool call';
+
+  @override
+  String get toolApprovalDenyHint => 'Reason (optional)';
+
+  @override
+  String toolApprovalDeniedMessage(Object reason, Object toolName) {
+    return 'Tool call \"$toolName\" was denied by user. Reason: $reason';
+  }
 }
