@@ -247,6 +247,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
     if (_isDesktop) {
       child = MouseRegion(
+        cursor: SystemMouseCursors.click,
         onEnter: (_) {
           _isHoveringTarget = true;
           _cancelHideTimer();
