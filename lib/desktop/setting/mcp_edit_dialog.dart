@@ -586,106 +586,126 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog>
       children: [
         for (final tool in tools) ...[
           _card(
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tool.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tool.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          if ((tool.description ?? '').isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              tool.description!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    cs.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                          if (tool.params.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: tool.params.map((p) {
+                                final color = p.required
+                                    ? cs.primary
+                                    : cs.onSurface
+                                          .withValues(alpha: 0.5);
+                                final bg = p.required
+                                    ? cs.primary
+                                          .withValues(alpha: 0.12)
+                                    : cs.onSurface
+                                          .withValues(alpha: 0.06);
+                                return Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: bg,
+                                    borderRadius:
+                                        BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: color
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    p.name,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: color,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
                       ),
-                      if ((tool.description ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          tool.description!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: cs.onSurface.withValues(alpha: 0.7),
+                    ),
+                    IosSwitch(
+                      value: tool.enabled,
+                      onChanged: (v) =>
+                          context.read<McpProvider>().setToolEnabled(
+                                server!.id,
+                                tool.name,
+                                v,
+                              ),
+                    ),
+                  ],
+                ),
+                // Approval toggle — compact row inside the card
+                if (tool.enabled) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          lucide.Lucide.Shield,
+                          size: 13,
+                          color: tool.needsApproval
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            l10n.mcpToolNeedsApproval,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
                           ),
                         ),
-                      ],
-                      if (tool.params.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: tool.params.map((p) {
-                            final color = p.required
-                                ? cs.primary
-                                : cs.onSurface.withValues(alpha: 0.5);
-                            final bg = p.required
-                                ? cs.primary.withValues(alpha: 0.12)
-                                : cs.onSurface.withValues(alpha: 0.06);
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
+                        IosSwitch(
+                          value: tool.needsApproval,
+                          onChanged: (v) => context
+                              .read<McpProvider>()
+                              .setToolNeedsApproval(
+                                server!.id,
+                                tool.name,
+                                v,
                               ),
-                              decoration: BoxDecoration(
-                                color: bg,
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: color.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              child: Text(
-                                p.name,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: color,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }).toList(),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                IosSwitch(
-                  value: tool.enabled,
-                  onChanged: (v) => context.read<McpProvider>().setToolEnabled(
-                    server!.id,
-                    tool.name,
-                    v,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Approval toggle row
-          Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.mcpToolNeedsApproval,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: tool.enabled
-                          ? cs.onSurface.withValues(alpha: 0.7)
-                          : cs.onSurface.withValues(alpha: 0.3),
                     ),
                   ),
-                ),
-                IosSwitch(
-                  value: tool.needsApproval,
-                  onChanged: tool.enabled
-                      ? (v) => context
-                          .read<McpProvider>()
-                          .setToolNeedsApproval(
-                            server!.id,
-                            tool.name,
-                            v,
-                          )
-                      : null,
-                ),
+                ],
               ],
             ),
           ),

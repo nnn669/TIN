@@ -2868,12 +2868,25 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     }
   }
 
+  /// Build a short argument summary for display in the approval card.
+  String _argsSummary(Map<String, dynamic> args) {
+    if (args.isEmpty) return '';
+    // Show first 1-2 key=value pairs, truncated
+    final entries = args.entries.take(2).map((e) {
+      final v = e.value?.toString() ?? '';
+      final truncated = v.length > 40 ? '${v.substring(0, 40)}...' : v;
+      return '${e.key}: $truncated';
+    });
+    final suffix = args.length > 2 ? ' ...' : '';
+    return entries.join(', ') + suffix;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
     final hasImages = _imagePaths.isNotEmpty;
+    final l10n = AppLocalizations.of(context)!;
 
     // Check if this tool call is pending approval
     final approvalService = context.watch<ToolApprovalService>();
@@ -2892,12 +2905,14 @@ class _ToolCallItemState extends State<_ToolCallItem> {
       } catch (_) {}
     }
 
+    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
+
     return IosCardPress(
       borderRadius: BorderRadius.circular(16),
       baseColor: bg,
       pressedScale: 1.0,
       duration: const Duration(milliseconds: 260),
-      onTap: () => _showDetail(context),
+      onTap: isPendingApproval ? null : () => _showDetail(context),
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2905,84 +2920,122 @@ class _ToolCallItemState extends State<_ToolCallItem> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              widget.part.loading && !isPendingApproval
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-                      ),
-                    )
-                  : isPendingApproval
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: Center(
-                            child: Icon(
-                              Lucide.Shield,
-                              size: 18,
-                              color: cs.tertiary,
-                            ),
-                          ),
-                        )
-                      : SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: Center(
-                            child: Icon(
-                              _iconFor(widget.part.toolName),
-                              size: 18,
-                              color: cs.secondary,
-                            ),
-                          ),
-                        ),
+              // Icon — approval pending / loading spinner / result icon
+              if (isPendingApproval)
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Center(
+                    child: Icon(Lucide.Shield, size: 18, color: cs.primary),
+                  ),
+                )
+              else if (widget.part.loading)
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Center(
+                    child: Icon(
+                      _iconFor(widget.part.toolName),
+                      size: 18,
+                      color: cs.secondary,
+                    ),
+                  ),
+                ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title: always show tool name; add "waiting" badge when pending
                     Text(
-                      isPendingApproval
-                          ? AppLocalizations.of(context)!
-                                .toolApprovalPending
-                          : _titleFor(
-                              context,
-                              widget.part.toolName,
-                              widget.part.arguments,
-                              isResult: !widget.part.loading,
-                            ),
+                      _titleFor(
+                        context,
+                        widget.part.toolName,
+                        widget.part.arguments,
+                        isResult: !widget.part.loading && !isPendingApproval,
+                      ),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isPendingApproval ? cs.tertiary : cs.secondary,
+                        color: isPendingApproval
+                            ? cs.primary
+                            : cs.secondary,
                       ),
                     ),
+                    // "Waiting for approval" subtitle
+                    if (isPendingApproval) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.toolApprovalPending,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: cs.primary.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-          // Approval buttons
+          // Argument summary so users know what the tool is about to do
+          if (isPendingApproval &&
+              widget.part.arguments.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.04),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _argsSummary(widget.part.arguments),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: cs.onSurface.withValues(alpha: 0.6),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+          // Approval action buttons
           if (isPendingApproval && pendingToolCallId != null) ...[
             const SizedBox(height: 10),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _ApprovalButton(
-                  label: AppLocalizations.of(context)!.toolApprovalDeny,
-                  color: cs.error,
-                  onTap: () => _showDenyDialog(
-                    context,
-                    approvalService,
-                    pendingToolCallId!,
+                Expanded(
+                  child: _ApprovalButton(
+                    label: l10n.toolApprovalDeny,
+                    color: cs.error,
+                    filled: false,
+                    onTap: () => _showDenyDialog(
+                      context,
+                      approvalService,
+                      pendingToolCallId!,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                _ApprovalButton(
-                  label: AppLocalizations.of(context)!.toolApprovalApprove,
-                  color: cs.primary,
-                  onTap: () => approvalService.approve(pendingToolCallId!),
+                Expanded(
+                  child: _ApprovalButton(
+                    label: l10n.toolApprovalApprove,
+                    color: cs.primary,
+                    filled: true,
+                    onTap: () => approvalService.approve(pendingToolCallId!),
+                  ),
                 ),
               ],
             ),
@@ -3424,33 +3477,43 @@ class _ToolCallItemState extends State<_ToolCallItem> {
   }
 }
 
-/// Small tactile button used for tool approval actions.
+/// Tactile button for tool approval actions (approve / deny).
 class _ApprovalButton extends StatelessWidget {
   const _ApprovalButton({
     required this.label,
     required this.color,
     required this.onTap,
+    this.filled = false,
   });
 
   final String label;
   final Color color;
   final VoidCallback onTap;
+  /// When true, uses a solid fill background; when false, outline style.
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        height: 36,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
+          color: filled
+              ? color.withValues(alpha: isDark ? 0.25 : 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: color.withValues(alpha: filled ? 0.5 : 0.35),
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: color,
           ),
