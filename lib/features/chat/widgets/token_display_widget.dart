@@ -70,9 +70,29 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
     if (_isShowing) _removeOverlay();
   }
 
+  /// Estimated popup height (4 rows * ~20px + padding).
+  static const double _estimatedPopupHeight = 120;
+
   void _showPopup() {
     if (_isShowing || !mounted) return;
     _isShowing = true;
+
+    // Detect whether there is enough space above the target widget.
+    final box = context.findRenderObject() as RenderBox?;
+    final showBelow = _shouldShowBelow(box);
+
+    final Alignment tAnchor;
+    final Alignment fAnchor;
+    final Offset offset;
+    if (showBelow) {
+      tAnchor = Alignment.bottomRight;
+      fAnchor = Alignment.topRight;
+      offset = const Offset(0, 8);
+    } else {
+      tAnchor = Alignment.topRight;
+      fAnchor = Alignment.bottomRight;
+      offset = const Offset(0, -8);
+    }
 
     final overlay = Overlay.of(context, rootOverlay: false);
 
@@ -92,9 +112,9 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       builder: (_) => UnconstrainedBox(
         child: CompositedTransformFollower(
           link: _layerLink,
-          targetAnchor: Alignment.topRight,
-          followerAnchor: Alignment.bottomRight,
-          offset: const Offset(0, -8),
+          targetAnchor: tAnchor,
+          followerAnchor: fAnchor,
+          offset: offset,
           child: Material(
             type: MaterialType.transparency,
             child: _isDesktop
@@ -115,6 +135,17 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       ),
     );
     overlay.insert(_overlayEntry!);
+  }
+
+  bool _shouldShowBelow(RenderBox? box) {
+    if (box == null || !box.attached) return false;
+    try {
+      final topY = box.localToGlobal(Offset.zero).dy;
+      final padding = MediaQuery.of(context).padding.top;
+      return topY - padding < _estimatedPopupHeight + 16;
+    } catch (_) {
+      return false;
+    }
   }
 
   Widget _buildPopup() {
