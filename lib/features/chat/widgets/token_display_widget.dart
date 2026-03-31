@@ -8,6 +8,7 @@ import 'token_detail_popup.dart';
 ///
 /// - Mobile: tap to toggle popup (transparent barrier closes it)
 /// - Desktop: hover with 200ms delay to show, 300ms delay to close
+/// - Fade + slight slide animation on show/hide
 class TokenDisplayWidget extends StatefulWidget {
   const TokenDisplayWidget({
     super.key,
@@ -29,13 +30,16 @@ class TokenDisplayWidget extends StatefulWidget {
 }
 
 class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
-    with WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   OverlayEntry? _barrierEntry;
   bool _isShowing = false;
+  bool _showBelow = false;
 
-  // Desktop hover timers
+  AnimationController? _animController;
+  CurvedAnimation? _curvedAnim;
+
   bool _isHoveringTarget = false;
   bool _isHoveringPopup = false;
   int _showTimerId = 0;
@@ -51,6 +55,22 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       (widget.completionTokens != null && widget.completionTokens! > 0) ||
       (widget.durationMs != null && widget.durationMs! > 0);
 
+  static const double _estimatedPopupHeight = 120;
+
+  /// Lazily create animation controller on first use (when popup actually opens).
+  CurvedAnimation _ensureAnimation() {
+    _animController ??= AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+    _curvedAnim ??= CurvedAnimation(
+      parent: _animController!,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return _curvedAnim!;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -59,32 +79,29 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
   @override
   void dispose() {
-    _removeOverlay();
+    _removeOverlayImmediate();
+    _curvedAnim?.dispose();
+    _animController?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeMetrics() {
-    // Close popup on screen rotation / resize
-    if (_isShowing) _removeOverlay();
+    if (_isShowing) _removeOverlayImmediate();
   }
-
-  /// Estimated popup height (4 rows * ~20px + padding).
-  static const double _estimatedPopupHeight = 120;
 
   void _showPopup() {
     if (_isShowing || !mounted) return;
     _isShowing = true;
 
-    // Detect whether there is enough space above the target widget.
     final box = context.findRenderObject() as RenderBox?;
-    final showBelow = _shouldShowBelow(box);
+    _showBelow = _shouldShowBelow(box);
 
     final Alignment tAnchor;
     final Alignment fAnchor;
     final Offset offset;
-    if (showBelow) {
+    if (_showBelow) {
       tAnchor = Alignment.bottomRight;
       fAnchor = Alignment.topRight;
       offset = const Offset(0, 8);
@@ -94,14 +111,13 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       offset = const Offset(0, -8);
     }
 
-    final overlay = Overlay.of(context, rootOverlay: false);
+    final overlay = Overlay.of(context, rootOverlay: true);
 
-    // Transparent barrier for mobile tap-to-close
     if (!_isDesktop) {
       _barrierEntry = OverlayEntry(
         builder: (_) => GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onTap: _removeOverlay,
+          onTap: _hidePopup,
           child: const SizedBox.expand(),
         ),
       );
@@ -117,24 +133,32 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
           offset: offset,
           child: Material(
             type: MaterialType.transparency,
-            child: _isDesktop
-                ? MouseRegion(
-                    onEnter: (_) {
-                      _isHoveringPopup = true;
-                      _cancelHideTimer();
-                    },
-                    onExit: (_) {
-                      _isHoveringPopup = false;
-                      _scheduleHide();
-                    },
-                    child: _buildPopup(),
-                  )
-                : _buildPopup(),
+            child: _AnimatedPopupContent(
+              animation: _ensureAnimation(),
+              showBelow: _showBelow,
+              isDesktop: _isDesktop,
+              onHoverEnter: () {
+                _isHoveringPopup = true;
+                _cancelHideTimer();
+              },
+              onHoverExit: () {
+                _isHoveringPopup = false;
+                _scheduleHide();
+              },
+              child: TokenDetailPopup(
+                promptTokens: widget.promptTokens,
+                completionTokens: widget.completionTokens,
+                cachedTokens: widget.cachedTokens,
+                durationMs: widget.durationMs,
+              ),
+            ),
           ),
         ),
       ),
     );
     overlay.insert(_overlayEntry!);
+    _ensureAnimation();
+    _animController!.forward(from: 0);
   }
 
   bool _shouldShowBelow(RenderBox? box) {
@@ -148,16 +172,15 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
     }
   }
 
-  Widget _buildPopup() {
-    return TokenDetailPopup(
-      promptTokens: widget.promptTokens,
-      completionTokens: widget.completionTokens,
-      cachedTokens: widget.cachedTokens,
-      durationMs: widget.durationMs,
-    );
+  Future<void> _hidePopup() async {
+    if (!_isShowing) return;
+    try {
+      await _animController?.reverse();
+    } catch (_) {}
+    _removeOverlayImmediate();
   }
 
-  void _removeOverlay() {
+  void _removeOverlayImmediate() {
     _barrierEntry?.remove();
     _barrierEntry = null;
     _overlayEntry?.remove();
@@ -169,13 +192,12 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
   void _togglePopup() {
     if (_isShowing) {
-      _removeOverlay();
+      _hidePopup();
     } else {
       _showPopup();
     }
   }
 
-  // Desktop hover helpers
   void _scheduleShow() {
     final id = ++_showTimerId;
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -192,7 +214,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
           !_isHoveringTarget &&
           !_isHoveringPopup &&
           mounted) {
-        _removeOverlay();
+        _hidePopup();
       }
     });
   }
@@ -214,7 +236,6 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       ),
     );
 
-    // If no detailed data, just show plain text (no interaction)
     if (!_hasDetailData) {
       return CompositedTransformTarget(link: _layerLink, child: label);
     }
@@ -246,5 +267,47 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
     }
 
     return child;
+  }
+}
+
+class _AnimatedPopupContent extends StatelessWidget {
+  const _AnimatedPopupContent({
+    required this.animation,
+    required this.showBelow,
+    required this.isDesktop,
+    required this.onHoverEnter,
+    required this.onHoverExit,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final bool showBelow;
+  final bool isDesktop;
+  final VoidCallback onHoverEnter;
+  final VoidCallback onHoverExit;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final begin = Offset(0, showBelow ? -0.15 : 0.15);
+
+    Widget content = SlideTransition(
+      position:
+          Tween<Offset>(begin: begin, end: Offset.zero).animate(animation),
+      child: FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
+    );
+
+    if (isDesktop) {
+      content = MouseRegion(
+        onEnter: (_) => onHoverEnter(),
+        onExit: (_) => onHoverExit(),
+        child: content,
+      );
+    }
+
+    return content;
   }
 }
