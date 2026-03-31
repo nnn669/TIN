@@ -4233,7 +4233,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String tokenDetailPromptTokensWithCache(int count, int cached) {
-    return '$count tokens（$cached 缓存）';
+    return '$count tokens ($cached cached)';
   }
 
   @override
@@ -8434,7 +8434,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String tokenDetailPromptTokensWithCache(int count, int cached) {
-    return '$count tokens（$cached 缓存）';
+    return '$count tokens ($cached cached)';
   }
 
   @override
@@ -12681,7 +12681,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String tokenDetailPromptTokensWithCache(int count, int cached) {
-    return '$count tokens（$cached 快取）';
+    return '$count tokens ($cached cached)';
   }
 
   @override

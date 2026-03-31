@@ -1472,7 +1472,7 @@
   "toolApprovalDenyHint": "原因（可選）",
   "toolApprovalDeniedMessage": "工具調用 \"{toolName}\" 已被使用者拒絕。原因：{reason}",
   "tokenDetailPromptTokens": "{count} tokens",
-  "tokenDetailPromptTokensWithCache": "{count} tokens（{cached} 快取）",
+  "tokenDetailPromptTokensWithCache": "{count} tokens ({cached} cached)",
   "tokenDetailCompletionTokens": "{count} tokens",
   "tokenDetailSpeed": "{value} tok/s",
   "tokenDetailDuration": "{value}s",
