@@ -8185,6 +8185,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tool call \"{toolName}\" was denied by user. Reason: {reason}'**
   String toolApprovalDeniedMessage(Object reason, Object toolName);
+
+  /// No description provided for @tokenDetailPromptTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens'**
+  String tokenDetailPromptTokens(int count);
+
+  /// No description provided for @tokenDetailPromptTokensWithCache.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens ({cached} cached)'**
+  String tokenDetailPromptTokensWithCache(int count, int cached);
+
+  /// No description provided for @tokenDetailCompletionTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens'**
+  String tokenDetailCompletionTokens(int count);
+
+  /// No description provided for @tokenDetailSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} tok/s'**
+  String tokenDetailSpeed(String value);
+
+  /// No description provided for @tokenDetailDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}s'**
+  String tokenDetailDuration(String value);
+
+  /// No description provided for @tokenDetailTotalTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens'**
+  String tokenDetailTotalTokens(int count);
 }
 
 class _AppLocalizationsDelegate

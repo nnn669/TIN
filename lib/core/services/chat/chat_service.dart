@@ -589,6 +589,10 @@ class ChatService extends ChangeNotifier {
     DateTime? reasoningFinishedAt,
     String? translation,
     String? reasoningSegmentsJson,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+    int? durationMs,
   }) async {
     if (!_initialized) return;
 
@@ -605,6 +609,10 @@ class ChatService extends ChangeNotifier {
       translation: translation,
       reasoningSegmentsJson:
           reasoningSegmentsJson ?? message.reasoningSegmentsJson,
+      promptTokens: promptTokens ?? message.promptTokens,
+      completionTokens: completionTokens ?? message.completionTokens,
+      cachedTokens: cachedTokens ?? message.cachedTokens,
+      durationMs: durationMs ?? message.durationMs,
     );
 
     await _messagesBox.put(messageId, updatedMessage);
@@ -635,6 +643,10 @@ class ChatService extends ChangeNotifier {
     DateTime? reasoningFinishedAt,
     String? translation,
     String? reasoningSegmentsJson,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+    int? durationMs,
   }) async {
     if (!_initialized) return;
 
@@ -651,6 +663,10 @@ class ChatService extends ChangeNotifier {
       translation: translation,
       reasoningSegmentsJson:
           reasoningSegmentsJson ?? message.reasoningSegmentsJson,
+      promptTokens: promptTokens ?? message.promptTokens,
+      completionTokens: completionTokens ?? message.completionTokens,
+      cachedTokens: cachedTokens ?? message.cachedTokens,
+      durationMs: durationMs ?? message.durationMs,
     );
 
     await _messagesBox.put(messageId, updatedMessage);

@@ -4383,4 +4383,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String toolApprovalDeniedMessage(Object reason, Object toolName) {
     return 'Tool call \"$toolName\" was denied by user. Reason: $reason';
   }
+
+  @override
+  String tokenDetailPromptTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailPromptTokensWithCache(int count, int cached) {
+    return '$count tokens ($cached cached)';
+  }
+
+  @override
+  String tokenDetailCompletionTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailSpeed(String value) {
+    return '$value tok/s';
+  }
+
+  @override
+  String tokenDetailDuration(String value) {
+    return '${value}s';
+  }
+
+  @override
+  String tokenDetailTotalTokens(int count) {
+    return '$count tokens';
+  }
 }

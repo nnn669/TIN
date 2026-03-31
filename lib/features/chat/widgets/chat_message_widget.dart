@@ -38,6 +38,7 @@ import '../../../desktop/desktop_context_menu.dart';
 import '../../../desktop/menu_anchor.dart';
 import '../../../shared/widgets/emoji_text.dart';
 import '../../home/services/tool_approval_service.dart';
+import 'token_display_widget.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
 
@@ -1395,21 +1396,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             ),
                           );
                         }
-                        if (widget.showTokenStats &&
-                            widget.message.totalTokens != null) {
-                          if (rowChildren.isNotEmpty) {
-                            rowChildren.add(const SizedBox(width: 8));
-                          }
-                          rowChildren.add(
-                            Text(
-                              '${widget.message.totalTokens} tokens',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                              ),
-                            ),
-                          );
-                        }
+                        // Token stats moved to action toolbar
                         return rowChildren.isNotEmpty
                             ? Row(children: rowChildren)
                             : const SizedBox.shrink();
@@ -2051,6 +2038,17 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             total: widget.versionCount ?? 1,
                             onPrev: widget.onPrevVersion,
                             onNext: widget.onNextVersion,
+                          ),
+                        ],
+                        if (widget.showTokenStats &&
+                            widget.message.totalTokens != null) ...[
+                          const Spacer(),
+                          TokenDisplayWidget(
+                            totalTokens: widget.message.totalTokens!,
+                            promptTokens: widget.message.promptTokens,
+                            completionTokens: widget.message.completionTokens,
+                            cachedTokens: widget.message.cachedTokens,
+                            durationMs: widget.message.durationMs,
                           ),
                         ],
                       ],

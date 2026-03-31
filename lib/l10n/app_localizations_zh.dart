@@ -4225,6 +4225,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String toolApprovalDeniedMessage(Object reason, Object toolName) {
     return '工具调用 \"$toolName\" 已被用户拒绝。原因：$reason';
   }
+
+  @override
+  String tokenDetailPromptTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailPromptTokensWithCache(int count, int cached) {
+    return '$count tokens（$cached 缓存）';
+  }
+
+  @override
+  String tokenDetailCompletionTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailSpeed(String value) {
+    return '$value tok/s';
+  }
+
+  @override
+  String tokenDetailDuration(String value) {
+    return '${value}s';
+  }
+
+  @override
+  String tokenDetailTotalTokens(int count) {
+    return '$count tokens';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -8395,6 +8425,36 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String toolApprovalDeniedMessage(Object reason, Object toolName) {
     return '工具调用 \"$toolName\" 已被用户拒绝。原因：$reason';
+  }
+
+  @override
+  String tokenDetailPromptTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailPromptTokensWithCache(int count, int cached) {
+    return '$count tokens（$cached 缓存）';
+  }
+
+  @override
+  String tokenDetailCompletionTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailSpeed(String value) {
+    return '$value tok/s';
+  }
+
+  @override
+  String tokenDetailDuration(String value) {
+    return '${value}s';
+  }
+
+  @override
+  String tokenDetailTotalTokens(int count) {
+    return '$count tokens';
   }
 }
 
@@ -12612,5 +12672,35 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String toolApprovalDeniedMessage(Object reason, Object toolName) {
     return '工具調用 \"$toolName\" 已被使用者拒絕。原因：$reason';
+  }
+
+  @override
+  String tokenDetailPromptTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailPromptTokensWithCache(int count, int cached) {
+    return '$count tokens（$cached 快取）';
+  }
+
+  @override
+  String tokenDetailCompletionTokens(int count) {
+    return '$count tokens';
+  }
+
+  @override
+  String tokenDetailSpeed(String value) {
+    return '$value tok/s';
+  }
+
+  @override
+  String tokenDetailDuration(String value) {
+    return '${value}s';
+  }
+
+  @override
+  String tokenDetailTotalTokens(int count) {
+    return '$count tokens';
   }
 }

@@ -32,7 +32,15 @@ class StreamingContentNotifier {
 
   /// Update content for a streaming message.
   /// This will only notify the specific widget listening to this message's notifier.
-  void updateContent(String messageId, String content, int totalTokens) {
+  void updateContent(
+    String messageId,
+    String content,
+    int totalTokens, {
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+    int? durationMs,
+  }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
       final current = notifier.value;
@@ -44,6 +52,10 @@ class StreamingContentNotifier {
         reasoningFinishedAt: current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion,
         uiVersion: current.uiVersion,
+        promptTokens: promptTokens ?? current.promptTokens,
+        completionTokens: completionTokens ?? current.completionTokens,
+        cachedTokens: cachedTokens ?? current.cachedTokens,
+        durationMs: durationMs ?? current.durationMs,
       );
     }
   }
@@ -66,6 +78,10 @@ class StreamingContentNotifier {
         reasoningFinishedAt: reasoningFinishedAt ?? current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion,
         uiVersion: current.uiVersion,
+        promptTokens: current.promptTokens,
+        completionTokens: current.completionTokens,
+        cachedTokens: current.cachedTokens,
+        durationMs: current.durationMs,
       );
     }
   }
@@ -84,6 +100,10 @@ class StreamingContentNotifier {
         reasoningFinishedAt: current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion + 1,
         uiVersion: current.uiVersion,
+        promptTokens: current.promptTokens,
+        completionTokens: current.completionTokens,
+        cachedTokens: current.cachedTokens,
+        durationMs: current.durationMs,
       );
     }
   }
@@ -102,6 +122,10 @@ class StreamingContentNotifier {
         reasoningFinishedAt: current.reasoningFinishedAt,
         toolPartsVersion: current.toolPartsVersion,
         uiVersion: current.uiVersion + 1,
+        promptTokens: current.promptTokens,
+        completionTokens: current.completionTokens,
+        cachedTokens: current.cachedTokens,
+        durationMs: current.durationMs,
       );
     }
   }
@@ -137,6 +161,10 @@ class StreamingContentData {
     this.reasoningFinishedAt,
     this.toolPartsVersion = 0,
     this.uiVersion = 0,
+    this.promptTokens,
+    this.completionTokens,
+    this.cachedTokens,
+    this.durationMs,
   });
 
   final String content;
@@ -151,6 +179,12 @@ class StreamingContentData {
   /// Version counter for UI state changes (e.g., reasoning expanded toggle).
   final int uiVersion;
 
+  /// Detailed token usage fields.
+  final int? promptTokens;
+  final int? completionTokens;
+  final int? cachedTokens;
+  final int? durationMs;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -162,7 +196,11 @@ class StreamingContentData {
           reasoningStartAt == other.reasoningStartAt &&
           reasoningFinishedAt == other.reasoningFinishedAt &&
           toolPartsVersion == other.toolPartsVersion &&
-          uiVersion == other.uiVersion;
+          uiVersion == other.uiVersion &&
+          promptTokens == other.promptTokens &&
+          completionTokens == other.completionTokens &&
+          cachedTokens == other.cachedTokens &&
+          durationMs == other.durationMs;
 
   @override
   int get hashCode =>
@@ -172,5 +210,9 @@ class StreamingContentData {
       reasoningStartAt.hashCode ^
       reasoningFinishedAt.hashCode ^
       toolPartsVersion.hashCode ^
-      uiVersion.hashCode;
+      uiVersion.hashCode ^
+      promptTokens.hashCode ^
+      completionTokens.hashCode ^
+      cachedTokens.hashCode ^
+      durationMs.hashCode;
 }

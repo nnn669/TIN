@@ -1470,5 +1470,11 @@
   "toolApprovalDeny": "拒絕",
   "toolApprovalDenyTitle": "拒絕工具調用",
   "toolApprovalDenyHint": "原因（可選）",
-  "toolApprovalDeniedMessage": "工具調用 \"{toolName}\" 已被使用者拒絕。原因：{reason}"
+  "toolApprovalDeniedMessage": "工具調用 \"{toolName}\" 已被使用者拒絕。原因：{reason}",
+  "tokenDetailPromptTokens": "{count} tokens",
+  "tokenDetailPromptTokensWithCache": "{count} tokens（{cached} 快取）",
+  "tokenDetailCompletionTokens": "{count} tokens",
+  "tokenDetailSpeed": "{value} tok/s",
+  "tokenDetailDuration": "{value}s",
+  "tokenDetailTotalTokens": "{count} tokens"
 }

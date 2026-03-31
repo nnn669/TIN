@@ -58,6 +58,18 @@ class ChatMessage extends HiveObject {
   @HiveField(15)
   final int version;
 
+  @HiveField(16)
+  final int? promptTokens;
+
+  @HiveField(17)
+  final int? completionTokens;
+
+  @HiveField(18)
+  final int? cachedTokens;
+
+  @HiveField(19)
+  final int? durationMs;
+
   ChatMessage({
     String? id,
     required this.role,
@@ -75,6 +87,10 @@ class ChatMessage extends HiveObject {
     this.reasoningSegmentsJson,
     String? groupId,
     int? version,
+    this.promptTokens,
+    this.completionTokens,
+    this.cachedTokens,
+    this.durationMs,
   }) : id = id ?? const Uuid().v4(),
        timestamp = timestamp ?? DateTime.now(),
        groupId = groupId ?? id,
@@ -97,6 +113,10 @@ class ChatMessage extends HiveObject {
     String? reasoningSegmentsJson,
     String? groupId,
     int? version,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+    int? durationMs,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -116,6 +136,10 @@ class ChatMessage extends HiveObject {
           reasoningSegmentsJson ?? this.reasoningSegmentsJson,
       groupId: groupId ?? this.groupId,
       version: version ?? this.version,
+      promptTokens: promptTokens ?? this.promptTokens,
+      completionTokens: completionTokens ?? this.completionTokens,
+      cachedTokens: cachedTokens ?? this.cachedTokens,
+      durationMs: durationMs ?? this.durationMs,
     );
   }
 
@@ -137,6 +161,10 @@ class ChatMessage extends HiveObject {
       'reasoningSegmentsJson': reasoningSegmentsJson,
       'groupId': groupId,
       'version': version,
+      'promptTokens': promptTokens,
+      'completionTokens': completionTokens,
+      'cachedTokens': cachedTokens,
+      'durationMs': durationMs,
     };
   }
 
@@ -162,6 +190,10 @@ class ChatMessage extends HiveObject {
       reasoningSegmentsJson: json['reasoningSegmentsJson'] as String?,
       groupId: json['groupId'] as String?,
       version: (json['version'] as int?) ?? 0,
+      promptTokens: json['promptTokens'] as int?,
+      completionTokens: json['completionTokens'] as int?,
+      cachedTokens: json['cachedTokens'] as int?,
+      durationMs: json['durationMs'] as int?,
     );
   }
 }

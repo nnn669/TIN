@@ -798,6 +798,7 @@ class ChatActions {
     final conversationId = state.conversationId;
 
     state.fullContentRaw += chunkContent;
+    state.streamStartedAt ??= DateTime.now();
     if (chunk.totalTokens > 0) {
       state.totalTokens = chunk.totalTokens;
     }
@@ -873,6 +874,12 @@ class ChatActions {
         conversationId,
         streamingProcessed,
         totalTokens: state.totalTokens,
+        promptTokens: state.usage?.promptTokens,
+        completionTokens: state.usage?.completionTokens,
+        cachedTokens: state.usage?.cachedTokens,
+        durationMs: state.streamStartedAt != null
+            ? DateTime.now().difference(state.streamStartedAt!).inMilliseconds
+            : null,
         updateMessageInList: (id, content, tokens) {
           onContentUpdated?.call(id, content, tokens);
         },
@@ -1009,6 +1016,14 @@ class ChatActions {
     // Replace extremely long inline base64 images with local files to avoid jank
     final processedContent = _transformAssistantContent(state);
 
+    // Compute final duration
+    final finalDurationMs = state.streamStartedAt != null
+        ? DateTime.now().difference(state.streamStartedAt!).inMilliseconds
+        : null;
+    final finalPromptTokens = state.usage?.promptTokens;
+    final finalCompletionTokens = state.usage?.completionTokens;
+    final finalCachedTokens = state.usage?.cachedTokens;
+
     // Flush final content to the streaming notifier before async operations.
     // This ensures any intermediate rebuild (e.g., from isProcessingFiles change
     // or onDone firing concurrently) still shows the correct content via the
@@ -1017,6 +1032,10 @@ class ChatActions {
       messageId,
       processedContent,
       state.totalTokens,
+      promptTokens: finalPromptTokens,
+      completionTokens: finalCompletionTokens,
+      cachedTokens: finalCachedTokens,
+      durationMs: finalDurationMs,
     );
 
     final sanitizedContent =
@@ -1028,6 +1047,10 @@ class ChatActions {
       content: sanitizedContent,
       totalTokens: state.totalTokens,
       isStreaming: false,
+      promptTokens: finalPromptTokens,
+      completionTokens: finalCompletionTokens,
+      cachedTokens: finalCachedTokens,
+      durationMs: finalDurationMs,
     );
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -1036,6 +1059,10 @@ class ChatActions {
         content: sanitizedContent,
         totalTokens: state.totalTokens,
         isStreaming: false,
+        promptTokens: finalPromptTokens,
+        completionTokens: finalCompletionTokens,
+        cachedTokens: finalCachedTokens,
+        durationMs: finalDurationMs,
       );
       onMessagesChanged?.call();
     }

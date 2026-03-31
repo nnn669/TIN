@@ -1824,5 +1824,42 @@
   "toolApprovalDeny": "Deny",
   "toolApprovalDenyTitle": "Deny tool call",
   "toolApprovalDenyHint": "Reason (optional)",
-  "toolApprovalDeniedMessage": "Tool call \"{toolName}\" was denied by user. Reason: {reason}"
+  "toolApprovalDeniedMessage": "Tool call \"{toolName}\" was denied by user. Reason: {reason}",
+  "tokenDetailPromptTokens": "{count} tokens",
+  "@tokenDetailPromptTokens": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "tokenDetailPromptTokensWithCache": "{count} tokens ({cached} cached)",
+  "@tokenDetailPromptTokensWithCache": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "cached": {"type": "int"}
+    }
+  },
+  "tokenDetailCompletionTokens": "{count} tokens",
+  "@tokenDetailCompletionTokens": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "tokenDetailSpeed": "{value} tok/s",
+  "@tokenDetailSpeed": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "tokenDetailDuration": "{value}s",
+  "@tokenDetailDuration": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "tokenDetailTotalTokens": "{count} tokens",
+  "@tokenDetailTotalTokens": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
 }

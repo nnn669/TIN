@@ -344,6 +344,10 @@ class StreamController {
     required void Function(String messageId, String content, int totalTokens)
     updateMessageInList,
     required int totalTokens,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+    int? durationMs,
   }) {
     _pendingStreamContent[messageId] = content;
 
@@ -360,6 +364,10 @@ class StreamController {
             messageId,
             pending,
             totalTokens,
+            promptTokens: promptTokens,
+            completionTokens: completionTokens,
+            cachedTokens: cachedTokens,
+            durationMs: durationMs,
           );
           // Also update the message list data (without triggering rebuild)
           updateMessageInList(messageId, pending, totalTokens);
@@ -1022,6 +1030,7 @@ class StreamingState {
   DateTime? reasoningStartAt;
   bool finishHandled = false;
   bool titleQueued = false;
+  DateTime? streamStartedAt;
 
   String get messageId => ctx.assistantMessage.id;
   String get conversationId => ctx.assistantMessage.conversationId;
