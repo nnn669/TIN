@@ -45,6 +45,8 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
   int _showTimerId = 0;
   int _hideTimerId = 0;
 
+  ScrollPosition? _scrollPosition;
+
   bool get _isDesktop =>
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
@@ -111,13 +113,18 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       offset = const Offset(0, -8);
     }
 
+    // Listen to scroll position to dismiss popup on scroll
+    _attachScrollListener();
+
     final overlay = Overlay.of(context, rootOverlay: true);
 
     if (!_isDesktop) {
+      // Use Listener (onPointerDown) instead of GestureDetector (onTap)
+      // so that scroll gestures (which start with pointerDown) also dismiss
       _barrierEntry = OverlayEntry(
-        builder: (_) => GestureDetector(
+        builder: (_) => Listener(
           behavior: HitTestBehavior.translucent,
-          onTap: _hidePopup,
+          onPointerDown: (_) => _hidePopup(),
           child: const SizedBox.expand(),
         ),
       );
@@ -181,6 +188,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
   }
 
   void _removeOverlayImmediate() {
+    _detachScrollListener();
     _barrierEntry?.remove();
     _barrierEntry = null;
     _overlayEntry?.remove();
@@ -221,6 +229,28 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
   void _cancelHideTimer() {
     _hideTimerId++;
+  }
+
+  void _attachScrollListener() {
+    _detachScrollListener();
+    try {
+      final scrollable = Scrollable.maybeOf(context);
+      _scrollPosition = scrollable?.position;
+      _scrollPosition?.addListener(_onScroll);
+    } catch (_) {}
+  }
+
+  void _detachScrollListener() {
+    try {
+      _scrollPosition?.removeListener(_onScroll);
+    } catch (_) {}
+    _scrollPosition = null;
+  }
+
+  void _onScroll() {
+    if (_isShowing) {
+      _removeOverlayImmediate();
+    }
   }
 
   @override
