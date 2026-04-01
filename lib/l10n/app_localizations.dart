@@ -5978,6 +5978,18 @@ abstract class AppLocalizations {
   /// **'Show user name and the timestamp below it in chat messages'**
   String get displaySettingsPageShowUserNameTimestampSubtitle;
 
+  /// No description provided for @displaySettingsPageShowUserNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show User Name'**
+  String get displaySettingsPageShowUserNameTitle;
+
+  /// No description provided for @displaySettingsPageShowUserTimestampTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show User Timestamp'**
+  String get displaySettingsPageShowUserTimestampTitle;
+
   /// No description provided for @displaySettingsPageShowUserMessageActionsTitle.
   ///
   /// In en, this message translates to:
@@ -6001,6 +6013,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show model name and the timestamp below it in chat messages'**
   String get displaySettingsPageShowModelNameTimestampSubtitle;
+
+  /// No description provided for @displaySettingsPageShowModelNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Model Name'**
+  String get displaySettingsPageShowModelNameTitle;
+
+  /// No description provided for @displaySettingsPageShowModelTimestampTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Model Timestamp'**
+  String get displaySettingsPageShowModelTimestampTitle;
 
   /// No description provided for @displaySettingsPageShowProviderInChatMessageTitle.
   ///

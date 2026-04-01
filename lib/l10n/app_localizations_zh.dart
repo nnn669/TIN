@@ -3072,6 +3072,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '是否在聊天消息中显示用户名称和时间戳';
 
   @override
+  String get displaySettingsPageShowUserNameTitle => '显示用户名称';
+
+  @override
+  String get displaySettingsPageShowUserTimestampTitle => '显示用户时间戳';
+
+  @override
   String get displaySettingsPageShowUserMessageActionsTitle => '显示用户消息操作按钮';
 
   @override
@@ -3084,6 +3090,12 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get displaySettingsPageShowModelNameTimestampSubtitle =>
       '是否在聊天消息中显示模型名称和时间戳';
+
+  @override
+  String get displaySettingsPageShowModelNameTitle => '显示模型名称';
+
+  @override
+  String get displaySettingsPageShowModelTimestampTitle => '显示模型时间戳';
 
   @override
   String get displaySettingsPageShowProviderInChatMessageTitle => '模型名称后显示供应商';
@@ -7294,6 +7306,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '是否在聊天消息中显示用户名称和时间戳';
 
   @override
+  String get displaySettingsPageShowUserNameTitle => '显示用户名称';
+
+  @override
+  String get displaySettingsPageShowUserTimestampTitle => '显示用户时间戳';
+
+  @override
   String get displaySettingsPageShowUserMessageActionsTitle => '显示用户消息操作按钮';
 
   @override
@@ -7306,6 +7324,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get displaySettingsPageShowModelNameTimestampSubtitle =>
       '是否在聊天消息中显示模型名称和时间戳';
+
+  @override
+  String get displaySettingsPageShowModelNameTitle => '显示模型名称';
+
+  @override
+  String get displaySettingsPageShowModelTimestampTitle => '显示模型时间戳';
 
   @override
   String get displaySettingsPageShowProviderInChatMessageTitle => '模型名称后显示供应商';
@@ -11521,6 +11545,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '是否在聊天訊息中顯示使用者名稱以時間戳';
 
   @override
+  String get displaySettingsPageShowUserNameTitle => '顯示使用者名稱';
+
+  @override
+  String get displaySettingsPageShowUserTimestampTitle => '顯示使用者時間戳';
+
+  @override
   String get displaySettingsPageShowUserMessageActionsTitle => '顯示使用者訊息操作按鈕';
 
   @override
@@ -11533,6 +11563,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get displaySettingsPageShowModelNameTimestampSubtitle =>
       '是否在聊天訊息中顯示模型名稱及時間戳';
+
+  @override
+  String get displaySettingsPageShowModelNameTitle => '顯示模型名稱';
+
+  @override
+  String get displaySettingsPageShowModelTimestampTitle => '顯示模型時間戳';
 
   @override
   String get displaySettingsPageShowProviderInChatMessageTitle => '模型名稱後顯示供應商';

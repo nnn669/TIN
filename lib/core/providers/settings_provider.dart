@@ -89,6 +89,12 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayShowTokenStatsKey = 'display_show_token_stats_v1';
   static const String _displayShowUserNameTimestampKey =
       'display_show_user_name_timestamp_v1';
+  static const String _displayShowUserNameKey = 'display_show_user_name_v1';
+  static const String _displayShowUserTimestampKey =
+      'display_show_user_timestamp_v1';
+  static const String _displayShowModelNameKey = 'display_show_model_name_v1';
+  static const String _displayShowModelTimestampKey =
+      'display_show_model_timestamp_v1';
   static const String _displayShowUserMessageActionsKey =
       'display_show_user_message_actions_v1';
   static const String _displayAutoCollapseThinkingKey =
@@ -725,6 +731,17 @@ class SettingsProvider extends ChangeNotifier {
     _showTokenStats = prefs.getBool(_displayShowTokenStatsKey) ?? true;
     _showUserNameTimestamp =
         prefs.getBool(_displayShowUserNameTimestampKey) ?? true;
+    // new split settings: default to the legacy combined setting value for backward compat
+    final legacyUserNameTs = _showUserNameTimestamp;
+    _showUserName =
+        prefs.getBool(_displayShowUserNameKey) ?? legacyUserNameTs;
+    _showUserTimestamp =
+        prefs.getBool(_displayShowUserTimestampKey) ?? legacyUserNameTs;
+    final legacyModelNameTs = _showModelNameTimestamp;
+    _showModelName =
+        prefs.getBool(_displayShowModelNameKey) ?? legacyModelNameTs;
+    _showModelTimestamp =
+        prefs.getBool(_displayShowModelTimestampKey) ?? legacyModelNameTs;
     _showUserMessageActions =
         prefs.getBool(_displayShowUserMessageActionsKey) ?? true;
     _autoCollapseThinking =
@@ -2619,6 +2636,28 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowUserNameTimestampKey, v);
   }
 
+  // Display: user name only (for user messages)
+  bool _showUserName = true;
+  bool get showUserName => _showUserName;
+  Future<void> setShowUserName(bool v) async {
+    if (_showUserName == v) return;
+    _showUserName = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowUserNameKey, v);
+  }
+
+  // Display: user timestamp only (for user messages)
+  bool _showUserTimestamp = true;
+  bool get showUserTimestamp => _showUserTimestamp;
+  Future<void> setShowUserTimestamp(bool v) async {
+    if (_showUserTimestamp == v) return;
+    _showUserTimestamp = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowUserTimestampKey, v);
+  }
+
   bool _showUserMessageActions = true;
   bool get showUserMessageActions => _showUserMessageActions;
   Future<void> setShowUserMessageActions(bool v) async {
@@ -2648,6 +2687,28 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_displayShowModelNameTimestampKey, v);
+  }
+
+  // Display: model name only (for assistant messages)
+  bool _showModelName = true;
+  bool get showModelName => _showModelName;
+  Future<void> setShowModelName(bool v) async {
+    if (_showModelName == v) return;
+    _showModelName = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowModelNameKey, v);
+  }
+
+  // Display: model timestamp only (for assistant messages)
+  bool _showModelTimestamp = true;
+  bool get showModelTimestamp => _showModelTimestamp;
+  Future<void> setShowModelTimestamp(bool v) async {
+    if (_showModelTimestamp == v) return;
+    _showModelTimestamp = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowModelTimestampKey, v);
   }
 
   // Display: token/context stats
@@ -3249,6 +3310,10 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._showTokenStats = _showTokenStats;
     copy._showUserNameTimestamp = _showUserNameTimestamp;
     copy._showUserMessageActions = _showUserMessageActions;
+    copy._showUserName = _showUserName;
+    copy._showUserTimestamp = _showUserTimestamp;
+    copy._showModelName = _showModelName;
+    copy._showModelTimestamp = _showModelTimestamp;
     copy._autoCollapseThinking = _autoCollapseThinking;
     copy._showMessageNavButtons = _showMessageNavButtons;
     copy._useNewAssistantAvatarUx = _useNewAssistantAvatarUx;

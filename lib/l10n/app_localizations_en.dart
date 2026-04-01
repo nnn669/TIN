@@ -3179,6 +3179,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show user name and the timestamp below it in chat messages';
 
   @override
+  String get displaySettingsPageShowUserNameTitle => 'Show User Name';
+
+  @override
+  String get displaySettingsPageShowUserTimestampTitle => 'Show User Timestamp';
+
+  @override
   String get displaySettingsPageShowUserMessageActionsTitle =>
       'Show User Message Actions';
 
@@ -3193,6 +3199,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get displaySettingsPageShowModelNameTimestampSubtitle =>
       'Show model name and the timestamp below it in chat messages';
+
+  @override
+  String get displaySettingsPageShowModelNameTitle => 'Show Model Name';
+
+  @override
+  String get displaySettingsPageShowModelTimestampTitle =>
+      'Show Model Timestamp';
 
   @override
   String get displaySettingsPageShowProviderInChatMessageTitle =>

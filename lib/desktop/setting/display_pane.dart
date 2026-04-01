@@ -60,7 +60,9 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowShowUserAvatar(),
                   _RowDivider(),
-                  _ToggleRowShowUserNameTs(),
+                  _ToggleRowShowUserName(),
+                  _RowDivider(),
+                  _ToggleRowShowUserTimestamp(),
                   _RowDivider(),
                   _ToggleRowShowUserMsgActions(),
                   _RowDivider(),
@@ -68,7 +70,9 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowUseNewAssistantAvatarUx(),
                   _RowDivider(),
-                  _ToggleRowShowModelNameTs(),
+                  _ToggleRowShowModelName(),
+                  _RowDivider(),
+                  _ToggleRowShowModelTimestamp(),
                   _RowDivider(),
                   _ToggleRowShowTokenStats(),
                 ],
@@ -1927,17 +1931,32 @@ class _ToggleRowShowUserAvatar extends StatelessWidget {
   }
 }
 
-class _ToggleRowShowUserNameTs extends StatelessWidget {
-  const _ToggleRowShowUserNameTs();
+class _ToggleRowShowUserName extends StatelessWidget {
+  const _ToggleRowShowUserName();
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final sp = context.watch<SettingsProvider>();
     return _ToggleRow(
-      label: l10n.displaySettingsPageShowUserNameTimestampTitle,
-      value: sp.showUserNameTimestamp,
+      label: l10n.displaySettingsPageShowUserNameTitle,
+      value: sp.showUserName,
       onChanged: (v) =>
-          context.read<SettingsProvider>().setShowUserNameTimestamp(v),
+          context.read<SettingsProvider>().setShowUserName(v),
+    );
+  }
+}
+
+class _ToggleRowShowUserTimestamp extends StatelessWidget {
+  const _ToggleRowShowUserTimestamp();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowUserTimestampTitle,
+      value: sp.showUserTimestamp,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowUserTimestamp(v),
     );
   }
 }
@@ -1971,17 +1990,32 @@ class _ToggleRowShowModelIcon extends StatelessWidget {
   }
 }
 
-class _ToggleRowShowModelNameTs extends StatelessWidget {
-  const _ToggleRowShowModelNameTs();
+class _ToggleRowShowModelName extends StatelessWidget {
+  const _ToggleRowShowModelName();
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final sp = context.watch<SettingsProvider>();
     return _ToggleRow(
-      label: l10n.displaySettingsPageShowModelNameTimestampTitle,
-      value: sp.showModelNameTimestamp,
+      label: l10n.displaySettingsPageShowModelNameTitle,
+      value: sp.showModelName,
       onChanged: (v) =>
-          context.read<SettingsProvider>().setShowModelNameTimestamp(v),
+          context.read<SettingsProvider>().setShowModelName(v),
+    );
+  }
+}
+
+class _ToggleRowShowModelTimestamp extends StatelessWidget {
+  const _ToggleRowShowModelTimestamp();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowModelTimestampTitle,
+      value: sp.showModelTimestamp,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowModelTimestamp(v),
     );
   }
 }

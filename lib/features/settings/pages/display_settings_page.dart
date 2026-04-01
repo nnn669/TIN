@@ -1419,11 +1419,21 @@ class ChatItemDisplaySettingsPage extends StatelessWidget {
               _iosSwitchRow(
                 context,
                 icon: Lucide.MessageCircle,
-                label: l10n.displaySettingsPageShowUserNameTimestampTitle,
-                value: sp.showUserNameTimestamp,
+                label: l10n.displaySettingsPageShowUserNameTitle,
+                value: sp.showUserName,
                 onChanged: (v) => context
                     .read<SettingsProvider>()
-                    .setShowUserNameTimestamp(v),
+                    .setShowUserName(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.clock,
+                label: l10n.displaySettingsPageShowUserTimestampTitle,
+                value: sp.showUserTimestamp,
+                onChanged: (v) => context
+                    .read<SettingsProvider>()
+                    .setShowUserTimestamp(v),
               ),
               _iosDivider(context),
               _iosSwitchRow(
@@ -1458,11 +1468,21 @@ class ChatItemDisplaySettingsPage extends StatelessWidget {
               _iosSwitchRow(
                 context,
                 icon: Lucide.MessageSquare,
-                label: l10n.displaySettingsPageShowModelNameTimestampTitle,
-                value: sp.showModelNameTimestamp,
+                label: l10n.displaySettingsPageShowModelNameTitle,
+                value: sp.showModelName,
                 onChanged: (v) => context
                     .read<SettingsProvider>()
-                    .setShowModelNameTimestamp(v),
+                    .setShowModelName(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.clock,
+                label: l10n.displaySettingsPageShowModelTimestampTitle,
+                value: sp.showModelTimestamp,
+                onChanged: (v) => context
+                    .read<SettingsProvider>()
+                    .setShowModelTimestamp(v),
               ),
               _iosDivider(context),
               _iosSwitchRow(

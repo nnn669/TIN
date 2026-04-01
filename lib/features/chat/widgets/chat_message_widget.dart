@@ -696,26 +696,29 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (settings.showUserNameTimestamp)
+              if (settings.showUserName || settings.showUserTimestamp)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      userProvider.name,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurface.withValues(alpha: 0.7),
-                      ),
+                    if (settings.showUserName)
+                      Text(
+                        userProvider.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: cs.onSurface.withValues(alpha: 0.7),
+                        ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _dateFormat.format(widget.message.timestamp),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onSurface.withValues(alpha: 0.5),
+                    if (settings.showUserName && settings.showUserTimestamp)
+                      const SizedBox(height: 2),
+                    if (settings.showUserTimestamp)
+                      Text(
+                        _dateFormat.format(widget.message.timestamp),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               if (widget.showUserAvatar) ...[
@@ -1368,7 +1371,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (settings.showModelNameTimestamp)
+                    if (settings.showModelName)
                       Text(
                         widget.useAssistantName
                             ? (widget.assistantName?.trim().isNotEmpty == true
@@ -1385,7 +1388,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                     Builder(
                       builder: (context) {
                         final List<Widget> rowChildren = [];
-                        if (settings.showModelNameTimestamp) {
+                        if (settings.showModelTimestamp) {
                           rowChildren.add(
                             Text(
                               _dateFormat.format(widget.message.timestamp),
