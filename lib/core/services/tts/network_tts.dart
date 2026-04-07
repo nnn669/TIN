@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
-enum NetworkTtsKind { openai, gemini, minimax, elevenlabs }
+enum NetworkTtsKind { openai, gemini, minimax, elevenlabs, mimo }
 
 String networkTtsKindDisplayName(NetworkTtsKind k) {
   switch (k) {
@@ -17,6 +17,8 @@ String networkTtsKindDisplayName(NetworkTtsKind k) {
       return 'MiniMax';
     case NetworkTtsKind.elevenlabs:
       return 'ElevenLabs';
+    case NetworkTtsKind.mimo:
+      return 'MiMo';
   }
 }
 
@@ -87,6 +89,16 @@ abstract class TtsServiceOptions {
           modelId: (json['modelId'] ?? 'eleven_multilingual_v2').toString(),
           voiceId: (json['voiceId'] ?? '').toString(),
           outputFormat: (json['outputFormat'] ?? 'mp3_44100_128').toString(),
+        );
+      case 'mimo':
+        return MimoTtsOptions(
+          id: id.isEmpty ? null : id,
+          enabled: enabled,
+          name: name.isEmpty ? 'MiMo TTS' : name,
+          apiKey: (json['apiKey'] ?? '').toString(),
+          baseUrl: (json['baseUrl'] ?? 'https://api.xiaomimimo.com/v1').toString(),
+          model: (json['model'] ?? 'mimo-v2-tts').toString(),
+          voice: (json['voice'] ?? 'mimo_default').toString(),
         );
       default:
         // Fallback to OpenAI shape to avoid crash if kind missing
@@ -235,6 +247,35 @@ class ElevenLabsTtsOptions extends TtsServiceOptions {
   };
 }
 
+class MimoTtsOptions extends TtsServiceOptions {
+  final String apiKey;
+  final String baseUrl;
+  final String model;
+  final String voice;
+
+  MimoTtsOptions({
+    super.id,
+    required super.enabled,
+    required super.name,
+    required this.apiKey,
+    required this.baseUrl,
+    required this.model,
+    required this.voice,
+  }) : super(kind: NetworkTtsKind.mimo);
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'enabled': enabled,
+    'name': name,
+    'kind': 'mimo',
+    'apiKey': apiKey,
+    'baseUrl': baseUrl,
+    'model': model,
+    'voice': voice,
+  };
+}
+
 class NetworkTtsResult {
   final Uint8List bytes;
   final String mime; // e.g. audio/mpeg or audio/wav
@@ -266,6 +307,13 @@ class NetworkTtsService {
         case NetworkTtsKind.elevenlabs:
           return _elevenLabsSpeech(
             options as ElevenLabsTtsOptions,
+            text,
+            c,
+            cancelled,
+          );
+        case NetworkTtsKind.mimo:
+          return _mimoSpeech(
+            options as MimoTtsOptions,
             text,
             c,
             cancelled,
@@ -522,6 +570,67 @@ class NetworkTtsService {
         ? 'audio/ogg'
         : 'application/octet-stream';
     return NetworkTtsResult(bytes: Uint8List.fromList(bytes), mime: mime);
+  }
+
+  static Future<NetworkTtsResult> _mimoSpeech(
+    MimoTtsOptions opt,
+    String text,
+    http.Client c,
+    FutureOr<bool> Function()? cancelled,
+  ) async {
+    final uri = Uri.parse(
+      opt.baseUrl.endsWith('/')
+          ? '${opt.baseUrl}chat/completions'
+          : '${opt.baseUrl}/chat/completions',
+    );
+    final body = jsonEncode({
+      'model': opt.model,
+      'messages': [
+        {'role': 'assistant', 'content': text},
+      ],
+      'audio': {
+        'format': 'wav',
+        'voice': opt.voice,
+      },
+    });
+    final req = http.Request('POST', uri)
+      ..headers['Authorization'] = 'Bearer ${opt.apiKey}'
+      ..headers['Content-Type'] = 'application/json'
+      ..body = body;
+    final resp = await c.send(req);
+    if (cancelled != null && await cancelled()) {
+      throw _Cancelled();
+    }
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      final text = await resp.stream.bytesToString();
+      throw Exception(
+        'MiMo TTS failed: ${resp.statusCode} ${resp.reasonPhrase} $text',
+      );
+    }
+    final respText = await resp.stream.bytesToString();
+    final jsonObj = jsonDecode(respText) as Map<String, dynamic>;
+    final choices = (jsonObj['choices'] as List?) ?? const [];
+    if (choices.isEmpty) {
+      throw Exception('MiMo TTS: empty choices');
+    }
+    final message = (choices[0] as Map)['message'] as Map?;
+    if (message == null) {
+      throw Exception('MiMo TTS: no message in response');
+    }
+    final audio = message['audio'] as Map?;
+    if (audio == null) {
+      throw Exception('MiMo TTS: no audio in response');
+    }
+    final dataB64 = (audio['data'] ?? '').toString();
+    if (dataB64.isEmpty) {
+      throw Exception('MiMo TTS: empty audio data');
+    }
+    final bytes = base64Decode(dataB64);
+    return NetworkTtsResult(
+      bytes: Uint8List.fromList(bytes),
+      mime: 'audio/wav',
+      sampleRate: 24000,
+    );
   }
 }
 

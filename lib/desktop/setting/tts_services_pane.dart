@@ -995,6 +995,8 @@ Future<TtsServiceOptions?> _showNetworkDialog(
         ? initial.apiKey
         : (initial is ElevenLabsTtsOptions)
         ? initial.apiKey
+        : (initial is MimoTtsOptions)
+        ? initial.apiKey
         : '',
   );
   final baseCtl = TextEditingController(
@@ -1005,6 +1007,8 @@ Future<TtsServiceOptions?> _showNetworkDialog(
         : (initial is MiniMaxTtsOptions)
         ? initial.baseUrl
         : (initial is ElevenLabsTtsOptions)
+        ? initial.baseUrl
+        : (initial is MimoTtsOptions)
         ? initial.baseUrl
         : '',
   );
@@ -1017,6 +1021,8 @@ Future<TtsServiceOptions?> _showNetworkDialog(
         ? initial.model
         : (initial is ElevenLabsTtsOptions)
         ? initial.modelId
+        : (initial is MimoTtsOptions)
+        ? initial.model
         : '',
   );
   final voiceCtl = TextEditingController(
@@ -1028,6 +1034,8 @@ Future<TtsServiceOptions?> _showNetworkDialog(
         ? initial.voiceId
         : (initial is ElevenLabsTtsOptions)
         ? initial.voiceId
+        : (initial is MimoTtsOptions)
+        ? initial.voice
         : '',
   );
   final emotionCtl = TextEditingController(
@@ -1101,6 +1109,9 @@ Future<TtsServiceOptions?> _showNetworkDialog(
                                 networkTtsKindDisplayName(
                                   NetworkTtsKind.elevenlabs,
                                 ),
+                                networkTtsKindDisplayName(
+                                  NetworkTtsKind.mimo,
+                                ),
                               ],
                               onSelected: (picked) {
                                 setState(() {
@@ -1127,6 +1138,12 @@ Future<TtsServiceOptions?> _showNetworkDialog(
                                         NetworkTtsKind.elevenlabs,
                                       )) {
                                     kind = NetworkTtsKind.elevenlabs;
+                                  }
+                                  if (picked ==
+                                      networkTtsKindDisplayName(
+                                        NetworkTtsKind.mimo,
+                                      )) {
+                                    kind = NetworkTtsKind.mimo;
                                   }
                                 });
                               },
@@ -1250,8 +1267,7 @@ Future<TtsServiceOptions?> _showNetworkDialog(
                                       : emotionCtl.text.trim(),
                                   speed: spd,
                                 );
-                              } else {
-                                // ElevenLabs
+                              } else if (kind == NetworkTtsKind.elevenlabs) {
                                 result = ElevenLabsTtsOptions(
                                   enabled: true,
                                   name: name,
@@ -1261,6 +1277,15 @@ Future<TtsServiceOptions?> _showNetworkDialog(
                                       ? _defaultModel(kind)
                                       : model,
                                   voiceId: voice,
+                                );
+                              } else if (kind == NetworkTtsKind.mimo) {
+                                result = MimoTtsOptions(
+                                  enabled: true,
+                                  name: name,
+                                  apiKey: apiKey,
+                                  baseUrl: base,
+                                  model: model,
+                                  voice: voice,
                                 );
                               }
                               Navigator.of(ctx).pop();
@@ -1305,6 +1330,8 @@ String _defaultBaseUrl(NetworkTtsKind k) {
       return 'https://api.minimaxi.com/v1';
     case NetworkTtsKind.elevenlabs:
       return 'https://api.elevenlabs.io';
+    case NetworkTtsKind.mimo:
+      return 'https://api.xiaomimimo.com/v1';
   }
 }
 
@@ -1318,6 +1345,8 @@ String _defaultModel(NetworkTtsKind k) {
       return 'speech-2.5-hd-preview';
     case NetworkTtsKind.elevenlabs:
       return 'eleven_multilingual_v2';
+    case NetworkTtsKind.mimo:
+      return 'mimo-v2-tts';
   }
 }
 
@@ -1331,6 +1360,8 @@ String _defaultVoice(NetworkTtsKind k) {
       return 'female-shaonv';
     case NetworkTtsKind.elevenlabs:
       return '';
+    case NetworkTtsKind.mimo:
+      return 'mimo_default';
   }
 }
 
@@ -1339,11 +1370,13 @@ String _voiceLabelFor(NetworkTtsKind k, AppLocalizations l10n) {
     case NetworkTtsKind.openai:
       return l10n.ttsServicesFieldVoiceLabel;
     case NetworkTtsKind.gemini:
-      return l10n.ttsServicesFieldVoiceLabel; // same label
+      return l10n.ttsServicesFieldVoiceLabel;
     case NetworkTtsKind.minimax:
       return l10n.ttsServicesFieldVoiceIdLabel;
     case NetworkTtsKind.elevenlabs:
       return l10n.ttsServicesFieldVoiceIdLabel;
+    case NetworkTtsKind.mimo:
+      return l10n.ttsServicesFieldVoiceLabel;
   }
 }
 
