@@ -307,8 +307,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   void _syncTicker() {
-    final loading =
-        widget.reasoningStartAt != null && widget.reasoningFinishedAt == null;
+    final loading = widget.reasoningLoading &&
+        widget.reasoningStartAt != null &&
+        widget.reasoningFinishedAt == null;
     _tickActive = loading;
     if (loading) {
       if (!_ticker.isActive) _ticker.start();
@@ -3793,7 +3794,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
   String _elapsed() {
     final start = widget.startAt;
     if (start == null) return '';
-    final end = widget.finishedAt ?? DateTime.now();
+    final end = widget.finishedAt ?? (widget.loading ? DateTime.now() : start);
     final ms = end.difference(start).inMilliseconds;
     return '(${(ms / 1000).toStringAsFixed(1)}s)';
   }

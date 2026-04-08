@@ -530,7 +530,7 @@ class MessageListView extends StatelessWidget {
           ? (r?.expanded ?? false)
           : false,
       reasoningLoading: (message.role == 'assistant')
-          ? (r?.finishedAt == null && (r?.text.isNotEmpty == true))
+          ? (message.isStreaming && r?.finishedAt == null && (r?.text.isNotEmpty == true))
           : false,
       reasoningStartAt: (message.role == 'assistant') ? r?.startAt : null,
       reasoningFinishedAt: (message.role == 'assistant') ? r?.finishedAt : null,
@@ -587,6 +587,7 @@ class MessageListView extends StatelessWidget {
                       text: entry.value.text,
                       expanded: entry.value.expanded,
                       loading:
+                          message.isStreaming &&
                           entry.value.finishedAt == null &&
                           entry.value.text.isNotEmpty,
                       startAt: entry.value.startAt,
