@@ -379,7 +379,10 @@ class _MiniMapRow extends StatelessWidget {
     var t = s
         // remove vendor inline reasoning blocks if present
         .replaceAll(
-          RegExp(r'<think>[\s\S]*?<\/think>', caseSensitive: false),
+          RegExp(
+            r'<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>',
+            caseSensitive: false,
+          ),
           '',
         )
         .replaceAll(RegExp(r"\[image:[^\]]+\]"), "")

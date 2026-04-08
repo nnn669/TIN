@@ -172,9 +172,9 @@ class ChatMessageWidget extends StatefulWidget {
 }
 
 class _ChatMessageWidgetState extends State<ChatMessageWidget> {
-  // Match vendor inline thinking blocks: <think>...</think> (or until end)
+  // Match vendor inline thinking blocks: <think>...</think> or <thought>...</thought> (or until end)
   static final RegExp _thinkingRegex = RegExp(
-    r"<think>([\s\S]*?)(?:</think>|$)",
+    r"<(?:think|thought)>([\s\S]*?)(?:</(?:think|thought)>|$)",
     dotAll: true,
   );
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
@@ -307,7 +307,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   void _syncTicker() {
-    final loading = widget.reasoningLoading &&
+    final loading =
+        widget.reasoningLoading &&
         widget.reasoningStartAt != null &&
         widget.reasoningFinishedAt == null;
     _tickActive = loading;
@@ -709,7 +710,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                           fontWeight: FontWeight.w500,
                           color: cs.onSurface.withValues(alpha: 0.7),
                         ),
-                    ),
+                      ),
                     if (settings.showUserName && settings.showUserTimestamp)
                       const SizedBox(height: 2),
                     if (settings.showUserTimestamp)
@@ -2892,7 +2893,8 @@ class _ToolCallItemState extends State<_ToolCallItem> {
 
     // Check if this tool call is pending approval
     final approvalService = context.watch<ToolApprovalService>();
-    final isPendingApproval = widget.part.loading &&
+    final isPendingApproval =
+        widget.part.loading &&
         approvalService.pendingRequests.values.any(
           (req) => req.toolName == widget.part.toolName,
         );
@@ -2968,9 +2970,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isPendingApproval
-                            ? cs.primary
-                            : cs.secondary,
+                        color: isPendingApproval ? cs.primary : cs.secondary,
                       ),
                     ),
                     // "Waiting for approval" subtitle
@@ -2991,8 +2991,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
             ],
           ),
           // Argument summary so users know what the tool is about to do
-          if (isPendingApproval &&
-              widget.part.arguments.isNotEmpty) ...[
+          if (isPendingApproval && widget.part.arguments.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -3082,9 +3081,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
         title: Text(l10n.toolApprovalDenyTitle),
         content: TextField(
           controller: reasonCtrl,
-          decoration: InputDecoration(
-            hintText: l10n.toolApprovalDenyHint,
-          ),
+          decoration: InputDecoration(hintText: l10n.toolApprovalDenyHint),
           autofocus: true,
         ),
         actions: [
@@ -3094,8 +3091,9 @@ class _ToolCallItemState extends State<_ToolCallItem> {
           ),
           TextButton(
             onPressed: () {
-              final reason =
-                  reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim();
+              final reason = reasonCtrl.text.trim().isEmpty
+                  ? null
+                  : reasonCtrl.text.trim();
               approvalService.deny(toolCallId, reason);
               Navigator.of(ctx).pop();
             },
@@ -3491,6 +3489,7 @@ class _ApprovalButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+
   /// When true, uses a solid fill background; when false, outline style.
   final bool filled;
 

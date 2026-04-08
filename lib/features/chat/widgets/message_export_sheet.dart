@@ -38,7 +38,7 @@ import 'chat_message_widget.dart' show ToolUIPart;
 
 // Regular expression to extract thinking content from message
 final RegExp thinkingRegex = RegExp(
-  r"<think>([\s\S]*?)(?:</think>|$)",
+  r"<(?:think|thought)>([\s\S]*?)(?:</(?:think|thought)>|$)",
   dotAll: true,
 );
 
