@@ -467,6 +467,15 @@ String _extractOpenAICompatibleDeltaText(Map? delta) {
   return '';
 }
 
+/// Appends a trailing newline to [source] so that any partial line
+/// remaining in the SSE buffer is flushed during the final split('\n').
+Stream<String> _ensureTrailingNewline(Stream<String> source) async* {
+  await for (final chunk in source) {
+    yield chunk;
+  }
+  yield '\n';
+}
+
 Stream<ChatStreamChunk> _sendOpenAIStream(
   http.Client client,
   ProviderConfig config,
@@ -1479,7 +1488,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
       const <Map<String, dynamic>>[];
   String? finishReason;
 
-  await for (final chunk in sse) {
+  await for (final chunk in _ensureTrailingNewline(sse)) {
     buffer += chunk;
     final lines = buffer.split('\n');
     buffer = lines.last;
@@ -1777,7 +1786,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             String contentAccum = ''; // Accumulate content for this round
             String reasoningAccum = '';
             dynamic reasoningDetailsAccum;
-            await for (final ch in s2) {
+            await for (final ch in _ensureTrailingNewline(s2)) {
               buf2 += ch;
               final lines2 = buf2.split('\n');
               buf2 = lines2.last;
@@ -2460,7 +2469,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     <int, Map<String, String>>{};
                 List<Map<String, dynamic>> outItems2 =
                     const <Map<String, dynamic>>[];
-                await for (final ch in s2) {
+                await for (final ch in _ensureTrailingNewline(s2)) {
                   buf2 += ch;
                   final lines2 = buf2.split('\n');
                   buf2 = lines2.last;
@@ -2572,9 +2581,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 final sigParts = <String>[];
                 for (final idx2 in sorted2) {
                   final m2 = respCalls2[idx2]!;
-                  sigParts.add(
-                    '${m2['name'] ?? ''}:${m2['args'] ?? ''}',
-                  );
+                  sigParts.add('${m2['name'] ?? ''}:${m2['args'] ?? ''}');
                 }
                 final currentSig = sigParts.join('|');
                 if (currentSig == lastToolSignature) {
@@ -3228,7 +3235,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             String contentAccum = '';
             String reasoningAccum = '';
             dynamic reasoningDetailsAccum;
-            await for (final ch in s2) {
+            await for (final ch in _ensureTrailingNewline(s2)) {
               buf2 += ch;
               final lines2 = buf2.split('\n');
               buf2 = lines2.last;
@@ -3830,7 +3837,7 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 String contentAccum = '';
                 String reasoningAccum = '';
                 dynamic reasoningDetailsAccum;
-                await for (final ch in s2) {
+                await for (final ch in _ensureTrailingNewline(s2)) {
                   buf2 += ch;
                   final lines2 = buf2.split('\n');
                   buf2 = lines2.last;

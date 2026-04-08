@@ -552,7 +552,7 @@ Stream<ChatStreamChunk> _sendGoogleVertexClaudeStream({
 
     bool messageStopped = false;
 
-    await for (final chunk in sse) {
+    await for (final chunk in _ensureTrailingNewline(sse)) {
       buffer += chunk;
       final lines = buffer.split('\n');
       buffer = lines.last;
