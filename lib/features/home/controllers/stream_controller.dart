@@ -270,9 +270,12 @@ class StreamController {
         s.startAt = item['startAt'] != null
             ? DateTime.parse(item['startAt'])
             : null;
-        s.finishedAt = item['finishedAt'] != null
+        final parsedFinished = item['finishedAt'] != null
             ? DateTime.parse(item['finishedAt'])
             : null;
+        // If finishedAt is null but startAt exists, the stream was interrupted;
+        // treat segment as finished to avoid an infinite timer on restore.
+        s.finishedAt = parsedFinished ?? s.startAt;
         s.expanded = item['expanded'] ?? false;
         s.toolStartIndex = (item['toolStartIndex'] as int?) ?? 0;
         return s;
@@ -928,7 +931,10 @@ class StreamController {
       final rd = ReasoningData();
       rd.text = txt;
       rd.startAt = message.reasoningStartAt;
-      rd.finishedAt = message.reasoningFinishedAt;
+      // If finishedAt is null but startAt exists, the stream was interrupted
+      // (e.g. app force-quit mid-reasoning); treat reasoning as finished to
+      // avoid an infinite timer.
+      rd.finishedAt = message.reasoningFinishedAt ?? message.reasoningStartAt;
       rd.expanded = false;
       _reasoning[messageId] = rd;
     }

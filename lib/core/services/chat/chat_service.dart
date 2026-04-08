@@ -11,6 +11,7 @@ class ChatService extends ChangeNotifier {
   static const String _conversationsBoxName = 'conversations';
   static const String _messagesBoxName = 'messages';
   static const String _toolEventsBoxName = 'tool_events_v1';
+  static const String _activeStreamingKey = '_active_streaming_ids';
 
   late Box<Conversation> _conversationsBox;
   late Box<ChatMessage> _messagesBox;
@@ -55,6 +56,10 @@ class ChatService extends ChangeNotifier {
 
     // Migrate any persisted message content that references old iOS sandbox paths
     await _migrateSandboxPaths();
+
+    // Reset any stale isStreaming flags left over from a previous app crash or
+    // force-quit.  After a fresh launch no message can be actively streaming.
+    await _resetStaleStreamingFlags();
 
     _initialized = true;
     notifyListeners();
@@ -276,6 +281,61 @@ class ChatService extends ChangeNotifier {
     } catch (_) {
       // best-effort migration; ignore errors
     }
+  }
+
+  /// Reset stale isStreaming flags left over from a previous app crash or
+  /// force-quit.  After a fresh launch no message can be actively streaming,
+  /// so any persisted `isStreaming: true` is stale and must be cleared to
+  /// avoid stuck loading indicators.
+  ///
+  /// Uses a tracked set of streaming message IDs for O(1) lookup instead of
+  /// scanning every message in the box.
+  Future<void> _resetStaleStreamingFlags() async {
+    try {
+      final raw = _toolEventsBox.get(_activeStreamingKey);
+      if (raw == null) return;
+      final ids = (raw as List).cast<String>();
+      if (ids.isEmpty) return;
+      for (final id in ids) {
+        final msg = _messagesBox.get(id);
+        if (msg != null && msg.isStreaming) {
+          await _messagesBox.put(id, msg.copyWith(isStreaming: false));
+        }
+      }
+      await _toolEventsBox.delete(_activeStreamingKey);
+    } catch (_) {
+      // best-effort; ignore errors
+    }
+  }
+
+  /// Record a message ID as actively streaming.
+  void _trackStreamingId(String messageId) {
+    try {
+      final raw = _toolEventsBox.get(_activeStreamingKey);
+      final ids = raw != null
+          ? (raw as List).cast<String>().toList()
+          : <String>[];
+      if (!ids.contains(messageId)) {
+        ids.add(messageId);
+        _toolEventsBox.put(_activeStreamingKey, ids);
+      }
+    } catch (_) {}
+  }
+
+  /// Remove a message ID from the active streaming set.
+  void _untrackStreamingId(String messageId) {
+    try {
+      final raw = _toolEventsBox.get(_activeStreamingKey);
+      if (raw == null) return;
+      final ids = (raw as List).cast<String>().toList();
+      if (ids.remove(messageId)) {
+        if (ids.isEmpty) {
+          _toolEventsBox.delete(_activeStreamingKey);
+        } else {
+          _toolEventsBox.put(_activeStreamingKey, ids);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _cleanupOrphanUploads() async {
@@ -566,6 +626,11 @@ class ChatService extends ChangeNotifier {
 
     await _messagesBox.put(message.id, message);
 
+    // Track streaming state for crash-recovery cleanup
+    if (isStreaming) {
+      _trackStreamingId(message.id);
+    }
+
     conversation.messageIds.add(message.id);
     conversation.updatedAt = DateTime.now();
     await conversation.save();
@@ -616,6 +681,11 @@ class ChatService extends ChangeNotifier {
     );
 
     await _messagesBox.put(messageId, updatedMessage);
+
+    // Update streaming tracking for crash-recovery
+    if (isStreaming == false) {
+      _untrackStreamingId(messageId);
+    }
 
     // Update cache
     final conversationId = message.conversationId;
@@ -670,6 +740,11 @@ class ChatService extends ChangeNotifier {
     );
 
     await _messagesBox.put(messageId, updatedMessage);
+
+    // Update streaming tracking for crash-recovery
+    if (isStreaming == false) {
+      _untrackStreamingId(messageId);
+    }
 
     // Update cache
     final conversationId = message.conversationId;
