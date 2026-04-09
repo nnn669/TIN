@@ -3845,6 +3845,18 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get chatInputBarMoreTooltip;
 
+  /// No description provided for @chatInputBarQueuedPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued to send'**
+  String get chatInputBarQueuedPending;
+
+  /// No description provided for @chatInputBarQueuedCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Queue'**
+  String get chatInputBarQueuedCancel;
+
   /// No description provided for @chatInputBarInsertNewline.
   ///
   /// In en, this message translates to:

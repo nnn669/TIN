@@ -1,0 +1,143 @@
+import 'package:Kelivo/core/models/chat_input_data.dart';
+import 'package:Kelivo/core/providers/assistant_provider.dart';
+import 'package:Kelivo/core/providers/settings_provider.dart';
+import 'package:Kelivo/features/home/widgets/chat_input_bar.dart';
+import 'package:Kelivo/icons/lucide_adapter.dart';
+import 'package:Kelivo/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  Widget buildHarness({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required Future<ChatInputSubmissionResult> Function(ChatInputData input)
+    onSend,
+    SettingsProvider? settingsProvider,
+    AssistantProvider? assistantProvider,
+    bool loading = false,
+    bool hasQueuedInput = false,
+    String? queuedPreviewText,
+    VoidCallback? onCancelQueuedInput,
+  }) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(
+          value: settingsProvider ?? SettingsProvider(),
+        ),
+        ChangeNotifierProvider.value(
+          value: assistantProvider ?? AssistantProvider(),
+        ),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatInputBar(
+            controller: controller,
+            focusNode: focusNode,
+            onSend: onSend,
+            loading: loading,
+            hasQueuedInput: hasQueuedInput,
+            queuedPreviewText: queuedPreviewText,
+            onCancelQueuedInput: onCancelQueuedInput,
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('提交结果 queued 时会清空输入', (tester) async {
+    final controller = TextEditingController(text: 'queued message');
+    final focusNode = FocusNode();
+    ChatInputData? submitted;
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        onSend: (input) async {
+          submitted = input;
+          return ChatInputSubmissionResult.queued;
+        },
+      ),
+    );
+
+    await tapSendButton(tester);
+
+    expect(submitted?.text, 'queued message');
+    expect(controller.text, isEmpty);
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('提交结果 rejected 时保留输入内容', (tester) async {
+    final controller = TextEditingController(text: 'keep me');
+    final focusNode = FocusNode();
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        onSend: (_) async => ChatInputSubmissionResult.rejected,
+      ),
+    );
+
+    await tapSendButton(tester);
+
+    expect(controller.text, 'keep me');
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('有排队项时显示状态并允许取消', (tester) async {
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    var cancelled = false;
+    const preview = '第一行\n第二行\n第三行\n第四行';
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        hasQueuedInput: true,
+        queuedPreviewText: preview,
+        onCancelQueuedInput: () {
+          cancelled = true;
+        },
+        onSend: (_) async => ChatInputSubmissionResult.rejected,
+      ),
+    );
+
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    expect(textField.readOnly, isTrue);
+    expect(find.text('Queued to send'), findsOneWidget);
+    expect(find.text('Cancel Queue'), findsOneWidget);
+    expect(find.text(preview), findsOneWidget);
+
+    final previewText = tester.widget<Text>(find.text(preview));
+    expect(previewText.maxLines, 3);
+    expect(previewText.overflow, TextOverflow.ellipsis);
+
+    await tester.tap(find.text('Cancel Queue'));
+    await tester.pumpAndSettle();
+
+    expect(cancelled, isTrue);
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+}
+
+Future<void> tapSendButton(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Lucide.ArrowUp));
+  await tester.pumpAndSettle();
+}

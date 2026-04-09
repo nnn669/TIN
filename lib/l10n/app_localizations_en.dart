@@ -2032,6 +2032,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatInputBarMoreTooltip => 'Add';
 
   @override
+  String get chatInputBarQueuedPending => 'Queued to send';
+
+  @override
+  String get chatInputBarQueuedCancel => 'Cancel Queue';
+
+  @override
   String get chatInputBarInsertNewline => 'Newline';
 
   @override

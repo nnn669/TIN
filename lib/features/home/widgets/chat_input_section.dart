@@ -49,6 +49,9 @@ class ChatInputSection extends StatelessWidget {
     this.onConfigureReasoning,
     this.onSend,
     this.onStop,
+    this.hasQueuedInput = false,
+    this.queuedPreviewText,
+    this.onCancelQueuedInput,
     this.onQuickPhrase,
     this.onLongPressQuickPhrase,
     this.onToggleOcr,
@@ -83,8 +86,11 @@ class ChatInputSection extends StatelessWidget {
   final VoidCallback? onLongPressMcp;
   final VoidCallback? onOpenSearch;
   final VoidCallback? onConfigureReasoning;
-  final ValueChanged<ChatInputData>? onSend;
+  final Future<ChatInputSubmissionResult> Function(ChatInputData)? onSend;
   final VoidCallback? onStop;
+  final bool hasQueuedInput;
+  final String? queuedPreviewText;
+  final VoidCallback? onCancelQueuedInput;
   final VoidCallback? onQuickPhrase;
   final VoidCallback? onLongPressQuickPhrase;
   final VoidCallback? onToggleOcr;
@@ -155,6 +161,9 @@ class ChatInputSection extends StatelessWidget {
       onOpenSearch: onOpenSearch,
       onSend: onSend,
       loading: isLoading,
+      hasQueuedInput: hasQueuedInput,
+      queuedPreviewText: queuedPreviewText,
+      onCancelQueuedInput: onCancelQueuedInput,
       showMcpButton: _shouldShowMcpButton(context, settings, a, pk, mid),
       mcpActive: _isMcpActive(context, a),
       showQuickPhraseButton: _hasQuickPhrases(context, a),

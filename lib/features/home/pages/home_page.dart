@@ -16,6 +16,7 @@ import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/world_book_provider.dart';
 import '../../../core/models/quick_phrase.dart';
+import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/services/android_process_text.dart';
 import '../../../utils/sandbox_path_resolver.dart';
@@ -849,16 +850,19 @@ class _HomePageState extends State<HomePage>
           );
         }
       },
-      onSend: (text) {
-        _controller.sendMessage(text);
-        _inputController.clear();
-        if (PlatformUtils.isMobile) {
+      onSend: (text) async {
+        final result = await _controller.sendMessage(text);
+        if (!mounted) return result;
+        if (PlatformUtils.isMobile &&
+            result == ChatInputSubmissionResult.sent) {
           _controller.dismissKeyboard();
-        } else {
-          _inputFocus.requestFocus();
         }
+        return result;
       },
       onStop: _controller.cancelStreaming,
+      hasQueuedInput: _controller.currentQueuedInput != null,
+      queuedPreviewText: _controller.currentQueuedInput?.input.text,
+      onCancelQueuedInput: _controller.cancelQueuedMessage,
       onQuickPhrase: _showQuickPhraseMenu,
       onLongPressQuickPhrase: () {
         Navigator.of(
