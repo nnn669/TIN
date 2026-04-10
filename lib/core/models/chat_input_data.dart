@@ -21,3 +21,12 @@ class ChatInputData {
     this.documents = const [],
   });
 }
+
+enum ChatInputSubmissionResult { sent, queued, rejected }
+
+class QueuedChatInput {
+  final String conversationId;
+  final ChatInputData input;
+
+  const QueuedChatInput({required this.conversationId, required this.input});
+}

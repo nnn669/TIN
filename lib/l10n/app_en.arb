@@ -894,6 +894,8 @@
   "chatInputBarReasoningStrengthTooltip": "Reasoning Strength",
   "chatInputBarMcpServersTooltip": "MCP Servers",
   "chatInputBarMoreTooltip": "Add",
+  "chatInputBarQueuedPending": "Queued to send",
+  "chatInputBarQueuedCancel": "Cancel Queue",
   "chatInputBarInsertNewline": "Newline",
   "chatInputBarExpand": "Expand",
   "chatInputBarCollapse": "Collapse",

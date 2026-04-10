@@ -84,6 +84,8 @@ class HomeViewModel extends ChangeNotifier {
   final ChatController _chatController;
   final BuildContext _contextProvider;
   late final ChatActions _chatActions;
+  QueuedChatInput? _queuedInput;
+  bool _isDrainingQueuedInput = false;
 
   /// Function to get localized title
   final String Function(BuildContext context) getTitleForLocale;
@@ -137,6 +139,15 @@ class HomeViewModel extends ChangeNotifier {
   bool get isCurrentConversationLoading =>
       _chatController.isCurrentConversationLoading;
 
+  QueuedChatInput? get currentQueuedInput {
+    final cid = currentConversation?.id;
+    final queued = _queuedInput;
+    if (cid == null || queued == null || queued.conversationId != cid) {
+      return null;
+    }
+    return queued;
+  }
+
   final ValueNotifier<bool> isProcessingFiles = ValueNotifier<bool>(false);
 
   // ============================================================================
@@ -150,6 +161,9 @@ class HomeViewModel extends ChangeNotifier {
 
   void _onLoadingChanged(String conversationId, bool loading) {
     notifyListeners();
+    if (!loading) {
+      unawaited(_drainQueuedInputIfReady(conversationId));
+    }
   }
 
   void _onContentUpdated(String messageId, String content, int totalTokens) {
@@ -197,8 +211,15 @@ class HomeViewModel extends ChangeNotifier {
   // Public Methods - Message Actions
   // ============================================================================
 
-  /// Send a new message. Returns true if successful.
-  Future<bool> sendMessage(ChatInputData input) async {
+  /// Send a new message or queue it if the current conversation is busy.
+  Future<ChatInputSubmissionResult> sendMessage(ChatInputData input) async {
+    final content = input.text.trim();
+    if (content.isEmpty &&
+        input.imagePaths.isEmpty &&
+        input.documents.isEmpty) {
+      return ChatInputSubmissionResult.rejected;
+    }
+
     final conversation = currentConversation;
     if (conversation == null) {
       // Create new conversation first
@@ -207,6 +228,44 @@ class HomeViewModel extends ChangeNotifier {
 
     if (currentConversation == null) {
       onError?.call('no_conversation');
+      return ChatInputSubmissionResult.rejected;
+    }
+
+    final activeConversation = currentConversation!;
+    if (_chatController.isConversationLoading(activeConversation.id)) {
+      if (_queuedInput != null) {
+        return ChatInputSubmissionResult.rejected;
+      }
+      _queuedInput = QueuedChatInput(
+        conversationId: activeConversation.id,
+        input: _cloneInput(input),
+      );
+      notifyListeners();
+      return ChatInputSubmissionResult.queued;
+    }
+
+    final success = await _sendMessageToConversation(input, activeConversation);
+    return success
+        ? ChatInputSubmissionResult.sent
+        : ChatInputSubmissionResult.rejected;
+  }
+
+  ChatInputData? cancelCurrentQueuedInput() {
+    final queued = currentQueuedInput;
+    if (queued == null || _isDrainingQueuedInput) return null;
+    _queuedInput = null;
+    notifyListeners();
+    return _cloneInput(queued.input);
+  }
+
+  Future<bool> _sendMessageToConversation(
+    ChatInputData input,
+    Conversation conversation,
+  ) async {
+    final content = input.text.trim();
+    if (content.isEmpty &&
+        input.imagePaths.isEmpty &&
+        input.documents.isEmpty) {
       return false;
     }
 
@@ -221,7 +280,7 @@ class HomeViewModel extends ChangeNotifier {
 
     final result = await _chatActions.sendMessage(
       input: input,
-      conversation: currentConversation!,
+      conversation: conversation,
     );
 
     if (!result.success) {
@@ -235,6 +294,39 @@ class HomeViewModel extends ChangeNotifier {
 
     onScrollToBottom?.call();
     return true;
+  }
+
+  ChatInputData _cloneInput(ChatInputData input) {
+    return ChatInputData(
+      text: input.text,
+      imagePaths: List<String>.of(input.imagePaths),
+      documents: List<DocumentAttachment>.of(input.documents),
+    );
+  }
+
+  Future<void> _drainQueuedInputIfReady(String conversationId) async {
+    if (_isDrainingQueuedInput) return;
+    final queued = _queuedInput;
+    final conversation = currentConversation;
+    if (queued == null || conversation == null) return;
+    if (queued.conversationId != conversationId ||
+        conversation.id != conversationId) {
+      return;
+    }
+    if (_chatController.isConversationLoading(conversationId)) return;
+
+    _isDrainingQueuedInput = true;
+    _queuedInput = null;
+    notifyListeners();
+
+    final input = queued.input;
+    final success = await _sendMessageToConversation(input, conversation);
+    if (!success) {
+      _queuedInput = queued;
+    }
+
+    _isDrainingQueuedInput = false;
+    notifyListeners();
   }
 
   /// Regenerate response at a specific message.
@@ -364,6 +456,7 @@ class HomeViewModel extends ChangeNotifier {
       _streamController.clearGeminiThoughtSigs();
       notifyListeners();
       onConversationSwitched?.call();
+      unawaited(_drainQueuedInputIfReady(id));
     }
   }
 

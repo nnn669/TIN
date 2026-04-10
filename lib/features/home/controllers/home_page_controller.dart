@@ -235,6 +235,8 @@ class HomePageController extends ChangeNotifier {
     return loadingConversationIds.contains(cid);
   }
 
+  QueuedChatInput? get currentQueuedInput => _viewModel.currentQueuedInput;
+
   ValueNotifier<bool> get isProcessingFiles => _viewModel.isProcessingFiles;
 
   @override
@@ -573,21 +575,39 @@ class HomePageController extends ChangeNotifier {
   // Public Methods - Message Actions
   // ============================================================================
 
-  Future<void> sendMessage(ChatInputData input) async {
+  Future<ChatInputSubmissionResult> sendMessage(ChatInputData input) async {
     final content = input.text.trim();
     if (content.isEmpty &&
         input.imagePaths.isEmpty &&
         input.documents.isEmpty) {
-      return;
+      return ChatInputSubmissionResult.rejected;
     }
     if (currentConversation == null) {
       await _createNewConversation();
     }
 
-    final success = await _viewModel.sendMessage(input);
-    if (success) {
+    final result = await _viewModel.sendMessage(input);
+    if (result != ChatInputSubmissionResult.rejected) {
       notifyListeners();
     }
+    return result;
+  }
+
+  void cancelQueuedMessage() {
+    final restored = _viewModel.cancelCurrentQueuedInput();
+    if (restored == null) return;
+
+    _inputController.value = TextEditingValue(
+      text: restored.text,
+      selection: TextSelection.collapsed(offset: restored.text.length),
+      composing: TextRange.empty,
+    );
+    _mediaController.restoreInput(restored);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_context.mounted) return;
+      _inputFocus.requestFocus();
+    });
+    notifyListeners();
   }
 
   Future<void> regenerateAtMessage(
