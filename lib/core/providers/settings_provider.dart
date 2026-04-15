@@ -750,7 +750,7 @@ class SettingsProvider extends ChangeNotifier {
     _autoCollapseThinking =
         prefs.getBool(_displayAutoCollapseThinkingKey) ?? true;
     _collapseThinkingSteps =
-        prefs.getBool(_displayCollapseThinkingStepsKey) ?? true;
+        prefs.getBool(_displayCollapseThinkingStepsKey) ?? false;
     _showToolResultSummary =
         prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
@@ -2740,7 +2740,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayAutoCollapseThinkingKey, v);
   }
 
-  bool _collapseThinkingSteps = true;
+  bool _collapseThinkingSteps = false;
   bool get collapseThinkingSteps => _collapseThinkingSteps;
   Future<void> setCollapseThinkingSteps(bool v) async {
     if (_collapseThinkingSteps == v) return;
