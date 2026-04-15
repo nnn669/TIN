@@ -3724,8 +3724,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
                       widget.part.arguments['text']) ??
                   '')
               .toString();
-    final bool shouldShowSummary =
-        isPendingApproval || settings.showToolResultSummary;
+    final bool shouldShowSummary = settings.showToolResultSummary;
     final Widget? content = !shouldShowSummary || summaryText.trim().isEmpty
         ? null
         : Text(
@@ -3777,15 +3776,13 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
       label: label,
       isFirst: widget.isFirst,
       isLast: widget.isLast,
-      onTap: isPendingApproval ? null : () => _showDetail(context),
+      onTap: () => _showDetail(context),
       extra: extra,
-      indicator: isPendingApproval
-          ? null
-          : Icon(
-              Lucide.ChevronRight,
-              size: 16,
-              color: cs.onSurface.withValues(alpha: 0.5),
-            ),
+      indicator: Icon(
+        Lucide.ChevronRight,
+        size: 16,
+        color: cs.onSurface.withValues(alpha: 0.5),
+      ),
       content: content,
       contentVisible: content != null,
     );
