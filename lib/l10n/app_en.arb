@@ -1375,6 +1375,17 @@
   "displaySettingsPageShowTokenStatsSubtitle": "Show token usage and message count",
   "displaySettingsPageAutoCollapseThinkingTitle": "Auto-collapse Thinking",
   "displaySettingsPageAutoCollapseThinkingSubtitle": "Collapse reasoning after finish",
+  "displaySettingsPageCollapseThinkingStepsTitle": "Collapse Thinking Steps",
+  "displaySettingsPageCollapseThinkingStepsSubtitle": "Show only the latest steps until expanded",
+  "displaySettingsPageShowToolResultSummaryTitle": "Show Tool Result Summary",
+  "displaySettingsPageShowToolResultSummarySubtitle": "Display the summary text below tool steps",
+  "chainOfThoughtExpandSteps": "Show {count} more steps",
+  "@chainOfThoughtExpandSteps": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "chainOfThoughtCollapse": "Collapse",
   "displaySettingsPageShowChatListDateTitle": "Show Chat List Dates",
   "displaySettingsPageShowChatListDateSubtitle": "Display date group labels in the conversation list",
   "displaySettingsPageKeepSidebarOpenOnAssistantTapTitle": "Keep sidebar open when selecting assistant",

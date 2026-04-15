@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/token_usage.dart';
@@ -95,6 +96,11 @@ class StreamController {
   Map<String, List<ReasoningSegmentData>> get reasoningSegments =>
       _reasoningSegments;
 
+  /// Content/text split metadata per assistant message.
+  final Map<String, ContentSplitData> _contentSplits =
+      <String, ContentSplitData>{};
+  Map<String, ContentSplitData> get contentSplits => _contentSplits;
+
   /// Tool UI parts per assistant message.
   final Map<String, List<ToolUIPart>> _toolParts = <String, List<ToolUIPart>>{};
   Map<String, List<ToolUIPart>> get toolParts => _toolParts;
@@ -165,6 +171,25 @@ class StreamController {
     _reasoningSegments.remove(messageId);
   }
 
+  /// Get content split metadata for a message.
+  ContentSplitData? getContentSplitData(String messageId) =>
+      _contentSplits[messageId];
+
+  /// Set content split metadata for a message.
+  void setContentSplitData(String messageId, ContentSplitData data) {
+    _contentSplits[messageId] = data;
+  }
+
+  /// Remove content split metadata for a message.
+  void removeContentSplitData(String messageId) {
+    _contentSplits.remove(messageId);
+  }
+
+  int getReasoningSegmentCount(String messageId) =>
+      _reasoningSegments[messageId]?.length ?? 0;
+
+  int getToolPartsCount(String messageId) => _toolParts[messageId]?.length ?? 0;
+
   /// Get tool parts for a message.
   List<ToolUIPart>? getToolParts(String messageId) => _toolParts[messageId];
 
@@ -182,6 +207,7 @@ class StreamController {
   void clearMessageState(String messageId) {
     _reasoning.remove(messageId);
     _reasoningSegments.remove(messageId);
+    _contentSplits.remove(messageId);
     _toolParts.remove(messageId);
     _geminiThoughtSigs.remove(messageId);
     _cleanupStreamTimers(messageId);
@@ -191,6 +217,7 @@ class StreamController {
   void clearAllState() {
     _reasoning.clear();
     _reasoningSegments.clear();
+    _contentSplits.clear();
     _toolParts.clear();
     _geminiThoughtSigs.clear();
     _cancelAllTimers();
@@ -259,11 +286,57 @@ class StreamController {
     return _encodeJson(list);
   }
 
+  String serializeReasoningSegmentsWithSplits(
+    List<ReasoningSegmentData> segments, {
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
+  }) {
+    final list = segments
+        .map(
+          (s) => {
+            'text': s.text,
+            'startAt': s.startAt?.toIso8601String(),
+            'finishedAt': s.finishedAt?.toIso8601String(),
+            'expanded': s.expanded,
+            'toolStartIndex': s.toolStartIndex,
+          },
+        )
+        .toList();
+
+    if (contentSplitOffsets == null &&
+        reasoningCountAtSplit == null &&
+        toolCountAtSplit == null) {
+      return _encodeJson(list);
+    }
+
+    final normalized = _normalizeContentSplitData(
+      ContentSplitData(
+        offsets: List<int>.of(contentSplitOffsets ?? const <int>[]),
+        reasoningCounts: List<int>.of(reasoningCountAtSplit ?? const <int>[]),
+        toolCounts: List<int>.of(toolCountAtSplit ?? const <int>[]),
+      ),
+    );
+
+    return _encodeJson({
+      'v': 2,
+      'segments': list,
+      'contentSplits': {
+        'offsets': normalized.offsets,
+        'reasoningCounts': normalized.reasoningCounts,
+        'toolCounts': normalized.toolCounts,
+      },
+    });
+  }
+
   /// Deserialize reasoning segments from JSON string.
   List<ReasoningSegmentData> deserializeReasoningSegments(String? json) {
     if (json == null || json.isEmpty) return [];
     try {
-      final list = _decodeJson(json) as List;
+      final decoded = _decodeJson(json);
+      final list = decoded is Map<String, dynamic>
+          ? (decoded['segments'] as List? ?? const [])
+          : decoded as List;
       return list.map((item) {
         final s = ReasoningSegmentData();
         s.text = item['text'] ?? '';
@@ -283,6 +356,45 @@ class StreamController {
     } catch (_) {
       return [];
     }
+  }
+
+  ContentSplitData? deserializeContentSplits(String? json) {
+    if (json == null || json.isEmpty) return null;
+    try {
+      final decoded = _decodeJson(json);
+      if (decoded is! Map<String, dynamic>) return null;
+      final contentSplits = (decoded['contentSplits'] as Map?)
+          ?.cast<String, dynamic>();
+      if (contentSplits == null) return null;
+      return _normalizeContentSplitData(
+        ContentSplitData(
+          offsets: (contentSplits['offsets'] as List? ?? const [])
+              .map((item) => item as int)
+              .toList(),
+          reasoningCounts:
+              (contentSplits['reasoningCounts'] as List? ?? const [])
+                  .map((item) => item as int)
+                  .toList(),
+          toolCounts: (contentSplits['toolCounts'] as List? ?? const [])
+              .map((item) => item as int)
+              .toList(),
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ContentSplitData _normalizeContentSplitData(ContentSplitData data) {
+    final length = math.min(
+      data.offsets.length,
+      math.min(data.reasoningCounts.length, data.toolCounts.length),
+    );
+    return ContentSplitData(
+      offsets: List<int>.of(data.offsets.take(length)),
+      reasoningCounts: List<int>.of(data.reasoningCounts.take(length)),
+      toolCounts: List<int>.of(data.toolCounts.take(length)),
+    );
   }
 
   // Simple JSON encode/decode to avoid importing dart:convert in this file
@@ -347,6 +459,9 @@ class StreamController {
     required void Function(String messageId, String content, int totalTokens)
     updateMessageInList,
     required int totalTokens,
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
@@ -367,6 +482,9 @@ class StreamController {
             messageId,
             pending,
             totalTokens,
+            contentSplitOffsets: contentSplitOffsets,
+            reasoningCountAtSplit: reasoningCountAtSplit,
+            toolCountAtSplit: toolCountAtSplit,
             promptTokens: promptTokens,
             completionTokens: completionTokens,
             cachedTokens: cachedTokens,
@@ -500,6 +618,14 @@ class StreamController {
 
     final messageId = state.messageId;
     final conversationId = state.conversationId;
+    state.hadThinkingBlock = true;
+    _contentSplits[messageId] = _normalizeContentSplitData(
+      ContentSplitData(
+        offsets: List<int>.of(state.contentSplitOffsets),
+        reasoningCounts: List<int>.of(state.reasoningCountAtSplit),
+        toolCounts: List<int>.of(state.toolCountAtSplit),
+      ),
+    );
 
     if (state.ctx.streamOutput) {
       final r = _reasoning[messageId] ?? ReasoningData();
@@ -538,7 +664,12 @@ class StreamController {
 
       await updateReasoningInDb(
         messageId,
-        reasoningSegmentsJson: serializeReasoningSegments(segments),
+        reasoningSegmentsJson: serializeReasoningSegmentsWithSplits(
+          segments,
+          contentSplitOffsets: state.contentSplitOffsets,
+          reasoningCountAtSplit: state.reasoningCountAtSplit,
+          toolCountAtSplit: state.toolCountAtSplit,
+        ),
       );
 
       // Update reasoning via StreamingContentNotifier for real-time UI updates
@@ -548,6 +679,9 @@ class StreamController {
           messageId,
           reasoningText: r.text,
           reasoningStartAt: r.startAt,
+          contentSplitOffsets: state.contentSplitOffsets,
+          reasoningCountAtSplit: state.reasoningCountAtSplit,
+          toolCountAtSplit: state.toolCountAtSplit,
         );
         onStreamTick?.call();
       }
@@ -586,6 +720,14 @@ class StreamController {
 
     final messageId = state.messageId;
     final conversationId = state.conversationId;
+    state.hadThinkingBlock = true;
+    _contentSplits[messageId] = _normalizeContentSplitData(
+      ContentSplitData(
+        offsets: List<int>.of(state.contentSplitOffsets),
+        reasoningCounts: List<int>.of(state.reasoningCountAtSplit),
+        toolCounts: List<int>.of(state.toolCountAtSplit),
+      ),
+    );
 
     // Finish any unfinished reasoning segment when tools start
     final segments = _reasoningSegments[messageId] ?? <ReasoningSegmentData>[];
@@ -600,7 +742,12 @@ class StreamController {
       _reasoningSegments[messageId] = segments;
       await updateReasoningSegmentsInDb(
         messageId,
-        serializeReasoningSegments(segments),
+        serializeReasoningSegmentsWithSplits(
+          segments,
+          contentSplitOffsets: state.contentSplitOffsets,
+          reasoningCountAtSplit: state.reasoningCountAtSplit,
+          toolCountAtSplit: state.toolCountAtSplit,
+        ),
       );
     }
 
@@ -619,7 +766,12 @@ class StreamController {
     if (getCurrentConversationId() == conversationId) {
       _toolParts[messageId] = dedupeToolPartsList(existing);
       // Notify via StreamingContentNotifier for real-time UI updates
-      streamingContentNotifier.notifyToolPartsUpdated(messageId);
+      streamingContentNotifier.notifyToolPartsUpdated(
+        messageId,
+        contentSplitOffsets: state.contentSplitOffsets,
+        reasoningCountAtSplit: state.reasoningCountAtSplit,
+        toolCountAtSplit: state.toolCountAtSplit,
+      );
     }
 
     // Persist tool events
@@ -703,7 +855,13 @@ class StreamController {
     if (getCurrentConversationId() == conversationId) {
       _toolParts[messageId] = dedupeToolPartsList(parts);
       // Notify via StreamingContentNotifier for real-time UI updates
-      streamingContentNotifier.notifyToolPartsUpdated(messageId);
+      final splits = _contentSplits[messageId];
+      streamingContentNotifier.notifyToolPartsUpdated(
+        messageId,
+        contentSplitOffsets: splits?.offsets,
+        reasoningCountAtSplit: splits?.reasoningCounts,
+        toolCountAtSplit: splits?.toolCounts,
+      );
     }
   }
 
@@ -749,7 +907,12 @@ class StreamController {
       _safeNotifyStateChanged();
       await updateReasoningInDb(
         messageId,
-        reasoningSegmentsJson: serializeReasoningSegments(segments),
+        reasoningSegmentsJson: serializeReasoningSegmentsWithSplits(
+          segments,
+          contentSplitOffsets: _contentSplits[messageId]?.offsets,
+          reasoningCountAtSplit: _contentSplits[messageId]?.reasoningCounts,
+          toolCountAtSplit: _contentSplits[messageId]?.toolCounts,
+        ),
       );
     }
   }
@@ -797,7 +960,12 @@ class StreamController {
     if (segments != null && segments.isNotEmpty) {
       await updateReasoningInDb(
         messageId,
-        reasoningSegmentsJson: serializeReasoningSegments(segments),
+        reasoningSegmentsJson: serializeReasoningSegmentsWithSplits(
+          segments,
+          contentSplitOffsets: _contentSplits[messageId]?.offsets,
+          reasoningCountAtSplit: _contentSplits[messageId]?.reasoningCounts,
+          toolCountAtSplit: _contentSplits[messageId]?.toolCounts,
+        ),
       );
     }
   }
@@ -880,7 +1048,10 @@ class StreamController {
       messageId,
       forceCollapse: forceCollapse,
     );
-    if (!changed) return;
+    final splits = _contentSplits[messageId];
+    final segments =
+        _reasoningSegments[messageId] ?? const <ReasoningSegmentData>[];
+    if (!changed && splits == null) return;
 
     // Persist reasoning data
     final r = _reasoning[messageId];
@@ -893,11 +1064,15 @@ class StreamController {
     }
 
     // Persist reasoning segments
-    final segments = _reasoningSegments[messageId];
-    if (segments != null && segments.isNotEmpty) {
+    if (segments.isNotEmpty || splits != null) {
       await updateReasoningInDb(
         messageId,
-        reasoningSegmentsJson: serializeReasoningSegments(segments),
+        reasoningSegmentsJson: serializeReasoningSegmentsWithSplits(
+          segments,
+          contentSplitOffsets: splits?.offsets,
+          reasoningCountAtSplit: splits?.reasoningCounts,
+          toolCountAtSplit: splits?.toolCounts,
+        ),
       );
     }
   }
@@ -968,6 +1143,12 @@ class StreamController {
     if (segments.isNotEmpty) {
       _reasoningSegments[messageId] = segments;
     }
+    final contentSplits = deserializeContentSplits(
+      message.reasoningSegmentsJson,
+    );
+    if (contentSplits != null) {
+      _contentSplits[messageId] = contentSplits;
+    }
   }
 
   // ============================================================================
@@ -1037,6 +1218,10 @@ class StreamingState {
   bool finishHandled = false;
   bool titleQueued = false;
   DateTime? streamStartedAt;
+  bool hadThinkingBlock = false;
+  List<int> contentSplitOffsets = <int>[];
+  List<int> reasoningCountAtSplit = <int>[];
+  List<int> toolCountAtSplit = <int>[];
 
   String get messageId => ctx.assistantMessage.id;
   String get conversationId => ctx.assistantMessage.conversationId;
@@ -1057,6 +1242,18 @@ class ReasoningSegmentData {
   DateTime? finishedAt;
   bool expanded = true;
   int toolStartIndex = 0;
+}
+
+class ContentSplitData {
+  const ContentSplitData({
+    required this.offsets,
+    required this.reasoningCounts,
+    required this.toolCounts,
+  });
+
+  final List<int> offsets;
+  final List<int> reasoningCounts;
+  final List<int> toolCounts;
 }
 
 // ============================================================================

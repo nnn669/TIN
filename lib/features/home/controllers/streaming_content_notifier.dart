@@ -36,6 +36,9 @@ class StreamingContentNotifier {
     String messageId,
     String content,
     int totalTokens, {
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
@@ -50,6 +53,10 @@ class StreamingContentNotifier {
         reasoningText: current.reasoningText,
         reasoningStartAt: current.reasoningStartAt,
         reasoningFinishedAt: current.reasoningFinishedAt,
+        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
+        reasoningCountAtSplit:
+            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
         toolPartsVersion: current.toolPartsVersion,
         uiVersion: current.uiVersion,
         promptTokens: promptTokens ?? current.promptTokens,
@@ -66,6 +73,9 @@ class StreamingContentNotifier {
     String? reasoningText,
     DateTime? reasoningStartAt,
     DateTime? reasoningFinishedAt,
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
   }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
@@ -76,6 +86,10 @@ class StreamingContentNotifier {
         reasoningText: reasoningText ?? current.reasoningText,
         reasoningStartAt: reasoningStartAt ?? current.reasoningStartAt,
         reasoningFinishedAt: reasoningFinishedAt ?? current.reasoningFinishedAt,
+        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
+        reasoningCountAtSplit:
+            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
         toolPartsVersion: current.toolPartsVersion,
         uiVersion: current.uiVersion,
         promptTokens: current.promptTokens,
@@ -88,7 +102,12 @@ class StreamingContentNotifier {
 
   /// Notify that tool parts have been updated.
   /// Uses a version counter to trigger rebuild without copying tool data.
-  void notifyToolPartsUpdated(String messageId) {
+  void notifyToolPartsUpdated(
+    String messageId, {
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
+  }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
       final current = notifier.value;
@@ -98,6 +117,10 @@ class StreamingContentNotifier {
         reasoningText: current.reasoningText,
         reasoningStartAt: current.reasoningStartAt,
         reasoningFinishedAt: current.reasoningFinishedAt,
+        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
+        reasoningCountAtSplit:
+            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
         toolPartsVersion: current.toolPartsVersion + 1,
         uiVersion: current.uiVersion,
         promptTokens: current.promptTokens,
@@ -159,6 +182,9 @@ class StreamingContentData {
     this.reasoningText,
     this.reasoningStartAt,
     this.reasoningFinishedAt,
+    this.contentSplitOffsets,
+    this.reasoningCountAtSplit,
+    this.toolCountAtSplit,
     this.toolPartsVersion = 0,
     this.uiVersion = 0,
     this.promptTokens,
@@ -172,6 +198,9 @@ class StreamingContentData {
   final String? reasoningText;
   final DateTime? reasoningStartAt;
   final DateTime? reasoningFinishedAt;
+  final List<int>? contentSplitOffsets;
+  final List<int>? reasoningCountAtSplit;
+  final List<int>? toolCountAtSplit;
 
   /// Version counter for tool parts updates. Incrementing this triggers rebuild.
   final int toolPartsVersion;
@@ -195,6 +224,9 @@ class StreamingContentData {
           reasoningText == other.reasoningText &&
           reasoningStartAt == other.reasoningStartAt &&
           reasoningFinishedAt == other.reasoningFinishedAt &&
+          listEquals(contentSplitOffsets, other.contentSplitOffsets) &&
+          listEquals(reasoningCountAtSplit, other.reasoningCountAtSplit) &&
+          listEquals(toolCountAtSplit, other.toolCountAtSplit) &&
           toolPartsVersion == other.toolPartsVersion &&
           uiVersion == other.uiVersion &&
           promptTokens == other.promptTokens &&
@@ -209,6 +241,9 @@ class StreamingContentData {
       reasoningText.hashCode ^
       reasoningStartAt.hashCode ^
       reasoningFinishedAt.hashCode ^
+      Object.hashAll(contentSplitOffsets ?? const <int>[]) ^
+      Object.hashAll(reasoningCountAtSplit ?? const <int>[]) ^
+      Object.hashAll(toolCountAtSplit ?? const <int>[]) ^
       toolPartsVersion.hashCode ^
       uiVersion.hashCode ^
       promptTokens.hashCode ^

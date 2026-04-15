@@ -6104,6 +6104,42 @@ abstract class AppLocalizations {
   /// **'Collapse reasoning after finish'**
   String get displaySettingsPageAutoCollapseThinkingSubtitle;
 
+  /// No description provided for @displaySettingsPageCollapseThinkingStepsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse Thinking Steps'**
+  String get displaySettingsPageCollapseThinkingStepsTitle;
+
+  /// No description provided for @displaySettingsPageCollapseThinkingStepsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show only the latest steps until expanded'**
+  String get displaySettingsPageCollapseThinkingStepsSubtitle;
+
+  /// No description provided for @displaySettingsPageShowToolResultSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Tool Result Summary'**
+  String get displaySettingsPageShowToolResultSummaryTitle;
+
+  /// No description provided for @displaySettingsPageShowToolResultSummarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display the summary text below tool steps'**
+  String get displaySettingsPageShowToolResultSummarySubtitle;
+
+  /// No description provided for @chainOfThoughtExpandSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count} more steps'**
+  String chainOfThoughtExpandSteps(Object count);
+
+  /// No description provided for @chainOfThoughtCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get chainOfThoughtCollapse;
+
   /// No description provided for @displaySettingsPageShowChatListDateTitle.
   ///
   /// In en, this message translates to:

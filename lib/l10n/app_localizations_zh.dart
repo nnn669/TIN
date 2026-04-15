@@ -3139,6 +3139,28 @@ class AppLocalizationsZh extends AppLocalizations {
       '思考完成后自动折叠，保持界面简洁';
 
   @override
+  String get displaySettingsPageCollapseThinkingStepsTitle => '折叠思考步骤';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsSubtitle =>
+      '默认只显示最新步骤，展开后查看全部';
+
+  @override
+  String get displaySettingsPageShowToolResultSummaryTitle => '显示工具结果摘要';
+
+  @override
+  String get displaySettingsPageShowToolResultSummarySubtitle =>
+      '在工具步骤下方显示摘要文本';
+
+  @override
+  String chainOfThoughtExpandSteps(Object count) {
+    return '展开更多 $count 步';
+  }
+
+  @override
+  String get chainOfThoughtCollapse => '收起';
+
+  @override
   String get displaySettingsPageShowChatListDateTitle => '显示对话列表日期';
 
   @override
@@ -7386,6 +7408,28 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get displaySettingsPageAutoCollapseThinkingSubtitle =>
       '思考完成后自动折叠，保持界面简洁';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsTitle => '折叠思考步骤';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsSubtitle =>
+      '默认只显示最新步骤，展开后查看全部';
+
+  @override
+  String get displaySettingsPageShowToolResultSummaryTitle => '显示工具结果摘要';
+
+  @override
+  String get displaySettingsPageShowToolResultSummarySubtitle =>
+      '在工具步骤下方显示摘要文本';
+
+  @override
+  String chainOfThoughtExpandSteps(Object count) {
+    return '展开更多 $count 步';
+  }
+
+  @override
+  String get chainOfThoughtCollapse => '收起';
 
   @override
   String get displaySettingsPageShowChatListDateTitle => '显示对话列表日期';
@@ -11640,6 +11684,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get displaySettingsPageAutoCollapseThinkingSubtitle =>
       '思考完成後自動折疊，保持介面簡潔';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsTitle => '折疊思考步驟';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsSubtitle =>
+      '預設只顯示最新步驟，展開後查看全部';
+
+  @override
+  String get displaySettingsPageShowToolResultSummaryTitle => '顯示工具結果摘要';
+
+  @override
+  String get displaySettingsPageShowToolResultSummarySubtitle =>
+      '在工具步驟下方顯示摘要文字';
+
+  @override
+  String chainOfThoughtExpandSteps(Object count) {
+    return '展開更多 $count 步';
+  }
+
+  @override
+  String get chainOfThoughtCollapse => '收起';
 
   @override
   String get displaySettingsPageShowChatListDateTitle => '顯示對話列表日期';

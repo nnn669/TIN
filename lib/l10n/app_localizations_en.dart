@@ -3255,6 +3255,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Collapse reasoning after finish';
 
   @override
+  String get displaySettingsPageCollapseThinkingStepsTitle =>
+      'Collapse Thinking Steps';
+
+  @override
+  String get displaySettingsPageCollapseThinkingStepsSubtitle =>
+      'Show only the latest steps until expanded';
+
+  @override
+  String get displaySettingsPageShowToolResultSummaryTitle =>
+      'Show Tool Result Summary';
+
+  @override
+  String get displaySettingsPageShowToolResultSummarySubtitle =>
+      'Display the summary text below tool steps';
+
+  @override
+  String chainOfThoughtExpandSteps(Object count) {
+    return 'Show $count more steps';
+  }
+
+  @override
+  String get chainOfThoughtCollapse => 'Collapse';
+
+  @override
   String get displaySettingsPageShowChatListDateTitle => 'Show Chat List Dates';
 
   @override

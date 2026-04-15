@@ -78,6 +78,7 @@ class MessageListView extends StatelessWidget {
     this.truncCollapsedIndex = -1,
     required this.reasoning,
     required this.reasoningSegments,
+    required this.contentSplits,
     required this.toolParts,
     required this.translations,
     required this.selecting,
@@ -123,6 +124,7 @@ class MessageListView extends StatelessWidget {
 
   final Map<String, stream_ctrl.ReasoningData> reasoning;
   final Map<String, List<stream_ctrl.ReasoningSegmentData>> reasoningSegments;
+  final Map<String, stream_ctrl.ContentSplitData> contentSplits;
   final Map<String, List<ToolUIPart>> toolParts;
   final Map<String, TranslationUiState> translations;
   final bool selecting;
@@ -537,7 +539,9 @@ class MessageListView extends StatelessWidget {
           ? (r?.expanded ?? false)
           : false,
       reasoningLoading: (message.role == 'assistant')
-          ? (message.isStreaming && r?.finishedAt == null && (r?.text.isNotEmpty == true))
+          ? (message.isStreaming &&
+                r?.finishedAt == null &&
+                (r?.text.isNotEmpty == true))
           : false,
       reasoningStartAt: (message.role == 'assistant') ? r?.startAt : null,
       reasoningFinishedAt: (message.role == 'assistant') ? r?.finishedAt : null,
@@ -588,6 +592,15 @@ class MessageListView extends StatelessWidget {
         }
       },
       toolParts: message.role == 'assistant' ? toolParts[message.id] : null,
+      contentSplitOffsets: message.role == 'assistant'
+          ? contentSplits[message.id]?.offsets
+          : null,
+      reasoningCountAtSplit: message.role == 'assistant'
+          ? contentSplits[message.id]?.reasoningCounts
+          : null,
+      toolCountAtSplit: message.role == 'assistant'
+          ? contentSplits[message.id]?.toolCounts
+          : null,
       reasoningSegments: message.role == 'assistant'
           ? (() {
               final segments = reasoningSegments[message.id];

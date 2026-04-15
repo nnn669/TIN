@@ -758,6 +758,7 @@ class _HomePageState extends State<HomePage>
         truncCollapsedIndex: _computeTruncCollapsedIndex(),
         reasoning: _controller.reasoning,
         reasoningSegments: _controller.reasoningSegments,
+        contentSplits: _controller.contentSplits,
         toolParts: _controller.toolParts,
         translations: _buildTranslationUiStates(),
         selecting: _controller.selecting,

@@ -99,6 +99,10 @@ class SettingsProvider extends ChangeNotifier {
       'display_show_user_message_actions_v1';
   static const String _displayAutoCollapseThinkingKey =
       'display_auto_collapse_thinking_v1';
+  static const String _displayCollapseThinkingStepsKey =
+      'display_collapse_thinking_steps_v1';
+  static const String _displayShowToolResultSummaryKey =
+      'display_show_tool_result_summary_v1';
   static const String _displayShowMessageNavKey = 'display_show_message_nav_v1';
   static const String _displayUseNewAssistantAvatarUxKey =
       'display_use_new_assistant_avatar_ux_v1';
@@ -733,8 +737,7 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getBool(_displayShowUserNameTimestampKey) ?? true;
     // new split settings: default to the legacy combined setting value for backward compat
     final legacyUserNameTs = _showUserNameTimestamp;
-    _showUserName =
-        prefs.getBool(_displayShowUserNameKey) ?? legacyUserNameTs;
+    _showUserName = prefs.getBool(_displayShowUserNameKey) ?? legacyUserNameTs;
     _showUserTimestamp =
         prefs.getBool(_displayShowUserTimestampKey) ?? legacyUserNameTs;
     final legacyModelNameTs = _showModelNameTimestamp;
@@ -746,6 +749,10 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getBool(_displayShowUserMessageActionsKey) ?? true;
     _autoCollapseThinking =
         prefs.getBool(_displayAutoCollapseThinkingKey) ?? true;
+    _collapseThinkingSteps =
+        prefs.getBool(_displayCollapseThinkingStepsKey) ?? true;
+    _showToolResultSummary =
+        prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
     _useNewAssistantAvatarUx =
         prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
@@ -2733,6 +2740,26 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayAutoCollapseThinkingKey, v);
   }
 
+  bool _collapseThinkingSteps = true;
+  bool get collapseThinkingSteps => _collapseThinkingSteps;
+  Future<void> setCollapseThinkingSteps(bool v) async {
+    if (_collapseThinkingSteps == v) return;
+    _collapseThinkingSteps = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayCollapseThinkingStepsKey, v);
+  }
+
+  bool _showToolResultSummary = false;
+  bool get showToolResultSummary => _showToolResultSummary;
+  Future<void> setShowToolResultSummary(bool v) async {
+    if (_showToolResultSummary == v) return;
+    _showToolResultSummary = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowToolResultSummaryKey, v);
+  }
+
   // Display: show message navigation button
   bool _showMessageNavButtons = true;
   bool get showMessageNavButtons => _showMessageNavButtons;
@@ -3315,6 +3342,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._showModelName = _showModelName;
     copy._showModelTimestamp = _showModelTimestamp;
     copy._autoCollapseThinking = _autoCollapseThinking;
+    copy._collapseThinkingSteps = _collapseThinkingSteps;
+    copy._showToolResultSummary = _showToolResultSummary;
     copy._showMessageNavButtons = _showMessageNavButtons;
     copy._useNewAssistantAvatarUx = _useNewAssistantAvatarUx;
     copy._showProviderInModelCapsule = _showProviderInModelCapsule;

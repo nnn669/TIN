@@ -133,6 +133,8 @@ class HomeViewModel extends ChangeNotifier {
       _streamController.reasoning;
   Map<String, List<stream_ctrl.ReasoningSegmentData>> get reasoningSegments =>
       _streamController.reasoningSegments;
+  Map<String, stream_ctrl.ContentSplitData> get contentSplits =>
+      _streamController.contentSplits;
   Map<String, List<ToolUIPart>> get toolParts => _streamController.toolParts;
 
   /// Whether the current conversation is actively generating.

@@ -797,6 +797,33 @@ class ChatActions {
     final messageId = state.messageId;
     final conversationId = state.conversationId;
 
+    if (state.hadThinkingBlock && chunkContent.isNotEmpty) {
+      state.contentSplitOffsets.add(state.fullContentRaw.length);
+      state.reasoningCountAtSplit.add(
+        streamController.getReasoningSegmentCount(messageId),
+      );
+      state.toolCountAtSplit.add(streamController.getToolPartsCount(messageId));
+      state.hadThinkingBlock = false;
+      streamController.setContentSplitData(
+        messageId,
+        stream_ctrl.ContentSplitData(
+          offsets: List<int>.of(state.contentSplitOffsets),
+          reasoningCounts: List<int>.of(state.reasoningCountAtSplit),
+          toolCounts: List<int>.of(state.toolCountAtSplit),
+        ),
+      );
+      await chatService.updateMessageSilent(
+        messageId,
+        reasoningSegmentsJson: streamController
+            .serializeReasoningSegmentsWithSplits(
+              streamController.getReasoningSegments(messageId) ?? const [],
+              contentSplitOffsets: state.contentSplitOffsets,
+              reasoningCountAtSplit: state.reasoningCountAtSplit,
+              toolCountAtSplit: state.toolCountAtSplit,
+            ),
+      );
+    }
+
     state.fullContentRaw += chunkContent;
     state.streamStartedAt ??= DateTime.now();
     if (chunk.totalTokens > 0) {
@@ -874,6 +901,9 @@ class ChatActions {
         conversationId,
         streamingProcessed,
         totalTokens: state.totalTokens,
+        contentSplitOffsets: state.contentSplitOffsets,
+        reasoningCountAtSplit: state.reasoningCountAtSplit,
+        toolCountAtSplit: state.toolCountAtSplit,
         promptTokens: state.usage?.promptTokens,
         completionTokens: state.usage?.completionTokens,
         cachedTokens: state.usage?.cachedTokens,
@@ -923,6 +953,23 @@ class ChatActions {
         (!state.ctx.streamOutput && state.bufferedReasoning.isNotEmpty)
         ? contextProvider.read<SettingsProvider>().autoCollapseThinking
         : null;
+
+    if (state.hadThinkingBlock && chunkContent.isNotEmpty) {
+      state.contentSplitOffsets.add(state.fullContentRaw.length);
+      state.reasoningCountAtSplit.add(
+        streamController.getReasoningSegmentCount(messageId),
+      );
+      state.toolCountAtSplit.add(streamController.getToolPartsCount(messageId));
+      state.hadThinkingBlock = false;
+      streamController.setContentSplitData(
+        messageId,
+        stream_ctrl.ContentSplitData(
+          offsets: List<int>.of(state.contentSplitOffsets),
+          reasoningCounts: List<int>.of(state.reasoningCountAtSplit),
+          toolCounts: List<int>.of(state.toolCountAtSplit),
+        ),
+      );
+    }
 
     if (chunkContent.isNotEmpty) {
       state.fullContentRaw += chunkContent;
@@ -1032,6 +1079,9 @@ class ChatActions {
       messageId,
       processedContent,
       state.totalTokens,
+      contentSplitOffsets: state.contentSplitOffsets,
+      reasoningCountAtSplit: state.reasoningCountAtSplit,
+      toolCountAtSplit: state.toolCountAtSplit,
       promptTokens: finalPromptTokens,
       completionTokens: finalCompletionTokens,
       cachedTokens: finalCachedTokens,
@@ -1243,9 +1293,31 @@ class ChatActions {
       if (segs != null && segs.isNotEmpty) {
         await chatService.updateMessage(
           streaming.id,
-          reasoningSegmentsJson: streamController.serializeReasoningSegments(
-            segs,
-          ),
+          reasoningSegmentsJson: streamController
+              .serializeReasoningSegmentsWithSplits(
+                segs,
+                contentSplitOffsets: streamController
+                    .getContentSplitData(streaming.id)
+                    ?.offsets,
+                reasoningCountAtSplit: streamController
+                    .getContentSplitData(streaming.id)
+                    ?.reasoningCounts,
+                toolCountAtSplit: streamController
+                    .getContentSplitData(streaming.id)
+                    ?.toolCounts,
+              ),
+        );
+      } else if (streamController.getContentSplitData(streaming.id) != null) {
+        final splits = streamController.getContentSplitData(streaming.id)!;
+        await chatService.updateMessage(
+          streaming.id,
+          reasoningSegmentsJson: streamController
+              .serializeReasoningSegmentsWithSplits(
+                const [],
+                contentSplitOffsets: splits.offsets,
+                reasoningCountAtSplit: splits.reasoningCounts,
+                toolCountAtSplit: splits.toolCounts,
+              ),
         );
       }
       // Ensure any inline data URLs get converted even if the user navigates away mid-stream

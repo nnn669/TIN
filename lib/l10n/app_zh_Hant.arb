@@ -1032,6 +1032,17 @@
   "displaySettingsPageShowTokenStatsSubtitle": "顯示 token 用量與訊息數量",
   "displaySettingsPageAutoCollapseThinkingTitle": "自動折疊思考",
   "displaySettingsPageAutoCollapseThinkingSubtitle": "思考完成後自動折疊，保持介面簡潔",
+  "displaySettingsPageCollapseThinkingStepsTitle": "折疊思考步驟",
+  "displaySettingsPageCollapseThinkingStepsSubtitle": "預設只顯示最新步驟，展開後查看全部",
+  "displaySettingsPageShowToolResultSummaryTitle": "顯示工具結果摘要",
+  "displaySettingsPageShowToolResultSummarySubtitle": "在工具步驟下方顯示摘要文字",
+  "chainOfThoughtExpandSteps": "展開更多 {count} 步",
+  "@chainOfThoughtExpandSteps": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "chainOfThoughtCollapse": "收起",
   "displaySettingsPageShowChatListDateTitle": "顯示對話列表日期",
   "displaySettingsPageShowChatListDateSubtitle": "在左側對話列表中顯示日期分組標籤",
   "displaySettingsPageKeepSidebarOpenOnAssistantTapTitle": "點選助手時不自動關閉側邊欄",

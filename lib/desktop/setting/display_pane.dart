@@ -102,6 +102,10 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowAutoCollapseThinking(),
                   _RowDivider(),
+                  _ToggleRowCollapseThinkingSteps(),
+                  _RowDivider(),
+                  _ToggleRowShowToolResultSummary(),
+                  _RowDivider(),
                   _ToggleRowShowUpdates(),
                   _RowDivider(),
                   _ToggleRowMsgNavButtons(),
@@ -1940,8 +1944,7 @@ class _ToggleRowShowUserName extends StatelessWidget {
     return _ToggleRow(
       label: l10n.displaySettingsPageShowUserNameTitle,
       value: sp.showUserName,
-      onChanged: (v) =>
-          context.read<SettingsProvider>().setShowUserName(v),
+      onChanged: (v) => context.read<SettingsProvider>().setShowUserName(v),
     );
   }
 }
@@ -1999,8 +2002,7 @@ class _ToggleRowShowModelName extends StatelessWidget {
     return _ToggleRow(
       label: l10n.displaySettingsPageShowModelNameTitle,
       value: sp.showModelName,
-      onChanged: (v) =>
-          context.read<SettingsProvider>().setShowModelName(v),
+      onChanged: (v) => context.read<SettingsProvider>().setShowModelName(v),
     );
   }
 }
@@ -2150,6 +2152,36 @@ class _ToggleRowAutoCollapseThinking extends StatelessWidget {
       value: sp.autoCollapseThinking,
       onChanged: (v) =>
           context.read<SettingsProvider>().setAutoCollapseThinking(v),
+    );
+  }
+}
+
+class _ToggleRowCollapseThinkingSteps extends StatelessWidget {
+  const _ToggleRowCollapseThinkingSteps();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageCollapseThinkingStepsTitle,
+      value: sp.collapseThinkingSteps,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setCollapseThinkingSteps(v),
+    );
+  }
+}
+
+class _ToggleRowShowToolResultSummary extends StatelessWidget {
+  const _ToggleRowShowToolResultSummary();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowToolResultSummaryTitle,
+      value: sp.showToolResultSummary,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowToolResultSummary(v),
     );
   }
 }
