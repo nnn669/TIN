@@ -1668,58 +1668,19 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final style = context.watch<SettingsProvider>().chatMessageBackgroundStyle;
     BorderRadius radius = BorderRadius.circular(16);
-    switch (style) {
-      case ChatMessageBackgroundStyle.frosted:
-        return ClipRRect(
-          borderRadius: radius,
-          child: BackdropFilter.grouped(
-            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1C1C1E).withValues(alpha: 0.66)
-                    : Colors.white.withValues(alpha: 0.66),
-                borderRadius: radius,
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.14),
-                  width: 0.8,
-                ),
-              ),
-              child: Padding(padding: const EdgeInsets.all(12), child: child),
-            ),
-          ),
-        );
-      case ChatMessageBackgroundStyle.solid:
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-            borderRadius: radius,
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.16),
-              width: 0.8,
-            ),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: child,
-        );
-      case ChatMessageBackgroundStyle.defaultStyle:
-        // Default: keep original visual — user has a tinted bubble; assistant is bare
-        if (isUser) {
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? cs.primary.withValues(alpha: 0.15)
-                  : cs.primary.withValues(alpha: 0.08),
-              borderRadius: radius,
-            ),
-            child: child,
-          );
-        }
-        return child;
-    }
+    return _buildSharedChatSurface(
+      context,
+      borderRadius: radius,
+      padding: const EdgeInsets.all(12),
+      defaultColor: isUser
+          ? (isDark
+                ? cs.primary.withValues(alpha: 0.15)
+                : cs.primary.withValues(alpha: 0.08))
+          : null,
+      bareOnDefault: !isUser,
+      child: child,
+    );
   }
 
   Widget _buildAssistantBubbleContainer({
@@ -3010,6 +2971,117 @@ class _AnimatedPopupState extends State<_AnimatedPopup> {
   }
 }
 
+Widget _buildSharedChatSurface(
+  BuildContext context, {
+  required Widget child,
+  required BorderRadius borderRadius,
+  required EdgeInsetsGeometry padding,
+  Color? defaultColor,
+  bool bareOnDefault = false,
+}) {
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
+  final isDark = theme.brightness == Brightness.dark;
+  final style = context.watch<SettingsProvider>().chatMessageBackgroundStyle;
+  final paddedChild = Padding(padding: padding, child: child);
+
+  switch (style) {
+    case ChatMessageBackgroundStyle.frosted:
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: BackdropFilter.grouped(
+          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1C1C1E).withValues(alpha: 0.66)
+                  : Colors.white.withValues(alpha: 0.66),
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.14),
+                width: 0.8,
+              ),
+            ),
+            child: paddedChild,
+          ),
+        ),
+      );
+    case ChatMessageBackgroundStyle.solid:
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: borderRadius,
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.16),
+            width: 0.8,
+          ),
+        ),
+        child: paddedChild,
+      );
+    case ChatMessageBackgroundStyle.defaultStyle:
+      if (bareOnDefault) {
+        return child;
+      }
+      if (defaultColor == null) {
+        return paddedChild;
+      }
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: defaultColor,
+          borderRadius: borderRadius,
+        ),
+        child: paddedChild,
+      );
+  }
+}
+
+class _ChatSurfaceForegroundPalette {
+  const _ChatSurfaceForegroundPalette({
+    required this.strong,
+    required this.medium,
+    required this.muted,
+    required this.body,
+    required this.divider,
+    required this.accent,
+  });
+
+  final Color strong;
+  final Color medium;
+  final Color muted;
+  final Color body;
+  final Color divider;
+  final Color accent;
+}
+
+_ChatSurfaceForegroundPalette _chatSurfaceForegroundPalette(
+  BuildContext context,
+) {
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
+  final style = context.watch<SettingsProvider>().chatMessageBackgroundStyle;
+  if (style == ChatMessageBackgroundStyle.defaultStyle) {
+    return _ChatSurfaceForegroundPalette(
+      strong: cs.secondary,
+      medium: cs.secondary.withValues(alpha: 0.9),
+      muted: cs.onSurface.withValues(alpha: 0.5),
+      body: cs.onSurface.withValues(alpha: 0.7),
+      divider: cs.outline.withValues(alpha: 0.15),
+      accent: cs.primary,
+    );
+  }
+
+  final base = cs.onSurface;
+  final bool isDark = theme.brightness == Brightness.dark;
+  return _ChatSurfaceForegroundPalette(
+    strong: base.withValues(alpha: isDark ? 0.82 : 0.66),
+    medium: base.withValues(alpha: isDark ? 0.68 : 0.54),
+    muted: base.withValues(alpha: isDark ? 0.46 : 0.36),
+    body: base.withValues(alpha: isDark ? 0.62 : 0.48),
+    divider: base.withValues(alpha: isDark ? 0.12 : 0.1),
+    accent: base.withValues(alpha: isDark ? 0.78 : 0.62),
+  );
+}
+
 class _MenuItem extends StatelessWidget {
   const _MenuItem({
     required this.icon,
@@ -3362,7 +3434,7 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final fg = _chatSurfaceForegroundPalette(context);
     final settings = context.watch<SettingsProvider>();
     final l10n = AppLocalizations.of(context)!;
     final enableAdaptiveWidth =
@@ -3382,82 +3454,78 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
               ((step.reasoning?.expanded ?? false) || step.loading),
         );
 
-    final card = Container(
-      decoration: BoxDecoration(
-        color: cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30),
-        borderRadius: BorderRadius.circular(16),
+    final card = _buildSharedChatSurface(
+      context,
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      defaultColor: cs.primaryContainer.withValues(
+        alpha: theme.brightness == Brightness.dark ? 0.25 : 0.30,
       ),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubicEmphasized,
         alignment: Alignment.topLeft,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Column(
-            mainAxisSize: fillWidth ? MainAxisSize.max : MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (canCollapse)
-                IosCardPress(
-                  onTap: () => setState(() => _showAllSteps = !_showAllSteps),
-                  borderRadius: BorderRadius.circular(12),
-                  baseColor: Colors.transparent,
-                  pressedScale: 1,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 0,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: _timelineIconColumnWidth,
-                          child: Center(
-                            child: Icon(
-                              _showAllSteps
-                                  ? Lucide.ChevronUp
-                                  : Lucide.ChevronDown,
-                              size: 16,
-                              color: cs.primary,
-                            ),
+        child: Column(
+          mainAxisSize: fillWidth ? MainAxisSize.max : MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (canCollapse)
+              IosCardPress(
+                onTap: () => setState(() => _showAllSteps = !_showAllSteps),
+                borderRadius: BorderRadius.circular(12),
+                baseColor: Colors.transparent,
+                pressedScale: 1,
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: _timelineIconColumnWidth,
+                        child: Center(
+                          child: Icon(
+                            _showAllSteps
+                                ? Lucide.ChevronUp
+                                : Lucide.ChevronDown,
+                            size: 16,
+                            color: fg.accent,
                           ),
                         ),
-                        const SizedBox(width: _timelineGap),
-                        Text(
-                          _showAllSteps
-                              ? l10n.chainOfThoughtCollapse
-                              : l10n.chainOfThoughtExpandSteps(
-                                  widget.steps.length - visibleSteps.length,
-                                ),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: cs.primary,
-                          ),
+                      ),
+                      const SizedBox(width: _timelineGap),
+                      Text(
+                        _showAllSteps
+                            ? l10n.chainOfThoughtCollapse
+                            : l10n.chainOfThoughtExpandSteps(
+                                widget.steps.length - visibleSteps.length,
+                              ),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: fg.accent,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ...visibleSteps.asMap().entries.map((entry) {
-                final index = entry.key;
-                final step = entry.value;
-                if (step.isReasoning) {
-                  return _ChainOfThoughtReasoningStep(
-                    step: step.reasoning!,
-                    isFirst: index == 0,
-                    isLast: index == visibleSteps.length - 1,
-                  );
-                }
-                return _ChainOfThoughtToolStep(
-                  part: step.tool!,
+              ),
+            ...visibleSteps.asMap().entries.map((entry) {
+              final index = entry.key;
+              final step = entry.value;
+              if (step.isReasoning) {
+                return _ChainOfThoughtReasoningStep(
+                  step: step.reasoning!,
                   isFirst: index == 0,
                   isLast: index == visibleSteps.length - 1,
                 );
-              }),
-            ],
-          ),
+              }
+              return _ChainOfThoughtToolStep(
+                part: step.tool!,
+                isFirst: index == 0,
+                isLast: index == visibleSteps.length - 1,
+              );
+            }),
+          ],
         ),
       ),
     );
@@ -3495,8 +3563,7 @@ class _TimelineStepShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final lineColor = cs.outline.withValues(alpha: 0.15);
+    final fg = _chatSurfaceForegroundPalette(context);
     final header = Padding(
       padding: const EdgeInsets.symmetric(vertical: _timelineStepPaddingV),
       child: Row(
@@ -3522,14 +3589,14 @@ class _TimelineStepShell extends StatelessWidget {
             left: _timelineLineX,
             top: 0,
             height: _timelineTopLineEnd,
-            child: Container(width: 1, color: lineColor),
+            child: Container(width: 1, color: fg.divider),
           ),
         if (!isLast)
           Positioned(
             left: _timelineLineX,
             top: _timelineBottomLineStart,
             bottom: 0,
-            child: Container(width: 1, color: lineColor),
+            child: Container(width: 1, color: fg.divider),
           ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3660,7 +3727,7 @@ class _ChainOfThoughtReasoningStepState
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final fg = _chatSurfaceForegroundPalette(context);
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final state = _stepState;
@@ -3674,7 +3741,7 @@ class _ChainOfThoughtReasoningStepState
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: cs.secondary,
+              color: fg.strong,
             ),
           ),
         ),
@@ -3686,10 +3753,7 @@ class _ChainOfThoughtReasoningStepState
               enabled: widget.step.loading,
               child: Text(
                 _elapsed(),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: cs.secondary.withValues(alpha: 0.9),
-                ),
+                style: TextStyle(fontSize: 13, color: fg.medium),
               ),
             ),
           ),
@@ -3703,7 +3767,7 @@ class _ChainOfThoughtReasoningStepState
       child: Center(
         child: _Shimmer(
           enabled: widget.step.loading,
-          child: ReasoningIcons.thinkingCardIcon(size: 18, color: cs.secondary),
+          child: ReasoningIcons.thinkingCardIcon(size: 18, color: fg.strong),
         ),
       ),
     );
@@ -3777,7 +3841,7 @@ class _ChainOfThoughtReasoningStepState
                   ? Lucide.ChevronUp
                   : Lucide.ChevronDown,
               size: 16,
-              color: cs.onSurface.withValues(alpha: 0.5),
+              color: fg.muted,
             ),
       content: content,
       contentVisible: state != _ReasoningStepState.collapsed,
@@ -3901,6 +3965,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final fg = _chatSurfaceForegroundPalette(context);
     final settings = context.watch<SettingsProvider>();
     final approvalService = context.watch<ToolApprovalService>();
     ToolApprovalRequest? pendingRequest;
@@ -3919,13 +3984,8 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
     final approvalRequest = pendingRequest;
 
     final icon = widget.part.loading && !isPendingApproval
-        ? LoadingIndicator(
-            height: 12,
-            dotSize: 3,
-            spacing: 2,
-            color: cs.secondary,
-          )
-        : Icon(_iconFor(widget.part.toolName), size: 16, color: cs.secondary);
+        ? LoadingIndicator(height: 12, dotSize: 3, spacing: 2, color: fg.strong)
+        : Icon(_iconFor(widget.part.toolName), size: 16, color: fg.strong);
 
     final title = _titleFor(
       context,
@@ -3942,7 +4002,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: cs.secondary,
+          color: fg.strong,
         ),
       ),
     );
@@ -3968,7 +4028,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
               fontSize: 12,
               height: 1.4,
               fontFamily: isPendingApproval ? 'monospace' : null,
-              color: cs.onSurface.withValues(alpha: 0.7),
+              color: fg.body,
             ),
           );
 
@@ -3992,7 +4052,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
               IosIconButton(
                 size: 14,
                 padding: const EdgeInsets.all(7),
-                color: cs.primary,
+                color: fg.accent,
                 semanticLabel: AppLocalizations.of(
                   context,
                 )!.toolApprovalApprove,
@@ -4011,11 +4071,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
       isLast: widget.isLast,
       onTap: () => _showDetail(context),
       extra: extra,
-      indicator: Icon(
-        Lucide.ChevronRight,
-        size: 16,
-        color: cs.onSurface.withValues(alpha: 0.5),
-      ),
+      indicator: Icon(Lucide.ChevronRight, size: 16, color: fg.muted),
       content: content,
       contentVisible: content != null,
     );
@@ -4155,6 +4211,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = _chatSurfaceForegroundPalette(context);
     final hasImages = _imagePaths.isNotEmpty;
     final l10n = AppLocalizations.of(context)!;
 
@@ -4176,161 +4233,170 @@ class _ToolCallItemState extends State<_ToolCallItem> {
       } catch (_) {}
     }
 
-    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
-
     return IosCardPress(
       borderRadius: BorderRadius.circular(16),
-      baseColor: bg,
+      baseColor: Colors.transparent,
       pressedScale: 1.0,
       duration: const Duration(milliseconds: 260),
       onTap: isPendingApproval ? null : () => _showDetail(context),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Icon — approval pending / loading spinner / result icon
-              if (isPendingApproval)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Center(
-                    child: Icon(Lucide.Shield, size: 18, color: cs.primary),
-                  ),
-                )
-              else if (widget.part.loading)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-                  ),
-                )
-              else
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Center(
-                    child: Icon(
-                      _iconFor(widget.part.toolName),
-                      size: 18,
-                      color: cs.secondary,
+      padding: EdgeInsets.zero,
+      child: _buildSharedChatSurface(
+        context,
+        borderRadius: BorderRadius.circular(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        defaultColor: cs.primaryContainer.withValues(
+          alpha: isDark ? 0.25 : 0.30,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Icon — approval pending / loading spinner / result icon
+                if (isPendingApproval)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: Center(
+                      child: Icon(Lucide.Shield, size: 18, color: fg.accent),
                     ),
-                  ),
-                ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title: always show tool name; add "waiting" badge when pending
-                    Text(
-                      _titleFor(
-                        context,
-                        widget.part.toolName,
-                        widget.part.arguments,
-                        isResult: !widget.part.loading && !isPendingApproval,
-                      ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isPendingApproval ? cs.primary : cs.secondary,
+                  )
+                else if (widget.part.loading)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(fg.accent),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: Center(
+                      child: Icon(
+                        _iconFor(widget.part.toolName),
+                        size: 18,
+                        color: fg.strong,
                       ),
                     ),
-                    // "Waiting for approval" subtitle
-                    if (isPendingApproval) ...[
-                      const SizedBox(height: 2),
+                  ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title: always show tool name; add "waiting" badge when pending
                       Text(
-                        l10n.toolApprovalPending,
+                        _titleFor(
+                          context,
+                          widget.part.toolName,
+                          widget.part.arguments,
+                          isResult: !widget.part.loading && !isPendingApproval,
+                        ),
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: cs.primary.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isPendingApproval ? fg.accent : fg.strong,
                         ),
                       ),
+                      // "Waiting for approval" subtitle
+                      if (isPendingApproval) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.toolApprovalPending,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: fg.medium,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // Argument summary so users know what the tool is about to do
-          if (isPendingApproval && widget.part.arguments.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.04),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _argsSummary(widget.part.arguments),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  color: cs.onSurface.withValues(alpha: 0.6),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-          // Approval action buttons
-          if (isPendingApproval && pendingToolCallId != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _ApprovalButton(
-                    label: l10n.toolApprovalDeny,
-                    color: cs.error,
-                    filled: false,
-                    onTap: () => _showDenyDialog(
-                      context,
-                      approvalService,
-                      pendingToolCallId!,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ApprovalButton(
-                    label: l10n.toolApprovalApprove,
-                    color: cs.primary,
-                    filled: true,
-                    onTap: () => approvalService.approve(pendingToolCallId!),
                   ),
                 ),
               ],
             ),
-          ],
-          // Show image thumbnails if available
-          if (hasImages) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 180,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _imagePaths.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (ctx, i) {
-                  final path = _imagePaths[i];
-                  return GestureDetector(
-                    onTap: () => _showFullImage(context, path),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: _buildImageFromPath(path, height: 180),
-                    ),
-                  );
-                },
+            // Argument summary so users know what the tool is about to do
+            if (isPendingApproval && widget.part.arguments.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.04),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _argsSummary(widget.part.arguments),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: fg.body,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
+            ],
+            // Approval action buttons
+            if (isPendingApproval && pendingToolCallId != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ApprovalButton(
+                      label: l10n.toolApprovalDeny,
+                      color: cs.error,
+                      filled: false,
+                      onTap: () => _showDenyDialog(
+                        context,
+                        approvalService,
+                        pendingToolCallId!,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ApprovalButton(
+                      label: l10n.toolApprovalApprove,
+                      color: fg.accent,
+                      filled: true,
+                      onTap: () => approvalService.approve(pendingToolCallId!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            // Show image thumbnails if available
+            if (hasImages) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 180,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _imagePaths.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (ctx, i) {
+                    final path = _imagePaths[i];
+                    return GestureDetector(
+                      onTap: () => _showFullImage(context, path),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _buildImageFromPath(path, height: 180),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -5114,13 +5180,12 @@ class _ReasoningSectionState extends State<_ReasoningSection>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = _chatSurfaceForegroundPalette(context);
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final loading = widget.loading;
 
     // Android-like surface style
-    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
-
     final curve = const Cubic(0.2, 0.8, 0.2, 1);
 
     // Build a compact header with optional scrolling preview when loading
@@ -5135,7 +5200,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            ReasoningIcons.thinkingCardIcon(size: 18, color: cs.secondary),
+            ReasoningIcons.thinkingCardIcon(size: 18, color: fg.strong),
             const SizedBox(width: 8),
             _Shimmer(
               enabled: loading,
@@ -5144,7 +5209,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: cs.secondary,
+                  color: fg.strong,
                 ),
               ),
             ),
@@ -5156,10 +5221,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
                   enabled: loading,
                   child: Text(
                     _elapsed(),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: cs.secondary.withValues(alpha: 0.9),
-                    ),
+                    style: TextStyle(fontSize: 13, color: fg.medium),
                   ),
                 ),
               ),
@@ -5169,7 +5231,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
               turns: widget.expanded ? 0.25 : 0.0, // right -> down
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeInOutCubic,
-              child: Icon(Lucide.ChevronRight, size: 18, color: cs.secondary),
+              child: Icon(Lucide.ChevronRight, size: 18, color: fg.strong),
             ),
           ],
         ),
@@ -5276,14 +5338,15 @@ class _ReasoningSectionState extends State<_ReasoningSection>
       duration: const Duration(milliseconds: 300),
       curve: curve,
       alignment: Alignment.topLeft,
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: bg,
+        child: _buildSharedChatSurface(
+          context,
           borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          defaultColor: cs.primaryContainer.withValues(
+            alpha: isDark ? 0.25 : 0.30,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [header, if (widget.expanded || isLoading) body],
