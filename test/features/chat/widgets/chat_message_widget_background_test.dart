@@ -201,5 +201,64 @@ void main() {
         _expectedNeutralStrong(),
       );
     });
+
+    testWidgets(
+      'translation card uses blur and neutral header in frosted mode',
+      (tester) async {
+        final settings = _createSettings(ChatMessageBackgroundStyle.frosted);
+
+        await tester.pumpWidget(
+          _buildHarness(
+            settings: settings,
+            child: ChatMessageWidget(
+              message: ChatMessage(
+                role: 'assistant',
+                content: 'Answer',
+                translation: 'Translated answer',
+                conversationId: 'conversation-5',
+                isStreaming: true,
+              ),
+              showModelIcon: false,
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.byType(BackdropFilter), findsNWidgets(2));
+        expect(
+          tester.widget<Text>(find.text('Translation')).style?.color,
+          _expectedNeutralStrong(),
+        );
+      },
+    );
+
+    testWidgets('translation card removes blur in solid mode', (tester) async {
+      final settings = _createSettings(ChatMessageBackgroundStyle.solid);
+
+      await tester.pumpWidget(
+        _buildHarness(
+          settings: settings,
+          child: ChatMessageWidget(
+            message: ChatMessage(
+              role: 'assistant',
+              content: 'Answer',
+              translation: 'Translated answer',
+              conversationId: 'conversation-6',
+              isStreaming: true,
+            ),
+            showModelIcon: false,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(
+        tester.widget<Text>(find.text('Translation')).style?.color,
+        _expectedNeutralStrong(),
+      );
+    });
   });
 }

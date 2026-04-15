@@ -1941,6 +1941,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   Widget _buildAssistantMessage() {
     final cs = Theme.of(context).colorScheme;
+    final fg = _chatSurfaceForegroundPalette(context);
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final assistant = _assistantForMessage();
@@ -2154,145 +2155,147 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           }(),
           if (hasTranslation) ...[
             const SizedBox(height: 12),
-            Container(
+            SizedBox(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                // Match reasoning section background; no border
-                color: Theme.of(context).colorScheme.primaryContainer
-                    .withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.25
-                          : 0.30,
-                    ),
+              child: _buildSharedChatSurface(
+                context,
                 borderRadius: BorderRadius.circular(16),
-              ),
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 300),
-                curve: const Cubic(0.2, 0.8, 0.2, 1),
-                alignment: Alignment.topCenter,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IosCardPress(
-                      onTap: widget.onToggleTranslation,
-                      borderRadius: BorderRadius.circular(12),
-                      baseColor: Colors.transparent,
-                      pressedBlendStrength: 0.12,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Lucide.Languages, size: 16, color: cs.secondary),
-                          const SizedBox(width: 6),
-                          Text(
-                            l10n.chatMessageWidgetTranslation,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: cs.secondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            widget.translationExpanded
-                                ? Lucide.ChevronDown
-                                : Lucide.ChevronRight,
-                            size: 18,
-                            color: cs.secondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.translationExpanded) ...[
-                      const SizedBox(height: 8),
-                      if (isTranslating)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                          child: Row(
-                            children: [
-                              const LoadingIndicator(),
-                              const SizedBox(width: 8),
-                              Builder(
-                                builder: (context) {
-                                  final bool isDesktop =
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
-                                  return Text(
-                                    l10n.chatMessageWidgetTranslating,
-                                    style: TextStyle(
-                                      fontSize: isDesktop ? 14.0 : 15.5,
-                                      color: cs.onSurface.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  );
-                                },
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                defaultColor: cs.primaryContainer.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.25
+                      : 0.30,
+                ),
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: const Cubic(0.2, 0.8, 0.2, 1),
+                  alignment: Alignment.topCenter,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IosCardPress(
+                        onTap: widget.onToggleTranslation,
+                        borderRadius: BorderRadius.circular(12),
+                        baseColor: Colors.transparent,
+                        pressedBlendStrength: 0.12,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Lucide.Languages, size: 16, color: fg.strong),
+                            const SizedBox(width: 6),
+                            Text(
+                              l10n.chatMessageWidgetTranslation,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: fg.strong,
                               ),
-                            ],
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                          child: RepaintBoundary(
-                            child: SelectionArea(
-                              key: ValueKey('translation_${widget.message.id}'),
-                              child: Builder(
-                                builder: (context) {
-                                  final bool isDesktop =
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
-                                  final double baseTranslation = isDesktop
-                                      ? 14.0
-                                      : 15.5;
-                                  Widget translationContent;
-                                  if (settings.enableAssistantMarkdown) {
-                                    translationContent =
-                                        MarkdownWithCodeHighlight(
-                                          text: translationText,
-                                          onCitationTap: (id) =>
-                                              _handleCitationTap(id),
-                                          baseStyle: TextStyle(
-                                            fontSize: baseTranslation,
-                                            height: 1.4,
-                                          ),
-                                        );
-                                  } else {
-                                    translationContent = Text(
-                                      translationText,
+                            ),
+                            const Spacer(),
+                            Icon(
+                              widget.translationExpanded
+                                  ? Lucide.ChevronDown
+                                  : Lucide.ChevronRight,
+                              size: 18,
+                              color: fg.strong,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.translationExpanded) ...[
+                        const SizedBox(height: 8),
+                        if (isTranslating)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                            child: Row(
+                              children: [
+                                const LoadingIndicator(),
+                                const SizedBox(width: 8),
+                                Builder(
+                                  builder: (context) {
+                                    final bool isDesktop =
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.macOS ||
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.windows ||
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.linux;
+                                    return Text(
+                                      l10n.chatMessageWidgetTranslating,
+                                      style: TextStyle(
+                                        fontSize: isDesktop ? 14.0 : 15.5,
+                                        color: fg.muted,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                            child: RepaintBoundary(
+                              child: SelectionArea(
+                                key: ValueKey(
+                                  'translation_${widget.message.id}',
+                                ),
+                                child: Builder(
+                                  builder: (context) {
+                                    final bool isDesktop =
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.macOS ||
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.windows ||
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.linux;
+                                    final double baseTranslation = isDesktop
+                                        ? 14.0
+                                        : 15.5;
+                                    Widget translationContent;
+                                    if (settings.enableAssistantMarkdown) {
+                                      translationContent =
+                                          MarkdownWithCodeHighlight(
+                                            text: translationText,
+                                            onCitationTap: (id) =>
+                                                _handleCitationTap(id),
+                                            baseStyle: TextStyle(
+                                              fontSize: baseTranslation,
+                                              height: 1.4,
+                                            ),
+                                          );
+                                    } else {
+                                      translationContent = Text(
+                                        translationText,
+                                        style: TextStyle(
+                                          fontSize: baseTranslation,
+                                          height: 1.4,
+                                          color: cs.onSurface,
+                                        ),
+                                      );
+                                    }
+                                    return DefaultTextStyle.merge(
                                       style: TextStyle(
                                         fontSize: baseTranslation,
                                         height: 1.4,
-                                        color: cs.onSurface,
                                       ),
+                                      child: translationContent,
                                     );
-                                  }
-                                  return DefaultTextStyle.merge(
-                                    style: TextStyle(
-                                      fontSize: baseTranslation,
-                                      height: 1.4,
-                                    ),
-                                    child: translationContent,
-                                  );
-                                },
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
