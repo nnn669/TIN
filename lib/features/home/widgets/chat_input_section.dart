@@ -155,6 +155,12 @@ class ChatInputSection extends StatelessWidget {
         (context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ??
             settings.thinkingBudget,
       ),
+      reasoningBudget:
+          (context
+              .watch<AssistantProvider>()
+              .currentAssistant
+              ?.thinkingBudget) ??
+          settings.thinkingBudget,
       supportsReasoning: (pk != null && mid != null)
           ? isReasoningModel(pk, mid)
           : false,

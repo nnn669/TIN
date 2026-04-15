@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import '../../../core/services/haptics.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:open_filex/open_filex.dart';
@@ -16,6 +15,7 @@ import '../../home/widgets/file_processing_indicator.dart';
 import '../pages/image_viewer_page.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../icons/lucide_adapter.dart';
+import '../../../icons/reasoning_icons.dart';
 // import '../../../theme/design_tokens.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
@@ -3703,7 +3703,7 @@ class _ChainOfThoughtReasoningStepState
       child: Center(
         child: _Shimmer(
           enabled: widget.step.loading,
-          child: Icon(Lucide.Lightbulb, size: 18, color: cs.secondary),
+          child: ReasoningIcons.thinkingCardIcon(size: 18, color: cs.secondary),
         ),
       ),
     );
@@ -5135,12 +5135,7 @@ class _ReasoningSectionState extends State<_ReasoningSection>
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            SvgPicture.asset(
-              'assets/icons/deepthink.svg',
-              width: 18,
-              height: 18,
-              colorFilter: ColorFilter.mode(cs.secondary, BlendMode.srcIn),
-            ),
+            ReasoningIcons.thinkingCardIcon(size: 18, color: cs.secondary),
             const SizedBox(width: 8),
             _Shimmer(
               enabled: loading,

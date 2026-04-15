@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'dart:math' as math;
 import '../../../theme/design_tokens.dart';
 import '../../../icons/lucide_adapter.dart';
+import '../../../icons/reasoning_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -63,6 +64,7 @@ class ChatInputBar extends StatefulWidget {
     this.queuedPreviewText,
     this.onCancelQueuedInput,
     this.reasoningActive = false,
+    this.reasoningBudget,
     this.supportsReasoning = true,
     this.showMcpButton = false,
     this.mcpActive = false,
@@ -108,6 +110,7 @@ class ChatInputBar extends StatefulWidget {
   final String? queuedPreviewText;
   final VoidCallback? onCancelQueuedInput;
   final bool reasoningActive;
+  final int? reasoningBudget;
   final bool supportsReasoning;
   final bool showMcpButton;
   final bool mcpActive;
@@ -981,15 +984,14 @@ class _ChatInputBarState extends State<ChatInputBar>
                 icon: Lucide.Brain,
                 active: widget.reasoningActive,
                 onTap: lockTap(widget.onConfigureReasoning),
-                childBuilder: (c) => SvgPicture.asset(
-                  'assets/icons/deepthink.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+                childBuilder: (c) => ReasoningIcons.budgetIcon(
+                  widget.reasoningBudget,
+                  size: 20,
+                  color: c,
                 ),
               ),
               menu: DesktopContextMenuItem(
-                svgAsset: 'assets/icons/deepthink.svg',
+                svgAsset: ReasoningIcons.assetForBudget(widget.reasoningBudget),
                 label: l10n.chatInputBarReasoningStrengthTooltip,
                 onTap: lockTap(widget.onConfigureReasoning),
               ),

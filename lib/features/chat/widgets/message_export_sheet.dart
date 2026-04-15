@@ -16,6 +16,7 @@ import 'package:path/path.dart' as p;
 import 'image_preview_sheet.dart';
 
 import '../../../icons/lucide_adapter.dart';
+import '../../../icons/reasoning_icons.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -2825,11 +2826,9 @@ class _ExportThinkingCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                SvgPicture.asset(
-                  'assets/icons/deepthink.svg',
-                  width: iconSize,
-                  height: iconSize,
-                  colorFilter: ColorFilter.mode(cs.secondary, BlendMode.srcIn),
+                ReasoningIcons.thinkingCardIcon(
+                  size: iconSize,
+                  color: cs.secondary,
                 ),
                 SizedBox(width: isDesktop ? 6.0 : 8.0),
                 Text(

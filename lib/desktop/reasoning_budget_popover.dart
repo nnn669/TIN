@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../core/providers/assistant_provider.dart';
 import '../core/providers/settings_provider.dart';
 import '../icons/lucide_adapter.dart';
+import '../icons/reasoning_icons.dart';
 import '../l10n/app_localizations.dart';
 import '../shared/dialogs/reasoning_budget_custom_dialog.dart';
 
@@ -312,52 +312,56 @@ class _ReasoningContent extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             tile(
-              leadingBuilder: (c) => Icon(Lucide.X, size: 16, color: c),
+              leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                ReasoningIcons.offBudget,
+                size: 16,
+                color: c,
+              ),
               label: l10n.reasoningBudgetSheetOff,
               value: 0,
             ),
             tile(
-              leadingBuilder: (c) => Icon(Lucide.Settings2, size: 16, color: c),
+              leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                ReasoningIcons.autoBudget,
+                size: 16,
+                color: c,
+              ),
               label: l10n.reasoningBudgetSheetAuto,
               value: -1,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset(
-                'assets/icons/deepthink.svg',
-                width: 16,
-                height: 16,
-                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                ReasoningIcons.lightBudget,
+                size: 16,
+                color: c,
               ),
               label: l10n.reasoningBudgetSheetLight,
               value: 1024,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset(
-                'assets/icons/deepthink.svg',
-                width: 16,
-                height: 16,
-                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                ReasoningIcons.mediumBudget,
+                size: 16,
+                color: c,
               ),
               label: l10n.reasoningBudgetSheetMedium,
               value: 16000,
             ),
             tile(
-              leadingBuilder: (c) => SvgPicture.asset(
-                'assets/icons/deepthink.svg',
-                width: 16,
-                height: 16,
-                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                ReasoningIcons.heavyBudget,
+                size: 16,
+                color: c,
               ),
               label: l10n.reasoningBudgetSheetHeavy,
               value: 32000,
             ),
             if (showXhigh)
               tile(
-                leadingBuilder: (c) => SvgPicture.asset(
-                  'assets/icons/deepthink.svg',
-                  width: 16,
-                  height: 16,
-                  colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+                leadingBuilder: (c) => ReasoningIcons.budgetIcon(
+                  ReasoningIcons.xhighBudget,
+                  size: 16,
+                  color: c,
                 ),
                 label: l10n.reasoningBudgetSheetXhigh,
                 value: 64000,

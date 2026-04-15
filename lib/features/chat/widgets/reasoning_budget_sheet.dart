@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../icons/lucide_adapter.dart';
+import '../../../icons/reasoning_icons.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/dialogs/reasoning_budget_custom_dialog.dart';
 import '../../../shared/widgets/ios_tactile.dart';
@@ -77,10 +77,10 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
   }
 
   Widget _tile(
-    IconData icon,
     String title,
     int value, {
-    bool deepthink = false,
+    IconData? icon,
+    Widget? leading,
     required bool active,
     VoidCallback? onTap,
     Widget? trailing,
@@ -110,14 +110,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              deepthink
-                  ? SvgPicture.asset(
-                      'assets/icons/deepthink.svg',
-                      width: 18,
-                      height: 18,
-                      colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-                    )
-                  : Icon(icon, size: 20, color: iconColor),
+              leading ?? Icon(icon, size: 20, color: iconColor),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -196,50 +189,82 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
                   child: Column(
                     children: [
                       _tile(
-                        Lucide.X,
                         l10n.reasoningBudgetSheetOff,
                         0,
+                        leading: ReasoningIcons.budgetIcon(
+                          ReasoningIcons.offBudget,
+                          size: 18,
+                          color: _selected == 0
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.7),
+                        ),
                         active: _selected == 0,
                       ),
                       _tile(
-                        Lucide.Settings2,
                         l10n.reasoningBudgetSheetAuto,
                         -1,
+                        leading: ReasoningIcons.budgetIcon(
+                          ReasoningIcons.autoBudget,
+                          size: 18,
+                          color: _selected == -1
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.7),
+                        ),
                         active: _selected == -1,
                       ),
                       _tile(
-                        Lucide.Brain,
                         l10n.reasoningBudgetSheetLight,
                         1024,
-                        deepthink: true,
+                        leading: ReasoningIcons.budgetIcon(
+                          ReasoningIcons.lightBudget,
+                          size: 18,
+                          color: _selected == 1024
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.7),
+                        ),
                         active: _selected == 1024,
                       ),
                       _tile(
-                        Lucide.Brain,
                         l10n.reasoningBudgetSheetMedium,
                         16000,
-                        deepthink: true,
+                        leading: ReasoningIcons.budgetIcon(
+                          ReasoningIcons.mediumBudget,
+                          size: 18,
+                          color: _selected == 16000
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.7),
+                        ),
                         active: _selected == 16000,
                       ),
                       _tile(
-                        Lucide.Brain,
                         l10n.reasoningBudgetSheetHeavy,
                         32000,
-                        deepthink: true,
+                        leading: ReasoningIcons.budgetIcon(
+                          ReasoningIcons.heavyBudget,
+                          size: 18,
+                          color: _selected == 32000
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.7),
+                        ),
                         active: _selected == 32000,
                       ),
                       if (showXhigh)
                         _tile(
-                          Lucide.Brain,
                           l10n.reasoningBudgetSheetXhigh,
                           64000,
-                          deepthink: true,
+                          leading: ReasoningIcons.budgetIcon(
+                            ReasoningIcons.xhighBudget,
+                            size: 18,
+                            color: _selected == 64000
+                                ? cs.primary
+                                : cs.onSurface.withValues(alpha: 0.7),
+                          ),
                           active: _selected == 64000,
                         ),
                       _tile(
-                        Lucide.Hash,
                         l10n.reasoningBudgetSheetCustomLabel,
                         0,
+                        icon: Lucide.Hash,
                         active: customActive,
                         onTap: () => _openCustomBudget(),
                         trailing: customActive
