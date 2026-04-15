@@ -3017,10 +3017,11 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
       ),
     );
 
-    if (fillWidth) {
-      return SizedBox(width: double.infinity, child: card);
-    }
-    return Align(alignment: Alignment.centerLeft, child: card);
+    return Align(
+      alignment: Alignment.centerLeft,
+      widthFactor: fillWidth ? null : 1,
+      child: card,
+    );
   }
 }
 
