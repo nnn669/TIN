@@ -3488,7 +3488,7 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
                                 ? Lucide.ChevronUp
                                 : Lucide.ChevronDown,
                             size: 16,
-                            color: fg.accent,
+                            color: fg.strong,
                           ),
                         ),
                       ),
@@ -3502,7 +3502,7 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: fg.accent,
+                          color: fg.strong,
                         ),
                       ),
                     ],

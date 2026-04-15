@@ -51,6 +51,7 @@ void main() {
       tester,
     ) async {
       final settings = _createSettings(ChatMessageBackgroundStyle.frosted);
+      await settings.setCollapseThinkingSteps(true);
 
       await tester.pumpWidget(
         _buildHarness(
@@ -64,6 +65,8 @@ void main() {
             ),
             showModelIcon: false,
             reasoningSegments: const [
+              ReasoningSegment(text: '第 1 步', expanded: true, loading: false),
+              ReasoningSegment(text: '第 2 步', expanded: true, loading: false),
               ReasoningSegment(text: '先分析问题', expanded: true, loading: false),
             ],
             toolParts: const [
@@ -87,6 +90,10 @@ void main() {
       );
       expect(
         tester.widget<Text>(find.text('Web Search: Kelivo')).style?.color,
+        _expectedNeutralStrong(),
+      );
+      expect(
+        tester.widget<Text>(find.text('Show 2 more steps')).style?.color,
         _expectedNeutralStrong(),
       );
     });
