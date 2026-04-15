@@ -3073,12 +3073,12 @@ _ChatSurfaceForegroundPalette _chatSurfaceForegroundPalette(
   final base = cs.onSurface;
   final bool isDark = theme.brightness == Brightness.dark;
   return _ChatSurfaceForegroundPalette(
-    strong: base.withValues(alpha: isDark ? 0.82 : 0.66),
-    medium: base.withValues(alpha: isDark ? 0.68 : 0.54),
-    muted: base.withValues(alpha: isDark ? 0.46 : 0.36),
-    body: base.withValues(alpha: isDark ? 0.62 : 0.48),
-    divider: base.withValues(alpha: isDark ? 0.12 : 0.1),
-    accent: base.withValues(alpha: isDark ? 0.78 : 0.62),
+    strong: base.withValues(alpha: isDark ? 0.88 : 0.78),
+    medium: base.withValues(alpha: isDark ? 0.76 : 0.66),
+    muted: base.withValues(alpha: isDark ? 0.56 : 0.46),
+    body: base.withValues(alpha: isDark ? 0.72 : 0.6),
+    divider: base.withValues(alpha: isDark ? 0.16 : 0.14),
+    accent: base.withValues(alpha: isDark ? 0.84 : 0.74),
   );
 }
 

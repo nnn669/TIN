@@ -41,7 +41,7 @@ Widget _buildHarness({
 }
 
 Color _expectedNeutralStrong() =>
-    ThemeData.light().colorScheme.onSurface.withValues(alpha: 0.66);
+    ThemeData.light().colorScheme.onSurface.withValues(alpha: 0.78);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
