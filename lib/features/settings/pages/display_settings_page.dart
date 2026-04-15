@@ -1232,7 +1232,7 @@ Widget _iosNavRow(
                   child: Text(
                     label,
                     style: TextStyle(fontSize: 15, color: c),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
