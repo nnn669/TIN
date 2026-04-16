@@ -31,6 +31,7 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../home/widgets/model_icon.dart';
 import 'chat_message_widget.dart'
     show ChatMessageWidget, ToolUIPart, ReasoningSegment;
 
@@ -2044,6 +2045,17 @@ class _ExportedMessageCard extends StatelessWidget {
             SizedBox(height: isDesktop ? 10.0 : 12.0),
             ChatMessageWidget(
               message: messageForExport,
+              modelIcon:
+                  (!useAssistAvatar &&
+                      message.role == 'assistant' &&
+                      message.providerId != null &&
+                      message.modelId != null)
+                  ? CurrentModelIcon(
+                      providerKey: message.providerId,
+                      modelId: message.modelId,
+                      size: 30,
+                    )
+                  : null,
               showModelIcon: !useAssistAvatar,
               useAssistantAvatar: useAssistAvatar,
               useAssistantName: useAssistName,
@@ -2226,6 +2238,17 @@ class _ExportedBubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: isDesktop ? 760.0 : 860.0),
           child: ChatMessageWidget(
             message: messageForExport,
+            modelIcon:
+                (!useAssistAvatar &&
+                    message.role == 'assistant' &&
+                    message.providerId != null &&
+                    message.modelId != null)
+                ? CurrentModelIcon(
+                    providerKey: message.providerId,
+                    modelId: message.modelId,
+                    size: 30,
+                  )
+                : null,
             showModelIcon: !useAssistAvatar,
             useAssistantAvatar: useAssistAvatar,
             useAssistantName: useAssistName,
