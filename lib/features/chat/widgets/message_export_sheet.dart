@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -16,7 +15,6 @@ import 'package:path/path.dart' as p;
 import 'image_preview_sheet.dart';
 
 import '../../../icons/lucide_adapter.dart';
-import '../../../icons/reasoning_icons.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/conversation.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -33,9 +31,8 @@ import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../utils/brand_assets.dart';
-import '../../../utils/avatar_cache.dart';
-import 'chat_message_widget.dart' show ToolUIPart;
+import 'chat_message_widget.dart'
+    show ChatMessageWidget, ToolUIPart, ReasoningSegment;
 
 // Regular expression to extract thinking content from message
 final RegExp thinkingRegex = RegExp(
@@ -50,11 +47,6 @@ String _guessImageMime(String path) {
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.webp')) return 'image/webp';
   return 'image/png';
-}
-
-String? _modelDisplayName(BuildContext context, ChatMessage msg) {
-  final settings = context.read<SettingsProvider>();
-  return _modelDisplayNameFromSettings(settings, msg);
 }
 
 String? _modelDisplayNameFromSettings(
@@ -246,6 +238,153 @@ _ThinkingExportData _thinkingExportDataForMessage(ChatMessage message) {
   return _ThinkingExportData(
     cleanedContent: cleanedContent,
     thinkingTexts: thinkingTexts,
+  );
+}
+
+class _ExportReasoningPayload {
+  const _ExportReasoningPayload({
+    required this.segments,
+    this.contentSplitOffsets,
+    this.reasoningCountAtSplit,
+    this.toolCountAtSplit,
+  });
+
+  final List<ReasoningSegment> segments;
+  final List<int>? contentSplitOffsets;
+  final List<int>? reasoningCountAtSplit;
+  final List<int>? toolCountAtSplit;
+}
+
+List<ToolUIPart> _exportToolPartsForMessage(
+  BuildContext context,
+  ChatMessage message,
+) {
+  try {
+    final chatService = context.read<ChatService>();
+    final events = chatService.getToolEvents(message.id);
+    if (events.isEmpty) return const <ToolUIPart>[];
+    return events
+        .map(
+          (e) => ToolUIPart(
+            id: (e['id'] ?? '').toString(),
+            toolName: (e['name'] ?? '').toString(),
+            arguments:
+                (e['arguments'] as Map?)?.cast<String, dynamic>() ??
+                const <String, dynamic>{},
+            content: (e['content']?.toString().isNotEmpty == true)
+                ? e['content'].toString()
+                : null,
+            loading: !(e['content']?.toString().isNotEmpty == true),
+          ),
+        )
+        .toList();
+  } catch (_) {
+    return const <ToolUIPart>[];
+  }
+}
+
+_ExportReasoningPayload _exportReasoningPayloadForMessage(
+  ChatMessage message, {
+  required bool expandThinkingContent,
+}) {
+  final segJson = (message.reasoningSegmentsJson ?? '').trim();
+  final segments = <ReasoningSegment>[];
+  List<int>? offsets;
+  List<int>? reasoningCounts;
+  List<int>? toolCounts;
+
+  if (segJson.isNotEmpty) {
+    try {
+      final decoded = jsonDecode(segJson);
+      if (decoded is Map<String, dynamic>) {
+        final rawSegments = (decoded['segments'] as List? ?? const <dynamic>[]);
+        final contentSplits = (decoded['contentSplits'] as Map?)
+            ?.cast<String, dynamic>();
+        if (contentSplits != null) {
+          offsets = (contentSplits['offsets'] as List? ?? const <dynamic>[])
+              .map((item) => item as int)
+              .toList();
+          reasoningCounts =
+              (contentSplits['reasoningCounts'] as List? ?? const <dynamic>[])
+                  .map((item) => item as int)
+                  .toList();
+          toolCounts =
+              (contentSplits['toolCounts'] as List? ?? const <dynamic>[])
+                  .map((item) => item as int)
+                  .toList();
+          final normalizedLength = [
+            offsets.length,
+            reasoningCounts.length,
+            toolCounts.length,
+          ].reduce((a, b) => a < b ? a : b);
+          offsets = List<int>.of(offsets.take(normalizedLength));
+          reasoningCounts = List<int>.of(
+            reasoningCounts.take(normalizedLength),
+          );
+          toolCounts = List<int>.of(toolCounts.take(normalizedLength));
+        }
+        for (final item in rawSegments) {
+          if (item is! Map) continue;
+          final map = item.cast<String, dynamic>();
+          final text = (map['text']?.toString() ?? '').trim();
+          if (text.isEmpty) continue;
+          segments.add(
+            ReasoningSegment(
+              text: text,
+              expanded: expandThinkingContent,
+              loading: false,
+              startAt: DateTime.tryParse(map['startAt']?.toString() ?? ''),
+              finishedAt: DateTime.tryParse(
+                map['finishedAt']?.toString() ?? '',
+              ),
+              toolStartIndex: (map['toolStartIndex'] as int?) ?? 0,
+            ),
+          );
+        }
+      } else if (decoded is List) {
+        for (final item in decoded) {
+          if (item is! Map) continue;
+          final map = item.cast<String, dynamic>();
+          final text = (map['text']?.toString() ?? '').trim();
+          if (text.isEmpty) continue;
+          segments.add(
+            ReasoningSegment(
+              text: text,
+              expanded: expandThinkingContent,
+              loading: false,
+              startAt: DateTime.tryParse(map['startAt']?.toString() ?? ''),
+              finishedAt: DateTime.tryParse(
+                map['finishedAt']?.toString() ?? '',
+              ),
+              toolStartIndex: (map['toolStartIndex'] as int?) ?? 0,
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (segments.isEmpty) {
+    final thinkingData = _thinkingExportDataForMessage(message);
+    if (thinkingData.thinkingTexts.isNotEmpty) {
+      segments.addAll(
+        thinkingData.thinkingTexts.map(
+          (text) => ReasoningSegment(
+            text: text,
+            expanded: expandThinkingContent,
+            loading: false,
+            toolStartIndex: 0,
+          ),
+        ),
+      );
+    }
+  }
+
+  return _ExportReasoningPayload(
+    segments: segments,
+    contentSplitOffsets: offsets,
+    reasoningCountAtSplit: reasoningCounts,
+    toolCountAtSplit: toolCounts,
   );
 }
 
@@ -1836,105 +1975,32 @@ class _ExportedMessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAssistant = message.role == 'assistant';
     final headerFg = cs.onSurface;
-    final bubbleBg = cs.primary.withValues(alpha: 0.08);
-    final bubbleFg = cs.onSurface;
     final time = DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp);
 
     // Desktop uses smaller font sizes for better proportions
     final double titleFontSize = isDesktop ? 15.0 : 18.0;
     final double timeFontSize = isDesktop ? 10.0 : 12.0;
-    final double contentFontSize = isDesktop ? 13.0 : 15.7;
-
-    // Extract thinking content and tool parts if enabled
-    List<Map<String, dynamic>> reasoningSegments = [];
-    String messageContent = message.content;
-    List<ToolUIPart> toolParts = [];
-
-    if (showThinkingAndToolCards && isAssistant) {
-      // Get tool events first
-      try {
-        final chatService = context.read<ChatService>();
-        final events = chatService.getToolEvents(message.id);
-        if (events.isNotEmpty) {
-          toolParts = events
-              .map(
-                (e) => ToolUIPart(
-                  id: (e['id'] ?? '').toString(),
-                  toolName: (e['name'] ?? '').toString(),
-                  arguments:
-                      (e['arguments'] as Map?)?.cast<String, dynamic>() ??
-                      const <String, dynamic>{},
-                  content: (e['content']?.toString().isNotEmpty == true)
-                      ? e['content'].toString()
-                      : null,
-                  loading: !(e['content']?.toString().isNotEmpty == true),
-                ),
-              )
-              .toList();
-        }
-      } catch (_) {}
-
-      // Check if message has reasoningSegmentsJson (multiple thinking segments with toolStartIndex)
-      if (message.reasoningSegmentsJson != null &&
-          message.reasoningSegmentsJson!.isNotEmpty) {
-        try {
-          final segments = _deserializeReasoningSegments(
-            message.reasoningSegmentsJson!,
-          );
-          reasoningSegments = segments;
-        } catch (_) {}
-      }
-
-      // If no segments, fall back to extracting from content or reasoningText
-      if (reasoningSegments.isEmpty) {
-        // Extract thinking content from <think> tags
-        final thinkingMatches = thinkingRegex.allMatches(message.content);
-        if (thinkingMatches.isNotEmpty) {
-          final texts = thinkingMatches
-              .map((m) => (m.group(1) ?? '').trim())
-              .where((s) => s.isNotEmpty)
-              .toList();
-          // Create segments with sequential toolStartIndex
-          for (int i = 0; i < texts.length; i++) {
-            reasoningSegments.add({
-              'text': texts[i],
-              'toolStartIndex': 0, // All tools at the end for inline think
-            });
-          }
-          // Remove thinking tags from message content
-          messageContent = message.content.replaceAll(thinkingRegex, '').trim();
-        }
-        // Also check reasoningText field
-        else if (message.reasoningText != null &&
-            message.reasoningText!.isNotEmpty) {
-          reasoningSegments.add({
-            'text': message.reasoningText!,
-            'toolStartIndex': 0,
-          });
-        }
-      }
-    }
-
-    final parsed = _parseContent(messageContent);
-    final mdText = StringBuffer();
-    if (parsed.text.isNotEmpty) mdText.writeln(_softBreakMd(parsed.text));
-    for (final p in parsed.images) {
-      mdText.writeln('\n![](${SandboxPathResolver.fix(p)})\n');
-    }
-    for (final d in parsed.docs) {
-      mdText.writeln('\n- ${d.fileName}  `(${d.mime})`');
-    }
-
-    final Widget contentWidget = (mdText.toString().trim().isNotEmpty)
-        ? DefaultTextStyle.merge(
-            style: TextStyle(fontSize: contentFontSize, height: 1.5),
-            child: MarkdownWithCodeHighlight(text: mdText.toString()),
-          )
-        : Text('—', style: TextStyle(color: bubbleFg.withValues(alpha: 0.5)));
-
     // Desktop uses smaller margins and paddings
     final double containerMargin = isDesktop ? 12.0 : 16.0;
     final double containerPadding = isDesktop ? 12.0 : 16.0;
+
+    final exportThinkingData = _thinkingExportDataForMessage(message);
+    final messageForExport = (!showThinkingAndToolCards && isAssistant)
+        ? message.copyWith(content: exportThinkingData.cleanedContent)
+        : message;
+    final exportReasoningPayload = showThinkingAndToolCards && isAssistant
+        ? _exportReasoningPayloadForMessage(
+            message,
+            expandThinkingContent: expandThinkingContent,
+          )
+        : const _ExportReasoningPayload(segments: <ReasoningSegment>[]);
+    final toolParts = showThinkingAndToolCards && isAssistant
+        ? _exportToolPartsForMessage(context, message)
+        : const <ToolUIPart>[];
+    final assistant = context.read<AssistantProvider>().currentAssistant;
+    final useAssistAvatar =
+        isAssistant && (assistant?.useAssistantAvatar == true);
+    final useAssistName = isAssistant && (assistant?.useAssistantName == true);
 
     return MediaQuery(
       // Respect chat font scale for export rendering
@@ -1976,111 +2042,35 @@ class _ExportedMessageCard extends StatelessWidget {
               ),
             ),
             SizedBox(height: isDesktop ? 10.0 : 12.0),
-            // Message body styled like chat
-            if (isAssistant) ...[
-              _AssistantHeader(message: message, isDesktop: isDesktop),
-              const SizedBox(height: 8),
-              // Build mixed content: reasoning segments and tool cards按 toolStartIndex 混合显示
-              ...() {
-                final List<Widget> mixedContent = [];
-                if (reasoningSegments.isNotEmpty) {
-                  for (int i = 0; i < reasoningSegments.length; i++) {
-                    final seg = reasoningSegments[i];
-                    final text = seg['text'] as String? ?? '';
-
-                    // Add the reasoning segment (if any text)
-                    if (text.isNotEmpty) {
-                      mixedContent.add(
-                        _ExportThinkingCard(
-                          thinkingText: text,
-                          cs: cs,
-                          expanded: expandThinkingContent,
-                          isDesktop: isDesktop,
-                        ),
-                      );
-                      mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-                    }
-
-                    // Determine tool range mapped to this segment: [start, end)
-                    int start = (seg['toolStartIndex'] as int?) ?? 0;
-                    final int end = (i < reasoningSegments.length - 1)
-                        ? (reasoningSegments[i + 1]['toolStartIndex']
-                                  as int?) ??
-                              toolParts.length
-                        : toolParts.length;
-
-                    // Clamp to bounds and ensure non-decreasing
-                    if (start < 0) start = 0;
-                    if (start > toolParts.length) start = toolParts.length;
-                    final int clampedEnd = end.clamp(start, toolParts.length);
-
-                    for (int k = start; k < clampedEnd; k++) {
-                      // Hide builtin_search tool cards
-                      if (toolParts[k].toolName == 'builtin_search') continue;
-                      mixedContent.add(
-                        _ExportToolCard(
-                          part: toolParts[k],
-                          cs: cs,
-                          isDesktop: isDesktop,
-                        ),
-                      );
-                      mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-                    }
-                  }
-                } else if (toolParts.isNotEmpty) {
-                  // No reasoning segments but have tool cards - show all tool cards
-                  for (final toolPart in toolParts) {
-                    if (toolPart.toolName == 'builtin_search') continue;
-                    mixedContent.add(
-                      _ExportToolCard(
-                        part: toolPart,
-                        cs: cs,
-                        isDesktop: isDesktop,
-                      ),
-                    );
-                    mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-                  }
-                }
-                return mixedContent;
-              }(),
-              contentWidget,
-            ] else ...[
-              Align(
-                alignment: Alignment.centerRight,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isDesktop ? 600.0 : 680.0,
-                  ),
-                  child: Container(
-                    padding: EdgeInsets.all(isDesktop ? 10.0 : 12.0),
-                    decoration: BoxDecoration(
-                      color: bubbleBg,
-                      borderRadius: BorderRadius.circular(
-                        isDesktop ? 12.0 : 16.0,
-                      ),
-                    ),
-                    child: contentWidget,
-                  ),
-                ),
-              ),
-            ],
+            ChatMessageWidget(
+              message: messageForExport,
+              showModelIcon: !useAssistAvatar,
+              useAssistantAvatar: useAssistAvatar,
+              useAssistantName: useAssistName,
+              assistantName: (useAssistAvatar || useAssistName)
+                  ? (assistant?.name ?? 'Assistant')
+                  : null,
+              assistantAvatar: useAssistAvatar
+                  ? (assistant?.avatar ?? '')
+                  : null,
+              showUserAvatar: context.read<SettingsProvider>().showUserAvatar,
+              showTokenStats: false,
+              reasoningSegments: exportReasoningPayload.segments.isEmpty
+                  ? null
+                  : exportReasoningPayload.segments,
+              toolParts: toolParts.isEmpty ? null : toolParts,
+              contentSplitOffsets: exportReasoningPayload.contentSplitOffsets,
+              reasoningCountAtSplit:
+                  exportReasoningPayload.reasoningCountAtSplit,
+              toolCountAtSplit: exportReasoningPayload.toolCountAtSplit,
+              hideStreamingIndicator: true,
+            ),
             SizedBox(height: isDesktop ? 12.0 : 16.0),
             _ExportDisclaimer(isDesktop: isDesktop),
           ],
         ),
       ),
     );
-  }
-
-  // Helper to deserialize reasoning segments
-  List<Map<String, dynamic>> _deserializeReasoningSegments(String json) {
-    try {
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        return decoded.cast<Map<String, dynamic>>();
-      }
-    } catch (_) {}
-    return [];
   }
 }
 
@@ -2195,77 +2185,25 @@ class _ExportedBubble extends StatelessWidget {
     // Desktop uses smaller font sizes for better proportions
     final double contentFontSize = isDesktop ? 13.0 : 15.7;
 
-    // Extract thinking content and tool parts if enabled
-    List<Map<String, dynamic>> reasoningSegments = [];
-    String messageContent = message.content;
-    List<ToolUIPart> toolParts = [];
+    final exportThinkingData = _thinkingExportDataForMessage(message);
+    final messageForExport = (!showThinkingAndToolCards && isAssistant)
+        ? message.copyWith(content: exportThinkingData.cleanedContent)
+        : message;
+    final exportReasoningPayload = showThinkingAndToolCards && isAssistant
+        ? _exportReasoningPayloadForMessage(
+            message,
+            expandThinkingContent: expandThinkingContent,
+          )
+        : const _ExportReasoningPayload(segments: <ReasoningSegment>[]);
+    final toolParts = showThinkingAndToolCards && isAssistant
+        ? _exportToolPartsForMessage(context, message)
+        : const <ToolUIPart>[];
+    final assistant = context.read<AssistantProvider>().currentAssistant;
+    final useAssistAvatar =
+        isAssistant && (assistant?.useAssistantAvatar == true);
+    final useAssistName = isAssistant && (assistant?.useAssistantName == true);
 
-    if (showThinkingAndToolCards && isAssistant) {
-      // Get tool events first
-      try {
-        final chatService = context.read<ChatService>();
-        final events = chatService.getToolEvents(message.id);
-        if (events.isNotEmpty) {
-          toolParts = events
-              .map(
-                (e) => ToolUIPart(
-                  id: (e['id'] ?? '').toString(),
-                  toolName: (e['name'] ?? '').toString(),
-                  arguments:
-                      (e['arguments'] as Map?)?.cast<String, dynamic>() ??
-                      const <String, dynamic>{},
-                  content: (e['content']?.toString().isNotEmpty == true)
-                      ? e['content'].toString()
-                      : null,
-                  loading: !(e['content']?.toString().isNotEmpty == true),
-                ),
-              )
-              .toList();
-        }
-      } catch (_) {}
-
-      // Check if message has reasoningSegmentsJson (multiple thinking segments with toolStartIndex)
-      if (message.reasoningSegmentsJson != null &&
-          message.reasoningSegmentsJson!.isNotEmpty) {
-        try {
-          final segments = _deserializeReasoningSegments(
-            message.reasoningSegmentsJson!,
-          );
-          reasoningSegments = segments;
-        } catch (_) {}
-      }
-
-      // If no segments, fall back to extracting from content or reasoningText
-      if (reasoningSegments.isEmpty) {
-        // Extract thinking content from <think> tags
-        final thinkingMatches = thinkingRegex.allMatches(message.content);
-        if (thinkingMatches.isNotEmpty) {
-          final texts = thinkingMatches
-              .map((m) => (m.group(1) ?? '').trim())
-              .where((s) => s.isNotEmpty)
-              .toList();
-          // Create segments with sequential toolStartIndex
-          for (int i = 0; i < texts.length; i++) {
-            reasoningSegments.add({
-              'text': texts[i],
-              'toolStartIndex': 0, // All tools at the end for inline think
-            });
-          }
-          // Remove thinking tags from message content
-          messageContent = message.content.replaceAll(thinkingRegex, '').trim();
-        }
-        // Also check reasoningText field
-        else if (message.reasoningText != null &&
-            message.reasoningText!.isNotEmpty) {
-          reasoningSegments.add({
-            'text': message.reasoningText!,
-            'toolStartIndex': 0,
-          });
-        }
-      }
-    }
-
-    final parsed = _parseContent(messageContent);
+    final parsed = _parseContent(messageForExport.content);
     final mdText = StringBuffer();
     if (parsed.text.isNotEmpty) mdText.writeln(_softBreakMd(parsed.text));
     for (final p in parsed.images) {
@@ -2282,71 +2220,29 @@ class _ExportedBubble extends StatelessWidget {
         : Text('—', style: TextStyle(color: bubbleFg.withValues(alpha: 0.5)));
 
     if (isAssistant) {
-      // Build mixed content: reasoning segments and tool cards按 toolStartIndex 混合显示
-      final List<Widget> mixedContent = [];
-
-      if (reasoningSegments.isNotEmpty) {
-        for (int i = 0; i < reasoningSegments.length; i++) {
-          final seg = reasoningSegments[i];
-          final text = seg['text'] as String? ?? '';
-
-          // Add the reasoning segment (if any text)
-          if (text.isNotEmpty) {
-            mixedContent.add(
-              _ExportThinkingCard(
-                thinkingText: text,
-                cs: cs,
-                expanded: expandThinkingContent,
-                isDesktop: isDesktop,
-              ),
-            );
-            mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-          }
-
-          // Determine tool range mapped to this segment: [start, end)
-          int start = (seg['toolStartIndex'] as int?) ?? 0;
-          final int end = (i < reasoningSegments.length - 1)
-              ? (reasoningSegments[i + 1]['toolStartIndex'] as int?) ??
-                    toolParts.length
-              : toolParts.length;
-
-          // Clamp to bounds and ensure non-decreasing
-          if (start < 0) start = 0;
-          if (start > toolParts.length) start = toolParts.length;
-          final int clampedEnd = end.clamp(start, toolParts.length);
-
-          for (int k = start; k < clampedEnd; k++) {
-            // Hide builtin_search tool cards
-            if (toolParts[k].toolName == 'builtin_search') continue;
-            mixedContent.add(
-              _ExportToolCard(part: toolParts[k], cs: cs, isDesktop: isDesktop),
-            );
-            mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-          }
-        }
-      } else if (toolParts.isNotEmpty) {
-        // No reasoning segments but have tool cards - show all tool cards
-        for (final toolPart in toolParts) {
-          if (toolPart.toolName == 'builtin_search') continue;
-          mixedContent.add(
-            _ExportToolCard(part: toolPart, cs: cs, isDesktop: isDesktop),
-          );
-          mixedContent.add(SizedBox(height: isDesktop ? 6.0 : 8.0));
-        }
-      }
-
       return Align(
         alignment: Alignment.centerLeft,
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isDesktop ? 680.0 : 780.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _AssistantHeader(message: message, isDesktop: isDesktop),
-              SizedBox(height: isDesktop ? 6.0 : 8.0),
-              ...mixedContent,
-              contentWidget,
-            ],
+          constraints: BoxConstraints(maxWidth: isDesktop ? 760.0 : 860.0),
+          child: ChatMessageWidget(
+            message: messageForExport,
+            showModelIcon: !useAssistAvatar,
+            useAssistantAvatar: useAssistAvatar,
+            useAssistantName: useAssistName,
+            assistantName: (useAssistAvatar || useAssistName)
+                ? (assistant?.name ?? 'Assistant')
+                : null,
+            assistantAvatar: useAssistAvatar ? (assistant?.avatar ?? '') : null,
+            showUserAvatar: context.read<SettingsProvider>().showUserAvatar,
+            showTokenStats: false,
+            reasoningSegments: exportReasoningPayload.segments.isEmpty
+                ? null
+                : exportReasoningPayload.segments,
+            toolParts: toolParts.isEmpty ? null : toolParts,
+            contentSplitOffsets: exportReasoningPayload.contentSplitOffsets,
+            reasoningCountAtSplit: exportReasoningPayload.reasoningCountAtSplit,
+            toolCountAtSplit: exportReasoningPayload.toolCountAtSplit,
+            hideStreamingIndicator: true,
           ),
         ),
       );
@@ -2362,241 +2258,6 @@ class _ExportedBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(isDesktop ? 12.0 : 16.0),
           ),
           child: contentWidget,
-        ),
-      ),
-    );
-  }
-
-  // Helper to deserialize reasoning segments
-  List<Map<String, dynamic>> _deserializeReasoningSegments(String json) {
-    try {
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        return decoded.cast<Map<String, dynamic>>();
-      }
-    } catch (_) {}
-    return [];
-  }
-}
-
-// Assistant header (icon + name), mirroring chat style
-class _AssistantHeader extends StatelessWidget {
-  const _AssistantHeader({required this.message, this.isDesktop = false});
-  final ChatMessage message;
-  final bool isDesktop;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-    final useAssistAvatar = (assistant?.useAssistantAvatar == true);
-    final useAssistName = (assistant?.useAssistantName == true);
-    final name = () {
-      if (useAssistName && (assistant?.name.trim().isNotEmpty ?? false)) {
-        return assistant!.name.trim();
-      }
-      return _modelDisplayName(context, message) ??
-          AppLocalizations.of(context)!.messageExportSheetAssistant;
-    }();
-
-    // Desktop uses smaller icon sizes
-    final double iconSize = isDesktop ? 22.0 : 28.0;
-    final double nameFontSize = isDesktop ? 11.0 : 13.0;
-
-    final Widget leading = useAssistAvatar
-        ? _AssistantAvatarSmall(assistant: assistant, size: iconSize)
-        : _ModelIconSmall(
-            providerKey: message.providerId,
-            modelId: message.modelId,
-            size: iconSize,
-          );
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        leading,
-        SizedBox(width: isDesktop ? 6.0 : 8.0),
-        Text(
-          name,
-          style: TextStyle(
-            fontSize: nameFontSize,
-            fontWeight: FontWeight.w500,
-            color: cs.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ModelIconSmall extends StatelessWidget {
-  const _ModelIconSmall({
-    required this.providerKey,
-    required this.modelId,
-    this.size = 28.0,
-  });
-  final String? providerKey;
-  final String? modelId;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    if (providerKey == null || modelId == null) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: cs.secondary.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(Lucide.Bot, size: size * 0.64, color: cs.secondary),
-      );
-    }
-    String? asset = BrandAssets.assetForName(modelId!);
-    asset ??= BrandAssets.assetForName(providerKey!);
-    Widget inner;
-    if (asset != null) {
-      if (asset.endsWith('.svg')) {
-        final isColorful = asset.contains('color');
-        final ColorFilter? tint =
-            (Theme.of(context).brightness == Brightness.dark && !isColorful)
-            ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
-            : null;
-        inner = SvgPicture.asset(
-          asset,
-          width: size * 0.5,
-          height: size * 0.5,
-          colorFilter: tint,
-        );
-      } else {
-        inner = Image.asset(
-          asset,
-          width: size * 0.5,
-          height: size * 0.5,
-          fit: BoxFit.contain,
-        );
-      }
-    } else {
-      inner = Text(
-        modelId!.isNotEmpty ? modelId!.characters.first.toUpperCase() : '?',
-        style: TextStyle(
-          color: cs.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: size * 0.43,
-        ),
-      );
-    }
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white10
-            : cs.primary.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: SizedBox(
-        width: size * 0.64,
-        height: size * 0.64,
-        child: Center(
-          child: inner is SvgPicture || inner is Image
-              ? inner
-              : FittedBox(child: inner),
-        ),
-      ),
-    );
-  }
-}
-
-class _AssistantAvatarSmall extends StatelessWidget {
-  const _AssistantAvatarSmall({required this.assistant, this.size = 28.0});
-  final Assistant? assistant;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final av = (assistant?.avatar ?? '').trim();
-    if (av.isNotEmpty) {
-      if (av.startsWith('http')) {
-        return FutureBuilder<String?>(
-          future: AvatarCache.getPath(av),
-          builder: (ctx, snap) {
-            final p = snap.data;
-            if (p != null && File(p).existsSync()) {
-              return ClipOval(
-                child: Image.file(
-                  File(p),
-                  width: size,
-                  height: size,
-                  fit: BoxFit.cover,
-                ),
-              );
-            }
-            return ClipOval(
-              child: Image.network(
-                av,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _assistantInitial(cs, assistant?.name ?? ''),
-              ),
-            );
-          },
-        );
-      }
-      if (av.startsWith('/') || av.contains(':')) {
-        final fixed = SandboxPathResolver.fix(av);
-        return ClipOval(
-          child: Image.file(
-            File(fixed),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                _assistantInitial(cs, assistant?.name ?? ''),
-          ),
-        );
-      }
-      // treat as emoji or single char label
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: cs.primary.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          av.characters.take(1).toString(),
-          style: TextStyle(fontSize: size * 0.57),
-        ),
-      );
-    }
-    return _assistantInitial(cs, assistant?.name ?? '');
-  }
-
-  Widget _assistantInitial(ColorScheme cs, String name) {
-    final ch = name.trim().isNotEmpty
-        ? name.characters.first.toUpperCase()
-        : 'A';
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        ch,
-        style: TextStyle(
-          color: cs.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: size * 0.5,
         ),
       ),
     );
@@ -2755,226 +2416,6 @@ class _ExportOptionTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// Simple thinking card widget for export
-class _ExportThinkingCard extends StatelessWidget {
-  const _ExportThinkingCard({
-    required this.thinkingText,
-    required this.cs,
-    required this.expanded,
-    this.isDesktop = false,
-  });
-  final String thinkingText;
-  final ColorScheme cs;
-  final bool expanded;
-  final bool isDesktop;
-
-  String _sanitizeThinkingText(String s) {
-    // 统一换行
-    s = s.replaceAll('\r\n', '\n');
-    s = s.replaceAll('\r', '');
-
-    // 去掉首尾零宽字符（模型有时会插入）
-    s = s
-        .replaceAll(RegExp(r'^[\u200B\u200C\u200D\uFEFF]+'), '')
-        .replaceAll(RegExp(r'[\u200B\u200C\u200D\uFEFF]+$'), '');
-
-    // 去掉**开头**的纯空白行
-    s = s.replaceFirst(RegExp(r'^\s*\n+'), '');
-
-    // 去掉**结尾**的纯空白行
-    s = s.replaceFirst(RegExp(r'\n+\s*$'), '');
-
-    return s.trim();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
-    final l10n = AppLocalizations.of(context)!;
-    final cleanedText = _sanitizeThinkingText(thinkingText);
-
-    // Desktop uses smaller sizes
-    final double iconSize = isDesktop ? 14.0 : 18.0;
-    final double headerFontSize = isDesktop ? 11.0 : 13.0;
-    final double contentFontSize = isDesktop ? 10.5 : 12.5;
-    final double borderRadius = isDesktop ? 12.0 : 16.0;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 8.0 : 10.0,
-        vertical: isDesktop ? 6.0 : 8.0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 6.0 : 8.0,
-              vertical: isDesktop ? 4.0 : 6.0,
-            ),
-            child: Row(
-              children: [
-                ReasoningIcons.thinkingCardIcon(
-                  size: iconSize,
-                  color: cs.secondary,
-                ),
-                SizedBox(width: isDesktop ? 6.0 : 8.0),
-                Text(
-                  l10n.chatMessageWidgetDeepThinking,
-                  style: TextStyle(
-                    fontSize: headerFontSize,
-                    fontWeight: FontWeight.w700,
-                    color: cs.secondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content (if expanded)
-          if (expanded)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                isDesktop ? 6.0 : 8.0,
-                2,
-                isDesktop ? 6.0 : 8.0,
-                isDesktop ? 4.0 : 6.0,
-              ),
-              child: Text(
-                cleanedText,
-                style: TextStyle(
-                  fontSize: contentFontSize,
-                  height: 1.32,
-                  leadingDistribution: TextLeadingDistribution.proportional,
-                ),
-                strutStyle: StrutStyle(
-                  forceStrutHeight: true,
-                  fontSize: contentFontSize,
-                  height: 1.32,
-                  leading: 0,
-                ),
-                textHeightBehavior: const TextHeightBehavior(
-                  applyHeightToFirstAscent: false,
-                  applyHeightToLastDescent: false,
-                  leadingDistribution: TextLeadingDistribution.proportional,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// Tool card widget for export
-class _ExportToolCard extends StatelessWidget {
-  const _ExportToolCard({
-    required this.part,
-    required this.cs,
-    this.isDesktop = false,
-  });
-  final ToolUIPart part;
-  final ColorScheme cs;
-  final bool isDesktop;
-
-  IconData _iconFor(String name) {
-    switch (name) {
-      case 'create_memory':
-        return Lucide.bookHeart;
-      case 'edit_memory':
-        return Lucide.bookHeart;
-      case 'delete_memory':
-        return Lucide.bookDashed;
-      case 'search_web':
-        return Lucide.Earth;
-      case 'builtin_search':
-        return Lucide.Search;
-      default:
-        return Lucide.Wrench;
-    }
-  }
-
-  String _titleFor(
-    BuildContext context,
-    String name,
-    Map<String, dynamic> args,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    switch (name) {
-      case 'create_memory':
-        return l10n.chatMessageWidgetCreateMemory;
-      case 'edit_memory':
-        return l10n.chatMessageWidgetEditMemory;
-      case 'delete_memory':
-        return l10n.chatMessageWidgetDeleteMemory;
-      case 'search_web':
-        final q = (args['query'] ?? '').toString();
-        return l10n.chatMessageWidgetWebSearch(q);
-      case 'builtin_search':
-        return l10n.chatMessageWidgetBuiltinSearch;
-      default:
-        return l10n.chatMessageWidgetToolCall(name);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.30);
-
-    // Desktop uses smaller sizes
-    final double iconSize = isDesktop ? 14.0 : 18.0;
-    final double fontSize = isDesktop ? 11.0 : 13.0;
-    final double borderRadius = isDesktop ? 12.0 : 16.0;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        isDesktop ? 12.0 : 16.0,
-        isDesktop ? 10.0 : 12.0,
-        isDesktop ? 10.0 : 12.0,
-        isDesktop ? 10.0 : 12.0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: iconSize,
-            height: iconSize,
-            child: Center(
-              child: Icon(
-                _iconFor(part.toolName),
-                size: iconSize,
-                color: cs.secondary,
-              ),
-            ),
-          ),
-          SizedBox(width: isDesktop ? 8.0 : 10.0),
-          Expanded(
-            child: Text(
-              _titleFor(context, part.toolName, part.arguments),
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: cs.secondary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
