@@ -154,6 +154,43 @@ class ProviderGroupingMoveResult {
   final Map<String, String> providerGroupMap;
 }
 
+List<String> buildProviderKeysInGroupedDisplayOrder({
+  required List<String> providersOrder,
+  required List<ProviderGroup> groups,
+  required Map<String, String> providerGroupMap,
+  required Iterable<String> knownProviderKeys,
+}) {
+  final validGroupIds = {for (final g in groups) g.id};
+  final mergedOrder = <String>[];
+  final seen = <String>{};
+
+  for (final key in providersOrder) {
+    if (!seen.add(key)) continue;
+    mergedOrder.add(key);
+  }
+  for (final key in knownProviderKeys) {
+    if (!seen.add(key)) continue;
+    mergedOrder.add(key);
+  }
+
+  String? groupIdFor(String key) {
+    final gid = providerGroupMap[key];
+    return (gid != null && validGroupIds.contains(gid)) ? gid : null;
+  }
+
+  final result = <String>[];
+  for (final group in groups) {
+    for (final key in mergedOrder) {
+      if (groupIdFor(key) == group.id) result.add(key);
+    }
+  }
+  for (final key in mergedOrder) {
+    if (groupIdFor(key) == null) result.add(key);
+  }
+
+  return List<String>.unmodifiable(result);
+}
+
 ProviderGroupingMoveResult moveProviderInGroupedOrder({
   required List<String> providersOrder,
   required Map<String, String> providerGroupMap,

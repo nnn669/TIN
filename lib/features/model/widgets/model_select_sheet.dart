@@ -11,6 +11,7 @@ import 'model_detail_sheet.dart';
 import '../../provider/pages/provider_detail_page.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/brand_assets.dart';
+import '../../../utils/provider_grouping_logic.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/model_tag_wrap.dart';
 import '../../../desktop/desktop_home_page.dart' show DesktopHomePage;
@@ -60,6 +61,24 @@ class _ModelProcessingResult {
 // Lightweight brand asset resolver usable in isolates
 String? _assetForNameStatic(String n) {
   return BrandAssets.assetForName(n);
+}
+
+List<String> _buildDisplayProvidersOrder(
+  SettingsProvider settings,
+  Iterable<String> providerKeys,
+) {
+  final knownKeys = providerKeys.where((e) => e.trim().isNotEmpty);
+  final providerGroupMap = <String, String>{};
+  for (final key in knownKeys) {
+    final groupId = settings.groupIdForProvider(key);
+    if (groupId != null) providerGroupMap[key] = groupId;
+  }
+  return buildProviderKeysInGroupedDisplayOrder(
+    providersOrder: settings.providersOrder,
+    groups: settings.providerGroups,
+    providerGroupMap: providerGroupMap,
+    knownProviderKeys: providerKeys,
+  );
 }
 
 // Static function for compute - must be top-level
@@ -325,6 +344,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     try {
       final settings = context.read<SettingsProvider>();
       final assistant = context.read<AssistantProvider>().currentAssistant;
+      final providerConfigs = _buildProviderConfigsPayload(settings);
 
       // Determine current model - use assistant's model if set, otherwise global default
       final currentProvider =
@@ -336,10 +356,13 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
 
       // Prepare data for background processing
       final processingData = _ModelProcessingData(
-        providerConfigs: _buildProviderConfigsPayload(settings),
+        providerConfigs: providerConfigs,
         pinnedModels: settings.pinnedModels,
         currentModelKey: currentKey,
-        providersOrder: settings.providersOrder,
+        providersOrder: _buildDisplayProvidersOrder(
+          settings,
+          providerConfigs.keys,
+        ),
         limitProviderKey: widget.limitProviderKey,
         disableResolverPlatformLogging: true,
       );
@@ -385,6 +408,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
   void _loadModelsSynchronously() {
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
+    final providerConfigs = _buildProviderConfigsPayload(settings);
 
     // Determine current model - use assistant's model if set, otherwise global default
     final currentProvider =
@@ -395,10 +419,13 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
         : '';
 
     final processingData = _ModelProcessingData(
-      providerConfigs: _buildProviderConfigsPayload(settings),
+      providerConfigs: providerConfigs,
       pinnedModels: settings.pinnedModels,
       currentModelKey: currentKey,
-      providersOrder: settings.providersOrder,
+      providersOrder: _buildDisplayProvidersOrder(
+        settings,
+        providerConfigs.keys,
+      ),
       limitProviderKey: widget.limitProviderKey,
       disableResolverPlatformLogging: false,
     );
@@ -1391,6 +1418,7 @@ class _DesktopModelSelectDialogBodyState
   Future<void> _loadModels() async {
     final settings = context.read<SettingsProvider>();
     final assistant = context.read<AssistantProvider>().currentAssistant;
+    final providerConfigs = _buildProviderConfigsPayload(settings);
     final currentProvider =
         assistant?.chatModelProvider ?? settings.currentModelProvider;
     final currentModelId = assistant?.chatModelId ?? settings.currentModelId;
@@ -1399,10 +1427,13 @@ class _DesktopModelSelectDialogBodyState
         : '';
 
     final data = _ModelProcessingData(
-      providerConfigs: _buildProviderConfigsPayload(settings),
+      providerConfigs: providerConfigs,
       pinnedModels: settings.pinnedModels,
       currentModelKey: currentKey,
-      providersOrder: settings.providersOrder,
+      providersOrder: _buildDisplayProvidersOrder(
+        settings,
+        providerConfigs.keys,
+      ),
       limitProviderKey: widget.limitProviderKey,
       disableResolverPlatformLogging: false,
     );
