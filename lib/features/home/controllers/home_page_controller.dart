@@ -618,18 +618,6 @@ class HomePageController extends ChangeNotifier {
   }) async {
     if (currentConversation == null) return;
 
-    final versioning = _messageGenerationService
-        .calculateRegenerationVersioning(
-          message: message,
-          messages: messages,
-          assistantAsNewReply: assistantAsNewReply,
-        );
-    if (versioning.lastKeep >= 0 && versioning.lastKeep < messages.length - 1) {
-      for (int i = versioning.lastKeep + 1; i < messages.length; i++) {
-        _translations.remove(messages[i].id);
-      }
-    }
-
     final success = await _viewModel.regenerateAtMessage(
       message,
       assistantAsNewReply: assistantAsNewReply,

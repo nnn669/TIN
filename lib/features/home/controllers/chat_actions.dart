@@ -182,7 +182,8 @@ class ChatActions {
     );
   }
 
-  List<ChatMessage> _projectMessagesAfterRegenerationCut({
+  @visibleForTesting
+  static List<ChatMessage> projectMessagesForRegenerationContext({
     required List<ChatMessage> messages,
     required int lastKeep,
     required String? targetGroupId,
@@ -209,6 +210,23 @@ class ChatActions {
       }
     }
     return projected;
+  }
+
+  @visibleForTesting
+  static List<ChatMessage> buildRegenerationMessages({
+    required List<ChatMessage> messages,
+    required int lastKeep,
+    required String? targetGroupId,
+    required ChatMessage assistantPlaceholder,
+  }) {
+    return <ChatMessage>[
+      ...projectMessagesForRegenerationContext(
+        messages: messages,
+        lastKeep: lastKeep,
+        targetGroupId: targetGroupId,
+      ),
+      assistantPlaceholder,
+    ];
   }
 
   /// Transform raw content using assistant regexes.
@@ -376,7 +394,6 @@ class ChatActions {
   ///
   /// Returns [ChatActionResult] with success status and the new assistant message.
   /// UI is responsible for:
-  /// - Removing trailing messages from the list
   /// - Adding new assistant placeholder
   /// - Showing snackbars on errors
   /// - Haptic feedback
@@ -426,7 +443,7 @@ class ChatActions {
     final providerKey = modelConfig.providerKey!;
     final modelId = modelConfig.modelId!;
 
-    final projectedMessages = _projectMessagesAfterRegenerationCut(
+    final projectedMessages = ChatActions.projectMessagesForRegenerationContext(
       messages: _messages,
       lastKeep: versioning.lastKeep,
       targetGroupId: versioning.targetGroupId,
@@ -439,17 +456,6 @@ class ChatActions {
       modelId: modelId,
     )) {
       return ChatActionResult.error('audio_attachment_unsupported');
-    }
-
-    // Remove trailing messages - returns list of removed IDs for UI cleanup
-    final removeIds = await messageGenerationService.removeTrailingMessages(
-      messages: _messages,
-      lastKeep: versioning.lastKeep,
-      targetGroupId: versioning.targetGroupId,
-    );
-    if (removeIds.isNotEmpty) {
-      _messages.removeWhere((m) => removeIds.contains(m.id));
-      onMessagesChanged?.call();
     }
 
     // Create assistant message placeholder (new version)
@@ -475,6 +481,13 @@ class ChatActions {
       assistantMessage.version,
     );
 
+    final regenerationMessages = ChatActions.buildRegenerationMessages(
+      messages: _messages,
+      lastKeep: versioning.lastKeep,
+      targetGroupId: versioning.targetGroupId,
+      assistantPlaceholder: assistantMessage,
+    );
+
     _messages.add(assistantMessage);
     onMessagesChanged?.call();
 
@@ -495,7 +508,7 @@ class ChatActions {
     // Prepare API messages
     final prepared = await messageGenerationService
         .prepareApiMessagesWithInjections(
-          messages: _messages,
+          messages: regenerationMessages,
           versionSelections: _versionSelections,
           currentConversation: conversation,
           settings: settings,

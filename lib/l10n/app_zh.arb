@@ -529,7 +529,7 @@
   "chatMessageWidgetCitationsTitle": "引用（共{count}条）",
   "chatMessageWidgetRegenerateTooltip": "重新生成",
   "chatMessageWidgetRegenerateConfirmTitle": "确认重新生成",
-  "chatMessageWidgetRegenerateConfirmContent": "重新生成将会覆盖此消息之后的所有消息，且无法撤销。确定要继续吗？",
+  "chatMessageWidgetRegenerateConfirmContent": "重新生成只会更新当前消息，不会删除下面的消息。确定要继续吗？",
   "chatMessageWidgetRegenerateConfirmCancel": "取消",
   "chatMessageWidgetRegenerateConfirmOk": "重新生成",
   "chatMessageWidgetStopTooltip": "停止",

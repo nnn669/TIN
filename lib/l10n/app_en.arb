@@ -689,7 +689,7 @@
   },
   "chatMessageWidgetRegenerateTooltip": "Regenerate",
   "chatMessageWidgetRegenerateConfirmTitle": "Confirm Regenerate",
-  "chatMessageWidgetRegenerateConfirmContent": "Regenerating will overwrite all messages after this one and cannot be undone. Are you sure?",
+  "chatMessageWidgetRegenerateConfirmContent": "Regenerating only updates this message and keeps the messages below it. Continue?",
   "chatMessageWidgetRegenerateConfirmCancel": "Cancel",
   "chatMessageWidgetRegenerateConfirmOk": "Regenerate",
   "chatMessageWidgetStopTooltip": "Stop",

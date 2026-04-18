@@ -1629,7 +1629,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatMessageWidgetRegenerateConfirmContent =>
-      'Regenerating will overwrite all messages after this one and cannot be undone. Are you sure?';
+      'Regenerating only updates this message and keeps the messages below it. Continue?';
 
   @override
   String get chatMessageWidgetRegenerateConfirmCancel => 'Cancel';

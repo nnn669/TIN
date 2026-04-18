@@ -3140,7 +3140,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatMessageWidgetRegenerateConfirmContent.
   ///
   /// In en, this message translates to:
-  /// **'Regenerating will overwrite all messages after this one and cannot be undone. Are you sure?'**
+  /// **'Regenerating only updates this message and keeps the messages below it. Continue?'**
   String get chatMessageWidgetRegenerateConfirmContent;
 
   /// No description provided for @chatMessageWidgetRegenerateConfirmCancel.
