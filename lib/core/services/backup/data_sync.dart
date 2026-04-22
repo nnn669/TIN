@@ -1105,13 +1105,14 @@ class DataSync {
 class SharedPreferencesAsync {
   SharedPreferencesAsync._();
   static SharedPreferencesAsync? _inst;
-  // Local window state keys stay on device and are excluded from backups
+  // Local-only UI state stays on device and is excluded from backups/restores.
   static const _localOnlyKeys = {
     'window_width_v1',
     'window_height_v1',
     'window_pos_x_v1',
     'window_pos_y_v1',
     'window_maximized_v1',
+    'display_chat_font_scale_v1',
   };
 
   static Future<SharedPreferencesAsync> get instance async {
