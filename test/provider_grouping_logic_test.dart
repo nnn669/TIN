@@ -5,6 +5,39 @@ import 'package:Kelivo/utils/provider_grouping_logic.dart';
 
 void main() {
   group('Provider grouping logic', () {
+    test(
+      'buildProviderGroupDisplayKeys inserts ungrouped at persisted index',
+      () {
+        final res = buildProviderGroupDisplayKeys(
+          groups: const [
+            ProviderGroup(id: 'A', name: 'Group A', createdAt: 0),
+            ProviderGroup(id: 'B', name: 'Group B', createdAt: 0),
+          ],
+          ungroupedIndex: 1,
+        );
+
+        expect(res, const ['A', providerUngroupedGroupKey, 'B']);
+      },
+    );
+
+    test(
+      'reorderProviderGroupDisplayWithUngrouped reorders other with groups',
+      () {
+        final res = reorderProviderGroupDisplayWithUngrouped(
+          groups: const [
+            ProviderGroup(id: 'A', name: 'Group A', createdAt: 0),
+            ProviderGroup(id: 'B', name: 'Group B', createdAt: 0),
+          ],
+          ungroupedIndex: 2,
+          oldIndex: 2,
+          newIndex: 0,
+        );
+
+        expect([for (final g in res.groups) g.id], const ['A', 'B']);
+        expect(res.ungroupedIndex, 0);
+      },
+    );
+
     test('buildProviderKeysInGroupedDisplayOrder uses group order first', () {
       final res = buildProviderKeysInGroupedDisplayOrder(
         providersOrder: const ['u1', 'a1', 'b1', 'a2', 'u2'],
@@ -130,5 +163,31 @@ void main() {
       expect(analysis.intent!.targetGroupKey, 'B');
       expect(analysis.intent!.targetPos, 0);
     });
+
+    test(
+      'analyzeProviderGroupingHeaderReorder returns target header order',
+      () {
+        final rows = <ProviderGroupingRowVM>[
+          const ProviderGroupingHeaderVM(groupKey: 'A'),
+          const ProviderGroupingProviderVM(providerKey: 'p1', groupKey: 'A'),
+          const ProviderGroupingHeaderVM(groupKey: providerUngroupedGroupKey),
+          const ProviderGroupingProviderVM(
+            providerKey: 'p2',
+            groupKey: providerUngroupedGroupKey,
+          ),
+          const ProviderGroupingHeaderVM(groupKey: 'B'),
+        ];
+
+        final intent = analyzeProviderGroupingHeaderReorder(
+          rows: rows,
+          oldIndex: 2,
+          newIndex: 0,
+        );
+
+        expect(intent, isNotNull);
+        expect(intent!.groupKey, providerUngroupedGroupKey);
+        expect(intent.targetDisplayIndex, 0);
+      },
+    );
   });
 }

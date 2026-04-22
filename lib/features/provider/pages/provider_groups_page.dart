@@ -6,6 +6,7 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/snackbar.dart';
+import '../../../utils/provider_grouping_logic.dart';
 
 class ProviderGroupsPage extends StatefulWidget {
   const ProviderGroupsPage({super.key});
@@ -121,19 +122,38 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
     }
   }
 
-  int _countProvidersInGroup(SettingsProvider settings, String groupId) {
-    int count = 0;
-    for (final k in settings.providersOrder) {
-      if (settings.groupIdForProvider(k) == groupId) count++;
-    }
-    return count;
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final groups = settings.providerGroups;
+    final counts = <String, int>{};
+    int ungroupedCount = 0;
+    for (final key in settings.providersOrder) {
+      final gid = settings.groupIdForProvider(key);
+      if (gid == null) {
+        ungroupedCount++;
+      } else {
+        counts[gid] = (counts[gid] ?? 0) + 1;
+      }
+    }
+    final displayKeys = buildProviderGroupDisplayKeys(
+      groups: groups,
+      ungroupedIndex: settings.providerUngroupedDisplayIndex,
+    );
+    final displayRows = [
+      for (final key in displayKeys)
+        (
+          key: key,
+          title: key == SettingsProvider.providerUngroupedGroupKey
+              ? l10n.providerGroupsOther
+              : (settings.groupById(key)?.name ?? ''),
+          count: key == SettingsProvider.providerUngroupedGroupKey
+              ? ungroupedCount
+              : (counts[key] ?? 0),
+          isUngrouped: key == SettingsProvider.providerUngroupedGroupKey,
+        ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -158,7 +178,7 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
           ),
         ],
       ),
-      body: groups.isEmpty
+      body: displayRows.isEmpty
           ? Center(
               child: Text(
                 l10n.providerGroupsEmptyState,
@@ -171,7 +191,7 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
             )
           : ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-              itemCount: groups.length,
+              itemCount: displayRows.length,
               buildDefaultDragHandles: false,
               proxyDecorator: (child, index, animation) {
                 return ScaleTransition(
@@ -183,26 +203,27 @@ class _ProviderGroupsPageState extends State<ProviderGroupsPage> {
                 );
               },
               onReorder: (oldIndex, newIndex) async {
-                if (newIndex > oldIndex) newIndex -= 1;
-                await context.read<SettingsProvider>().reorderProviderGroups(
-                  oldIndex,
-                  newIndex,
-                );
+                await context
+                    .read<SettingsProvider>()
+                    .reorderProviderGroupsWithUngrouped(oldIndex, newIndex);
               },
               itemBuilder: (ctx, i) {
-                final g = groups[i];
-                final count = _countProvidersInGroup(settings, g.id);
+                final row = displayRows[i];
                 return KeyedSubtree(
-                  key: ValueKey('provider-group-${g.id}'),
+                  key: ValueKey('provider-group-${row.key}'),
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: ReorderableDelayedDragStartListener(
                       index: i,
                       child: _ProviderGroupCard(
-                        title: g.name,
-                        count: count,
-                        onEdit: () => _renameGroup(g.id, g.name),
-                        onDelete: () => _deleteGroup(g.id),
+                        title: row.title,
+                        count: row.count,
+                        onEdit: row.isUngrouped
+                            ? null
+                            : () => _renameGroup(row.key, row.title),
+                        onDelete: row.isUngrouped
+                            ? null
+                            : () => _deleteGroup(row.key),
                       ),
                     ),
                   ),
@@ -217,13 +238,13 @@ class _ProviderGroupCard extends StatelessWidget {
   const _ProviderGroupCard({
     required this.title,
     required this.count,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
   final String title;
   final int count;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -251,22 +272,26 @@ class _ProviderGroupCard extends StatelessWidget {
             ),
           ),
           _CountPill(count: count),
-          const SizedBox(width: 10),
-          IosCardPress(
-            baseColor: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            onTap: onEdit,
-            padding: const EdgeInsets.all(8),
-            child: Icon(Lucide.Pencil, size: 18, color: cs.onSurface),
-          ),
-          const SizedBox(width: 4),
-          IosCardPress(
-            baseColor: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            onTap: onDelete,
-            padding: const EdgeInsets.all(8),
-            child: Icon(Lucide.Trash2, size: 18, color: cs.error),
-          ),
+          if (onEdit != null) ...[
+            const SizedBox(width: 10),
+            IosCardPress(
+              baseColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              onTap: onEdit!,
+              padding: const EdgeInsets.all(8),
+              child: Icon(Lucide.Pencil, size: 18, color: cs.onSurface),
+            ),
+          ],
+          if (onDelete != null) ...[
+            const SizedBox(width: 4),
+            IosCardPress(
+              baseColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              onTap: onDelete!,
+              padding: const EdgeInsets.all(8),
+              child: Icon(Lucide.Trash2, size: 18, color: cs.error),
+            ),
+          ],
         ],
       ),
     );

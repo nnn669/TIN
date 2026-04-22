@@ -37,6 +37,8 @@ class SettingsProvider extends ChangeNotifier {
       'provider_group_map_v1'; // providerKey -> groupId
   static const String _providerGroupCollapsedKey =
       'provider_group_collapsed_v1'; // groupId|__ungrouped__ -> bool
+  static const String _providerUngroupedPositionKey =
+      'provider_ungrouped_position_v1'; // display index among groups
   static const String providerUngroupedGroupKey = '__ungrouped__';
   static const List<String> _builtInProviderKeysInOrder = [
     'OpenAI',
@@ -258,8 +260,11 @@ class SettingsProvider extends ChangeNotifier {
       <String, String>{}; // providerKey -> groupId
   final Map<String, bool> _providerGroupCollapsed =
       <String, bool>{}; // groupId|__ungrouped__ -> bool
+  int _providerUngroupedPosition = 0;
 
   List<ProviderGroup> get providerGroups => List.unmodifiable(_providerGroups);
+  int get providerUngroupedDisplayIndex =>
+      _providerUngroupedPosition.clamp(0, _providerGroups.length);
 
   ProviderGroup? groupById(String id) {
     for (final g in _providerGroups) {
@@ -626,6 +631,8 @@ class SettingsProvider extends ChangeNotifier {
     } catch (_) {
       _providerGroupCollapsed.clear();
     }
+    _providerUngroupedPosition =
+        prefs.getInt(_providerUngroupedPositionKey) ?? _providerGroups.length;
     // load pinned models
     final pinned = prefs.getStringList(_pinnedModelsKey) ?? const <String>[];
     _pinnedModels
@@ -1615,6 +1622,15 @@ class SettingsProvider extends ChangeNotifier {
       changed = true;
     }
 
+    final normalizedUngroupedPosition = _providerUngroupedPosition.clamp(
+      0,
+      _providerGroups.length,
+    );
+    if (_providerUngroupedPosition != normalizedUngroupedPosition) {
+      _providerUngroupedPosition = normalizedUngroupedPosition;
+      changed = true;
+    }
+
     return changed;
   }
 
@@ -1627,6 +1643,10 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString(
       _providerGroupCollapsedKey,
       jsonEncode(_providerGroupCollapsed),
+    );
+    await prefs.setInt(
+      _providerUngroupedPositionKey,
+      providerUngroupedDisplayIndex,
     );
     await prefs.setStringList(_providersOrderKey, _providersOrder);
   }
@@ -1684,6 +1704,30 @@ class SettingsProvider extends ChangeNotifier {
     final insertIndex = newIndex.clamp(0, mut.length);
     mut.insert(insertIndex, item);
     _providerGroups = List.unmodifiable(mut);
+    _cleanupProviderOrderAndGrouping();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await _persistProviderGrouping(prefs);
+  }
+
+  Future<void> reorderProviderGroupsWithUngrouped(
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final displayCount = _providerGroups.length + 1;
+    if (displayCount <= 1) return;
+    if (oldIndex < 0 || oldIndex >= displayCount) return;
+    if (newIndex < 0 || newIndex > displayCount) return;
+    if (oldIndex == newIndex) return;
+
+    final res = reorderProviderGroupDisplayWithUngrouped(
+      groups: _providerGroups,
+      ungroupedIndex: providerUngroupedDisplayIndex,
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+    );
+    _providerGroups = res.groups;
+    _providerUngroupedPosition = res.ungroupedIndex;
     _cleanupProviderOrderAndGrouping();
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();

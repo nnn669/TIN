@@ -2,6 +2,82 @@ import '../core/models/provider_group.dart';
 
 const String providerUngroupedGroupKey = '__ungrouped__';
 
+List<String> buildProviderGroupDisplayKeys({
+  required List<ProviderGroup> groups,
+  required int ungroupedIndex,
+}) {
+  final keys = [for (final group in groups) group.id];
+  final insertIndex = ungroupedIndex.clamp(0, keys.length);
+  keys.insert(insertIndex, providerUngroupedGroupKey);
+  return List<String>.unmodifiable(keys);
+}
+
+class ProviderGroupDisplayReorderResult {
+  const ProviderGroupDisplayReorderResult({
+    required this.groups,
+    required this.ungroupedIndex,
+  });
+
+  final List<ProviderGroup> groups;
+  final int ungroupedIndex;
+}
+
+ProviderGroupDisplayReorderResult reorderProviderGroupDisplayWithUngrouped({
+  required List<ProviderGroup> groups,
+  required int ungroupedIndex,
+  required int oldIndex,
+  required int newIndex,
+}) {
+  final displayKeys = buildProviderGroupDisplayKeys(
+    groups: groups,
+    ungroupedIndex: ungroupedIndex,
+  );
+  if (displayKeys.isEmpty) {
+    return ProviderGroupDisplayReorderResult(
+      groups: List<ProviderGroup>.unmodifiable(groups),
+      ungroupedIndex: 0,
+    );
+  }
+  if (oldIndex < 0 || oldIndex >= displayKeys.length) {
+    return ProviderGroupDisplayReorderResult(
+      groups: List<ProviderGroup>.unmodifiable(groups),
+      ungroupedIndex: ungroupedIndex.clamp(0, groups.length),
+    );
+  }
+  final normalizedNewIndex = newIndex.clamp(0, displayKeys.length);
+  if (oldIndex == normalizedNewIndex) {
+    return ProviderGroupDisplayReorderResult(
+      groups: List<ProviderGroup>.unmodifiable(groups),
+      ungroupedIndex: ungroupedIndex.clamp(0, groups.length),
+    );
+  }
+
+  final mutKeys = List<String>.of(displayKeys);
+  final item = mutKeys.removeAt(oldIndex);
+  final insertIndex = normalizedNewIndex > oldIndex
+      ? normalizedNewIndex - 1
+      : normalizedNewIndex;
+  mutKeys.insert(insertIndex.clamp(0, mutKeys.length), item);
+
+  final groupById = {for (final group in groups) group.id: group};
+  final nextGroups = <ProviderGroup>[];
+  int nextUngroupedIndex = mutKeys.length;
+  for (int i = 0; i < mutKeys.length; i++) {
+    final key = mutKeys[i];
+    if (key == providerUngroupedGroupKey) {
+      nextUngroupedIndex = i;
+      continue;
+    }
+    final group = groupById[key];
+    if (group != null) nextGroups.add(group);
+  }
+
+  return ProviderGroupDisplayReorderResult(
+    groups: List<ProviderGroup>.unmodifiable(nextGroups),
+    ungroupedIndex: nextUngroupedIndex.clamp(0, nextGroups.length),
+  );
+}
+
 // ----- Reorder analysis (UI-independent) -----
 
 sealed class ProviderGroupingRowVM {
@@ -36,6 +112,16 @@ class ProviderGroupingMoveIntent {
 
   /// Position within the target group's visible provider segment (0-based).
   final int targetPos;
+}
+
+class ProviderGroupingHeaderReorderIntent {
+  const ProviderGroupingHeaderReorderIntent({
+    required this.groupKey,
+    required this.targetDisplayIndex,
+  });
+
+  final String groupKey;
+  final int targetDisplayIndex;
 }
 
 enum ProviderGroupingReorderBlockedReason { targetGroupCollapsed }
@@ -137,6 +223,37 @@ ProviderGroupingReorderAnalysis analyzeProviderGroupingReorder({
       targetGroupKey: targetGroupKey,
       targetPos: targetPos,
     ),
+  );
+}
+
+ProviderGroupingHeaderReorderIntent? analyzeProviderGroupingHeaderReorder({
+  required List<ProviderGroupingRowVM> rows,
+  required int oldIndex,
+  required int newIndex,
+}) {
+  if (rows.isEmpty || oldIndex < 0 || oldIndex >= rows.length) return null;
+
+  final moved = rows[oldIndex];
+  if (moved is! ProviderGroupingHeaderVM) return null;
+
+  final normalizedNewIndex = newIndex.clamp(0, rows.length);
+  final sim = List<ProviderGroupingRowVM>.from(rows);
+  final removed = sim.removeAt(oldIndex);
+  final insertIndex = normalizedNewIndex > oldIndex
+      ? normalizedNewIndex - 1
+      : normalizedNewIndex;
+  sim.insert(insertIndex.clamp(0, sim.length), removed);
+
+  final headerOrder = [
+    for (final row in sim)
+      if (row is ProviderGroupingHeaderVM) row.groupKey,
+  ];
+  final targetDisplayIndex = headerOrder.indexOf(moved.groupKey);
+  if (targetDisplayIndex < 0) return null;
+
+  return ProviderGroupingHeaderReorderIntent(
+    groupKey: moved.groupKey,
+    targetDisplayIndex: targetDisplayIndex,
   );
 }
 

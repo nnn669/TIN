@@ -10,16 +10,95 @@ class _DesktopProvidersBody extends StatefulWidget {
 }
 
 class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
+  static const Duration _groupReorderRestoreDelay = Duration(milliseconds: 300);
+  static const Duration _groupReorderCollapseDelay = Duration(milliseconds: 32);
+
   String? _selectedKey;
   final GlobalKey<_DesktopProviderDetailPaneState> _detailKey =
       GlobalKey<_DesktopProviderDetailPaneState>();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _groupReorderRestoreTimer;
+  Timer? _groupReorderCollapseTimer;
+  Timer? _groupReorderRestoreStartTimer;
+  bool _temporarilyCollapseGroupedProviders = false;
+  bool _groupHeaderDragActive = false;
+  bool _groupHeaderRestorePending = false;
 
   @override
   void dispose() {
+    _groupReorderRestoreTimer?.cancel();
+    _groupReorderCollapseTimer?.cancel();
+    _groupReorderRestoreStartTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  bool _effectiveGroupCollapsed(SettingsProvider settings, String groupKey) =>
+      _temporarilyCollapseGroupedProviders ||
+      settings.isGroupCollapsed(groupKey);
+
+  void _startTemporaryGroupCollapse() {
+    _groupReorderRestoreTimer?.cancel();
+    setState(() {
+      _temporarilyCollapseGroupedProviders = true;
+      _groupHeaderRestorePending = false;
+    });
+  }
+
+  void _scheduleTemporaryGroupCollapse() {
+    _groupReorderCollapseTimer?.cancel();
+    _groupReorderCollapseTimer = Timer(_groupReorderCollapseDelay, () {
+      if (!mounted || !_groupHeaderDragActive) return;
+      _startTemporaryGroupCollapse();
+    });
+  }
+
+  void _scheduleTemporaryGroupRestore() {
+    _groupReorderCollapseTimer?.cancel();
+    _groupReorderRestoreTimer?.cancel();
+    _groupReorderRestoreStartTimer?.cancel();
+    _groupReorderRestoreStartTimer = Timer(Duration.zero, () {
+      if (!mounted) return;
+      setState(() => _groupHeaderRestorePending = true);
+    });
+    _groupReorderRestoreTimer = Timer(_groupReorderRestoreDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _temporarilyCollapseGroupedProviders = false;
+        _groupHeaderRestorePending = false;
+      });
+    });
+  }
+
+  int _mapVisibleGroupTargetToActualInsertIndex({
+    required List<String> fullDisplayKeys,
+    required List<String> visibleHeaderKeys,
+    required String movedGroupKey,
+    required int targetVisibleIndex,
+  }) {
+    final fullWithoutMoved = List<String>.of(fullDisplayKeys)
+      ..remove(movedGroupKey);
+    final remainingVisibleHeaderKeys = [
+      for (final key in visibleHeaderKeys)
+        if (key != movedGroupKey) key,
+    ];
+
+    if (remainingVisibleHeaderKeys.isEmpty) {
+      return fullWithoutMoved.length;
+    }
+    if (targetVisibleIndex <= 0) {
+      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.first);
+      return idx >= 0 ? idx : fullWithoutMoved.length;
+    }
+    if (targetVisibleIndex >= remainingVisibleHeaderKeys.length) {
+      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.last);
+      return idx >= 0 ? idx + 1 : fullWithoutMoved.length;
+    }
+    final idx = fullWithoutMoved.indexOf(
+      remainingVisibleHeaderKeys[targetVisibleIndex],
+    );
+    return idx >= 0 ? idx : fullWithoutMoved.length;
   }
 
   String _normalizeSearchQuery(String value) => value.trim().toLowerCase();
@@ -61,6 +140,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
     required AppLocalizations l10n,
     required SettingsProvider settings,
     required List<({String name, String key})> items,
+    required bool Function(String groupKey) isGroupCollapsed,
     String normalizedQuery = '',
   }) {
     final ungroupedKey = SettingsProvider.providerUngroupedGroupKey;
@@ -105,39 +185,31 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
       ];
     }
 
-    for (final g in groups) {
-      final list = providersForGroup(g.id, g.name);
+    final displayKeys = buildProviderGroupDisplayKeys(
+      groups: groups,
+      ungroupedIndex: settings.providerUngroupedDisplayIndex,
+    );
+
+    for (final groupKey in displayKeys) {
+      final isUngrouped = groupKey == ungroupedKey;
+      final title = isUngrouped
+          ? l10n.providerGroupsOther
+          : groupById[groupKey]?.name;
+      if (title == null) continue;
+      final list = providersForGroup(groupKey, title);
       if (list.isEmpty) continue;
-      final collapsed = searching ? false : settings.isGroupCollapsed(g.id);
+      final collapsed = searching ? false : isGroupCollapsed(groupKey);
       rows.add(
         _DesktopProviderGroupingHeaderVM(
-          groupKey: g.id,
-          title: g.name,
+          groupKey: groupKey,
+          title: title,
           count: list.length,
           collapsed: collapsed,
         ),
       );
       for (final p in list) {
-        rows.add(_DesktopProviderGroupingProviderVM(item: p, groupKey: g.id));
-      }
-    }
-
-    final ungrouped = providersForGroup(ungroupedKey, l10n.providerGroupsOther);
-    if (ungrouped.isNotEmpty) {
-      final collapsed = searching
-          ? false
-          : settings.isGroupCollapsed(ungroupedKey);
-      rows.add(
-        _DesktopProviderGroupingHeaderVM(
-          groupKey: ungroupedKey,
-          title: l10n.providerGroupsOther,
-          count: ungrouped.length,
-          collapsed: collapsed,
-        ),
-      );
-      for (final p in ungrouped) {
         rows.add(
-          _DesktopProviderGroupingProviderVM(item: p, groupKey: ungroupedKey),
+          _DesktopProviderGroupingProviderVM(item: p, groupKey: groupKey),
         );
       }
     }
@@ -291,6 +363,8 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
             l10n: l10n,
             settings: settings,
             items: ordered,
+            isGroupCollapsed: (groupKey) =>
+                _effectiveGroupCollapsed(settings, groupKey),
             normalizedQuery: _searchQuery,
           )
         : const <_DesktopProviderGroupingRowVM>[];
@@ -345,8 +419,31 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                               buildDefaultDragHandles: false,
                               padding: EdgeInsets.zero,
                               itemCount: groupingRows.length,
+                              onReorderStart: (index) {
+                                if (index < 0 || index >= groupingRows.length) {
+                                  return;
+                                }
+                                if (groupingRows[index]
+                                    is! _DesktopProviderGroupingHeaderVM) {
+                                  return;
+                                }
+                                _groupHeaderDragActive = true;
+                                _scheduleTemporaryGroupCollapse();
+                              },
+                              onReorderEnd: (_) {
+                                if (!_groupHeaderDragActive) return;
+                                _groupHeaderDragActive = false;
+                                if (_temporarilyCollapseGroupedProviders) {
+                                  _scheduleTemporaryGroupRestore();
+                                } else {
+                                  _groupReorderCollapseTimer?.cancel();
+                                  _groupReorderRestoreStartTimer?.cancel();
+                                }
+                              },
                               onReorder: (oldIndex, newIndex) async {
-                                if (_searchQuery.isNotEmpty) return;
+                                if (_searchQuery.isNotEmpty) {
+                                  return;
+                                }
                                 if (groupingRows.isEmpty) return;
                                 final sp = context.read<SettingsProvider>();
 
@@ -363,6 +460,58 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                                         groupKey: r.groupKey,
                                       ),
                                 ];
+
+                                if (logicRows[oldIndex]
+                                    is ProviderGroupingHeaderVM) {
+                                  final intent =
+                                      analyzeProviderGroupingHeaderReorder(
+                                        rows: logicRows,
+                                        oldIndex: oldIndex,
+                                        newIndex: newIndex,
+                                      );
+                                  if (intent == null) return;
+
+                                  final visibleHeaderKeys = [
+                                    for (final row in groupingRows)
+                                      if (row
+                                          is _DesktopProviderGroupingHeaderVM)
+                                        row.groupKey,
+                                  ];
+                                  final fullDisplayKeys =
+                                      buildProviderGroupDisplayKeys(
+                                        groups: sp.providerGroups,
+                                        ungroupedIndex:
+                                            sp.providerUngroupedDisplayIndex,
+                                      );
+                                  final oldActualIndex = fullDisplayKeys
+                                      .indexOf(intent.groupKey);
+                                  if (oldActualIndex < 0) return;
+
+                                  final targetInsertIndex =
+                                      _mapVisibleGroupTargetToActualInsertIndex(
+                                        fullDisplayKeys: fullDisplayKeys,
+                                        visibleHeaderKeys: visibleHeaderKeys,
+                                        movedGroupKey: intent.groupKey,
+                                        targetVisibleIndex:
+                                            intent.targetDisplayIndex,
+                                      );
+                                  final rawNewIndex =
+                                      targetInsertIndex > oldActualIndex
+                                      ? targetInsertIndex + 1
+                                      : targetInsertIndex;
+
+                                  try {
+                                    await sp.reorderProviderGroupsWithUngrouped(
+                                      oldActualIndex,
+                                      rawNewIndex,
+                                    );
+                                  } finally {
+                                    if (!_groupHeaderDragActive) {
+                                      _scheduleTemporaryGroupRestore();
+                                    }
+                                  }
+                                  return;
+                                }
 
                                 final analysis = analyzeProviderGroupingReorder(
                                   rows: logicRows,
@@ -419,27 +568,53 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                                         bottom: 6,
                                         top: i == 0 ? 0 : 6,
                                       ),
-                                      child: _DesktopProviderGroupHeaderRow(
-                                        title: row.title,
-                                        count: row.count,
-                                        collapsed: row.collapsed,
-                                        onToggle: _searchQuery.isNotEmpty
-                                            ? null
-                                            : () => unawaited(
-                                                context
-                                                    .read<SettingsProvider>()
-                                                    .toggleGroupCollapsed(
-                                                      row.groupKey,
+                                      child:
+                                          _searchQuery.isNotEmpty ||
+                                              _groupHeaderRestorePending
+                                          ? _DesktopProviderGroupHeaderRow(
+                                              title: row.title,
+                                              count: row.count,
+                                              collapsed: row.collapsed,
+                                              onToggle: _searchQuery.isNotEmpty
+                                                  ? null
+                                                  : () => unawaited(
+                                                      context
+                                                          .read<
+                                                            SettingsProvider
+                                                          >()
+                                                          .toggleGroupCollapsed(
+                                                            row.groupKey,
+                                                          ),
                                                     ),
-                                              ),
-                                      ),
+                                            )
+                                          : ReorderableDragStartListener(
+                                              index: i,
+                                              child:
+                                                  _DesktopProviderGroupHeaderRow(
+                                                    title: row.title,
+                                                    count: row.count,
+                                                    collapsed: row.collapsed,
+                                                    onToggle: () => unawaited(
+                                                      context
+                                                          .read<
+                                                            SettingsProvider
+                                                          >()
+                                                          .toggleGroupCollapsed(
+                                                            row.groupKey,
+                                                          ),
+                                                    ),
+                                                  ),
+                                            ),
                                     ),
                                   );
                                 }
                                 if (row is _DesktopProviderGroupingProviderVM) {
                                   final collapsed = _searchQuery.isNotEmpty
                                       ? false
-                                      : settings.isGroupCollapsed(row.groupKey);
+                                      : _effectiveGroupCollapsed(
+                                          settings,
+                                          row.groupKey,
+                                        );
                                   return KeyedSubtree(
                                     key: ValueKey(
                                       'desktop-prov-${row.item.key}',
@@ -4507,10 +4682,32 @@ class _DesktopProviderGroupsDialogState
     final groups = sp.providerGroups;
 
     final counts = <String, int>{};
+    int ungroupedCount = 0;
     for (final k in sp.providersOrder) {
       final gid = sp.groupIdForProvider(k);
-      if (gid != null) counts[gid] = (counts[gid] ?? 0) + 1;
+      if (gid == null) {
+        ungroupedCount++;
+      } else {
+        counts[gid] = (counts[gid] ?? 0) + 1;
+      }
     }
+    final displayKeys = buildProviderGroupDisplayKeys(
+      groups: groups,
+      ungroupedIndex: sp.providerUngroupedDisplayIndex,
+    );
+    final displayRows = [
+      for (final key in displayKeys)
+        (
+          key: key,
+          title: key == SettingsProvider.providerUngroupedGroupKey
+              ? l10n.providerGroupsOther
+              : (sp.groupById(key)?.name ?? ''),
+          count: key == SettingsProvider.providerUngroupedGroupKey
+              ? ungroupedCount
+              : (counts[key] ?? 0),
+          isUngrouped: key == SettingsProvider.providerUngroupedGroupKey,
+        ),
+    ];
 
     return Dialog(
       backgroundColor: cs.surface,
@@ -4552,7 +4749,7 @@ class _DesktopProviderGroupsDialogState
               ),
             ),
             Expanded(
-              child: groups.isEmpty
+              child: displayRows.isEmpty
                   ? Center(
                       child: Text(
                         l10n.providerGroupsEmptyState,
@@ -4564,7 +4761,7 @@ class _DesktopProviderGroupsDialogState
                     )
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                      itemCount: groups.length,
+                      itemCount: displayRows.length,
                       buildDefaultDragHandles: false,
                       proxyDecorator: (child, index, animation) {
                         return ScaleTransition(
@@ -4576,30 +4773,36 @@ class _DesktopProviderGroupsDialogState
                         );
                       },
                       onReorder: (oldIndex, newIndex) async {
-                        if (newIndex > oldIndex) newIndex -= 1;
                         await context
                             .read<SettingsProvider>()
-                            .reorderProviderGroups(oldIndex, newIndex);
+                            .reorderProviderGroupsWithUngrouped(
+                              oldIndex,
+                              newIndex,
+                            );
                       },
                       itemBuilder: (ctx, i) {
-                        final g = groups[i];
-                        final count = counts[g.id] ?? 0;
+                        final row = displayRows[i];
                         return KeyedSubtree(
-                          key: ValueKey('desktop-provider-group-${g.id}'),
+                          key: ValueKey('desktop-provider-group-${row.key}'),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _DesktopProviderGroupCard(
-                              title: g.name,
-                              count: count,
-                              onEdit: () => unawaited(
-                                _renameGroup(
-                                  context,
-                                  groupId: g.id,
-                                  oldName: g.name,
-                                ),
-                              ),
-                              onDelete: () =>
-                                  unawaited(_deleteGroup(context, g.id)),
+                              title: row.title,
+                              count: row.count,
+                              onEdit: row.isUngrouped
+                                  ? null
+                                  : () => unawaited(
+                                      _renameGroup(
+                                        context,
+                                        groupId: row.key,
+                                        oldName: row.title,
+                                      ),
+                                    ),
+                              onDelete: row.isUngrouped
+                                  ? null
+                                  : () => unawaited(
+                                      _deleteGroup(context, row.key),
+                                    ),
                               dragHandle: ReorderableDragStartListener(
                                 index: i,
                                 child: const _DesktopDragHandle(),
@@ -4621,15 +4824,15 @@ class _DesktopProviderGroupCard extends StatelessWidget {
   const _DesktopProviderGroupCard({
     required this.title,
     required this.count,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
     required this.dragHandle,
   });
 
   final String title;
   final int count;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final Widget dragHandle;
 
   @override
@@ -4658,14 +4861,18 @@ class _DesktopProviderGroupCard extends StatelessWidget {
             ),
           ),
           _DesktopCountPill(count: count),
-          const SizedBox(width: 10),
-          _IconBtn(icon: lucide.Lucide.Pencil, onTap: onEdit),
-          const SizedBox(width: 4),
-          _IconBtn(
-            icon: lucide.Lucide.Trash2,
-            color: cs.error,
-            onTap: onDelete,
-          ),
+          if (onEdit != null) ...[
+            const SizedBox(width: 10),
+            _IconBtn(icon: lucide.Lucide.Pencil, onTap: onEdit!),
+          ],
+          if (onDelete != null) ...[
+            const SizedBox(width: 4),
+            _IconBtn(
+              icon: lucide.Lucide.Trash2,
+              color: cs.error,
+              onTap: onDelete!,
+            ),
+          ],
           const SizedBox(width: 4),
           dragHandle,
         ],
