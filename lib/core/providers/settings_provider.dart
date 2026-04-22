@@ -1660,10 +1660,13 @@ class SettingsProvider extends ChangeNotifier {
     }
     final id = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
-    _providerGroups = List.unmodifiable(<ProviderGroup>[
-      ..._providerGroups,
-      ProviderGroup(id: id, name: trimmed, createdAt: now),
-    ]);
+    final res = insertProviderGroup(
+      groups: _providerGroups,
+      ungroupedIndex: providerUngroupedDisplayIndex,
+      group: ProviderGroup(id: id, name: trimmed, createdAt: now),
+    );
+    _providerGroups = List<ProviderGroup>.of(res.groups);
+    _providerUngroupedPosition = res.ungroupedIndex;
     _cleanupProviderOrderAndGrouping();
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -1726,7 +1729,7 @@ class SettingsProvider extends ChangeNotifier {
       oldIndex: oldIndex,
       newIndex: newIndex,
     );
-    _providerGroups = res.groups;
+    _providerGroups = List<ProviderGroup>.of(res.groups);
     _providerUngroupedPosition = res.ungroupedIndex;
     _cleanupProviderOrderAndGrouping();
     notifyListeners();
@@ -1738,11 +1741,13 @@ class SettingsProvider extends ChangeNotifier {
     if (groupById(groupId) == null) return;
     final res = deleteProviderGroup(
       groups: _providerGroups,
+      ungroupedIndex: providerUngroupedDisplayIndex,
       providerGroupMap: _providerGroupMap,
       collapsed: _providerGroupCollapsed,
       groupId: groupId,
     );
-    _providerGroups = res.groups;
+    _providerGroups = List<ProviderGroup>.of(res.groups);
+    _providerUngroupedPosition = res.ungroupedIndex;
     _providerGroupMap = Map<String, String>.from(res.providerGroupMap);
     _providerGroupCollapsed
       ..clear()

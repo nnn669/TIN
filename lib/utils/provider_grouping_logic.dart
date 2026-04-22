@@ -22,6 +22,29 @@ class ProviderGroupDisplayReorderResult {
   final int ungroupedIndex;
 }
 
+ProviderGroupDisplayReorderResult insertProviderGroup({
+  required List<ProviderGroup> groups,
+  required int ungroupedIndex,
+  required ProviderGroup group,
+  int? insertIndex,
+}) {
+  final normalizedInsertIndex = (insertIndex ?? groups.length).clamp(
+    0,
+    groups.length,
+  );
+  final nextGroups = List<ProviderGroup>.of(groups)
+    ..insert(normalizedInsertIndex, group);
+  final nextUngroupedIndex =
+      ungroupedIndex.clamp(0, groups.length) >= normalizedInsertIndex
+      ? ungroupedIndex.clamp(0, groups.length) + 1
+      : ungroupedIndex.clamp(0, groups.length);
+
+  return ProviderGroupDisplayReorderResult(
+    groups: List<ProviderGroup>.unmodifiable(nextGroups),
+    ungroupedIndex: nextUngroupedIndex.clamp(0, nextGroups.length),
+  );
+}
+
 ProviderGroupDisplayReorderResult reorderProviderGroupDisplayWithUngrouped({
   required List<ProviderGroup> groups,
   required int ungroupedIndex,
@@ -76,6 +99,36 @@ ProviderGroupDisplayReorderResult reorderProviderGroupDisplayWithUngrouped({
     groups: List<ProviderGroup>.unmodifiable(nextGroups),
     ungroupedIndex: nextUngroupedIndex.clamp(0, nextGroups.length),
   );
+}
+
+int mapVisibleGroupTargetToActualInsertIndex({
+  required List<String> fullDisplayKeys,
+  required List<String> visibleHeaderKeys,
+  required String movedGroupKey,
+  required int targetVisibleIndex,
+}) {
+  final fullWithoutMoved = List<String>.of(fullDisplayKeys)
+    ..remove(movedGroupKey);
+  final remainingVisibleHeaderKeys = [
+    for (final key in visibleHeaderKeys)
+      if (key != movedGroupKey) key,
+  ];
+
+  if (remainingVisibleHeaderKeys.isEmpty) {
+    return fullWithoutMoved.length;
+  }
+  if (targetVisibleIndex <= 0) {
+    final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.first);
+    return idx >= 0 ? idx : fullWithoutMoved.length;
+  }
+  if (targetVisibleIndex >= remainingVisibleHeaderKeys.length) {
+    final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.last);
+    return idx >= 0 ? idx + 1 : fullWithoutMoved.length;
+  }
+  final idx = fullWithoutMoved.indexOf(
+    remainingVisibleHeaderKeys[targetVisibleIndex],
+  );
+  return idx >= 0 ? idx : fullWithoutMoved.length;
 }
 
 // ----- Reorder analysis (UI-independent) -----
@@ -387,30 +440,40 @@ ProviderGroupingMoveResult moveProviderInGroupedOrder({
 class ProviderGroupingDeleteGroupResult {
   const ProviderGroupingDeleteGroupResult({
     required this.groups,
+    required this.ungroupedIndex,
     required this.providerGroupMap,
     required this.collapsed,
   });
 
   final List<ProviderGroup> groups;
+  final int ungroupedIndex;
   final Map<String, String> providerGroupMap;
   final Map<String, bool> collapsed;
 }
 
 ProviderGroupingDeleteGroupResult deleteProviderGroup({
   required List<ProviderGroup> groups,
+  required int ungroupedIndex,
   required Map<String, String> providerGroupMap,
   required Map<String, bool> collapsed,
   required String groupId,
 }) {
+  final removedGroupIndex = groups.indexWhere((g) => g.id == groupId);
   final nextGroups = [
     for (final g in groups)
       if (g.id != groupId) g,
   ];
+  final normalizedUngroupedIndex = ungroupedIndex.clamp(0, groups.length);
+  final nextUngroupedIndex =
+      removedGroupIndex >= 0 && removedGroupIndex < normalizedUngroupedIndex
+      ? normalizedUngroupedIndex - 1
+      : normalizedUngroupedIndex;
   final nextMap = Map<String, String>.from(providerGroupMap)
     ..removeWhere((_, gid) => gid == groupId);
   final nextCollapsed = Map<String, bool>.from(collapsed)..remove(groupId);
   return ProviderGroupingDeleteGroupResult(
     groups: List<ProviderGroup>.unmodifiable(nextGroups),
+    ungroupedIndex: nextUngroupedIndex.clamp(0, nextGroups.length),
     providerGroupMap: Map<String, String>.unmodifiable(nextMap),
     collapsed: Map<String, bool>.unmodifiable(nextCollapsed),
   );

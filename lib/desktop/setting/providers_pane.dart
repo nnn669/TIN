@@ -71,36 +71,6 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
     });
   }
 
-  int _mapVisibleGroupTargetToActualInsertIndex({
-    required List<String> fullDisplayKeys,
-    required List<String> visibleHeaderKeys,
-    required String movedGroupKey,
-    required int targetVisibleIndex,
-  }) {
-    final fullWithoutMoved = List<String>.of(fullDisplayKeys)
-      ..remove(movedGroupKey);
-    final remainingVisibleHeaderKeys = [
-      for (final key in visibleHeaderKeys)
-        if (key != movedGroupKey) key,
-    ];
-
-    if (remainingVisibleHeaderKeys.isEmpty) {
-      return fullWithoutMoved.length;
-    }
-    if (targetVisibleIndex <= 0) {
-      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.first);
-      return idx >= 0 ? idx : fullWithoutMoved.length;
-    }
-    if (targetVisibleIndex >= remainingVisibleHeaderKeys.length) {
-      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.last);
-      return idx >= 0 ? idx + 1 : fullWithoutMoved.length;
-    }
-    final idx = fullWithoutMoved.indexOf(
-      remainingVisibleHeaderKeys[targetVisibleIndex],
-    );
-    return idx >= 0 ? idx : fullWithoutMoved.length;
-  }
-
   String _normalizeSearchQuery(String value) => value.trim().toLowerCase();
 
   bool _matchesQuery(String value, String normalizedQuery) {
@@ -488,7 +458,7 @@ class _DesktopProvidersBodyState extends State<_DesktopProvidersBody> {
                                   if (oldActualIndex < 0) return;
 
                                   final targetInsertIndex =
-                                      _mapVisibleGroupTargetToActualInsertIndex(
+                                      mapVisibleGroupTargetToActualInsertIndex(
                                         fullDisplayKeys: fullDisplayKeys,
                                         visibleHeaderKeys: visibleHeaderKeys,
                                         movedGroupKey: intent.groupKey,
@@ -4843,6 +4813,8 @@ class _DesktopProviderGroupCard extends StatelessWidget {
     final borderColor = cs.outlineVariant.withValues(
       alpha: isDark ? 0.12 : 0.10,
     );
+    final editAction = onEdit;
+    final deleteAction = onDelete;
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -4861,16 +4833,16 @@ class _DesktopProviderGroupCard extends StatelessWidget {
             ),
           ),
           _DesktopCountPill(count: count),
-          if (onEdit != null) ...[
+          if (editAction != null) ...[
             const SizedBox(width: 10),
-            _IconBtn(icon: lucide.Lucide.Pencil, onTap: onEdit!),
+            _IconBtn(icon: lucide.Lucide.Pencil, onTap: editAction),
           ],
-          if (onDelete != null) ...[
+          if (deleteAction != null) ...[
             const SizedBox(width: 4),
             _IconBtn(
               icon: lucide.Lucide.Trash2,
               color: cs.error,
-              onTap: onDelete!,
+              onTap: deleteAction,
             ),
           ],
           const SizedBox(width: 4),

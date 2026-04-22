@@ -73,36 +73,6 @@ class _ProvidersPageState extends State<ProvidersPage> {
     });
   }
 
-  int _mapVisibleGroupTargetToActualInsertIndex({
-    required List<String> fullDisplayKeys,
-    required List<String> visibleHeaderKeys,
-    required String movedGroupKey,
-    required int targetVisibleIndex,
-  }) {
-    final fullWithoutMoved = List<String>.of(fullDisplayKeys)
-      ..remove(movedGroupKey);
-    final remainingVisibleHeaderKeys = [
-      for (final key in visibleHeaderKeys)
-        if (key != movedGroupKey) key,
-    ];
-
-    if (remainingVisibleHeaderKeys.isEmpty) {
-      return fullWithoutMoved.length;
-    }
-    if (targetVisibleIndex <= 0) {
-      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.first);
-      return idx >= 0 ? idx : fullWithoutMoved.length;
-    }
-    if (targetVisibleIndex >= remainingVisibleHeaderKeys.length) {
-      final idx = fullWithoutMoved.indexOf(remainingVisibleHeaderKeys.last);
-      return idx >= 0 ? idx + 1 : fullWithoutMoved.length;
-    }
-    final idx = fullWithoutMoved.indexOf(
-      remainingVisibleHeaderKeys[targetVisibleIndex],
-    );
-    return idx >= 0 ? idx : fullWithoutMoved.length;
-  }
-
   Future<void> _handleAddProvider() async {
     final l10n = AppLocalizations.of(context)!;
     final createdKey = await showAddProviderSheet(context);
@@ -353,10 +323,13 @@ class _ProvidersPageState extends State<ProvidersPage> {
                             final oldActualIndex = fullDisplayKeys.indexOf(
                               intent.groupKey,
                             );
-                            if (oldActualIndex < 0) return;
+                            if (oldActualIndex < 0) {
+                              _groupHeaderReorderInFlight = false;
+                              return;
+                            }
 
                             final targetInsertIndex =
-                                _mapVisibleGroupTargetToActualInsertIndex(
+                                mapVisibleGroupTargetToActualInsertIndex(
                                   fullDisplayKeys: fullDisplayKeys,
                                   visibleHeaderKeys: visibleHeaderKeys,
                                   movedGroupKey: intent.groupKey,
@@ -943,12 +916,6 @@ class _GroupedProvidersList extends StatelessWidget {
               final r = rows[i];
               if (r is _ProviderGroupingHeaderVM) {
                 baseContentH += rowH;
-                if (freezeContainerHeight &&
-                    !persistedIsGroupCollapsed(r.groupKey) &&
-                    r.count > 0) {
-                  baseContentH += r.count * rowH;
-                  baseContentH += (r.count - 1) * dividerH;
-                }
                 continue;
               }
               if (r is _ProviderGroupingProviderVM) {

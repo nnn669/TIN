@@ -254,6 +254,8 @@ class _ProviderGroupCard extends StatelessWidget {
     final borderColor = cs.outlineVariant.withValues(
       alpha: isDark ? 0.12 : 0.10,
     );
+    final editAction = onEdit;
+    final deleteAction = onDelete;
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -272,22 +274,22 @@ class _ProviderGroupCard extends StatelessWidget {
             ),
           ),
           _CountPill(count: count),
-          if (onEdit != null) ...[
+          if (editAction != null) ...[
             const SizedBox(width: 10),
             IosCardPress(
               baseColor: Colors.transparent,
               borderRadius: BorderRadius.circular(10),
-              onTap: onEdit!,
+              onTap: editAction,
               padding: const EdgeInsets.all(8),
               child: Icon(Lucide.Pencil, size: 18, color: cs.onSurface),
             ),
           ],
-          if (onDelete != null) ...[
+          if (deleteAction != null) ...[
             const SizedBox(width: 4),
             IosCardPress(
               baseColor: Colors.transparent,
               borderRadius: BorderRadius.circular(10),
-              onTap: onDelete!,
+              onTap: deleteAction,
               padding: const EdgeInsets.all(8),
               child: Icon(Lucide.Trash2, size: 18, color: cs.error),
             ),
