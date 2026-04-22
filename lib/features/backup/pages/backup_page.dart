@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
+import '../../../shared/widgets/loading_dialog_card.dart';
 import 'package:provider/provider.dart';
 
 import '../../../icons/lucide_adapter.dart';
@@ -41,9 +41,7 @@ class BackupPage extends StatefulWidget {
 
 class _BackupPageState extends State<BackupPage> {
   List<BackupFileItem> _remote = const <BackupFileItem>[];
-  bool _loadingRemote = false;
   List<BackupFileItem> _remoteS3 = const <BackupFileItem>[];
-  bool _loadingRemoteS3 = false;
 
   Future<bool?> _confirmCherryImport(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
@@ -182,42 +180,23 @@ class _BackupPageState extends State<BackupPage> {
     BuildContext context,
     Future<T> Function() task,
   ) async {
-    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    return _runWithLoadingOverlay(
+      context,
+      task,
+      label: l10n.backupPageExporting,
+    );
+  }
+
+  Future<T> _runWithLoadingOverlay<T>(
+    BuildContext context,
+    Future<T> Function() task, {
+    String? label,
+  }) async {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CupertinoActivityIndicator(radius: 16),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.backupPageExporting,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: cs.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      builder: (ctx) => LoadingDialogCard(label: label),
     );
     try {
       final res = await task();
@@ -232,39 +211,7 @@ class _BackupPageState extends State<BackupPage> {
   Future<T> _runWithImportingOverlay<T>(
     BuildContext context,
     Future<T> Function() task,
-  ) async {
-    final cs = Theme.of(context).colorScheme;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.2),
-              ),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: CupertinoActivityIndicator(radius: 14),
-            ),
-          ),
-        ),
-      ),
-    );
-    try {
-      final res = await task();
-      return res;
-    } finally {
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-    }
-  }
+  ) => _runWithLoadingOverlay(context, task);
 
   @override
   Widget build(BuildContext context) {
@@ -403,34 +350,29 @@ class _BackupPageState extends State<BackupPage> {
                       onTap: vm.busy
                           ? null
                           : () async {
-                              // 加载远程备份列表
-                              setState(() => _loadingRemote = true);
-                              try {
-                                final list = await vm.listRemote();
-                                // 按时间倒序排列（最新的在前）
-                                list.sort((a, b) {
-                                  // 优先使用 lastModified
-                                  if (a.lastModified != null &&
-                                      b.lastModified != null) {
-                                    return b.lastModified!.compareTo(
-                                      a.lastModified!,
-                                    );
-                                  }
-                                  // 如果都没有 lastModified，按文件名倒序（文件名通常包含时间戳）
-                                  if (a.lastModified == null &&
-                                      b.lastModified == null) {
-                                    return b.displayName.compareTo(
-                                      a.displayName,
-                                    );
-                                  }
-                                  // 有 lastModified 的排在前面
-                                  if (a.lastModified == null) return 1;
-                                  return -1;
-                                });
-                                setState(() => _remote = list);
-                              } finally {
-                                setState(() => _loadingRemote = false);
-                              }
+                              final list = await _runWithImportingOverlay(
+                                context,
+                                () => vm.listRemote(),
+                              );
+                              // 按时间倒序排列（最新的在前）
+                              list.sort((a, b) {
+                                // 优先使用 lastModified
+                                if (a.lastModified != null &&
+                                    b.lastModified != null) {
+                                  return b.lastModified!.compareTo(
+                                    a.lastModified!,
+                                  );
+                                }
+                                // 如果都没有 lastModified，按文件名倒序（文件名通常包含时间戳）
+                                if (a.lastModified == null &&
+                                    b.lastModified == null) {
+                                  return b.displayName.compareTo(a.displayName);
+                                }
+                                // 有 lastModified 的排在前面
+                                if (a.lastModified == null) return 1;
+                                return -1;
+                              });
+                              setState(() => _remote = list);
 
                               if (!context.mounted) return;
                               await showModalBottomSheet(
@@ -444,7 +386,7 @@ class _BackupPageState extends State<BackupPage> {
                                 ),
                                 builder: (ctx) => _RemoteListSheet(
                                   items: _remote,
-                                  loading: _loadingRemote,
+                                  loading: false,
                                   onDelete: (item) async {
                                     final confirm = await showDialog<bool>(
                                       context: context,
@@ -489,11 +431,8 @@ class _BackupPageState extends State<BackupPage> {
                                       showDialog(
                                         context: context,
                                         barrierDismissible: false,
-                                        builder: (ctx) => const Center(
-                                          child: CupertinoActivityIndicator(
-                                            radius: 16,
-                                          ),
-                                        ),
+                                        builder: (ctx) =>
+                                            const LoadingDialogCard(),
                                       );
                                     }
 
@@ -592,12 +531,8 @@ class _BackupPageState extends State<BackupPage> {
                                                 showDialog(
                                                   context: context,
                                                   barrierDismissible: false,
-                                                  builder: (ctx) => const Center(
-                                                    child:
-                                                        CupertinoActivityIndicator(
-                                                          radius: 16,
-                                                        ),
-                                                  ),
+                                                  builder: (ctx) =>
+                                                      const LoadingDialogCard(),
                                                 );
                                               }
                                               try {
@@ -857,29 +792,25 @@ class _BackupPageState extends State<BackupPage> {
                       onTap: s3Vm.busy
                           ? null
                           : () async {
-                              setState(() => _loadingRemoteS3 = true);
-                              try {
-                                final list = await s3Vm.listRemote();
-                                list.sort((a, b) {
-                                  if (a.lastModified != null &&
-                                      b.lastModified != null) {
-                                    return b.lastModified!.compareTo(
-                                      a.lastModified!,
-                                    );
-                                  }
-                                  if (a.lastModified == null &&
-                                      b.lastModified == null) {
-                                    return b.displayName.compareTo(
-                                      a.displayName,
-                                    );
-                                  }
-                                  if (a.lastModified == null) return 1;
-                                  return -1;
-                                });
-                                setState(() => _remoteS3 = list);
-                              } finally {
-                                setState(() => _loadingRemoteS3 = false);
-                              }
+                              final list = await _runWithImportingOverlay(
+                                context,
+                                () => s3Vm.listRemote(),
+                              );
+                              list.sort((a, b) {
+                                if (a.lastModified != null &&
+                                    b.lastModified != null) {
+                                  return b.lastModified!.compareTo(
+                                    a.lastModified!,
+                                  );
+                                }
+                                if (a.lastModified == null &&
+                                    b.lastModified == null) {
+                                  return b.displayName.compareTo(a.displayName);
+                                }
+                                if (a.lastModified == null) return 1;
+                                return -1;
+                              });
+                              setState(() => _remoteS3 = list);
 
                               if (!context.mounted) return;
                               await showModalBottomSheet(
@@ -893,7 +824,7 @@ class _BackupPageState extends State<BackupPage> {
                                 ),
                                 builder: (ctx) => _RemoteListSheet(
                                   items: _remoteS3,
-                                  loading: _loadingRemoteS3,
+                                  loading: false,
                                   onDelete: (item) async {
                                     final confirm = await showDialog<bool>(
                                       context: context,
@@ -935,11 +866,8 @@ class _BackupPageState extends State<BackupPage> {
                                       showDialog(
                                         context: context,
                                         barrierDismissible: false,
-                                        builder: (ctx) => const Center(
-                                          child: CupertinoActivityIndicator(
-                                            radius: 16,
-                                          ),
-                                        ),
+                                        builder: (ctx) =>
+                                            const LoadingDialogCard(),
                                       );
                                     }
 
@@ -1029,12 +957,8 @@ class _BackupPageState extends State<BackupPage> {
                                                 showDialog(
                                                   context: context,
                                                   barrierDismissible: false,
-                                                  builder: (ctx) => const Center(
-                                                    child:
-                                                        CupertinoActivityIndicator(
-                                                          radius: 16,
-                                                        ),
-                                                  ),
+                                                  builder: (ctx) =>
+                                                      const LoadingDialogCard(),
                                                 );
                                               }
                                               try {
@@ -2078,83 +2002,73 @@ class _RemoteListSheet extends StatelessWidget {
                           ),
                         ),
                       )
-                    : StatefulBuilder(
-                        builder: (context, setListState) {
-                          // We pass the parent loading/items, but in case we want localized refresh...
-                          // Actually, the parent rebuilds this widget when _loadingRemote changes.
-                          // But ListView.builder might not update if only the items list reference changes?
-                          // In our case _BackupPageState calls setState, so _RemoteListSheet is rebuilt with new items.
-                          return ListView.builder(
-                            controller: controller,
-                            itemCount: items.length,
-                            itemBuilder: (ctx, i) {
-                              final it = items[i];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
+                    : ListView.builder(
+                        controller: controller,
+                        itemCount: items.length,
+                        itemBuilder: (ctx, i) {
+                          final it = items[i];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white10
+                                    : const Color(0xFFF7F7F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: cs.outlineVariant.withValues(
+                                    alpha: 0.18,
+                                  ),
                                 ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white10
-                                        : const Color(0xFFF7F7F9),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: cs.outlineVariant.withValues(
-                                        alpha: 0.18,
-                                      ),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          it.displayName,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _fmtBytes(it.size),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: cs.onSurface.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
+                                  _SmallTactileIcon(
+                                    icon: Lucide.Import,
+                                    onTap: () => onRestore(it),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              it.displayName,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              _fmtBytes(it.size),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: cs.onSurface.withValues(
-                                                  alpha: 0.7,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      _SmallTactileIcon(
-                                        icon: Lucide.Import,
-                                        onTap: () => onRestore(it),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      _SmallTactileIcon(
-                                        icon: Lucide.Trash2,
-                                        onTap: () => onDelete(it),
-                                        baseColor: cs.error,
-                                      ),
-                                    ],
+                                  const SizedBox(width: 6),
+                                  _SmallTactileIcon(
+                                    icon: Lucide.Trash2,
+                                    onTap: () => onDelete(it),
+                                    baseColor: cs.error,
                                   ),
-                                ),
-                              );
-                            },
+                                ],
+                              ),
+                            ),
                           );
                         },
                       ),
