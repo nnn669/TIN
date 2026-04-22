@@ -237,6 +237,16 @@ abstract class BuiltInToolsHelper {
     final m = _normalizedModelId(modelId);
     return _matchesExactOrSnapshot(
           m,
+          alias: 'qwen3.6-plus',
+          minSnapshot: '2026-04-02',
+        ) ||
+        _matchesExactOrSnapshot(
+          m,
+          alias: 'qwen3.6-flash',
+          minSnapshot: '2026-04-16',
+        ) ||
+        _matchesExactOrSnapshot(
+          m,
           alias: 'qwen3.5-plus',
           minSnapshot: '2026-02-15',
         ) ||
@@ -373,6 +383,10 @@ abstract class BuiltInToolsHelper {
         // OpenAI requires Responses API, or Grok models
         if (useResponseApi &&
             isOpenAIResponsesBuiltInSearchSupportedModel(modelId)) {
+          return true;
+        }
+        if (useResponseApi &&
+            isDashScopeResponsesBuiltInSearchSupportedModel(modelId)) {
           return true;
         }
         if (isGrokModel(modelId)) return true;
