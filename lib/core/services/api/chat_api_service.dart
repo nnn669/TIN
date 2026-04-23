@@ -710,13 +710,30 @@ class ChatApiService {
             ? config.baseUrl.substring(0, config.baseUrl.length - 1)
             : config.baseUrl;
         final url = Uri.parse('$base/messages');
+        final effectiveInfo = _effectiveModelInfo(config, modelId);
+        final isReasoning = effectiveInfo.abilities.contains(
+          ModelAbility.reasoning,
+        );
+        final omitSamplingParams = _claudeShouldOmitSamplingParams(
+          upstreamModelId,
+          thinkingBudget,
+        );
+        final thinking = isReasoning
+            ? _claudeThinkingConfig(upstreamModelId, thinkingBudget)
+            : null;
+        final outputConfig = isReasoning
+            ? _claudeOutputConfig(upstreamModelId, thinkingBudget)
+            : null;
         final body = <String, dynamic>{
           'model': upstreamModelId,
           'max_tokens': 512,
-          'temperature': 0.3,
+          if (!omitSamplingParams && !_isClaudeReasoningEnabled(thinkingBudget))
+            'temperature': 0.3,
           'messages': [
             {'role': 'user', 'content': safePrompt},
           ],
+          if (thinking != null) 'thinking': thinking,
+          if (outputConfig != null) 'output_config': outputConfig,
         };
         final headers = <String, String>{
           'x-api-key': _apiKeyForRequest(config, modelId),
@@ -896,6 +913,145 @@ class ChatApiService {
     if (budget <= 2000) return 'low';
     if (budget <= 20000) return 'medium';
     return 'high';
+  }
+
+  static bool _isClaudeReasoningEnabled(int? budget) => budget != 0;
+
+  static bool _supportsClaudeAdaptiveThinking(String modelId) {
+    final lower = modelId.trim().toLowerCase();
+    if (!lower.contains('claude-')) return false;
+    final m = RegExp(
+      r'claude-(opus|sonnet)-(\d+)-(\d+)',
+      caseSensitive: false,
+    ).firstMatch(lower);
+    if (m != null) {
+      final major = int.tryParse(m.group(2) ?? '');
+      final minor = int.tryParse(m.group(3) ?? '');
+      if (major != null && minor != null) {
+        return major > 4 || (major == 4 && minor >= 6);
+      }
+    }
+    return lower.contains('4-6') || lower.contains('4.6');
+  }
+
+  static bool _isClaudeAdaptiveOnlyThinkingModel(String modelId) {
+    final lower = modelId.trim().toLowerCase();
+    if (!lower.contains('claude-')) return false;
+    if (lower.contains('mythos')) return true;
+    final m = RegExp(
+      r'claude-(opus|sonnet)-(\d+)-(\d+)',
+      caseSensitive: false,
+    ).firstMatch(lower);
+    if (m == null) return lower.contains('4-7') || lower.contains('4.7');
+    final family = (m.group(1) ?? '').toLowerCase();
+    final major = int.tryParse(m.group(2) ?? '');
+    final minor = int.tryParse(m.group(3) ?? '');
+    if (major == null || minor == null) return false;
+    if (major > 4) return true;
+    if (major < 4) return false;
+    if (family == 'opus' && minor >= 7) return true;
+    return false;
+  }
+
+  static String _claudeEffortForBudget(int? budget) {
+    if (budget == null || budget == -1) return 'auto';
+    if (_isOff(budget)) return 'off';
+    if (budget <= 2000) return 'low';
+    if (budget <= 20000) return 'medium';
+    if (budget <= 32000) return 'high';
+    if (budget <= 64000) return 'xhigh';
+    return 'max';
+  }
+
+  static String _normalizeClaudeEffort(String effort, String modelId) {
+    final normalizedEffort = effort.trim().toLowerCase();
+    if (normalizedEffort.isEmpty) return effort;
+    if (normalizedEffort == 'auto' || normalizedEffort == 'off') {
+      return normalizedEffort;
+    }
+
+    final lower = modelId.trim().toLowerCase();
+    final supportsXhigh = lower.startsWith('claude-opus-4-7');
+    final supportsMax =
+        supportsXhigh ||
+        lower.startsWith('claude-opus-4-6') ||
+        lower.startsWith('claude-sonnet-4-6') ||
+        lower.contains('mythos');
+
+    switch (normalizedEffort) {
+      case 'max':
+        if (supportsMax) return 'max';
+        return supportsXhigh ? 'xhigh' : 'high';
+      case 'xhigh':
+        if (supportsXhigh) return 'xhigh';
+        if (supportsMax) return 'max';
+        return 'high';
+      case 'high':
+      case 'medium':
+      case 'low':
+        return normalizedEffort;
+      default:
+        return normalizedEffort;
+    }
+  }
+
+  static Map<String, dynamic>? _claudeThinkingConfig(
+    String modelId,
+    int? budget,
+  ) {
+    if (!_isClaudeReasoningEnabled(budget)) {
+      return <String, dynamic>{'type': 'disabled'};
+    }
+    if (_supportsClaudeAdaptiveThinking(modelId)) {
+      return <String, dynamic>{'type': 'adaptive', 'display': 'summarized'};
+    }
+    if (budget != null && budget > 0) {
+      return <String, dynamic>{'type': 'enabled', 'budget_tokens': budget};
+    }
+    return <String, dynamic>{'type': 'disabled'};
+  }
+
+  static Map<String, dynamic>? _claudeOutputConfig(
+    String modelId,
+    int? budget,
+  ) {
+    if (!_supportsClaudeAdaptiveThinking(modelId) ||
+        !_isClaudeReasoningEnabled(budget)) {
+      return null;
+    }
+    final effort = _normalizeClaudeEffort(
+      _claudeEffortForBudget(budget),
+      modelId,
+    );
+    if (effort == 'auto' || effort == 'off') return null;
+    return <String, dynamic>{'effort': effort};
+  }
+
+  static bool _claudeShouldOmitSamplingParams(String modelId, int? budget) {
+    return _isClaudeAdaptiveOnlyThinkingModel(modelId) &&
+        _isClaudeReasoningEnabled(budget);
+  }
+
+  static double? _claudeCompatibleTopP(
+    String modelId,
+    int? budget,
+    double? topP,
+  ) {
+    if (topP == null) return null;
+    if (_claudeShouldOmitSamplingParams(modelId, budget)) {
+      return null;
+    }
+    if (!_isClaudeReasoningEnabled(budget)) {
+      return topP;
+    }
+    if (topP < 0.95 || topP > 1.0) {
+      FlutterLogger.log(
+        '[ClaudeCompat] Omit top_p=$topP because thinking requires 0.95 <= top_p <= 1.0.',
+        tag: 'ChatApiService',
+      );
+      return null;
+    }
+    return topP;
   }
 
   // Clean JSON Schema for Google Gemini API strict validation

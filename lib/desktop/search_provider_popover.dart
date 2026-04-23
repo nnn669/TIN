@@ -235,10 +235,41 @@ class _SearchContent extends StatelessWidget {
     );
   }
 
+  bool _supportsClaudeDynamicWebSearch(
+    SettingsProvider settings,
+    AssistantProvider ap,
+  ) {
+    final a = ap.currentAssistant;
+    final providerKey = a?.chatModelProvider ?? settings.currentModelProvider;
+    final modelId = a?.chatModelId ?? settings.currentModelId;
+    if (providerKey == null || (modelId ?? '').isEmpty) return false;
+    final cfg = settings.getProviderConfig(providerKey);
+    return BuiltInToolsHelper.supportsClaudeDynamicWebSearchForModel(
+      cfg: cfg,
+      modelId: modelId,
+    );
+  }
+
+  bool _hasClaudeDynamicWebSearchEnabled(
+    SettingsProvider settings,
+    AssistantProvider ap,
+  ) {
+    final a = ap.currentAssistant;
+    final providerKey = a?.chatModelProvider ?? settings.currentModelProvider;
+    final modelId = a?.chatModelId ?? settings.currentModelId;
+    if (providerKey == null || (modelId ?? '').isEmpty) return false;
+    final cfg = settings.getProviderConfig(providerKey);
+    return BuiltInToolsHelper.isClaudeDynamicWebSearchEnabled(
+      cfg: cfg,
+      modelId: modelId,
+    );
+  }
+
   Future<void> _enableBuiltInSearch(
     SettingsProvider sp,
-    AssistantProvider ap,
-  ) async {
+    AssistantProvider ap, {
+    bool useClaudeDynamicWebSearch = false,
+  }) async {
     final a = ap.currentAssistant;
     final providerKey = a?.chatModelProvider ?? sp.currentModelProvider;
     final modelId = a?.chatModelId ?? sp.currentModelId;
@@ -255,6 +286,23 @@ class _SearchContent extends StatelessWidget {
     final tools = BuiltInToolNames.parseAndNormalize(mo['builtInTools'])
       ..add(BuiltInToolNames.search);
     mo['builtInTools'] = BuiltInToolNames.orderedForStorage(tools);
+    final rawWs = mo['webSearch'];
+    final ws = Map<String, dynamic>.from(
+      rawWs is Map
+          ? rawWs.map((k, v) => MapEntry(k.toString(), v))
+          : const <String, dynamic>{},
+    );
+    if (useClaudeDynamicWebSearch) {
+      ws['toolVersion'] = 'web_search_20260209';
+    } else {
+      ws.remove('toolVersion');
+      ws.remove('tool_version');
+    }
+    if (ws.isEmpty) {
+      mo.remove('webSearch');
+    } else {
+      mo['webSearch'] = ws;
+    }
     overrides[modelId] = mo;
     await sp.setProviderConfig(
       providerKey,
@@ -310,6 +358,14 @@ class _SearchContent extends StatelessWidget {
     final done = onDone;
     final supportsBuiltIn = _supportsBuiltInSearch(sp, ap);
     final builtInEnabled = _hasBuiltInSearchEnabled(sp, ap);
+    final supportsClaudeDynamicWebSearch = _supportsClaudeDynamicWebSearch(
+      sp,
+      ap,
+    );
+    final claudeDynamicWebSearchEnabled = _hasClaudeDynamicWebSearchEnabled(
+      sp,
+      ap,
+    );
     final builtInMode = builtInEnabled;
 
     final rows = <Widget>[];
@@ -334,13 +390,34 @@ class _SearchContent extends StatelessWidget {
         _RowItem(
           leading: Icon(Lucide.Search, size: 16, color: cs.onSurface),
           label: l10n.searchSettingsSheetBuiltinSearchTitle,
-          selected: builtInEnabled,
+          selected: builtInEnabled && !claudeDynamicWebSearchEnabled,
           onTap: () async {
-            await _enableBuiltInSearch(sp, ap);
+            await _enableBuiltInSearch(
+              sp,
+              ap,
+              useClaudeDynamicWebSearch: false,
+            );
             done();
           },
         ),
       );
+      if (supportsClaudeDynamicWebSearch) {
+        rows.add(
+          _RowItem(
+            leading: Icon(Lucide.Search, size: 16, color: cs.onSurface),
+            label: l10n.searchSettingsSheetClaudeDynamicSearchTitle,
+            selected: builtInEnabled && claudeDynamicWebSearchEnabled,
+            onTap: () async {
+              await _enableBuiltInSearch(
+                sp,
+                ap,
+                useClaudeDynamicWebSearch: true,
+              );
+              done();
+            },
+          ),
+        );
+      }
     }
 
     // 3) External services list (hidden when url_context is active)

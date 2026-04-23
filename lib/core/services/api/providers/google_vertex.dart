@@ -88,6 +88,7 @@ Future<String?> _maybeVertexAccessToken(ProviderConfig cfg) async {
 int _getMaxOutputTokensForClaudeModel(String modelId) {
   // Limits based on Google Vertex AI documentation
   switch (modelId) {
+    case 'claude-opus-4-7':
     case 'claude-opus-4-6':
     case 'claude-sonnet-4-6':
       return 128000;
@@ -127,29 +128,6 @@ Stream<ChatStreamChunk> _sendGoogleVertexClaudeStream({
   bool stream = true,
 }) async* {
   final upstreamId = _apiModelId(config, modelId);
-  bool supportsAdaptiveThinking(String id) {
-    final lower = id.toLowerCase();
-    if (!lower.contains('claude-')) return false;
-    final m = RegExp(
-      r'claude-(opus|sonnet)-(\d+)-(\d+)',
-      caseSensitive: false,
-    ).firstMatch(lower);
-    if (m != null) {
-      final major = int.tryParse(m.group(2) ?? '');
-      final minor = int.tryParse(m.group(3) ?? '');
-      if (major != null && minor != null) {
-        return major > 4 || (major == 4 && minor >= 6);
-      }
-    }
-    return lower.contains('4-6') || lower.contains('4.6');
-  }
-
-  String adaptiveEffort(int? budget) {
-    final effort = _effortForBudget(budget);
-    if (effort == 'auto') return 'medium';
-    return effort;
-  }
-
   final loc = (config.location ?? 'us-central1').trim();
   final proj = (config.projectId ?? '').trim();
   final endpoint = stream ? 'streamRawPredict' : 'rawPredict';
@@ -348,36 +326,36 @@ Stream<ChatStreamChunk> _sendGoogleVertexClaudeStream({
   TokenUsage? totalUsage;
 
   while (true) {
+    final omitSamplingParams = _claudeShouldOmitSamplingParams(
+      upstreamId,
+      effectiveThinkingBudget,
+    );
+    final compatibleTopP = _claudeCompatibleTopP(
+      upstreamId,
+      effectiveThinkingBudget,
+      topP,
+    );
+    final thinking = isReasoning
+        ? _claudeThinkingConfig(upstreamId, effectiveThinkingBudget)
+        : null;
+    final outputConfig = isReasoning
+        ? _claudeOutputConfig(upstreamId, effectiveThinkingBudget)
+        : null;
     final body = <String, dynamic>{
       'anthropic_version': 'vertex-2023-10-16',
       'messages': convo,
       'stream': stream,
       'max_tokens': effectiveMaxTokens,
       if (systemPrompt.isNotEmpty) 'system': systemPrompt,
-      if (temperature != null) 'temperature': temperature,
-      if (topP != null) 'top_p': topP,
+      if (!omitSamplingParams &&
+          !_isClaudeReasoningEnabled(effectiveThinkingBudget) &&
+          temperature != null)
+        'temperature': temperature,
+      if (compatibleTopP != null) 'top_p': compatibleTopP,
       if (allTools.isNotEmpty) 'tools': allTools,
       if (allTools.isNotEmpty) 'tool_choice': {'type': 'auto'},
-      if (isReasoning)
-        if (supportsAdaptiveThinking(upstreamId))
-          'thinking': {
-            'type': (effectiveThinkingBudget == 0) ? 'disabled' : 'adaptive',
-          }
-        else
-          'thinking': {
-            'type': (effectiveThinkingBudget == 0)
-                ? 'disabled'
-                : (effectiveThinkingBudget != null &&
-                        effectiveThinkingBudget > 0)
-                    ? 'enabled'
-                    : 'disabled',
-            if (effectiveThinkingBudget != null && effectiveThinkingBudget > 0)
-              'budget_tokens': effectiveThinkingBudget,
-          },
-      if (isReasoning &&
-          supportsAdaptiveThinking(upstreamId) &&
-          effectiveThinkingBudget != 0)
-        'output_config': {'effort': adaptiveEffort(effectiveThinkingBudget)},
+      if (thinking != null) 'thinking': thinking,
+      if (outputConfig != null) 'output_config': outputConfig,
     };
     if (extraBody != null) {
       extraBody.forEach((k, v) {

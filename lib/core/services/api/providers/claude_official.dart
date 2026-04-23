@@ -121,10 +121,20 @@ Stream<ChatStreamChunk> _sendClaudeStream(
         ws = (ov['webSearch'] as Map).cast<String, dynamic>();
       }
     } catch (_) {}
+    final searchToolType = BuiltInToolsHelper.claudeBuiltInSearchToolType(
+      cfg: config,
+      modelId: modelId,
+    );
     final entry = <String, dynamic>{
-      'type': 'web_search_20250305',
+      'type': searchToolType,
       'name': 'web_search',
     };
+    if (searchToolType == 'web_search_20260209') {
+      allTools.add(<String, dynamic>{
+        'type': 'code_execution_20250825',
+        'name': 'code_execution',
+      });
+    }
     if (ws['max_uses'] is int && (ws['max_uses'] as int) > 0) {
       entry['max_uses'] = ws['max_uses'];
     }
@@ -164,6 +174,22 @@ Stream<ChatStreamChunk> _sendClaudeStream(
   TokenUsage? totalUsage;
 
   while (true) {
+    final omitSamplingParams = _claudeShouldOmitSamplingParams(
+      upstreamModelId,
+      thinkingBudget,
+    );
+    final compatibleTopP = _claudeCompatibleTopP(
+      upstreamModelId,
+      thinkingBudget,
+      topP,
+    );
+    final thinking = isReasoning
+        ? _claudeThinkingConfig(upstreamModelId, thinkingBudget)
+        : null;
+    final outputConfig = isReasoning
+        ? _claudeOutputConfig(upstreamModelId, thinkingBudget)
+        : null;
+
     // Prepare request body per round
     final body = <String, dynamic>{
       'model': upstreamModelId,
@@ -171,26 +197,15 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       'messages': convo,
       'stream': stream,
       if (systemPrompt.isNotEmpty) 'system': systemPrompt,
-      if (temperature != null) 'temperature': temperature,
-      if (topP != null) 'top_p': topP,
+      if (!omitSamplingParams &&
+          !_isClaudeReasoningEnabled(thinkingBudget) &&
+          temperature != null)
+        'temperature': temperature,
+      if (compatibleTopP != null) 'top_p': compatibleTopP,
       if (allTools.isNotEmpty) 'tools': allTools,
       if (allTools.isNotEmpty) 'tool_choice': {'type': 'auto'},
-      if (isReasoning)
-        'thinking': {
-          'type': thinkingBudget == 0
-              ? 'disabled'
-              : (thinkingBudget == null || thinkingBudget == -1) &&
-                    RegExp(
-                      r'claude-(?:opus|sonnet)-4-6',
-                      caseSensitive: false,
-                    ).hasMatch(upstreamModelId)
-              ? 'adaptive'
-              : (thinkingBudget != null && thinkingBudget > 0)
-                  ? 'enabled'
-                  : 'disabled',
-          if (thinkingBudget != null && thinkingBudget > 0)
-            'budget_tokens': thinkingBudget,
-        },
+      if (thinking != null) 'thinking': thinking,
+      if (outputConfig != null) 'output_config': outputConfig,
     };
     final extraClaude = _customBody(config, modelId);
     if (extraClaude.isNotEmpty) {
@@ -450,13 +465,14 @@ Stream<ChatStreamChunk> _sendClaudeStream(
               }
             } else if (cb is Map && (cb['type'] == 'server_tool_use')) {
               final id = (cb['id'] ?? '').toString();
+              final name = (cb['name'] ?? '').toString();
               final idx2 = idx ?? -1;
               if (id.isNotEmpty && idx2 >= 0) {
                 srvIndexToId[idx2] = id;
                 srvArgsStr[id] = '';
               }
               // Emit placeholder for server tool to show card (e.g., built-in web_search)
-              if (id.isNotEmpty) {
+              if (id.isNotEmpty && name == 'web_search') {
                 yield ChatStreamChunk(
                   content: '',
                   isDone: false,

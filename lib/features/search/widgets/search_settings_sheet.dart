@@ -33,6 +33,76 @@ class _SearchSettingsSheet extends StatelessWidget {
     return svc.name;
   }
 
+  Future<void> _setBuiltInSearchEnabled({
+    required SettingsProvider settings,
+    required ProviderConfig providerCfg,
+    required String providerKey,
+    required String modelId,
+    required bool enabled,
+  }) async {
+    final overrides = Map<String, dynamic>.from(providerCfg.modelOverrides);
+    final rawMo = overrides[modelId];
+    final baseMo = rawMo is Map ? rawMo : null;
+    final mo = Map<String, dynamic>.from(
+      baseMo?.map((k, val) => MapEntry(k.toString(), val)) ??
+          const <String, dynamic>{},
+    );
+    final builtIns = BuiltInToolNames.parseAndNormalize(mo['builtInTools']);
+    if (enabled) {
+      builtIns.add(BuiltInToolNames.search);
+    } else {
+      builtIns.remove(BuiltInToolNames.search);
+    }
+    if (builtIns.isEmpty) {
+      mo.remove('builtInTools');
+    } else {
+      mo['builtInTools'] = BuiltInToolNames.orderedForStorage(builtIns);
+    }
+    overrides[modelId] = mo;
+    await settings.setProviderConfig(
+      providerKey,
+      providerCfg.copyWith(modelOverrides: overrides),
+    );
+  }
+
+  Future<void> _setClaudeDynamicWebSearchEnabled({
+    required SettingsProvider settings,
+    required ProviderConfig providerCfg,
+    required String providerKey,
+    required String modelId,
+    required bool enabled,
+  }) async {
+    final overrides = Map<String, dynamic>.from(providerCfg.modelOverrides);
+    final rawMo = overrides[modelId];
+    final baseMo = rawMo is Map ? rawMo : null;
+    final mo = Map<String, dynamic>.from(
+      baseMo?.map((k, val) => MapEntry(k.toString(), val)) ??
+          const <String, dynamic>{},
+    );
+    final rawWs = mo['webSearch'];
+    final ws = Map<String, dynamic>.from(
+      rawWs is Map
+          ? rawWs.map((k, val) => MapEntry(k.toString(), val))
+          : const <String, dynamic>{},
+    );
+    if (enabled) {
+      ws['toolVersion'] = 'web_search_20260209';
+    } else {
+      ws.remove('toolVersion');
+      ws.remove('tool_version');
+    }
+    if (ws.isEmpty) {
+      mo.remove('webSearch');
+    } else {
+      mo['webSearch'] = ws;
+    }
+    overrides[modelId] = mo;
+    await settings.setProviderConfig(
+      providerKey,
+      providerCfg.copyWith(modelOverrides: overrides),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -59,12 +129,22 @@ class _SearchSettingsSheet extends StatelessWidget {
           cfg: cfg,
           modelId: modelId,
         );
+    final supportsClaudeDynamicWebSearch =
+        BuiltInToolsHelper.supportsClaudeDynamicWebSearchForModel(
+          cfg: cfg,
+          modelId: modelId,
+        );
 
     // Read current built-in search toggle from modelOverrides
     final hasBuiltInSearch = BuiltInToolsHelper.isBuiltInSearchEnabled(
       cfg: cfg,
       modelId: modelId,
     );
+    final hasClaudeDynamicWebSearch =
+        BuiltInToolsHelper.isClaudeDynamicWebSearchEnabled(
+          cfg: cfg,
+          modelId: modelId,
+        );
     final builtInMode = hasBuiltInSearch;
 
     final maxHeight = MediaQuery.of(context).size.height * 0.8;
@@ -118,35 +198,12 @@ class _SearchSettingsSheet extends StatelessWidget {
                         onTap: () async {
                           Haptics.light();
                           final bool v = !hasBuiltInSearch;
-                          final overrides = Map<String, dynamic>.from(
-                            providerCfg.modelOverrides,
-                          );
-                          final rawMo = overrides[mid];
-                          final baseMo = rawMo is Map ? rawMo : null;
-                          final mo = Map<String, dynamic>.from(
-                            baseMo?.map(
-                                  (k, val) => MapEntry(k.toString(), val),
-                                ) ??
-                                const <String, dynamic>{},
-                          );
-                          final builtIns = BuiltInToolNames.parseAndNormalize(
-                            mo['builtInTools'],
-                          );
-                          if (v) {
-                            builtIns.add(BuiltInToolNames.search);
-                          } else {
-                            builtIns.remove(BuiltInToolNames.search);
-                          }
-                          if (builtIns.isEmpty) {
-                            mo.remove('builtInTools');
-                          } else {
-                            mo['builtInTools'] =
-                                BuiltInToolNames.orderedForStorage(builtIns);
-                          }
-                          overrides[mid] = mo;
-                          await settingsNotifier.setProviderConfig(
-                            providerKey,
-                            providerCfg.copyWith(modelOverrides: overrides),
+                          await _setBuiltInSearchEnabled(
+                            settings: settingsNotifier,
+                            providerCfg: providerCfg,
+                            providerKey: providerKey,
+                            modelId: mid,
+                            enabled: v,
                           );
                           if (v) {
                             await settingsNotifier.setSearchEnabled(false);
@@ -182,40 +239,12 @@ class _SearchSettingsSheet extends StatelessWidget {
                               value: hasBuiltInSearch,
                               onChanged: (v) async {
                                 Haptics.light();
-                                final overrides = Map<String, dynamic>.from(
-                                  providerCfg.modelOverrides,
-                                );
-                                final rawMo = overrides[mid];
-                                final baseMo = rawMo is Map ? rawMo : null;
-                                final mo = Map<String, dynamic>.from(
-                                  baseMo?.map(
-                                        (k, val) => MapEntry(k.toString(), val),
-                                      ) ??
-                                      const <String, dynamic>{},
-                                );
-                                final builtIns =
-                                    BuiltInToolNames.parseAndNormalize(
-                                      mo['builtInTools'],
-                                    );
-                                if (v) {
-                                  builtIns.add(BuiltInToolNames.search);
-                                } else {
-                                  builtIns.remove(BuiltInToolNames.search);
-                                }
-                                if (builtIns.isEmpty) {
-                                  mo.remove('builtInTools');
-                                } else {
-                                  mo['builtInTools'] =
-                                      BuiltInToolNames.orderedForStorage(
-                                        builtIns,
-                                      );
-                                }
-                                overrides[mid] = mo;
-                                await settingsNotifier.setProviderConfig(
-                                  providerKey,
-                                  providerCfg.copyWith(
-                                    modelOverrides: overrides,
-                                  ),
+                                await _setBuiltInSearchEnabled(
+                                  settings: settingsNotifier,
+                                  providerCfg: providerCfg,
+                                  providerKey: providerKey,
+                                  modelId: mid,
+                                  enabled: v,
                                 );
                                 if (v) {
                                   await settingsNotifier.setSearchEnabled(
@@ -230,6 +259,87 @@ class _SearchSettingsSheet extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 14),
+                  if (supportsClaudeDynamicWebSearch)
+                    Builder(
+                      builder: (context) {
+                        final providerCfg = cfg;
+                        final mid = modelId!;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: IosCardPress(
+                            borderRadius: BorderRadius.circular(14),
+                            baseColor: cs.surface,
+                            duration: const Duration(milliseconds: 260),
+                            onTap: () async {
+                              Haptics.light();
+                              await _setClaudeDynamicWebSearchEnabled(
+                                settings: settingsNotifier,
+                                providerCfg: providerCfg,
+                                providerKey: providerKey,
+                                modelId: mid,
+                                enabled: !hasClaudeDynamicWebSearch,
+                              );
+                            },
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Lucide.Search,
+                                  size: 20,
+                                  color: cs.primary,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        l10n.searchSettingsSheetClaudeDynamicSearchTitle,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        l10n.searchSettingsSheetClaudeDynamicSearchDescription,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: cs.onSurface.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                IosSwitch(
+                                  value: hasClaudeDynamicWebSearch,
+                                  onChanged: (v) async {
+                                    Haptics.light();
+                                    await _setClaudeDynamicWebSearchEnabled(
+                                      settings: settingsNotifier,
+                                      providerCfg: providerCfg,
+                                      providerKey: providerKey,
+                                      modelId: mid,
+                                      enabled: v,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                 ],
 
                 // Toggle card
