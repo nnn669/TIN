@@ -278,8 +278,47 @@ class ChatApiService {
         continue;
       }
       if (m2 != null) {
+        final full = raw.substring(m2.start, m2.end);
         final p = (m2.group(1) ?? '').trim();
-        if (p.isNotEmpty) images.add(_ImageRef('path', p));
+        if (p.isEmpty) {
+          buf.write(full);
+          i = m2.end;
+          continue;
+        }
+        if (p.startsWith('data:')) {
+          images.add(_ImageRef('data', p));
+          i = m2.end;
+          continue;
+        }
+        if (p.startsWith('http://') || p.startsWith('https://')) {
+          if (!allowRemoteImages) {
+            buf.write(full);
+            i = m2.end;
+            continue;
+          }
+          images.add(_ImageRef('url', p));
+          i = m2.end;
+          continue;
+        }
+        if (!allowLocalImages) {
+          buf.write(full);
+          i = m2.end;
+          continue;
+        }
+        try {
+          final fixed = SandboxPathResolver.fix(p);
+          final file = File(fixed);
+          if (!file.existsSync()) {
+            buf.write(full);
+            i = m2.end;
+            continue;
+          }
+        } catch (_) {
+          buf.write(full);
+          i = m2.end;
+          continue;
+        }
+        images.add(_ImageRef('path', p));
         i = m2.end;
         continue;
       }
