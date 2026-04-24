@@ -1096,20 +1096,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
     } else if (host.contains('deepseek') ||
         upstreamModelId.toLowerCase().contains('deepseek')) {
       if (isReasoning) {
-        if (off) {
-          body['reasoning_content'] = false;
-          body.remove('reasoning_budget');
-        } else {
-          body['reasoning_content'] = true;
-          if (thinkingBudget != null && thinkingBudget > 0) {
-            body['reasoning_budget'] = thinkingBudget;
-          } else {
-            body.remove('reasoning_budget');
-          }
-        }
+        body['thinking'] = {'type': off ? 'disabled' : 'enabled'};
       } else {
-        body.remove('reasoning_content');
-        body.remove('reasoning_budget');
+        body.remove('thinking');
+        body.remove('reasoning_effort');
       }
     } else if (_isKimiThinkingModel(upstreamModelId)) {
       _normalizeMoonshotKimiChatBody(
@@ -1705,20 +1695,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             } else if (host.contains('deepseek') ||
                 upstreamModelId.toLowerCase().contains('deepseek')) {
               if (isReasoning) {
-                if (off) {
-                  body2['reasoning_content'] = false;
-                  body2.remove('reasoning_budget');
-                } else {
-                  body2['reasoning_content'] = true;
-                  if (thinkingBudget != null && thinkingBudget > 0) {
-                    body2['reasoning_budget'] = thinkingBudget;
-                  } else {
-                    body2.remove('reasoning_budget');
-                  }
-                }
+                body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
               } else {
-                body2.remove('reasoning_content');
-                body2.remove('reasoning_budget');
+                body2.remove('thinking');
+                body2.remove('reasoning_effort');
               }
             }
 
@@ -3162,20 +3142,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
             } else if (host.contains('deepseek') ||
                 upstreamModelId.toLowerCase().contains('deepseek')) {
               if (isReasoning) {
-                if (off) {
-                  body2['reasoning_content'] = false;
-                  body2.remove('reasoning_budget');
-                } else {
-                  body2['reasoning_content'] = true;
-                  if (thinkingBudget != null && thinkingBudget > 0) {
-                    body2['reasoning_budget'] = thinkingBudget;
-                  } else {
-                    body2.remove('reasoning_budget');
-                  }
-                }
+                body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
               } else {
-                body2.remove('reasoning_content');
-                body2.remove('reasoning_budget');
+                body2.remove('thinking');
+                body2.remove('reasoning_effort');
               }
             }
             _applyCompatibleBuiltInSearch(
@@ -3763,20 +3733,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 } else if (host.contains('deepseek') ||
                     upstreamModelId.toLowerCase().contains('deepseek')) {
                   if (isReasoning) {
-                    if (off) {
-                      body2['reasoning_content'] = false;
-                      body2.remove('reasoning_budget');
-                    } else {
-                      body2['reasoning_content'] = true;
-                      if (thinkingBudget != null && thinkingBudget > 0) {
-                        body2['reasoning_budget'] = thinkingBudget;
-                      } else {
-                        body2.remove('reasoning_budget');
-                      }
-                    }
+                    body2['thinking'] = {'type': off ? 'disabled' : 'enabled'};
                   } else {
-                    body2.remove('reasoning_content');
-                    body2.remove('reasoning_budget');
+                    body2.remove('thinking');
+                    body2.remove('reasoning_effort');
                   }
                 }
                 _applyCompatibleBuiltInSearch(
