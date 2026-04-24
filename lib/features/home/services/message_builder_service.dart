@@ -125,9 +125,12 @@ class MessageBuilderService {
     final out = <Map<String, dynamic>>[];
 
     for (final m in source) {
+      String? toolContinuationReasoningContent;
       if (includeOpenAIToolMessages && m.role == 'assistant') {
         final events = chatService.getToolEvents(m.id);
         if (events.isNotEmpty) {
+          toolContinuationReasoningContent =
+              _reasoningContentForToolContinuation(m);
           final calls = <Map<String, dynamic>>[];
           final toolMessages = <Map<String, dynamic>>[];
 
@@ -168,11 +171,16 @@ class MessageBuilderService {
           }
 
           if (calls.isNotEmpty) {
-            out.add({
+            final assistantToolMessage = <String, dynamic>{
               'role': 'assistant',
               'content': '\n\n',
               'tool_calls': calls,
-            });
+            };
+            if (toolContinuationReasoningContent.isNotEmpty) {
+              assistantToolMessage['reasoning_content'] =
+                  toolContinuationReasoningContent;
+            }
+            out.add(assistantToolMessage);
             out.addAll(toolMessages);
           }
         }
@@ -183,13 +191,60 @@ class MessageBuilderService {
         content = geminiThoughtSignatureHandler!(m, content);
       }
       if (content.isEmpty) continue;
-      out.add(<String, dynamic>{
+      final message = <String, dynamic>{
         'role': m.role == 'assistant' ? 'assistant' : 'user',
         'content': content,
-      });
+      };
+      if (toolContinuationReasoningContent?.isNotEmpty == true) {
+        message['reasoning_content'] = toolContinuationReasoningContent;
+      }
+      out.add(message);
     }
 
     return out;
+  }
+
+  ChatMessage? _latestPersistedMessage(ChatMessage message) {
+    final persisted = chatService.getMessages(message.conversationId);
+    for (final candidate in persisted) {
+      if (candidate.id == message.id) return candidate;
+    }
+    return null;
+  }
+
+  String _reasoningContentForToolContinuation(ChatMessage message) {
+    String pick(ChatMessage candidate) {
+      final direct = (candidate.reasoningText ?? '').trim();
+      if (direct.isNotEmpty) return direct;
+
+      final raw = (candidate.reasoningSegmentsJson ?? '').trim();
+      if (raw.isEmpty) return '';
+      try {
+        final decoded = jsonDecode(raw);
+        final segmentsRaw = switch (decoded) {
+          Map<String, dynamic> map => map['segments'],
+          List<dynamic> list => list,
+          _ => null,
+        };
+        if (segmentsRaw is! List) return '';
+        final parts = <String>[];
+        for (final item in segmentsRaw) {
+          if (item is! Map) continue;
+          final text = (item['text'] ?? '').toString().trim();
+          if (text.isNotEmpty) parts.add(text);
+        }
+        return parts.join('\n').trim();
+      } catch (_) {
+        return '';
+      }
+    }
+
+    final fromMessage = pick(message);
+    if (fromMessage.isNotEmpty) return fromMessage;
+
+    final persisted = _latestPersistedMessage(message);
+    if (persisted == null) return '';
+    return pick(persisted);
   }
 
   /// Parse input data from raw message content (extracts images and documents).
