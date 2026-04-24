@@ -28,7 +28,7 @@
 
 🔗 [下载最新版本](https://github.com/Chevey339/kelivo/releases/latest)
 
-🔗 [TestFlight](https://testflight.apple.com/join/PZZyRMyY) 参与测试版体验。
+🔗 [TestFlight](https://testflight.apple.com/join/erbGGykR) 参与测试版体验。
 
 ## 💖 赞助
 
