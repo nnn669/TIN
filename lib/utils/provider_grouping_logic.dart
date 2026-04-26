@@ -327,6 +327,7 @@ class ProviderGroupingMoveResult {
 List<String> buildProviderKeysInGroupedDisplayOrder({
   required List<String> providersOrder,
   required List<ProviderGroup> groups,
+  required int ungroupedIndex,
   required Map<String, String> providerGroupMap,
   required Iterable<String> knownProviderKeys,
 }) {
@@ -349,13 +350,20 @@ List<String> buildProviderKeysInGroupedDisplayOrder({
   }
 
   final result = <String>[];
-  for (final group in groups) {
-    for (final key in mergedOrder) {
-      if (groupIdFor(key) == group.id) result.add(key);
+  final displayKeys = buildProviderGroupDisplayKeys(
+    groups: groups,
+    ungroupedIndex: ungroupedIndex,
+  );
+  for (final displayKey in displayKeys) {
+    if (displayKey == providerUngroupedGroupKey) {
+      for (final key in mergedOrder) {
+        if (groupIdFor(key) == null) result.add(key);
+      }
+      continue;
     }
-  }
-  for (final key in mergedOrder) {
-    if (groupIdFor(key) == null) result.add(key);
+    for (final key in mergedOrder) {
+      if (groupIdFor(key) == displayKey) result.add(key);
+    }
   }
 
   return List<String>.unmodifiable(result);

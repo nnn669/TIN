@@ -76,6 +76,7 @@ List<String> _buildDisplayProvidersOrder(
   return buildProviderKeysInGroupedDisplayOrder(
     providersOrder: settings.providersOrder,
     groups: settings.providerGroups,
+    ungroupedIndex: settings.providerUngroupedDisplayIndex,
     providerGroupMap: providerGroupMap,
     knownProviderKeys: providerKeys,
   );

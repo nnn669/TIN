@@ -89,6 +89,7 @@ void main() {
           ProviderGroup(id: 'B', name: 'Group B', createdAt: 0),
           ProviderGroup(id: 'A', name: 'Group A', createdAt: 0),
         ],
+        ungroupedIndex: 2,
         providerGroupMap: const {'a1': 'A', 'a2': 'A', 'b1': 'B'},
         knownProviderKeys: const {'u1', 'a1', 'b1', 'a2', 'u2'},
       );
@@ -102,11 +103,48 @@ void main() {
         final res = buildProviderKeysInGroupedDisplayOrder(
           providersOrder: const ['a1'],
           groups: const [ProviderGroup(id: 'A', name: 'Group A', createdAt: 0)],
+          ungroupedIndex: 1,
           providerGroupMap: const {'a1': 'A', 'a2': 'A'},
           knownProviderKeys: const ['a1', 'u1', 'a2'],
         );
 
         expect(res, const ['a1', 'a2', 'u1']);
+      },
+    );
+
+    test(
+      'buildProviderKeysInGroupedDisplayOrder respects ungrouped position',
+      () {
+        final res = buildProviderKeysInGroupedDisplayOrder(
+          providersOrder: const ['u1', 'a1', 'b1', 'a2', 'u2'],
+          groups: const [
+            ProviderGroup(id: 'B', name: 'Group B', createdAt: 0),
+            ProviderGroup(id: 'A', name: 'Group A', createdAt: 0),
+          ],
+          ungroupedIndex: 0,
+          providerGroupMap: const {'a1': 'A', 'a2': 'A', 'b1': 'B'},
+          knownProviderKeys: const {'u1', 'a1', 'b1', 'a2', 'u2'},
+        );
+
+        expect(res, const ['u1', 'u2', 'b1', 'a1', 'a2']);
+      },
+    );
+
+    test(
+      'buildProviderKeysInGroupedDisplayOrder keeps new unrecorded providers visible',
+      () {
+        final res = buildProviderKeysInGroupedDisplayOrder(
+          providersOrder: const ['a1'],
+          groups: const [
+            ProviderGroup(id: 'A', name: 'Group A', createdAt: 0),
+            ProviderGroup(id: 'B', name: 'Group B', createdAt: 0),
+          ],
+          ungroupedIndex: 1,
+          providerGroupMap: const {'a1': 'A', 'b1': 'B'},
+          knownProviderKeys: const ['a1', 'new1', 'b1', 'new2'],
+        );
+
+        expect(res, const ['a1', 'new1', 'new2', 'b1']);
       },
     );
 
