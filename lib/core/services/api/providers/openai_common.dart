@@ -247,6 +247,28 @@ void _maybeAddStreamingUsageOptions(
   }
 }
 
+int _readOpenAIUsageInt(dynamic value) {
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+TokenUsage? _mergeOpenAICompatibleUsage(TokenUsage? current, dynamic rawUsage) {
+  if (rawUsage is! Map) return current;
+
+  final details = rawUsage['prompt_tokens_details'];
+  final cachedTokens = details is Map
+      ? _readOpenAIUsageInt(details['cached_tokens'])
+      : 0;
+  return (current ?? const TokenUsage()).merge(
+    TokenUsage(
+      promptTokens: _readOpenAIUsageInt(rawUsage['prompt_tokens']),
+      completionTokens: _readOpenAIUsageInt(rawUsage['completion_tokens']),
+      cachedTokens: cachedTokens,
+    ),
+  );
+}
+
 String _stripDataUrlPrefix(String dataUrl) {
   final commaIndex = dataUrl.indexOf(',');
   if (commaIndex >= 0 && commaIndex + 1 < dataUrl.length) {
@@ -1780,6 +1802,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 }
                 try {
                   final o = jsonDecode(d);
+                  if (o is Map) {
+                    usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
+                    if (usage != null) totalTokens = usage.totalTokens;
+                  }
                   if (o is Map &&
                       o['choices'] is List &&
                       (o['choices'] as List).isNotEmpty) {
@@ -1790,23 +1816,6 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     final txt = _extractOpenAICompatibleDeltaText(delta);
                     final rc =
                         delta?['reasoning_content'] ?? delta?['reasoning'];
-                    final u = o['usage'];
-                    if (u != null) {
-                      final prompt = (u['prompt_tokens'] ?? 0) as int;
-                      final completion = (u['completion_tokens'] ?? 0) as int;
-                      final cached =
-                          (u['prompt_tokens_details']?['cached_tokens'] ?? 0)
-                              as int? ??
-                          0;
-                      usage = (usage ?? const TokenUsage()).merge(
-                        TokenUsage(
-                          promptTokens: prompt,
-                          completionTokens: completion,
-                          cachedTokens: cached,
-                        ),
-                      );
-                      totalTokens = usage.totalTokens;
-                    }
                     // Capture Grok citations
                     final gCitations = o['citations'];
                     if (gCitations is List && gCitations.isNotEmpty) {
@@ -2900,22 +2909,8 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
               finishReason = 'tool_calls';
             }
           }
-          final u = json['usage'];
-          if (u != null) {
-            final prompt = (u['prompt_tokens'] ?? 0) as int;
-            final completion = (u['completion_tokens'] ?? 0) as int;
-            final cached =
-                (u['prompt_tokens_details']?['cached_tokens'] ?? 0) as int? ??
-                0;
-            usage = (usage ?? const TokenUsage()).merge(
-              TokenUsage(
-                promptTokens: prompt,
-                completionTokens: completion,
-                cachedTokens: cached,
-              ),
-            );
-            totalTokens = usage.totalTokens;
-          }
+          usage = _mergeOpenAICompatibleUsage(usage, json['usage']);
+          if (usage != null) totalTokens = usage.totalTokens;
         }
 
         if (content.isNotEmpty || (reasoning?.isNotEmpty ?? false)) {
@@ -3218,6 +3213,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                 }
                 try {
                   final o = jsonDecode(d);
+                  if (o is Map) {
+                    usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
+                    if (usage != null) totalTokens = usage.totalTokens;
+                  }
                   if (o is Map &&
                       o['choices'] is List &&
                       (o['choices'] as List).isNotEmpty) {
@@ -3227,23 +3226,6 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     final txt = _extractOpenAICompatibleDeltaText(delta);
                     final rc =
                         delta?['reasoning_content'] ?? delta?['reasoning'];
-                    final u = o['usage'];
-                    if (u != null) {
-                      final prompt = (u['prompt_tokens'] ?? 0) as int;
-                      final completion = (u['completion_tokens'] ?? 0) as int;
-                      final cached =
-                          (u['prompt_tokens_details']?['cached_tokens'] ?? 0)
-                              as int? ??
-                          0;
-                      usage = (usage ?? const TokenUsage()).merge(
-                        TokenUsage(
-                          promptTokens: prompt,
-                          completionTokens: completion,
-                          cachedTokens: cached,
-                        ),
-                      );
-                      totalTokens = usage.totalTokens;
-                    }
                     // Capture Grok citations
                     final gCitations = o['citations'];
                     if (gCitations is List && gCitations.isNotEmpty) {
@@ -3810,6 +3792,10 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                     }
                     try {
                       final o = jsonDecode(d);
+                      if (o is Map) {
+                        usage = _mergeOpenAICompatibleUsage(usage, o['usage']);
+                        if (usage != null) totalTokens = usage.totalTokens;
+                      }
                       if (o is Map &&
                           o['choices'] is List &&
                           (o['choices'] as List).isNotEmpty) {
@@ -3819,25 +3805,6 @@ Stream<ChatStreamChunk> _sendOpenAIStream(
                         final txt = _extractOpenAICompatibleDeltaText(delta);
                         final rc =
                             delta?['reasoning_content'] ?? delta?['reasoning'];
-                        final u = o['usage'];
-                        if (u != null) {
-                          final prompt = (u['prompt_tokens'] ?? 0) as int;
-                          final completion =
-                              (u['completion_tokens'] ?? 0) as int;
-                          final cached =
-                              (u['prompt_tokens_details']?['cached_tokens'] ??
-                                      0)
-                                  as int? ??
-                              0;
-                          usage = (usage ?? const TokenUsage()).merge(
-                            TokenUsage(
-                              promptTokens: prompt,
-                              completionTokens: completion,
-                              cachedTokens: cached,
-                            ),
-                          );
-                          totalTokens = usage.totalTokens;
-                        }
                         if (rc is String && rc.isNotEmpty) {
                           if (needsReasoningEcho) reasoningAccum += rc;
                           yield ChatStreamChunk(

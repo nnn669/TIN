@@ -173,6 +173,22 @@ void main() {
                     'finish_reason': 'stop',
                   },
                 ],
+                'usage': null,
+              })}\n\n',
+            );
+            request.response.write(
+              'data: ${jsonEncode({
+                'id': 'cmpl-2',
+                'object': 'chat.completion.chunk',
+                'created': 0,
+                'model': 'Qwen/Qwen3-8B',
+                'choices': [],
+                'usage': {
+                  'prompt_tokens': 842,
+                  'completion_tokens': 53,
+                  'total_tokens': 895,
+                  'prompt_tokens_details': {'cached_tokens': 384},
+                },
               })}\n\n',
             );
           }
@@ -239,6 +255,10 @@ void main() {
           chunks.map((chunk) => chunk.content).join(),
           contains('今天是 2026-03-27'),
         );
+        expect(chunks.last.totalTokens, 895);
+        expect(chunks.last.usage?.promptTokens, 842);
+        expect(chunks.last.usage?.completionTokens, 53);
+        expect(chunks.last.usage?.cachedTokens, 384);
       },
     );
 
