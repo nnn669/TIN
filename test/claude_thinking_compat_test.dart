@@ -394,5 +394,93 @@ void main() {
         );
       },
     );
+
+    test('history tool replay preserves thinking block signature', () async {
+      late Map<String, dynamic> requestBody;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      server.listen((request) async {
+        requestBody =
+            (jsonDecode(await utf8.decoder.bind(request).join()) as Map)
+                .cast<String, dynamic>();
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'id': 'msg_2',
+            'content': [
+              {'type': 'text', 'text': 'ok'},
+            ],
+            'usage': {'input_tokens': 1, 'output_tokens': 1},
+          }),
+        );
+        await request.response.close();
+      });
+
+      final chunks = await ChatApiService.sendMessageStream(
+        config: _claudeConfig(
+          'http://${server.address.address}:${server.port}',
+        ),
+        modelId: 'claude-sonnet-4-6',
+        messages: const [
+          {'role': 'user', 'content': '查一下 Kelivo'},
+          {
+            'role': 'assistant',
+            'content': '\n\n',
+            'tool_calls': [
+              {
+                'id': 'toolu_1',
+                'type': 'function',
+                'function': {
+                  'name': 'lookup',
+                  'arguments': '{"query":"Kelivo"}',
+                },
+                'metadata': {
+                  'anthropic': {
+                    'assistant_blocks': [
+                      {
+                        'type': 'thinking',
+                        'thinking': '需要先查资料。',
+                        'signature': 'sig-claude-history',
+                      },
+                      {
+                        'type': 'tool_use',
+                        'id': 'toolu_1',
+                        'name': 'lookup',
+                        'input': {'query': 'Kelivo'},
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+          {
+            'role': 'tool',
+            'tool_call_id': 'toolu_1',
+            'name': 'lookup',
+            'content': '{"result":"ok"}',
+          },
+          {'role': 'user', 'content': '继续总结'},
+        ],
+        stream: false,
+      ).toList();
+
+      expect(chunks.last.isDone, isTrue);
+      final messages = (requestBody['messages'] as List).cast<Map>();
+      final assistantContent = (messages[1]['content'] as List).cast<Map>();
+      final toolResultContent = (messages[2]['content'] as List).cast<Map>();
+
+      expect(assistantContent[0]['type'], 'thinking');
+      expect(assistantContent[0]['thinking'], '需要先查资料。');
+      expect(assistantContent[0]['signature'], 'sig-claude-history');
+      expect(assistantContent[1]['type'], 'tool_use');
+      expect(assistantContent[1]['id'], 'toolu_1');
+      expect(toolResultContent.single['type'], 'tool_result');
+      expect(toolResultContent.single['tool_use_id'], 'toolu_1');
+    });
   });
 }

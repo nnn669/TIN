@@ -798,6 +798,7 @@ class ChatActions {
             required String name,
             required Map<String, dynamic> arguments,
             String? content,
+            Map<String, dynamic>? metadata,
           }) async {
             await chatService.upsertToolEvent(
               messageId,
@@ -805,6 +806,7 @@ class ChatActions {
               name: name,
               arguments: arguments,
               content: content,
+              metadata: metadata,
             );
           },
     );

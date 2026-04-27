@@ -785,6 +785,8 @@ class StreamController {
             'name': c.name,
             'arguments': c.arguments,
             'content': null,
+            if (c.metadata != null && c.metadata!.isNotEmpty)
+              'metadata': c.metadata,
           },
       ];
       await setToolEventsInDb(messageId, dedupeToolEvents(newEvents));
@@ -801,6 +803,7 @@ class StreamController {
       required String name,
       required Map<String, dynamic> arguments,
       String? content,
+      Map<String, dynamic>? metadata,
     })
     upsertToolEventInDb,
   }) async {
@@ -849,6 +852,7 @@ class StreamController {
           name: r.name,
           arguments: args,
           content: r.content,
+          metadata: r.metadata,
         );
       } catch (_) {}
     }

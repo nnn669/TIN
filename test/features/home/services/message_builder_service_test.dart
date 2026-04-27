@@ -79,7 +79,7 @@ void main() {
         ],
         versionSelections: const {},
         currentConversation: Conversation(title: 'test'),
-        includeOpenAIToolMessages: true,
+        includeToolMessages: true,
       );
 
       final assistantToolMessage = apiMessages.firstWhere(
@@ -123,7 +123,7 @@ void main() {
         ],
         versionSelections: const {},
         currentConversation: Conversation(title: 'test'),
-        includeOpenAIToolMessages: true,
+        includeToolMessages: true,
       );
 
       final assistantToolMessage = apiMessages.firstWhere(
@@ -173,7 +173,7 @@ void main() {
         ],
         versionSelections: const {},
         currentConversation: Conversation(title: 'test'),
-        includeOpenAIToolMessages: true,
+        includeToolMessages: true,
       );
 
       final assistantToolMessage = apiMessages.firstWhere(
@@ -216,12 +216,84 @@ void main() {
         ],
         versionSelections: const {},
         currentConversation: Conversation(title: 'test'),
-        includeOpenAIToolMessages: false,
+        includeToolMessages: false,
       );
 
       expect(
         apiMessages.where((message) => message['tool_calls'] is List),
         isEmpty,
+      );
+    });
+
+    test('工具历史会保留 provider 元数据供 Claude 和 Gemini 重放', () {
+      final service = MessageBuilderService(
+        chatService: _FakeChatService({
+          'a1': [
+            {
+              'id': 'call_1',
+              'name': 'lookup',
+              'arguments': {'query': 'Kelivo'},
+              'content': '{"result":"ok"}',
+              'metadata': {
+                'anthropic': {
+                  'assistant_blocks': [
+                    {
+                      'type': 'thinking',
+                      'thinking': '需要查询资料。',
+                      'signature': 'sig-claude',
+                    },
+                    {
+                      'type': 'tool_use',
+                      'id': 'call_1',
+                      'name': 'lookup',
+                      'input': {'query': 'Kelivo'},
+                    },
+                  ],
+                },
+                'google': {
+                  'part': {
+                    'functionCall': {
+                      'name': 'lookup',
+                      'args': {'query': 'Kelivo'},
+                    },
+                    'thoughtSignature': 'sig-gemini',
+                  },
+                },
+              },
+            },
+          ],
+        }),
+        contextProvider: _FakeBuildContext(),
+      );
+
+      final apiMessages = service.buildApiMessages(
+        messages: [
+          _message(id: 'u1', role: 'user', content: '查 Kelivo'),
+          _message(id: 'a1', role: 'assistant', content: '查到了。'),
+        ],
+        versionSelections: const {},
+        currentConversation: Conversation(title: 'test'),
+        includeToolMessages: true,
+      );
+
+      final assistantToolMessage = apiMessages.firstWhere(
+        (message) => message['tool_calls'] is List,
+      );
+      final toolMessage = apiMessages.firstWhere(
+        (message) => message['role'] == 'tool',
+      );
+      final toolCall =
+          (assistantToolMessage['tool_calls'] as List).single
+              as Map<String, dynamic>;
+
+      expect(toolCall['metadata']['anthropic']['assistant_blocks'], isNotEmpty);
+      expect(
+        toolCall['metadata']['google']['part']['thoughtSignature'],
+        'sig-gemini',
+      );
+      expect(
+        toolMessage['metadata']['google']['part']['thoughtSignature'],
+        'sig-gemini',
       );
     });
   });

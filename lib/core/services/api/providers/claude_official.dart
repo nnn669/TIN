@@ -40,17 +40,92 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       }
       continue;
     }
-    nonSystemMessages.add({
-      'role': role.isEmpty ? 'user' : role,
-      'content': m['content'] ?? '',
-    });
+    nonSystemMessages.add(
+      Map<String, dynamic>.from(m)..['role'] = role.isEmpty ? 'user' : role,
+    );
   }
 
   // Transform last user message to include images per Anthropic schema
   final initialMessages = <Map<String, dynamic>>[];
+  final pendingToolResults = <Map<String, dynamic>>[];
+  void flushPendingToolResults() {
+    if (pendingToolResults.isEmpty) return;
+    initialMessages.add({
+      'role': 'user',
+      'content': List<Map<String, dynamic>>.from(pendingToolResults),
+    });
+    pendingToolResults.clear();
+  }
+
+  List<Map<String, dynamic>>? anthropicBlocksFromToolCallMetadata(
+    List toolCalls,
+  ) {
+    for (final tc in toolCalls) {
+      if (tc is! Map) continue;
+      final meta = tc['metadata'];
+      if (meta is! Map) continue;
+      final anthropic = meta['anthropic'];
+      if (anthropic is! Map) continue;
+      final blocks = anthropic['assistant_blocks'];
+      if (blocks is! List || blocks.isEmpty) continue;
+      return blocks
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .toList();
+    }
+    return null;
+  }
+
   for (int i = 0; i < nonSystemMessages.length; i++) {
     final m = nonSystemMessages[i];
     final isLast = i == nonSystemMessages.length - 1;
+    final role = (m['role'] ?? 'user').toString();
+    if (role == 'tool') {
+      final id = (m['tool_call_id'] ?? '').toString();
+      if (id.isNotEmpty) {
+        pendingToolResults.add({
+          'type': 'tool_result',
+          'tool_use_id': id,
+          'content': (m['content'] ?? '').toString(),
+        });
+      }
+      continue;
+    }
+    flushPendingToolResults();
+
+    if (role == 'assistant' && m['tool_calls'] is List) {
+      final toolCalls = m['tool_calls'] as List;
+      final blocks =
+          anthropicBlocksFromToolCallMetadata(toolCalls) ??
+          <Map<String, dynamic>>[];
+      if (blocks.isEmpty) {
+        final text = (m['content'] ?? '').toString();
+        if (text.trim().isNotEmpty && text.trim() != '\n\n') {
+          blocks.add({'type': 'text', 'text': text});
+        }
+        for (final tc in toolCalls) {
+          if (tc is! Map) continue;
+          final id = (tc['id'] ?? '').toString();
+          final fn = tc['function'];
+          if (id.isEmpty || fn is! Map) continue;
+          Map<String, dynamic> input = const <String, dynamic>{};
+          try {
+            input = (jsonDecode((fn['arguments'] ?? '{}').toString()) as Map)
+                .cast<String, dynamic>();
+          } catch (_) {}
+          blocks.add({
+            'type': 'tool_use',
+            'id': id,
+            'name': (fn['name'] ?? '').toString(),
+            'input': input,
+          });
+        }
+      }
+      if (blocks.isNotEmpty) {
+        initialMessages.add({'role': 'assistant', 'content': blocks});
+      }
+      continue;
+    }
     if (isLast &&
         (userImagePaths?.isNotEmpty == true) &&
         (m['role'] == 'user')) {
@@ -77,6 +152,7 @@ Stream<ChatStreamChunk> _sendClaudeStream(
       });
     }
   }
+  flushPendingToolResults();
 
   // Map OpenAI-style tools to Anthropic custom tools (client tools)
   List<Map<String, dynamic>>? anthropicTools;
@@ -295,6 +371,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
               id: e.key,
               name: (e.value['name'] ?? '').toString(),
               arguments: (e.value['args'] as Map<String, dynamic>),
+              metadata: {
+                'anthropic': {'assistant_blocks': assistantBlocks},
+              },
             ),
           );
         }
@@ -322,6 +401,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
               name: name,
               arguments: args,
               content: res,
+              metadata: {
+                'anthropic': {'assistant_blocks': assistantBlocks},
+              },
             ),
           );
         }
@@ -459,6 +541,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
                       id: id,
                       name: name,
                       arguments: const <String, dynamic>{},
+                      metadata: {
+                        'anthropic': {'assistant_blocks': assistantBlocks},
+                      },
                     ),
                   ],
                 );
@@ -483,6 +568,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
                       id: id,
                       name: 'search_web',
                       arguments: const <String, dynamic>{},
+                      metadata: {
+                        'anthropic': {'assistant_blocks': assistantBlocks},
+                      },
                     ),
                   ],
                 );
@@ -527,6 +615,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
                     name: 'search_web',
                     arguments: args,
                     content: payload,
+                    metadata: {
+                      'anthropic': {'assistant_blocks': assistantBlocks},
+                    },
                   ),
                 ],
               );
@@ -685,6 +776,9 @@ Stream<ChatStreamChunk> _sendClaudeStream(
                       name: name,
                       arguments: args,
                       content: res,
+                      metadata: {
+                        'anthropic': {'assistant_blocks': assistantBlocks},
+                      },
                     ),
                   ],
                   usage: usage,
@@ -708,7 +802,14 @@ Stream<ChatStreamChunk> _sendClaudeStream(
                   totalTokens: roundTokens,
                   usage: usage,
                   toolCalls: [
-                    ToolCallInfo(id: sid, name: 'search_web', arguments: args),
+                    ToolCallInfo(
+                      id: sid,
+                      name: 'search_web',
+                      arguments: args,
+                      metadata: {
+                        'anthropic': {'assistant_blocks': assistantBlocks},
+                      },
+                    ),
                   ],
                 );
               }

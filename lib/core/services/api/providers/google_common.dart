@@ -41,6 +41,64 @@ List<Map<String, dynamic>> _buildGeminiToolsArray({
   return toolsArr;
 }
 
+Map<String, dynamic>? _googleToolMetadata(Map<String, dynamic> message) {
+  final metadata = message['metadata'];
+  if (metadata is! Map) return null;
+  final google = metadata['google'];
+  if (google is! Map) return null;
+  return google.cast<String, dynamic>();
+}
+
+Map<String, dynamic>? _googleFunctionCallPartFromToolCall(Map toolCall) {
+  final metadata = toolCall['metadata'];
+  if (metadata is Map) {
+    final google = metadata['google'];
+    if (google is Map) {
+      final part = google['part'];
+      if (part is Map && part['functionCall'] is Map) {
+        return part.cast<String, dynamic>();
+      }
+    }
+  }
+
+  final fn = toolCall['function'];
+  if (fn is! Map) return null;
+  final name = (fn['name'] ?? '').toString();
+  if (name.isEmpty) return null;
+  Map<String, dynamic> args = const <String, dynamic>{};
+  try {
+    args = (jsonDecode((fn['arguments'] ?? '{}').toString()) as Map)
+        .cast<String, dynamic>();
+  } catch (_) {}
+  final part = <String, dynamic>{
+    'functionCall': {'name': name, 'args': args},
+  };
+  final id = (toolCall['id'] ?? '').toString();
+  if (id.isNotEmpty) part['id'] = id;
+  return part;
+}
+
+Map<String, dynamic> _googleFunctionResponsePartFromToolMessage(
+  Map<String, dynamic> message,
+) {
+  final name = (message['name'] ?? '').toString();
+  final content = (message['content'] ?? '').toString();
+  Map<String, dynamic> response;
+  try {
+    response = (jsonDecode(content) as Map).cast<String, dynamic>();
+  } catch (_) {
+    response = {'result': content};
+  }
+  final part = <String, dynamic>{
+    'functionResponse': {'name': name, 'response': response},
+  };
+  final google = _googleToolMetadata(message);
+  final rawPart = google?['part'];
+  final id = rawPart is Map ? rawPart['id']?.toString() : null;
+  if (id != null && id.isNotEmpty) part['id'] = id;
+  return part;
+}
+
 Stream<ChatStreamChunk> _sendGoogleStream(
   http.Client client,
   ProviderConfig config,
@@ -115,6 +173,27 @@ Stream<ChatStreamChunk> _sendGoogleStream(
         continue;
       }
       final role = roleRaw == 'assistant' ? 'model' : 'user';
+      if (roleRaw == 'tool') {
+        contents.add({
+          'role': 'user',
+          'parts': [_googleFunctionResponsePartFromToolMessage(msg)],
+        });
+        continue;
+      }
+      if (roleRaw == 'assistant' && msg['tool_calls'] is List) {
+        final parts = <Map<String, dynamic>>[];
+        final raw = (msg['content'] ?? '').toString();
+        if (raw.trim().isNotEmpty && raw.trim() != '\n\n') {
+          parts.add({'text': raw});
+        }
+        for (final tc in msg['tool_calls'] as List) {
+          if (tc is! Map) continue;
+          final part = _googleFunctionCallPartFromToolCall(tc);
+          if (part != null) parts.add(part);
+        }
+        if (parts.isNotEmpty) contents.add({'role': 'model', 'parts': parts});
+        continue;
+      }
       final isLast = i == messages.length - 1;
       final parts = <Map<String, dynamic>>[];
       final meta = _extractGeminiThoughtMeta((msg['content'] ?? '').toString());
@@ -503,6 +582,27 @@ Stream<ChatStreamChunk> _sendGoogleStream(
       continue;
     }
     final role = roleRaw == 'assistant' ? 'model' : 'user';
+    if (roleRaw == 'tool') {
+      contents.add({
+        'role': 'user',
+        'parts': [_googleFunctionResponsePartFromToolMessage(msg)],
+      });
+      continue;
+    }
+    if (roleRaw == 'assistant' && msg['tool_calls'] is List) {
+      final parts = <Map<String, dynamic>>[];
+      final raw = (msg['content'] ?? '').toString();
+      if (raw.trim().isNotEmpty && raw.trim() != '\n\n') {
+        parts.add({'text': raw});
+      }
+      for (final tc in msg['tool_calls'] as List) {
+        if (tc is! Map) continue;
+        final part = _googleFunctionCallPartFromToolCall(tc);
+        if (part != null) parts.add(part);
+      }
+      if (parts.isNotEmpty) contents.add({'role': 'model', 'parts': parts});
+      continue;
+    }
     final isLast = i == messages.length - 1;
     final parts = <Map<String, dynamic>>[];
     final meta = _extractGeminiThoughtMeta((msg['content'] ?? '').toString());
@@ -1144,7 +1244,20 @@ Stream<ChatStreamChunk> _sendGoogleStream(
                     totalTokens: totalTokens,
                     usage: usage,
                     toolCalls: [
-                      ToolCallInfo(id: id, name: name, arguments: args),
+                      ToolCallInfo(
+                        id: id,
+                        name: name,
+                        arguments: args,
+                        metadata: {
+                          'google': {
+                            'part': rawPart,
+                            if (thoughtSigKey != null && thoughtSigVal != null)
+                              'thoughtSigKey': thoughtSigKey,
+                            if (thoughtSigKey != null && thoughtSigVal != null)
+                              'thoughtSigVal': thoughtSigVal,
+                          },
+                        },
+                      ),
                     ],
                   );
                   String resText = '';
@@ -1161,6 +1274,17 @@ Stream<ChatStreamChunk> _sendGoogleStream(
                           name: name,
                           arguments: args,
                           content: resText,
+                          metadata: {
+                            'google': {
+                              'part': rawPart,
+                              if (thoughtSigKey != null &&
+                                  thoughtSigVal != null)
+                                'thoughtSigKey': thoughtSigKey,
+                              if (thoughtSigKey != null &&
+                                  thoughtSigVal != null)
+                                'thoughtSigVal': thoughtSigVal,
+                            },
+                          },
                         ),
                       ],
                     );

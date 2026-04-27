@@ -110,7 +110,7 @@ class MessageBuilderService {
     required List<ChatMessage> messages,
     required Map<String, int> versionSelections,
     required Conversation? currentConversation,
-    bool includeOpenAIToolMessages = false,
+    bool includeToolMessages = false,
   }) {
     final tIndex = currentConversation?.truncateIndex ?? -1;
     final List<ChatMessage> sourceAll =
@@ -126,7 +126,7 @@ class MessageBuilderService {
 
     for (final m in source) {
       String? toolContinuationReasoningContent;
-      if (includeOpenAIToolMessages && m.role == 'assistant') {
+      if (includeToolMessages && m.role == 'assistant') {
         final events = chatService.getToolEvents(m.id);
         if (events.isNotEmpty) {
           toolContinuationReasoningContent =
@@ -157,6 +157,8 @@ class MessageBuilderService {
               'id': id,
               'type': 'function',
               'function': {'name': name, 'arguments': argumentsJson},
+              if (e['metadata'] is Map)
+                'metadata': (e['metadata'] as Map).cast<String, dynamic>(),
             });
 
             final c = e['content'];
@@ -166,6 +168,8 @@ class MessageBuilderService {
                 'name': name,
                 'tool_call_id': id,
                 'content': c.toString(),
+                if (e['metadata'] is Map)
+                  'metadata': (e['metadata'] as Map).cast<String, dynamic>(),
               });
             }
           }

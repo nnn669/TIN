@@ -786,6 +786,7 @@ class ChatService extends ChangeNotifier {
     required String name,
     required Map<String, dynamic> arguments,
     String? content,
+    Map<String, dynamic>? metadata,
   }) async {
     if (!_initialized) await init();
     final list = List<Map<String, dynamic>>.of(
@@ -814,6 +815,12 @@ class ChatService extends ChangeNotifier {
       'arguments': arguments,
       'content': content,
     };
+    final existingMetadata = idx >= 0 ? list[idx]['metadata'] : null;
+    if (metadata != null && metadata.isNotEmpty) {
+      record['metadata'] = metadata;
+    } else if (existingMetadata is Map && existingMetadata.isNotEmpty) {
+      record['metadata'] = existingMetadata.cast<String, dynamic>();
+    }
     if (idx >= 0) {
       list[idx] = record;
     } else {

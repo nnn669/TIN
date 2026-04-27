@@ -124,7 +124,9 @@ class MessageGenerationService {
       providerKey,
       explicitType: cfg.providerType,
     );
-    final includeOpenAIToolMessages = kind == ProviderKind.openai;
+    final includeToolMessages = switch (kind) {
+      ProviderKind.openai || ProviderKind.claude || ProviderKind.google => true,
+    };
 
     onFileProcessingStarted?.call();
 
@@ -133,7 +135,7 @@ class MessageGenerationService {
       messages: messages,
       versionSelections: versionSelections,
       currentConversation: currentConversation,
-      includeOpenAIToolMessages: includeOpenAIToolMessages,
+      includeToolMessages: includeToolMessages,
     );
 
     // Apply assistant replace-only regexes at send-time (visual stays unchanged).

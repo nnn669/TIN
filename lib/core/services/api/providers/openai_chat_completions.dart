@@ -17,7 +17,13 @@ Map<String, dynamic> _copyChatCompletionMessage(Map<String, dynamic> m) {
   if (role == 'assistant') {
     final toolCalls = m['tool_calls'];
     if (toolCalls is List && toolCalls.isNotEmpty) {
-      out['tool_calls'] = toolCalls;
+      out['tool_calls'] = toolCalls.whereType<Map>().map((toolCall) {
+        final copy = toolCall.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        copy.remove('metadata');
+        return copy;
+      }).toList();
     }
     final functionCall = m['function_call'];
     if (functionCall != null) {

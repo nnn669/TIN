@@ -1209,7 +1209,13 @@ class ToolCallInfo {
   final String id;
   final String name;
   final Map<String, dynamic> arguments;
-  ToolCallInfo({required this.id, required this.name, required this.arguments});
+  final Map<String, dynamic>? metadata;
+  ToolCallInfo({
+    required this.id,
+    required this.name,
+    required this.arguments,
+    this.metadata,
+  });
 }
 
 class ToolResultInfo {
@@ -1217,10 +1223,12 @@ class ToolResultInfo {
   final String name;
   final Map<String, dynamic> arguments;
   final String content;
+  final Map<String, dynamic>? metadata;
   ToolResultInfo({
     required this.id,
     required this.name,
     required this.arguments,
     required this.content,
+    this.metadata,
   });
 }
