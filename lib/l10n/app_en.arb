@@ -690,6 +690,7 @@
   "chatMessageWidgetRegenerateTooltip": "Regenerate",
   "chatMessageWidgetRegenerateConfirmTitle": "Confirm Regenerate",
   "chatMessageWidgetRegenerateConfirmContent": "Regenerating only updates this message and keeps the messages below it. Continue?",
+  "chatMessageWidgetRegenerateConfirmDeleteTrailingContent": "Regenerating will delete all messages below this message and cannot be undone. Continue?",
   "chatMessageWidgetRegenerateConfirmCancel": "Cancel",
   "chatMessageWidgetRegenerateConfirmOk": "Regenerate",
   "chatMessageWidgetStopTooltip": "Stop",
@@ -1381,6 +1382,8 @@
   "displaySettingsPageCollapseThinkingStepsSubtitle": "Show only the latest steps until expanded",
   "displaySettingsPageShowToolResultSummaryTitle": "Show Tool Result Summary",
   "displaySettingsPageShowToolResultSummarySubtitle": "Display the summary text below tool steps",
+  "displaySettingsPageRegenerateDeleteTrailingMessagesTitle": "Delete messages below when regenerating",
+  "displaySettingsPageShowRegenerateConfirmDialogTitle": "Confirm before regenerating",
   "chainOfThoughtExpandSteps": "Show {count} more steps",
   "@chainOfThoughtExpandSteps": {
     "placeholders": {

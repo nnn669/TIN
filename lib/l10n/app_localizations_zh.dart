@@ -1587,6 +1587,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '重新生成只会更新当前消息，不会删除下面的消息。确定要继续吗？';
 
   @override
+  String get chatMessageWidgetRegenerateConfirmDeleteTrailingContent =>
+      '重新生成将会删除此消息下面的所有消息，且无法撤销。确定要继续吗？';
+
+  @override
   String get chatMessageWidgetRegenerateConfirmCancel => '取消';
 
   @override
@@ -3158,6 +3162,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get displaySettingsPageShowToolResultSummarySubtitle =>
       '在工具步骤下方显示摘要文本';
+
+  @override
+  String get displaySettingsPageRegenerateDeleteTrailingMessagesTitle =>
+      '重新生成时删除下面的消息';
+
+  @override
+  String get displaySettingsPageShowRegenerateConfirmDialogTitle => '重新生成前弹出确认';
 
   @override
   String chainOfThoughtExpandSteps(Object count) {
@@ -5896,6 +5907,10 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '重新生成只会更新当前消息，不会删除下面的消息。确定要继续吗？';
 
   @override
+  String get chatMessageWidgetRegenerateConfirmDeleteTrailingContent =>
+      '重新生成将会删除此消息下面的所有消息，且无法撤销。确定要继续吗？';
+
+  @override
   String get chatMessageWidgetRegenerateConfirmCancel => '取消';
 
   @override
@@ -7467,6 +7482,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get displaySettingsPageShowToolResultSummarySubtitle =>
       '在工具步骤下方显示摘要文本';
+
+  @override
+  String get displaySettingsPageRegenerateDeleteTrailingMessagesTitle =>
+      '重新生成时删除下面的消息';
+
+  @override
+  String get displaySettingsPageShowRegenerateConfirmDialogTitle => '重新生成前弹出确认';
 
   @override
   String chainOfThoughtExpandSteps(Object count) {
@@ -10204,6 +10226,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '重新生成只會更新目前訊息，不會刪除下面的訊息。確定要繼續嗎？';
 
   @override
+  String get chatMessageWidgetRegenerateConfirmDeleteTrailingContent =>
+      '重新生成將會刪除此訊息下面的所有訊息，且無法復原。確定要繼續嗎？';
+
+  @override
   String get chatMessageWidgetRegenerateConfirmCancel => '取消';
 
   @override
@@ -11774,6 +11800,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get displaySettingsPageShowToolResultSummarySubtitle =>
       '在工具步驟下方顯示摘要文字';
+
+  @override
+  String get displaySettingsPageRegenerateDeleteTrailingMessagesTitle =>
+      '重新生成時刪除下面的訊息';
+
+  @override
+  String get displaySettingsPageShowRegenerateConfirmDialogTitle => '重新生成前彈出確認';
 
   @override
   String chainOfThoughtExpandSteps(Object count) {

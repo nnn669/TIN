@@ -105,6 +105,10 @@ class SettingsProvider extends ChangeNotifier {
       'display_collapse_thinking_steps_v1';
   static const String _displayShowToolResultSummaryKey =
       'display_show_tool_result_summary_v1';
+  static const String _displayRegenerateDeleteTrailingMessagesKey =
+      'display_regenerate_delete_trailing_messages_v1';
+  static const String _displayShowRegenerateConfirmDialogKey =
+      'display_show_regenerate_confirm_dialog_v1';
   static const String _displayShowMessageNavKey = 'display_show_message_nav_v1';
   static const String _displayUseNewAssistantAvatarUxKey =
       'display_use_new_assistant_avatar_ux_v1';
@@ -760,6 +764,10 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getBool(_displayCollapseThinkingStepsKey) ?? false;
     _showToolResultSummary =
         prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
+    _regenerateDeleteTrailingMessages =
+        prefs.getBool(_displayRegenerateDeleteTrailingMessagesKey) ?? false;
+    _showRegenerateConfirmDialog =
+        prefs.getBool(_displayShowRegenerateConfirmDialogKey) ?? true;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
     _useNewAssistantAvatarUx =
         prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
@@ -2809,6 +2817,27 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowToolResultSummaryKey, v);
   }
 
+  bool _regenerateDeleteTrailingMessages = false;
+  bool get regenerateDeleteTrailingMessages =>
+      _regenerateDeleteTrailingMessages;
+  Future<void> setRegenerateDeleteTrailingMessages(bool v) async {
+    if (_regenerateDeleteTrailingMessages == v) return;
+    _regenerateDeleteTrailingMessages = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayRegenerateDeleteTrailingMessagesKey, v);
+  }
+
+  bool _showRegenerateConfirmDialog = true;
+  bool get showRegenerateConfirmDialog => _showRegenerateConfirmDialog;
+  Future<void> setShowRegenerateConfirmDialog(bool v) async {
+    if (_showRegenerateConfirmDialog == v) return;
+    _showRegenerateConfirmDialog = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayShowRegenerateConfirmDialogKey, v);
+  }
+
   // Display: show message navigation button
   bool _showMessageNavButtons = true;
   bool get showMessageNavButtons => _showMessageNavButtons;
@@ -3393,6 +3422,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._autoCollapseThinking = _autoCollapseThinking;
     copy._collapseThinkingSteps = _collapseThinkingSteps;
     copy._showToolResultSummary = _showToolResultSummary;
+    copy._regenerateDeleteTrailingMessages = _regenerateDeleteTrailingMessages;
+    copy._showRegenerateConfirmDialog = _showRegenerateConfirmDialog;
     copy._showMessageNavButtons = _showMessageNavButtons;
     copy._useNewAssistantAvatarUx = _useNewAssistantAvatarUx;
     copy._showProviderInModelCapsule = _showProviderInModelCapsule;

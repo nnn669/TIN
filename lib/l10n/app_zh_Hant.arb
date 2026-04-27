@@ -529,6 +529,7 @@
   "chatMessageWidgetRegenerateTooltip": "重新生成",
   "chatMessageWidgetRegenerateConfirmTitle": "確認重新生成",
   "chatMessageWidgetRegenerateConfirmContent": "重新生成只會更新目前訊息，不會刪除下面的訊息。確定要繼續嗎？",
+  "chatMessageWidgetRegenerateConfirmDeleteTrailingContent": "重新生成將會刪除此訊息下面的所有訊息，且無法復原。確定要繼續嗎？",
   "chatMessageWidgetRegenerateConfirmCancel": "取消",
   "chatMessageWidgetRegenerateConfirmOk": "重新生成",
   "chatMessageWidgetStopTooltip": "停止",
@@ -1040,6 +1041,8 @@
   "displaySettingsPageCollapseThinkingStepsSubtitle": "預設只顯示最新步驟，展開後查看全部",
   "displaySettingsPageShowToolResultSummaryTitle": "顯示工具結果摘要",
   "displaySettingsPageShowToolResultSummarySubtitle": "在工具步驟下方顯示摘要文字",
+  "displaySettingsPageRegenerateDeleteTrailingMessagesTitle": "重新生成時刪除下面的訊息",
+  "displaySettingsPageShowRegenerateConfirmDialogTitle": "重新生成前彈出確認",
   "chainOfThoughtExpandSteps": "展開更多 {count} 步",
   "@chainOfThoughtExpandSteps": {
     "placeholders": {

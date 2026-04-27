@@ -1632,6 +1632,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Regenerating only updates this message and keeps the messages below it. Continue?';
 
   @override
+  String get chatMessageWidgetRegenerateConfirmDeleteTrailingContent =>
+      'Regenerating will delete all messages below this message and cannot be undone. Continue?';
+
+  @override
   String get chatMessageWidgetRegenerateConfirmCancel => 'Cancel';
 
   @override
@@ -3277,6 +3281,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get displaySettingsPageShowToolResultSummarySubtitle =>
       'Display the summary text below tool steps';
+
+  @override
+  String get displaySettingsPageRegenerateDeleteTrailingMessagesTitle =>
+      'Delete messages below when regenerating';
+
+  @override
+  String get displaySettingsPageShowRegenerateConfirmDialogTitle =>
+      'Confirm before regenerating';
 
   @override
   String chainOfThoughtExpandSteps(Object count) {

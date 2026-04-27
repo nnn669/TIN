@@ -106,6 +106,10 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowShowToolResultSummary(),
                   _RowDivider(),
+                  _ToggleRowRegenerateDeleteTrailingMessages(),
+                  _RowDivider(),
+                  _ToggleRowShowRegenerateConfirmDialog(),
+                  _RowDivider(),
                   _ToggleRowShowUpdates(),
                   _RowDivider(),
                   _ToggleRowMsgNavButtons(),
@@ -2182,6 +2186,37 @@ class _ToggleRowShowToolResultSummary extends StatelessWidget {
       value: sp.showToolResultSummary,
       onChanged: (v) =>
           context.read<SettingsProvider>().setShowToolResultSummary(v),
+    );
+  }
+}
+
+class _ToggleRowRegenerateDeleteTrailingMessages extends StatelessWidget {
+  const _ToggleRowRegenerateDeleteTrailingMessages();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageRegenerateDeleteTrailingMessagesTitle,
+      value: sp.regenerateDeleteTrailingMessages,
+      onChanged: (v) => context
+          .read<SettingsProvider>()
+          .setRegenerateDeleteTrailingMessages(v),
+    );
+  }
+}
+
+class _ToggleRowShowRegenerateConfirmDialog extends StatelessWidget {
+  const _ToggleRowShowRegenerateConfirmDialog();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowRegenerateConfirmDialogTitle,
+      value: sp.showRegenerateConfirmDialog,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowRegenerateConfirmDialog(v),
     );
   }
 }
