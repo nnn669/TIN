@@ -6,7 +6,7 @@ import 'package:gpt_markdown/custom_widgets/markdown_config.dart'
     show GptMarkdownConfig;
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/atom-one-dark-reasonable.dart';
-import 'package:highlight/highlight_core.dart' show Node, highlight;
+import 'package:highlight/highlight.dart' show Node, highlight;
 import '../../icons/lucide_adapter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
