@@ -3185,6 +3185,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageShowChatListDateSubtitle => '在左侧对话列表中显示日期分组标签';
 
   @override
+  String get displaySettingsPageEnableImageCropperTitle => '启用图片裁剪';
+
+  @override
+  String get displaySettingsPageEnableImageCropperSubtitle =>
+      '从相册或相机选择图片后，允许裁剪图片';
+
+  @override
   String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
       '点选助手时不自动关闭侧边栏';
 
@@ -7505,6 +7512,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageShowChatListDateSubtitle => '在左侧对话列表中显示日期分组标签';
 
   @override
+  String get displaySettingsPageEnableImageCropperTitle => '启用图片裁剪';
+
+  @override
+  String get displaySettingsPageEnableImageCropperSubtitle =>
+      '从相册或相机选择图片后，允许裁剪图片';
+
+  @override
   String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
       '点选助手时不自动关闭侧边栏';
 
@@ -11821,6 +11835,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageShowChatListDateSubtitle => '在左側對話列表中顯示日期分組標籤';
+
+  @override
+  String get displaySettingsPageEnableImageCropperTitle => '啟用圖片裁剪';
+
+  @override
+  String get displaySettingsPageEnableImageCropperSubtitle =>
+      '從相簿或相機選擇圖片後，允許裁剪圖片';
 
   @override
   String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>

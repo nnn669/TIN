@@ -6182,6 +6182,18 @@ abstract class AppLocalizations {
   /// **'Display date group labels in the conversation list'**
   String get displaySettingsPageShowChatListDateSubtitle;
 
+  /// No description provided for @displaySettingsPageEnableImageCropperTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Image Cropping'**
+  String get displaySettingsPageEnableImageCropperTitle;
+
+  /// No description provided for @displaySettingsPageEnableImageCropperSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop images after selecting from gallery or camera'**
+  String get displaySettingsPageEnableImageCropperSubtitle;
+
   /// No description provided for @displaySettingsPageKeepSidebarOpenOnAssistantTapTitle.
   ///
   /// In en, this message translates to:

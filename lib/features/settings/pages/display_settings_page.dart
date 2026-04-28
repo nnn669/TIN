@@ -1286,6 +1286,7 @@ Widget _iosSwitchRow(
   BuildContext context, {
   IconData? icon,
   required String label,
+  String? subtitle,
   required bool value,
   required ValueChanged<bool> onChanged,
 }) {
@@ -1299,7 +1300,10 @@ Widget _iosSwitchRow(
         base: baseColor,
         builder: (c) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: subtitle == null ? 2 : 8,
+            ),
             child: Row(
               children: [
                 if (icon != null) ...[
@@ -1307,8 +1311,27 @@ Widget _iosSwitchRow(
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: Text(label, style: TextStyle(fontSize: 15, color: c)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: TextStyle(fontSize: 15, color: c)),
+                      if (subtitle != null && subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.2,
+                            color: cs.onSurface.withValues(alpha: 0.56),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 IosSwitch(value: value, onChanged: onChanged),
               ],
             ),
@@ -1842,6 +1865,16 @@ class BehaviorStartupSettingsPage extends StatelessWidget {
                 value: sp.showChatListDate,
                 onChanged: (v) =>
                     context.read<SettingsProvider>().setShowChatListDate(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.Crop,
+                label: l10n.displaySettingsPageEnableImageCropperTitle,
+                subtitle: l10n.displaySettingsPageEnableImageCropperSubtitle,
+                value: sp.imageCropperEnabled,
+                onChanged: (v) =>
+                    context.read<SettingsProvider>().setImageCropperEnabled(v),
               ),
               _iosDivider(context),
               _iosSwitchRow(

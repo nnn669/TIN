@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/app_directories.dart';
 import '../../../utils/file_import_helper.dart';
@@ -36,6 +38,8 @@ class FileUploadService {
 
   /// 滚动到底部的回调
   final VoidCallback onScrollToBottom;
+
+  static const String _imageCropperEnabledKey = 'image_cropper_enabled_v1';
 
   /// 复制选中的文件到应用上传目录
   ///
@@ -82,7 +86,9 @@ class FileUploadService {
           }
         }
         if (toCopy.isEmpty) return;
-        final paths = await copyPickedFiles(toCopy);
+        final croppedFiles = await _maybeCropImages(toCopy);
+        if (croppedFiles.isEmpty) return;
+        final paths = await copyPickedFiles(croppedFiles);
         if (paths.isNotEmpty) {
           mediaController.addImages(paths);
           onScrollToBottom();
@@ -93,7 +99,9 @@ class FileUploadService {
       final picker = ImagePicker();
       final files = await picker.pickMultiImage();
       if (files.isEmpty) return;
-      final paths = await copyPickedFiles(files);
+      final croppedFiles = await _maybeCropImages(files);
+      if (croppedFiles.isEmpty) return;
+      final paths = await copyPickedFiles(croppedFiles);
       if (paths.isNotEmpty) {
         mediaController.addImages(paths);
         onScrollToBottom();
@@ -134,7 +142,9 @@ class FileUploadService {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.camera);
       if (file == null) return;
-      final paths = await copyPickedFiles([file]);
+      final croppedFiles = await _maybeCropImages([file]);
+      if (croppedFiles.isEmpty) return;
+      final paths = await copyPickedFiles(croppedFiles);
       if (paths.isNotEmpty) {
         if (!context.mounted) return;
         mediaController.addImages(paths);
@@ -152,6 +162,46 @@ class FileUploadService {
         );
       } catch (_) {}
     }
+  }
+
+  Future<List<XFile>> _maybeCropImages(List<XFile> files) async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_imageCropperEnabledKey) ?? false;
+    if (!enabled) return files;
+
+    final context = _getContext();
+    if (!context.mounted) return files;
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final croppedFiles = <XFile>[];
+
+    for (final file in files) {
+      try {
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: file.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: l10n.displaySettingsPageEnableImageCropperTitle,
+              toolbarColor: cs.surface,
+              toolbarWidgetColor: cs.onSurface,
+              activeControlsWidgetColor: cs.primary,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: l10n.displaySettingsPageEnableImageCropperTitle,
+            ),
+          ],
+        );
+        if (croppedFile != null) {
+          croppedFiles.add(XFile(croppedFile.path));
+        }
+      } catch (_) {
+        croppedFiles.add(file);
+      }
+    }
+
+    return croppedFiles;
   }
 
   /// 根据文件扩展名推断 MIME 类型

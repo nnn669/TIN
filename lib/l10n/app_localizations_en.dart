@@ -3306,6 +3306,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Display date group labels in the conversation list';
 
   @override
+  String get displaySettingsPageEnableImageCropperTitle =>
+      'Enable Image Cropping';
+
+  @override
+  String get displaySettingsPageEnableImageCropperSubtitle =>
+      'Crop images after selecting from gallery or camera';
+
+  @override
   String get displaySettingsPageKeepSidebarOpenOnAssistantTapTitle =>
       'Keep sidebar open when selecting assistant';
 
