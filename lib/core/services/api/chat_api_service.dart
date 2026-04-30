@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/model_provider.dart';
 import '../../models/token_usage.dart';
@@ -26,6 +27,7 @@ import '../../utils/multimodal_input_utils.dart';
 part 'chat_api_service_shims.dart';
 part 'providers/openai_common.dart';
 part 'providers/openai_chat_completions.dart';
+part 'providers/openai_images.dart';
 part 'providers/openai_responses.dart';
 part 'providers/google_common.dart';
 part 'providers/google_gemini.dart';
@@ -400,7 +402,17 @@ class ChatApiService {
 
     try {
       if (kind == ProviderKind.openai) {
-        if (config.useResponseApi == true) {
+        if (_shouldUseOpenAIImagesApi(config, modelId)) {
+          yield* _sendOpenAIImagesStream(
+            client,
+            config,
+            modelId,
+            safeMessages,
+            userImagePaths: userImagePaths,
+            extraHeaders: extraHeaders,
+            extraBody: extraBody,
+          );
+        } else if (config.useResponseApi == true) {
           yield* _sendOpenAIResponsesStream(
             client,
             config,
