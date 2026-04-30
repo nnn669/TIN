@@ -814,6 +814,7 @@ class _HomePageState extends State<HomePage>
       isToolModel: _controller.isToolModel,
       isReasoningModel: _controller.isReasoningModel,
       isReasoningEnabled: _controller.isReasoningEnabled,
+      conversationId: _controller.currentConversation?.id,
       onMore: _toggleTools,
       onSelectModel: () => showModelSelectSheet(context),
       onLongPressSelectModel: () {

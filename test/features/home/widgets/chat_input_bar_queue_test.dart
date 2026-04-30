@@ -21,10 +21,12 @@ void main() {
     onSend,
     SettingsProvider? settingsProvider,
     AssistantProvider? assistantProvider,
+    ChatInputBarController? mediaController,
     bool loading = false,
     bool hasQueuedInput = false,
     String? queuedPreviewText,
     VoidCallback? onCancelQueuedInput,
+    String? conversationId,
   }) {
     return MultiProvider(
       providers: [
@@ -42,11 +44,13 @@ void main() {
           body: ChatInputBar(
             controller: controller,
             focusNode: focusNode,
+            mediaController: mediaController,
             onSend: onSend,
             loading: loading,
             hasQueuedInput: hasQueuedInput,
             queuedPreviewText: queuedPreviewText,
             onCancelQueuedInput: onCancelQueuedInput,
+            conversationId: conversationId,
           ),
         ),
       ),
@@ -131,6 +135,132 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cancelled, isTrue);
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('绘图模式胶囊可关闭并传递聊天接口路由', (tester) async {
+    final controller = TextEditingController(text: 'draw a cat');
+    final focusNode = FocusNode();
+    final mediaController = ChatInputBarController();
+    final settings = SettingsProvider();
+    await settings.setProviderConfig(
+      'OpenAITest',
+      ProviderConfig(
+        id: 'OpenAITest',
+        enabled: true,
+        name: 'OpenAITest',
+        apiKey: 'test-key',
+        baseUrl: 'https://example.com/v1',
+        providerType: ProviderKind.openai,
+      ),
+    );
+    await settings.setCurrentModel('OpenAITest', 'gpt-image-2');
+    ChatInputData? submitted;
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        mediaController: mediaController,
+        settingsProvider: settings,
+        onSend: (input) async {
+          submitted = input;
+          return ChatInputSubmissionResult.rejected;
+        },
+      ),
+    );
+
+    expect(find.text('Image mode'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Lucide.X));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Image mode'), findsNothing);
+    expect(mediaController.allowImagesApiRouting, isFalse);
+
+    await tapSendButton(tester);
+
+    expect(submitted?.text, 'draw a cat');
+    expect(submitted?.allowImagesApiRouting, isFalse);
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('绘图模式关闭后切换对话会重新显示', (tester) async {
+    final controller = TextEditingController(text: 'draw a cat');
+    final focusNode = FocusNode();
+    final settings = SettingsProvider();
+    await settings.setProviderConfig(
+      'OpenAITest',
+      ProviderConfig(
+        id: 'OpenAITest',
+        enabled: true,
+        name: 'OpenAITest',
+        apiKey: 'test-key',
+        baseUrl: 'https://example.com/v1',
+        providerType: ProviderKind.openai,
+      ),
+    );
+    await settings.setCurrentModel('OpenAITest', 'gpt-image-2');
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        settingsProvider: settings,
+        conversationId: 'conversation-a',
+        onSend: (_) async => ChatInputSubmissionResult.rejected,
+      ),
+    );
+
+    expect(find.text('Image mode'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Lucide.X));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Image mode'), findsNothing);
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        settingsProvider: settings,
+        conversationId: 'conversation-b',
+        onSend: (_) async => ChatInputSubmissionResult.rejected,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Image mode'), findsOneWidget);
+
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('非绘图模型保持默认路由许可', (tester) async {
+    final controller = TextEditingController(text: 'hello');
+    final focusNode = FocusNode();
+    ChatInputData? submitted;
+
+    await tester.pumpWidget(
+      buildHarness(
+        controller: controller,
+        focusNode: focusNode,
+        onSend: (input) async {
+          submitted = input;
+          return ChatInputSubmissionResult.rejected;
+        },
+      ),
+    );
+
+    expect(find.text('Image mode'), findsNothing);
+
+    await tapSendButton(tester);
+
+    expect(submitted?.allowImagesApiRouting, isTrue);
 
     controller.dispose();
     focusNode.dispose();

@@ -20,6 +20,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/services/search/search_service.dart';
 import '../../../core/services/api/builtin_tools.dart';
+import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/utils/multimodal_input_utils.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
@@ -33,6 +34,8 @@ class ChatInputBarController {
   void _unbind(_ChatInputBarState s) {
     if (identical(_state, s)) _state = null;
   }
+
+  bool get allowImagesApiRouting => _state?._allowImagesApiRouting ?? true;
 
   void addImages(List<String> paths) => _state?._addImages(paths);
   void clearImages() => _state?._clearImages();
@@ -88,6 +91,7 @@ class ChatInputBar extends StatefulWidget {
     this.showOcrButton = false,
     this.ocrActive = false,
     this.onToggleOcr,
+    this.conversationId,
   });
 
   final Future<ChatInputSubmissionResult> Function(ChatInputData)? onSend;
@@ -134,6 +138,7 @@ class ChatInputBar extends StatefulWidget {
   final bool showOcrButton;
   final bool ocrActive;
   final VoidCallback? onToggleOcr;
+  final String? conversationId;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -159,8 +164,47 @@ class _ChatInputBarState extends State<ChatInputBar>
   // Suppress context menu briefly after app resume to avoid flickering
   bool _suppressContextMenu = false;
   bool _isSubmitting = false;
+  String? _imageModeModelKey;
+  String? _lastImageModeModelKey;
+  String? _dismissedImageModeModelKey;
 
   bool get _composerLocked => widget.hasQueuedInput;
+
+  bool _supportsImagesApiRouting(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final ap = context.watch<AssistantProvider>();
+    final a = ap.currentAssistant;
+    final providerKey = a?.chatModelProvider ?? settings.currentModelProvider;
+    final modelId = a?.chatModelId ?? settings.currentModelId;
+    if (providerKey == null || modelId == null) {
+      _imageModeModelKey = null;
+      return false;
+    }
+    final cfg = settings.getProviderConfig(providerKey);
+    final supported = ChatApiService.supportsOpenAIImagesApiRouting(
+      cfg,
+      modelId,
+    );
+    final nextKey = supported
+        ? '${widget.conversationId ?? ''}::$providerKey::$modelId'
+        : null;
+    if (nextKey != _lastImageModeModelKey) {
+      _dismissedImageModeModelKey = null;
+      _lastImageModeModelKey = nextKey;
+    }
+    _imageModeModelKey = nextKey;
+    return supported;
+  }
+
+  bool get _imageModeActive {
+    final key = _imageModeModelKey;
+    return key != null && key != _dismissedImageModeModelKey;
+  }
+
+  bool get _allowImagesApiRouting {
+    final key = _imageModeModelKey;
+    return key == null || key != _dismissedImageModeModelKey;
+  }
 
   // Instance method for onChanged to avoid recreating the callback on every build
   void _onTextChanged(String _) => setState(() {});
@@ -284,6 +328,7 @@ class _ChatInputBarState extends State<ChatInputBar>
               text: text,
               imagePaths: List.of(_images),
               documents: List.of(_docs),
+              allowImagesApiRouting: _allowImagesApiRouting,
             ),
           ) ??
           ChatInputSubmissionResult.rejected;
@@ -1411,6 +1456,7 @@ class _ChatInputBarState extends State<ChatInputBar>
     final hasText = _controller.text.trim().isNotEmpty;
     final hasImages = _images.isNotEmpty;
     final hasDocs = _docs.isNotEmpty;
+    _supportsImagesApiRouting(context);
     final size = MediaQuery.sizeOf(context);
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final bool isMobileLayout = size.width < AppBreakpoints.tablet;
@@ -1575,266 +1621,306 @@ class _ChatInputBarState extends State<ChatInputBar>
               ),
               const SizedBox(height: AppSpacing.xs),
             ],
-            // Main input container with iOS-like frosted glass effect
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                child: Container(
-                  decoration: BoxDecoration(
-                    // Translucent background over blurred content
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(20),
-                    // Use previous gray border for better contrast on white
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.10)
-                          : theme.colorScheme.outline.withValues(alpha: 0.20),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Input field with expand/collapse button
-                      Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md,
-                              AppSpacing.xxs,
-                              AppSpacing.md,
-                              AppSpacing.xs,
-                            ),
-                            child: ConstrainedBox(
-                              constraints: textFieldConstraints,
-                              child: Focus(
-                                onKeyEvent: _handleKeyEvent,
-                                child: Builder(
-                                  builder: (ctx) {
-                                    // Desktop: show a right-click context menu with paste/cut/copy/select all
-                                    // Future<void> _showDesktopContextMenu(Offset globalPos) async {
-                                    //   bool isDesktop = false;
-                                    //   try { isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux; } catch (_) {}
-                                    //   if (!isDesktop) return;
-                                    //   // Ensure input has focus so operations apply correctly
-                                    //   try { widget.focusNode?.requestFocus(); } catch (_) {}
-                                    //
-                                    //   final sel = _controller.selection;
-                                    //   final hasSelection = sel.isValid && !sel.isCollapsed;
-                                    //   final hasText = _controller.text.isNotEmpty;
-                                    //
-                                    //   final l10n = MaterialLocalizations.of(ctx);
-                                    //   await showDesktopContextMenuAt(
-                                    //     ctx,
-                                    //     globalPosition: globalPos,
-                                    //     items: [
-                                    //       DesktopContextMenuItem(
-                                    //         icon: Lucide.Clipboard,
-                                    //         label: l10n.pasteButtonLabel,
-                                    //         onTap: () async {
-                                    //           await _handlePasteFromClipboard();
-                                    //         },
-                                    //       ),
-                                    //       DesktopContextMenuItem(
-                                    //         icon: Lucide.Cut,
-                                    //         label: l10n.cutButtonLabel,
-                                    //         onTap: () async {
-                                    //           final s = _controller.selection;
-                                    //           if (s.isValid && !s.isCollapsed) {
-                                    //             final text = _controller.text.substring(s.start, s.end);
-                                    //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
-                                    //             final newText = _controller.text.replaceRange(s.start, s.end, '');
-                                    //             _controller.value = TextEditingValue(
-                                    //               text: newText,
-                                    //               selection: TextSelection.collapsed(offset: s.start),
-                                    //             );
-                                    //             setState(() {});
-                                    //           }
-                                    //         },
-                                    //       ),
-                                    //       DesktopContextMenuItem(
-                                    //         icon: Lucide.Copy,
-                                    //         label: l10n.copyButtonLabel,
-                                    //         onTap: () async {
-                                    //           final s2 = _controller.selection;
-                                    //           if (s2.isValid && !s2.isCollapsed) {
-                                    //             final text = _controller.text.substring(s2.start, s2.end);
-                                    //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
-                                    //           }
-                                    //         },
-                                    //       ),
-                                    //       // DesktopContextMenuItem(
-                                    //       //   // icon: Lucide.TextSelect,
-                                    //       //   label: l10n.selectAllButtonLabel,
-                                    //       //   onTap: () {
-                                    //       //     if (hasText) {
-                                    //       //       _controller.selection = TextSelection(baseOffset: 0, extentOffset: _controller.text.length);
-                                    //       //       setState(() {});
-                                    //       //     }
-                                    //       //   },
-                                    //       // ),
-                                    //     ],
-                                    //   );
-                                    // }
-
-                                    final enterToSend = context
-                                        .watch<SettingsProvider>()
-                                        .enterToSendOnMobile;
-                                    return GestureDetector(
-                                      behavior: HitTestBehavior.deferToChild,
-                                      // onSecondaryTapDown: (details) {
-                                      //   // _showDesktopContextMenu(details.globalPosition);
-                                      // },
-                                      child: TextField(
-                                        controller: _controller,
-                                        focusNode: widget.focusNode,
-                                        onChanged: _onTextChanged,
-                                        readOnly: _composerLocked,
-                                        minLines: 1,
-                                        maxLines: _isExpanded ? 25 : 5,
-                                        // On mobile, optionally show "Send" on the return key and submit on tap.
-                                        // Still keep multiline so pasted text preserves line breaks.
-                                        keyboardType: TextInputType.multiline,
-                                        textInputAction: enterToSend
-                                            ? TextInputAction.send
-                                            : TextInputAction.newline,
-                                        onSubmitted: enterToSend
-                                            ? (_) => unawaited(_handleSend())
-                                            : null,
-                                        // Custom context menu: use instance method to avoid flickering
-                                        // caused by recreating the callback on every build.
-                                        // See: https://github.com/flutter/flutter/issues/150551
-                                        contextMenuBuilder: _buildContextMenu,
-                                        autofocus: false,
-                                        decoration: InputDecoration(
-                                          hintText: _hint(context),
-                                          hintStyle: TextStyle(
-                                            color: theme.colorScheme.onSurface
-                                                .withValues(alpha: 0.45),
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                vertical: 2,
-                                              ),
-                                        ),
-                                        style: TextStyle(
-                                          color: theme.colorScheme.onSurface,
-                                          fontSize:
-                                              (Platform.isWindows ||
-                                                  Platform.isLinux ||
-                                                  Platform.isMacOS)
-                                              ? 14
-                                              : 15,
-                                        ),
-                                        cursorColor: theme.colorScheme.primary,
-                                      ),
-                                    );
-                                  },
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Main input container with iOS-like frosted glass effect
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        // Translucent background over blurred content
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(20),
+                        // Use previous gray border for better contrast on white
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.10)
+                              : theme.colorScheme.outline.withValues(
+                                  alpha: 0.20,
                                 ),
-                              ),
-                            ),
-                          ),
-                          // Expand/Collapse icon button (only shown when 3+ lines)
-                          if (_showExpandButton)
-                            Positioned(
-                              top: 10,
-                              right: 12,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _isExpanded = !_isExpanded);
-                                  _ensureCaretVisible();
-                                },
-                                child: Icon(
-                                  _isExpanded
-                                      ? Lucide.ChevronsDownUp
-                                      : Lucide.ChevronsUpDown,
-                                  size: 16,
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.45,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      // Bottom buttons row (no divider)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.xs,
-                          0,
-                          AppSpacing.xs,
-                          AppSpacing.xs,
+                          width: 1,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Responsive left action bar that overflows into a + menu on desktop
-                            Expanded(
-                              child: _buildResponsiveLeftActions(context),
-                            ),
-                            Row(
-                              children: [
-                                if (widget.showMoreButton) ...[
-                                  _CompactIconButton(
-                                    tooltip: AppLocalizations.of(
-                                      context,
-                                    )!.chatInputBarMoreTooltip,
-                                    icon: Lucide.Plus,
-                                    active: widget.moreOpen,
-                                    onTap: _composerLocked
-                                        ? null
-                                        : widget.onMore,
-                                    childBuilder: (c) => AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      transitionBuilder: (child, anim) =>
-                                          RotationTransition(
-                                            turns: Tween<double>(
-                                              begin: 0.85,
-                                              end: 1,
-                                            ).animate(anim),
-                                            child: FadeTransition(
-                                              opacity: anim,
-                                              child: child,
+                      ),
+                      child: Column(
+                        children: [
+                          // Input field with expand/collapse button
+                          Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.md,
+                                  AppSpacing.xxs,
+                                  AppSpacing.md,
+                                  AppSpacing.xs,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: textFieldConstraints,
+                                  child: Focus(
+                                    onKeyEvent: _handleKeyEvent,
+                                    child: Builder(
+                                      builder: (ctx) {
+                                        // Desktop: show a right-click context menu with paste/cut/copy/select all
+                                        // Future<void> _showDesktopContextMenu(Offset globalPos) async {
+                                        //   bool isDesktop = false;
+                                        //   try { isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux; } catch (_) {}
+                                        //   if (!isDesktop) return;
+                                        //   // Ensure input has focus so operations apply correctly
+                                        //   try { widget.focusNode?.requestFocus(); } catch (_) {}
+                                        //
+                                        //   final sel = _controller.selection;
+                                        //   final hasSelection = sel.isValid && !sel.isCollapsed;
+                                        //   final hasText = _controller.text.isNotEmpty;
+                                        //
+                                        //   final l10n = MaterialLocalizations.of(ctx);
+                                        //   await showDesktopContextMenuAt(
+                                        //     ctx,
+                                        //     globalPosition: globalPos,
+                                        //     items: [
+                                        //       DesktopContextMenuItem(
+                                        //         icon: Lucide.Clipboard,
+                                        //         label: l10n.pasteButtonLabel,
+                                        //         onTap: () async {
+                                        //           await _handlePasteFromClipboard();
+                                        //         },
+                                        //       ),
+                                        //       DesktopContextMenuItem(
+                                        //         icon: Lucide.Cut,
+                                        //         label: l10n.cutButtonLabel,
+                                        //         onTap: () async {
+                                        //           final s = _controller.selection;
+                                        //           if (s.isValid && !s.isCollapsed) {
+                                        //             final text = _controller.text.substring(s.start, s.end);
+                                        //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
+                                        //             final newText = _controller.text.replaceRange(s.start, s.end, '');
+                                        //             _controller.value = TextEditingValue(
+                                        //               text: newText,
+                                        //               selection: TextSelection.collapsed(offset: s.start),
+                                        //             );
+                                        //             setState(() {});
+                                        //           }
+                                        //         },
+                                        //       ),
+                                        //       DesktopContextMenuItem(
+                                        //         icon: Lucide.Copy,
+                                        //         label: l10n.copyButtonLabel,
+                                        //         onTap: () async {
+                                        //           final s2 = _controller.selection;
+                                        //           if (s2.isValid && !s2.isCollapsed) {
+                                        //             final text = _controller.text.substring(s2.start, s2.end);
+                                        //             try { await Clipboard.setData(ClipboardData(text: text)); } catch (_) {}
+                                        //           }
+                                        //         },
+                                        //       ),
+                                        //       // DesktopContextMenuItem(
+                                        //       //   // icon: Lucide.TextSelect,
+                                        //       //   label: l10n.selectAllButtonLabel,
+                                        //       //   onTap: () {
+                                        //       //     if (hasText) {
+                                        //       //       _controller.selection = TextSelection(baseOffset: 0, extentOffset: _controller.text.length);
+                                        //       //       setState(() {});
+                                        //       //     }
+                                        //       //   },
+                                        //       // ),
+                                        //     ],
+                                        //   );
+                                        // }
+
+                                        final enterToSend = context
+                                            .watch<SettingsProvider>()
+                                            .enterToSendOnMobile;
+                                        return GestureDetector(
+                                          behavior:
+                                              HitTestBehavior.deferToChild,
+                                          // onSecondaryTapDown: (details) {
+                                          //   // _showDesktopContextMenu(details.globalPosition);
+                                          // },
+                                          child: TextField(
+                                            controller: _controller,
+                                            focusNode: widget.focusNode,
+                                            onChanged: _onTextChanged,
+                                            readOnly: _composerLocked,
+                                            minLines: 1,
+                                            maxLines: _isExpanded ? 25 : 5,
+                                            // On mobile, optionally show "Send" on the return key and submit on tap.
+                                            // Still keep multiline so pasted text preserves line breaks.
+                                            keyboardType:
+                                                TextInputType.multiline,
+                                            textInputAction: enterToSend
+                                                ? TextInputAction.send
+                                                : TextInputAction.newline,
+                                            onSubmitted: enterToSend
+                                                ? (_) =>
+                                                      unawaited(_handleSend())
+                                                : null,
+                                            // Custom context menu: use instance method to avoid flickering
+                                            // caused by recreating the callback on every build.
+                                            // See: https://github.com/flutter/flutter/issues/150551
+                                            contextMenuBuilder:
+                                                _buildContextMenu,
+                                            autofocus: false,
+                                            decoration: InputDecoration(
+                                              hintText: _hint(context),
+                                              hintStyle: TextStyle(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.45),
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 2,
+                                                  ),
                                             ),
+                                            style: TextStyle(
+                                              color:
+                                                  theme.colorScheme.onSurface,
+                                              fontSize:
+                                                  (Platform.isWindows ||
+                                                      Platform.isLinux ||
+                                                      Platform.isMacOS)
+                                                  ? 14
+                                                  : 15,
+                                            ),
+                                            cursorColor:
+                                                theme.colorScheme.primary,
                                           ),
-                                      child: Icon(
-                                        widget.moreOpen
-                                            ? Lucide.X
-                                            : Lucide.Plus,
-                                        key: ValueKey(
-                                          widget.moreOpen ? 'close' : 'add',
-                                        ),
-                                        size: 20,
-                                        color: c,
-                                      ),
+                                        );
+                                      },
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                ],
-                                _CompactSendButton(
-                                  enabled:
-                                      (hasText || hasImages || hasDocs) &&
-                                      !widget.loading,
-                                  loading: widget.loading,
-                                  onSend: _handleSend,
-                                  onStop: widget.loading ? widget.onStop : null,
-                                  color: theme.colorScheme.primary,
-                                  icon: Lucide.ArrowUp,
+                                ),
+                              ),
+                              // Expand/Collapse icon button (only shown when 3+ lines)
+                              if (_showExpandButton)
+                                Positioned(
+                                  top: 10,
+                                  right: 12,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(
+                                        () => _isExpanded = !_isExpanded,
+                                      );
+                                      _ensureCaretVisible();
+                                    },
+                                    child: Icon(
+                                      _isExpanded
+                                          ? Lucide.ChevronsDownUp
+                                          : Lucide.ChevronsUpDown,
+                                      size: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          // Bottom buttons row (no divider)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.xs,
+                              0,
+                              AppSpacing.xs,
+                              AppSpacing.xs,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Responsive left action bar that overflows into a + menu on desktop
+                                Expanded(
+                                  child: _buildResponsiveLeftActions(context),
+                                ),
+                                Row(
+                                  children: [
+                                    if (widget.showMoreButton) ...[
+                                      _CompactIconButton(
+                                        tooltip: AppLocalizations.of(
+                                          context,
+                                        )!.chatInputBarMoreTooltip,
+                                        icon: Lucide.Plus,
+                                        active: widget.moreOpen,
+                                        onTap: _composerLocked
+                                            ? null
+                                            : widget.onMore,
+                                        childBuilder: (c) => AnimatedSwitcher(
+                                          duration: const Duration(
+                                            milliseconds: 200,
+                                          ),
+                                          transitionBuilder: (child, anim) =>
+                                              RotationTransition(
+                                                turns: Tween<double>(
+                                                  begin: 0.85,
+                                                  end: 1,
+                                                ).animate(anim),
+                                                child: FadeTransition(
+                                                  opacity: anim,
+                                                  child: child,
+                                                ),
+                                              ),
+                                          child: Icon(
+                                            widget.moreOpen
+                                                ? Lucide.X
+                                                : Lucide.Plus,
+                                            key: ValueKey(
+                                              widget.moreOpen ? 'close' : 'add',
+                                            ),
+                                            size: 20,
+                                            color: c,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    _CompactSendButton(
+                                      enabled:
+                                          (hasText || hasImages || hasDocs) &&
+                                          !widget.loading,
+                                      loading: widget.loading,
+                                      onSend: _handleSend,
+                                      onStop: widget.loading
+                                          ? widget.onStop
+                                          : null,
+                                      color: theme.colorScheme.primary,
+                                      icon: Lucide.ArrowUp,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                if (_imageModeActive)
+                  PositionedDirectional(
+                    top: -12,
+                    start: AppSpacing.sm,
+                    child: _ImageModePill(
+                      label: AppLocalizations.of(
+                        context,
+                      )!.chatInputBarImageMode,
+                      closeTooltip: AppLocalizations.of(
+                        context,
+                      )!.chatInputBarDisableImageModeTooltip,
+                      onClose: _composerLocked
+                          ? null
+                          : () {
+                              final key = _imageModeModelKey;
+                              if (key == null) return;
+                              setState(() {
+                                _dismissedImageModeModelKey = key;
+                              });
+                            },
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
@@ -1935,6 +2021,96 @@ class _QueuedInputBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ImageModePill extends StatelessWidget {
+  const _ImageModePill({
+    required this.label,
+    required this.closeTooltip,
+    required this.onClose,
+  });
+
+  final String label;
+  final String closeTooltip;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = (isDark ? Colors.black : Colors.white).withValues(
+      alpha: isDark ? 0.34 : 0.58,
+    );
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : scheme.primary.withValues(alpha: 0.36);
+    final fg = isDark ? scheme.onSurface : scheme.primary;
+    final iconColor = isDark ? scheme.primaryContainer : scheme.primary;
+    final radius = BorderRadius.circular(999);
+
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: radius,
+              border: Border.all(color: border),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 172),
+              child: SizedBox(
+                height: 24,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 9, end: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Lucide.Brush, size: 14, color: iconColor),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      Tooltip(
+                        message: closeTooltip,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: onClose,
+                          child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Icon(
+                              Lucide.X,
+                              size: 13,
+                              color: (isDark ? scheme.onSurfaceVariant : fg)
+                                  .withValues(
+                                    alpha: onClose == null ? 0.38 : 0.78,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

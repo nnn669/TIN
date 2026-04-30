@@ -39,6 +39,18 @@ class ChatApiService {
   static final Map<String, CancelToken> _activeCancelTokens =
       <String, CancelToken>{};
 
+  static bool supportsOpenAIImagesApiRouting(
+    ProviderConfig config,
+    String modelId,
+  ) {
+    final kind = ProviderConfig.classify(
+      config.id,
+      explicitType: config.providerType,
+    );
+    return kind == ProviderKind.openai &&
+        _shouldUseOpenAIImagesApi(config, modelId);
+  }
+
   static void cancelRequest(String requestId) {
     final key = requestId.trim();
     if (key.isEmpty) return;
@@ -383,6 +395,7 @@ class ChatApiService {
     Map<String, dynamic>? extraBody,
     bool stream = true,
     String? requestId,
+    bool allowImagesApiRouting = true,
   }) async* {
     final kind = ProviderConfig.classify(
       config.id,
@@ -402,7 +415,8 @@ class ChatApiService {
 
     try {
       if (kind == ProviderKind.openai) {
-        if (_shouldUseOpenAIImagesApi(config, modelId)) {
+        if (allowImagesApiRouting &&
+            _shouldUseOpenAIImagesApi(config, modelId)) {
           yield* _sendOpenAIImagesStream(
             client,
             config,

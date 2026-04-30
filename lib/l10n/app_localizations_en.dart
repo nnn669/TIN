@@ -2046,6 +2046,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatInputBarMoreTooltip => 'Add';
 
   @override
+  String get chatInputBarImageMode => 'Image mode';
+
+  @override
+  String get chatInputBarDisableImageModeTooltip => 'Turn off image mode';
+
+  @override
   String get chatInputBarQueuedPending => 'Queued to send';
 
   @override

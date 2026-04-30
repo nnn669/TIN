@@ -643,6 +643,8 @@
   "chatInputBarReasoningStrengthTooltip": "思維鏈強度",
   "chatInputBarMcpServersTooltip": "MCP伺服器",
   "chatInputBarMoreTooltip": "更多",
+  "chatInputBarImageMode": "繪圖模式",
+  "chatInputBarDisableImageModeTooltip": "關閉繪圖模式",
   "chatInputBarQueuedPending": "排隊中",
   "chatInputBarQueuedCancel": "取消排隊",
   "chatInputBarInsertNewline": "換行",

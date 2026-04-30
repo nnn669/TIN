@@ -14,11 +14,13 @@ class ChatInputData {
   final String text;
   final List<String> imagePaths; // absolute file paths or data URLs
   final List<DocumentAttachment> documents; // selected files
+  final bool allowImagesApiRouting;
 
   const ChatInputData({
     required this.text,
     this.imagePaths = const [],
     this.documents = const [],
+    this.allowImagesApiRouting = true,
   });
 }
 

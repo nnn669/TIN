@@ -142,6 +142,108 @@ void main() {
       },
     );
 
+    test('can disable Images API routing for image models', () async {
+      late Uri requestUri;
+      late Map<String, dynamic> requestBody;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      server.listen((request) async {
+        requestUri = request.uri;
+        requestBody =
+            jsonDecode(await utf8.decoder.bind(request).join())
+                as Map<String, dynamic>;
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'content': 'chat route'},
+              },
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+
+      final chunks = await ChatApiService.sendMessageStream(
+        config: _openAiConfig(_baseUrl(server)),
+        modelId: 'gpt-image-2',
+        messages: const [
+          {'role': 'user', 'content': 'draw a cat'},
+        ],
+        allowImagesApiRouting: false,
+        stream: false,
+      ).toList();
+
+      expect(requestUri.path, '/v1/chat/completions');
+      expect(requestBody['model'], 'gpt-image-2');
+      expect(chunks.single.content, 'chat route');
+    });
+
+    test(
+      'can disable Images API routing for image models with input images',
+      () async {
+        late Uri requestUri;
+        late String contentType;
+        late Map<String, dynamic> requestBody;
+        final tempDir = await Directory.systemTemp.createTemp(
+          'kelivo_openai_image_chat_route_',
+        );
+        addTearDown(() async {
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+        final inputImage = File('${tempDir.path}/source.png');
+        await inputImage.writeAsBytes(const [1, 2, 3, 4]);
+
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() async {
+          await server.close(force: true);
+        });
+
+        server.listen((request) async {
+          requestUri = request.uri;
+          contentType = request.headers.contentType?.mimeType ?? '';
+          requestBody =
+              jsonDecode(await utf8.decoder.bind(request).join())
+                  as Map<String, dynamic>;
+          request.response.statusCode = HttpStatus.ok;
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'choices': [
+                {
+                  'message': {'content': 'chat route with image'},
+                },
+              ],
+            }),
+          );
+          await request.response.close();
+        });
+
+        final chunks = await ChatApiService.sendMessageStream(
+          config: _openAiConfig(_baseUrl(server)),
+          modelId: 'gpt-image-2',
+          messages: const [
+            {'role': 'user', 'content': 'describe this image'},
+          ],
+          userImagePaths: [inputImage.path],
+          allowImagesApiRouting: false,
+          stream: false,
+        ).toList();
+
+        expect(requestUri.path, '/v1/chat/completions');
+        expect(contentType, ContentType.json.mimeType);
+        expect(requestBody['model'], 'gpt-image-2');
+        expect(chunks.single.content, 'chat route with image');
+      },
+    );
+
     test('routes image model with input image to edits multipart', () async {
       late Uri requestUri;
       late String contentType;

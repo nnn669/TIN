@@ -3869,6 +3869,18 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get chatInputBarMoreTooltip;
 
+  /// No description provided for @chatInputBarImageMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Image mode'**
+  String get chatInputBarImageMode;
+
+  /// No description provided for @chatInputBarDisableImageModeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off image mode'**
+  String get chatInputBarDisableImageModeTooltip;
+
   /// No description provided for @chatInputBarQueuedPending.
   ///
   /// In en, this message translates to:

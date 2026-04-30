@@ -368,6 +368,7 @@ class ChatActions {
         assistantMessage: assistantMessage,
         prepared: prepared,
         userImagePaths: userImagePaths,
+        allowImagesApiRouting: input.allowImagesApiRouting,
         providerKey: providerKey,
         modelId: modelId,
         assistant: assistant,
@@ -401,6 +402,7 @@ class ChatActions {
     required ChatMessage message,
     required Conversation conversation,
     bool assistantAsNewReply = false,
+    bool allowImagesApiRouting = true,
   }) async {
     // Avoid using BuildContext across async gaps (this class holds a BuildContext).
     final settings = contextProvider.read<SettingsProvider>();
@@ -545,6 +547,7 @@ class ChatActions {
       assistantMessage: assistantMessage,
       prepared: prepared,
       userImagePaths: userImagePaths,
+      allowImagesApiRouting: allowImagesApiRouting,
       providerKey: providerKey,
       modelId: modelId,
       assistant: assistant,
@@ -669,6 +672,7 @@ class ChatActions {
         extraBody: ctx.extraBody,
         stream: ctx.streamOutput,
         requestId: conversationId,
+        allowImagesApiRouting: ctx.allowImagesApiRouting,
       );
 
       await _conversationStreams[conversationId]?.cancel();

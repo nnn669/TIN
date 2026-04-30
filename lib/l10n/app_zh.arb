@@ -654,6 +654,8 @@
   "chatInputBarReasoningStrengthTooltip": "思维链强度",
   "chatInputBarMcpServersTooltip": "MCP服务器",
   "chatInputBarMoreTooltip": "更多",
+  "chatInputBarImageMode": "绘图模式",
+  "chatInputBarDisableImageModeTooltip": "关闭绘图模式",
   "chatInputBarQueuedPending": "排队中",
   "chatInputBarQueuedCancel": "取消排队",
   "chatInputBarInsertNewline": "换行",

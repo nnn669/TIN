@@ -303,6 +303,7 @@ class HomeViewModel extends ChangeNotifier {
       text: input.text,
       imagePaths: List<String>.of(input.imagePaths),
       documents: List<DocumentAttachment>.of(input.documents),
+      allowImagesApiRouting: input.allowImagesApiRouting,
     );
   }
 
@@ -335,6 +336,7 @@ class HomeViewModel extends ChangeNotifier {
   Future<bool> regenerateAtMessage(
     ChatMessage message, {
     bool assistantAsNewReply = false,
+    bool allowImagesApiRouting = true,
   }) async {
     final conversation = currentConversation;
     if (conversation == null) {
@@ -350,6 +352,7 @@ class HomeViewModel extends ChangeNotifier {
       message: message,
       conversation: conversation,
       assistantAsNewReply: assistantAsNewReply,
+      allowImagesApiRouting: allowImagesApiRouting,
     );
 
     if (!result.success) {

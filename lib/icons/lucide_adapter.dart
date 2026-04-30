@@ -18,6 +18,7 @@ class Lucide {
   static const IconData ArrowLeft = lucide.LucideIcons.arrowLeft;
   static const IconData Camera = lucide.LucideIcons.camera;
   static const IconData Image = lucide.LucideIcons.image;
+  static const IconData Brush = lucide.LucideIcons.brush;
   static const IconData Crop = lucide.LucideIcons.crop;
   static const IconData Upload = lucide.LucideIcons.upload;
   static const IconData Bot = lucide.LucideIcons.bot;
@@ -71,7 +72,7 @@ class Lucide {
   static const IconData MessageCircle = lucide.LucideIcons.messageCircle;
   static const IconData NotebookTabs = lucide.LucideIcons.notebookTabs;
   static const IconData Vibrate = lucide.LucideIcons.vibrate;
-  static const IconData TextSelect = lucide.LucideIcons.squareDashedText;
+  static const IconData TextSelect = lucide.LucideIcons.textCursorInput;
   static const IconData BookOpenText = lucide.LucideIcons.bookOpenText;
   static const IconData Pencil = lucide.LucideIcons.pencil;
   static const IconData GitFork = lucide.LucideIcons.gitFork;

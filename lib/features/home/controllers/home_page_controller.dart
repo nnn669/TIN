@@ -637,6 +637,7 @@ class HomePageController extends ChangeNotifier {
     final success = await _viewModel.regenerateAtMessage(
       message,
       assistantAsNewReply: assistantAsNewReply,
+      allowImagesApiRouting: _mediaController.allowImagesApiRouting,
     );
     if (success) {
       notifyListeners();

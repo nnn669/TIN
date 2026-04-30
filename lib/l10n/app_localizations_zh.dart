@@ -1980,6 +1980,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatInputBarMoreTooltip => '更多';
 
   @override
+  String get chatInputBarImageMode => '绘图模式';
+
+  @override
+  String get chatInputBarDisableImageModeTooltip => '关闭绘图模式';
+
+  @override
   String get chatInputBarQueuedPending => '排队中';
 
   @override
@@ -6307,6 +6313,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get chatInputBarMoreTooltip => '更多';
 
   @override
+  String get chatInputBarImageMode => '绘图模式';
+
+  @override
+  String get chatInputBarDisableImageModeTooltip => '关闭绘图模式';
+
+  @override
   String get chatInputBarQueuedPending => '排队中';
 
   @override
@@ -10631,6 +10643,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get chatInputBarMoreTooltip => '更多';
+
+  @override
+  String get chatInputBarImageMode => '繪圖模式';
+
+  @override
+  String get chatInputBarDisableImageModeTooltip => '關閉繪圖模式';
 
   @override
   String get chatInputBarQueuedPending => '排隊中';
