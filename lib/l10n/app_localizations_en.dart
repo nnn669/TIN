@@ -3767,6 +3767,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bocha web search API. Accurate web results with optional summaries.';
 
   @override
+  String get searchServiceNameSerper => 'Serper';
+
+  @override
+  String get searchProviderSerperDescription =>
+      'Serper Google Search API. Fast web results with optional country, language, time, and page filters.';
+
+  @override
+  String get searchServicesDialogCountryOptional => 'Country/region (optional)';
+
+  @override
+  String get searchServicesDialogLanguageOptional => 'Language (optional)';
+
+  @override
+  String get searchServicesDialogTimeFilterOptional => 'Time filter (optional)';
+
+  @override
+  String get searchServicesDialogPageOptional => 'Page (optional)';
+
+  @override
+  String get searchServicesDialogPageInvalid =>
+      'Page must be a positive integer.';
+
+  @override
   String get generationInterrupted => 'Generation interrupted';
 
   @override

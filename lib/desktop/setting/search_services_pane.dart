@@ -601,6 +601,7 @@ class _BrandBadge extends StatelessWidget {
     if (s is JinaOptions) return 'jina';
     if (s is PerplexityOptions) return 'perplexity';
     if (s is BochaOptions) return 'bocha';
+    if (s is SerperOptions) return 'serper';
     return 'search';
   }
 
@@ -774,6 +775,10 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
     'username': TextEditingController(),
     'password': TextEditingController(),
     'region': TextEditingController(text: 'us-en'),
+    'gl': TextEditingController(),
+    'hl': TextEditingController(),
+    'tbs': TextEditingController(),
+    'page': TextEditingController(),
   };
 
   @override
@@ -906,6 +911,34 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
             decoration: deco('API Key'),
           ),
         ];
+      case 'serper':
+        return [
+          TextField(
+            controller: _controllers['apiKey'],
+            decoration: deco('API Key'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['gl'],
+            decoration: deco(l10n.searchServicesDialogCountryOptional),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['hl'],
+            decoration: deco(l10n.searchServicesDialogLanguageOptional),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['tbs'],
+            decoration: deco(l10n.searchServicesDialogTimeFilterOptional),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controllers['page'],
+            decoration: deco(l10n.searchServicesDialogPageOptional),
+            keyboardType: TextInputType.number,
+          ),
+        ];
       case 'searxng':
         return [
           TextField(
@@ -986,6 +1019,16 @@ class _AddServiceDialogState extends State<_AddServiceDialog> {
         return PerplexityOptions(id: id, apiKey: _controllers['apiKey']!.text);
       case 'bocha':
         return BochaOptions(id: id, apiKey: _controllers['apiKey']!.text);
+      case 'serper':
+        final page = int.tryParse(_controllers['page']!.text.trim());
+        return SerperOptions(
+          id: id,
+          apiKey: _controllers['apiKey']!.text,
+          gl: _controllers['gl']!.text.trim(),
+          hl: _controllers['hl']!.text.trim(),
+          tbs: _controllers['tbs']!.text.trim(),
+          page: page == null || page < 1 ? 1 : page,
+        );
       case 'bing_local':
       default:
         return BingLocalOptions(id: id);
@@ -1040,6 +1083,14 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
       _controllers['apiKey'] = TextEditingController(text: s.apiKey);
     } else if (s is BochaOptions) {
       _controllers['apiKey'] = TextEditingController(text: s.apiKey);
+    } else if (s is SerperOptions) {
+      _controllers['apiKey'] = TextEditingController(text: s.apiKey);
+      _controllers['gl'] = TextEditingController(text: s.gl);
+      _controllers['hl'] = TextEditingController(text: s.hl);
+      _controllers['tbs'] = TextEditingController(text: s.tbs);
+      _controllers['page'] = TextEditingController(
+        text: s.page == 1 ? '' : s.page.toString(),
+      );
     }
   }
 
@@ -1160,6 +1211,34 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
           decoration: deco('API Key'),
         ),
       ];
+    } else if (s is SerperOptions) {
+      return [
+        TextField(
+          controller: _controllers['apiKey'],
+          decoration: deco('API Key'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['gl'],
+          decoration: deco(l10n.searchServicesDialogCountryOptional),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['hl'],
+          decoration: deco(l10n.searchServicesDialogLanguageOptional),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['tbs'],
+          decoration: deco(l10n.searchServicesDialogTimeFilterOptional),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controllers['page'],
+          decoration: deco(l10n.searchServicesDialogPageOptional),
+          keyboardType: TextInputType.number,
+        ),
+      ];
     } else if (s is DuckDuckGoOptions) {
       return [
         TextField(
@@ -1256,6 +1335,17 @@ class _EditServiceDialogState extends State<_EditServiceDialog> {
     if (s is BochaOptions) {
       return BochaOptions(id: s.id, apiKey: _controllers['apiKey']!.text);
     }
+    if (s is SerperOptions) {
+      final page = int.tryParse(_controllers['page']!.text.trim());
+      return SerperOptions(
+        id: s.id,
+        apiKey: _controllers['apiKey']!.text,
+        gl: _controllers['gl']!.text.trim(),
+        hl: _controllers['hl']!.text.trim(),
+        tbs: _controllers['tbs']!.text.trim(),
+        page: page == null || page < 1 ? 1 : page,
+      );
+    }
     return s;
   }
 }
@@ -1286,6 +1376,7 @@ class _ServiceTypeChipsState extends State<_ServiceTypeChips> {
     (type: 'ollama', name: 'Ollama', brand: 'ollama'),
     (type: 'perplexity', name: 'Perplexity', brand: 'perplexity'),
     (type: 'bocha', name: 'Bocha', brand: 'bocha'),
+    (type: 'serper', name: 'Serper', brand: 'serper'),
   ];
   @override
   Widget build(BuildContext context) {

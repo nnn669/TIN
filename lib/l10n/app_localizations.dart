@@ -7010,6 +7010,48 @@ abstract class AppLocalizations {
   /// **'Bocha web search API. Accurate web results with optional summaries.'**
   String get searchProviderBochaDescription;
 
+  /// No description provided for @searchServiceNameSerper.
+  ///
+  /// In en, this message translates to:
+  /// **'Serper'**
+  String get searchServiceNameSerper;
+
+  /// No description provided for @searchProviderSerperDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Serper Google Search API. Fast web results with optional country, language, time, and page filters.'**
+  String get searchProviderSerperDescription;
+
+  /// No description provided for @searchServicesDialogCountryOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Country/region (optional)'**
+  String get searchServicesDialogCountryOptional;
+
+  /// No description provided for @searchServicesDialogLanguageOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Language (optional)'**
+  String get searchServicesDialogLanguageOptional;
+
+  /// No description provided for @searchServicesDialogTimeFilterOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Time filter (optional)'**
+  String get searchServicesDialogTimeFilterOptional;
+
+  /// No description provided for @searchServicesDialogPageOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Page (optional)'**
+  String get searchServicesDialogPageOptional;
+
+  /// No description provided for @searchServicesDialogPageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Page must be a positive integer.'**
+  String get searchServicesDialogPageInvalid;
+
   /// No description provided for @generationInterrupted.
   ///
   /// In en, this message translates to:

@@ -13,6 +13,7 @@ import 'providers/jina_search_service.dart';
 import 'providers/bocha_search_service.dart';
 import 'providers/perplexity_search_service.dart';
 import 'providers/duckduckgo_search_service.dart';
+import 'providers/serper_search_service.dart';
 
 // Base interface for all search services
 abstract class SearchService<T extends SearchServiceOptions> {
@@ -55,6 +56,8 @@ abstract class SearchService<T extends SearchServiceOptions> {
         return PerplexitySearchService() as SearchService;
       case DuckDuckGoOptions _:
         return DuckDuckGoSearchService() as SearchService;
+      case SerperOptions _:
+        return SerperSearchService() as SearchService;
       default:
         return BingSearchService() as SearchService;
     }
@@ -170,6 +173,8 @@ abstract class SearchServiceOptions {
         return DuckDuckGoOptions.fromJson(json);
       case 'perplexity':
         return PerplexityOptions.fromJson(json);
+      case 'serper':
+        return SerperOptions.fromJson(json);
       default:
         return BingLocalOptions(id: json['id']);
     }
@@ -472,5 +477,42 @@ class BochaOptions extends SearchServiceOptions {
     summary: (json['summary'] ?? true) as bool,
     include: json['include'],
     exclude: json['exclude'],
+  );
+}
+
+class SerperOptions extends SearchServiceOptions {
+  final String apiKey;
+  final String gl;
+  final String hl;
+  final String tbs;
+  final int page;
+
+  SerperOptions({
+    required super.id,
+    required this.apiKey,
+    this.gl = '',
+    this.hl = '',
+    this.tbs = '',
+    this.page = 1,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'type': 'serper',
+    'id': id,
+    'apiKey': apiKey,
+    'gl': gl.trim(),
+    'hl': hl.trim(),
+    'tbs': tbs.trim(),
+    'page': page,
+  };
+
+  factory SerperOptions.fromJson(Map<String, dynamic> json) => SerperOptions(
+    id: json['id'],
+    apiKey: json['apiKey'],
+    gl: json['gl'] ?? '',
+    hl: json['hl'] ?? '',
+    tbs: json['tbs'] ?? '',
+    page: json['page'] ?? 1,
   );
 }

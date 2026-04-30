@@ -3619,6 +3619,28 @@ class AppLocalizationsZh extends AppLocalizations {
       '博查 AI 全网网页搜索，支持时间范围与摘要，更适合 AI 使用。';
 
   @override
+  String get searchServiceNameSerper => 'Serper';
+
+  @override
+  String get searchProviderSerperDescription =>
+      'Serper Google 搜索 API。响应快速，支持国家/地区、语言、时间和页码过滤。';
+
+  @override
+  String get searchServicesDialogCountryOptional => '国家/地区（可选）';
+
+  @override
+  String get searchServicesDialogLanguageOptional => '语言（可选）';
+
+  @override
+  String get searchServicesDialogTimeFilterOptional => '时间过滤（可选）';
+
+  @override
+  String get searchServicesDialogPageOptional => '页码（可选）';
+
+  @override
+  String get searchServicesDialogPageInvalid => '页码必须是正整数。';
+
+  @override
   String get generationInterrupted => '生成已中断';
 
   @override
@@ -7952,6 +7974,28 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '博查 AI 全网网页搜索，支持时间范围与摘要，更适合 AI 使用。';
 
   @override
+  String get searchServiceNameSerper => 'Serper';
+
+  @override
+  String get searchProviderSerperDescription =>
+      'Serper Google 搜索 API。响应快速，支持国家/地区、语言、时间和页码过滤。';
+
+  @override
+  String get searchServicesDialogCountryOptional => '国家/地区（可选）';
+
+  @override
+  String get searchServicesDialogLanguageOptional => '语言（可选）';
+
+  @override
+  String get searchServicesDialogTimeFilterOptional => '时间过滤（可选）';
+
+  @override
+  String get searchServicesDialogPageOptional => '页码（可选）';
+
+  @override
+  String get searchServicesDialogPageInvalid => '页码必须是正整数。';
+
+  @override
   String get generationInterrupted => '生成已中断';
 
   @override
@@ -12282,6 +12326,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get searchProviderBochaDescription =>
       '博查 AI 全網網頁搜尋，支援時間範圍與摘要，更適合 AI 使用。';
+
+  @override
+  String get searchServiceNameSerper => 'Serper';
+
+  @override
+  String get searchProviderSerperDescription =>
+      'Serper Google 搜尋 API。回應快速，支援國家/地區、語言、時間和頁碼過濾。';
+
+  @override
+  String get searchServicesDialogCountryOptional => '國家/地區（可選）';
+
+  @override
+  String get searchServicesDialogLanguageOptional => '語言（可選）';
+
+  @override
+  String get searchServicesDialogTimeFilterOptional => '時間過濾（可選）';
+
+  @override
+  String get searchServicesDialogPageOptional => '頁碼（可選）';
+
+  @override
+  String get searchServicesDialogPageInvalid => '頁碼必須是正整數。';
 
   @override
   String get generationInterrupted => '生成已中斷';
