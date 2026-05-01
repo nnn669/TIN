@@ -1,20 +1,61 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:Kelivo/core/models/chat_message.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
+import 'package:Kelivo/core/services/api/chat_api_service.dart';
 import 'package:Kelivo/core/services/chat/chat_service.dart';
 import 'package:Kelivo/features/home/controllers/stream_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+Future<void> _waitForSettingsLoad() async {
+  for (var i = 0; i < 25; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues(const {});
 
-  StreamController buildController() {
+  StreamController buildController({SettingsProvider? settings}) {
+    final settingsProvider = settings ?? SettingsProvider();
     return StreamController(
       chatService: ChatService(),
       onStateChanged: () {},
-      getSettingsProvider: () => SettingsProvider(),
+      getSettingsProvider: () => settingsProvider,
       getCurrentConversationId: () => null,
+    );
+  }
+
+  StreamingState buildStreamingState(SettingsProvider settings) {
+    final message = ChatMessage(
+      id: 'assistant-message',
+      role: 'assistant',
+      content: '',
+      conversationId: 'conversation-1',
+      isStreaming: true,
+    );
+    return StreamingState(
+      GenerationContext(
+        assistantMessage: message,
+        apiMessages: const [],
+        userImagePaths: const [],
+        allowImagesApiRouting: false,
+        providerKey: 'test',
+        modelId: 'test-model',
+        assistant: null,
+        settings: settings,
+        config: ProviderConfig(
+          id: 'test',
+          enabled: true,
+          name: 'Test',
+          apiKey: '',
+          baseUrl: '',
+        ),
+        toolDefs: const [],
+        supportsReasoning: true,
+        enableReasoning: true,
+        streamOutput: true,
+      ),
     );
   }
 
@@ -92,6 +133,54 @@ void main() {
       expect(restoredSplits!.toolCounts, const [1]);
     },
   );
+
+  test('streaming reasoning honors disabled auto-collapse setting', () async {
+    SharedPreferences.setMockInitialValues({
+      'display_auto_collapse_thinking_v1': false,
+    });
+    final settings = SettingsProvider();
+    await _waitForSettingsLoad();
+    final controller = buildController(settings: settings);
+    final state = buildStreamingState(settings);
+
+    await controller.handleReasoningChunk(
+      ChatStreamChunk(
+        content: '',
+        reasoning: 'thinking',
+        isDone: false,
+        totalTokens: 0,
+      ),
+      state,
+      updateReasoningInDb:
+          (
+            messageId, {
+            String? reasoningText,
+            DateTime? reasoningStartAt,
+            String? reasoningSegmentsJson,
+          }) async {},
+    );
+
+    expect(
+      controller.reasoningSegments[state.messageId]!.single.expanded,
+      isTrue,
+    );
+
+    await controller.finishReasoningAndPersist(
+      state.messageId,
+      updateReasoningInDb:
+          (
+            messageId, {
+            String? reasoningText,
+            DateTime? reasoningFinishedAt,
+            String? reasoningSegmentsJson,
+          }) async {},
+    );
+
+    expect(
+      controller.reasoningSegments[state.messageId]!.single.expanded,
+      isTrue,
+    );
+  });
 
   test(
     'restoreMessageUiState restores tool parts and empty v2 split metadata',
