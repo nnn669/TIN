@@ -37,6 +37,7 @@ class ModelRegistry {
     (r'(gpt-oss|gpt-5(?!-chat)|o\d|'
             r'gemini-(?:2\.5|3).*|gemini-(?:flash-latest|pro-latest)|'
             r'gemini-3-pro-image-preview|'
+            r'gemma[-_]?4|'
             r'claude|'
             r'qwen-?3|doubao.+1([-.])(?:6|8)|grok-4|kimi-k2|'
             r'step-3|intern-s1|glm-4([-.])(?:5|6|7)|glm-5|minimax-m2|'

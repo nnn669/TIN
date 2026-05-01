@@ -41,6 +41,91 @@ List<Map<String, dynamic>> _buildGeminiToolsArray({
   return toolsArr;
 }
 
+bool _isGemma4Model(String modelId) {
+  return RegExp(
+    r'(^|[/:_-])gemma[-_]?4([._-]|$)',
+    caseSensitive: false,
+  ).hasMatch(modelId);
+}
+
+Map<String, dynamic> _googleThinkingConfig(
+  String upstreamModelId,
+  int? budget,
+) {
+  final off = _isOff(budget);
+  if (_isGemma4Model(upstreamModelId)) {
+    if (off) return const <String, dynamic>{};
+    return const <String, dynamic>{
+      'includeThoughts': true,
+      'thinkingLevel': 'high',
+    };
+  }
+
+  // Match gemini-3-pro or gemini-3-pro-preview (and similar variants)
+  final isGemini3ProImage = upstreamModelId.contains(
+    RegExp(r'gemini-3-pro-image(-preview)?', caseSensitive: false),
+  );
+  final isGemini31Pro = upstreamModelId.contains(
+    RegExp(r'gemini-3\.1-pro(-preview)?', caseSensitive: false),
+  );
+  final isGemini3Pro = upstreamModelId.contains(
+    RegExp(r'gemini-3-pro(-preview)?', caseSensitive: false),
+  );
+  final isGemini3Flash = upstreamModelId.contains(
+    RegExp(r'gemini-3-flash(-preview)?', caseSensitive: false),
+  );
+  if (isGemini3ProImage) {
+    return {
+      'includeThoughts': true,
+      if (budget != null && budget >= 0) 'thinkingBudget': budget,
+    };
+  }
+  // Gemini 3.1 Pro: supports 'low', 'medium', 'high' (no minimal)
+  if (isGemini31Pro) {
+    String level = 'high';
+    if (off) {
+      level = 'low';
+    } else if (budget != null && budget > 0) {
+      if (budget < 8000) {
+        level = 'low';
+      } else if (budget < 24000) {
+        level = 'medium'; // gemini 3.1 pro support medium
+      }
+    }
+    return {'includeThoughts': true, 'thinkingLevel': level};
+  }
+  // Gemini 3 Pro: supports 'low' and 'high' only (no off)
+  if (isGemini3Pro) {
+    String level = 'high';
+    if (off || (budget != null && budget > 0 && budget < 8000)) {
+      // Off or Light (1024) -> low
+      level = 'low';
+    }
+    return {'includeThoughts': true, 'thinkingLevel': level};
+  }
+  // Gemini 3 Flash: supports 'minimal', 'low', 'medium', 'high'
+  if (isGemini3Flash) {
+    String level = 'high';
+    if (off) {
+      level = 'minimal';
+    } else if (budget != null && budget > 0) {
+      // Light (1024) -> low, Medium (16000) -> medium, Heavy (32000) -> high
+      if (budget < 8000) {
+        level = 'low';
+      } else if (budget < 24000) {
+        level = 'medium';
+      }
+    }
+    return {'includeThoughts': true, 'thinkingLevel': level};
+  }
+  // Gemini 2.x and below: use thinkingBudget
+  if (off) return {'includeThoughts': false};
+  return {
+    'includeThoughts': true,
+    if (budget != null && budget >= 0) 'thinkingBudget': budget,
+  };
+}
+
 Map<String, dynamic>? _googleToolMetadata(Map<String, dynamic> message) {
   final metadata = message['metadata'];
   if (metadata is! Map) return null;
@@ -143,6 +228,9 @@ Stream<ChatStreamChunk> _sendGoogleStream(
   final bool persistGeminiThoughtSigs = isGemini3;
   final builtIns = _builtInTools(config, modelId);
   final enableYoutube = builtIns.contains(BuiltInToolNames.youtube);
+  // Effective model features (includes user overrides)
+  final effective = _effectiveModelInfo(config, modelId);
+  final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
   // Non-streaming path: use generateContent
   if (!stream) {
     final isVertex = config.vertexAI == true;
@@ -355,6 +443,14 @@ Stream<ChatStreamChunk> _sendGoogleStream(
       isGemini3: isGemini3 && !isVertex,
     );
 
+    final thinkingConfig = isReasoning
+        ? _googleThinkingConfig(upstreamModelId, thinkingBudget)
+        : const <String, dynamic>{};
+    final generationConfig = <String, dynamic>{
+      if (maxTokens != null) 'maxOutputTokens': maxTokens,
+      if (thinkingConfig.isNotEmpty) 'thinkingConfig': thinkingConfig,
+    };
+
     Map<String, dynamic> baseBody = {
       'contents': contents,
       if (systemPrompt.isNotEmpty)
@@ -365,7 +461,7 @@ Stream<ChatStreamChunk> _sendGoogleStream(
         },
       if (temperature != null) 'temperature': temperature,
       if (topP != null) 'topP': topP,
-      if (maxTokens != null) 'generationConfig': {'maxOutputTokens': maxTokens},
+      if (generationConfig.isNotEmpty) 'generationConfig': generationConfig,
       if (toolsArr.isNotEmpty) 'tools': toolsArr,
       if (geminiToolConfig != null) 'toolConfig': geminiToolConfig,
     };
@@ -715,13 +811,9 @@ Stream<ChatStreamChunk> _sendGoogleStream(
     contents.add({'role': role, 'parts': parts});
   }
 
-  // Effective model features (includes user overrides)
-  final effective = _effectiveModelInfo(config, modelId);
-  final isReasoning = effective.abilities.contains(ModelAbility.reasoning);
   final wantsImageOutput = effective.output.contains(Modality.image);
   bool expectImage = wantsImageOutput;
   bool receivedImage = false;
-  final off = _isOff(thinkingBudget);
 
   // Map OpenAI-style tools to Gemini functionDeclarations (MCP)
   List<Map<String, dynamic>>? geminiTools;
@@ -802,78 +894,13 @@ Stream<ChatStreamChunk> _sendGoogleStream(
       // Enable IMAGE+TEXT output modalities when model is configured to output images
       if (wantsImageOutput) 'responseModalities': ['TEXT', 'IMAGE'],
       if (isReasoning)
-        'thinkingConfig': () {
-          // Match gemini-3-pro or gemini-3-pro-preview (and similar variants)
-          final isGemini3ProImage = upstreamModelId.contains(
-            RegExp(r'gemini-3-pro-image(-preview)?', caseSensitive: false),
+        ...() {
+          final thinkingConfig = _googleThinkingConfig(
+            upstreamModelId,
+            thinkingBudget,
           );
-          final isGemini31Pro = upstreamModelId.contains(
-            RegExp(r'gemini-3\.1-pro(-preview)?', caseSensitive: false),
-          );
-          final isGemini3Pro = upstreamModelId.contains(
-            RegExp(r'gemini-3-pro(-preview)?', caseSensitive: false),
-          );
-          final isGemini3Flash = upstreamModelId.contains(
-            RegExp(r'gemini-3-flash(-preview)?', caseSensitive: false),
-          );
-          if (isGemini3ProImage) {
-            return {
-              'includeThoughts': true,
-              if (thinkingBudget != null && thinkingBudget >= 0)
-                'thinkingBudget': thinkingBudget,
-            };
-          }
-          // Gemini 3.1 Pro: supports 'low', 'medium', 'high' (no minimal)
-          if (isGemini31Pro) {
-            String level = 'high';
-            if (off) {
-              level = 'low';
-            } else if (thinkingBudget != null && thinkingBudget > 0) {
-              if (thinkingBudget < 8000) {
-                level = 'low';
-              } else if (thinkingBudget < 24000) {
-                level = 'medium'; // gemini 3.1 pro support medium
-              }
-            }
-            return {'includeThoughts': true, 'thinkingLevel': level};
-          }
-          // Gemini 3 Pro: supports 'low' and 'high' only (no off)
-          if (isGemini3Pro) {
-            String level = 'high';
-            if (off ||
-                (thinkingBudget != null &&
-                    thinkingBudget > 0 &&
-                    thinkingBudget < 8000)) {
-              // Off or Light (1024) → low
-              level = 'low';
-            }
-            return {
-              'includeThoughts': true,
-              'thinkingLevel': level,
-            }; // Gemini 3.0 Pro does not support medium, only low and high
-          }
-          // Gemini 3 Flash: supports 'minimal', 'low', 'medium', 'high'
-          if (isGemini3Flash) {
-            String level = 'high';
-            if (off) {
-              level = 'minimal';
-            } else if (thinkingBudget != null && thinkingBudget > 0) {
-              // Light (1024) → low, Medium (16000) → medium, Heavy (32000) → high
-              if (thinkingBudget < 8000) {
-                level = 'low';
-              } else if (thinkingBudget < 24000) {
-                level = 'medium';
-              }
-            }
-            return {'includeThoughts': true, 'thinkingLevel': level};
-          }
-          // Gemini 2.x and below: use thinkingBudget
-          if (off) return {'includeThoughts': false};
-          return {
-            'includeThoughts': true,
-            if (thinkingBudget != null && thinkingBudget >= 0)
-              'thinkingBudget': thinkingBudget,
-          };
+          if (thinkingConfig.isEmpty) return const <String, dynamic>{};
+          return {'thinkingConfig': thinkingConfig};
         }(),
     };
     final body = <String, dynamic>{
