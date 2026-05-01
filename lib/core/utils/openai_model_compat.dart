@@ -49,6 +49,9 @@ const OpenAIReasoningSupport _gpt54Support = OpenAIReasoningSupport(
 const OpenAIReasoningSupport _gpt54ProSupport = OpenAIReasoningSupport(
   supportedEfforts: <String>['medium', 'high', 'xhigh'],
 );
+const OpenAIReasoningSupport _deepSeekSupport = OpenAIReasoningSupport(
+  supportedEfforts: <String>['low', 'medium', 'high', 'xhigh'],
+);
 
 String resolveApiModelIdOverride(
   Map<String, dynamic>? override,
@@ -145,6 +148,7 @@ bool openAIAllowsSamplingParams(String modelId, {required String effort}) {
 
 OpenAIReasoningSupport? openAIReasoningSupport(String modelId) {
   final normalized = modelId.trim().toLowerCase();
+  if (normalized.contains('deepseek')) return _deepSeekSupport;
   if (!isOpenAIGpt5FamilyModel(normalized)) return null;
 
   if (_matchesModel(normalized, r'^gpt-5\.4-pro(?:$|[-.])')) {
