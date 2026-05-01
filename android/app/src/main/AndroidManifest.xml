@@ -46,6 +46,10 @@
             android:name="de.julianassmann.flutter_background.IsolateHolderService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Ucrop.CropTheme" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
