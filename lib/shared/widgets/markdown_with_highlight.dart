@@ -17,6 +17,7 @@ import '../../utils/sandbox_path_resolver.dart';
 import '../../features/chat/pages/image_viewer_page.dart';
 import '../../features/chat/pages/html_preview_page.dart';
 import 'snackbar.dart';
+import 'ios_tactile.dart';
 import 'mermaid_bridge.dart';
 import 'export_capture_scope.dart';
 import 'mermaid_image_cache.dart';
@@ -96,11 +97,14 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Ensure fenced code blocks take precedence over headings and other blocks
     // so lines like "# comment" inside code fences are not parsed as headings.
     components.insert(0, FencedCodeBlockMd());
+    // HTML details may contain fenced code blocks, so it must be checked first.
+    components.insert(0, DetailsHtmlMd());
     // Inline components: keep defaults but make link parsing line-scoped
     final inlineComponents = List<MarkdownComponent>.from(
       MarkdownComponent.inlineComponents,
     );
     // Add whitelist-based HTML tag renderer (e.g., <br>)
+    inlineComponents.insert(0, HtmlAnchorMd());
     inlineComponents.insert(0, AllowedHtmlTagsMd());
 
     // Conditionally add inline LaTeX/math renderers
@@ -745,6 +749,17 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     });
 
     // STEP 2: PROCESSING (on masked string, code is now protected)
+
+    // Keep HTML paragraph breaks stable: </p> emits one line break, and
+    // one preserved source newline gives a single visual blank line.
+    out = out.replaceAllMapped(
+      RegExp(r"<\/p\s*>\s*\n\s*\n\s*", caseSensitive: false),
+      (_) => '</p>\n',
+    );
+    out = out.replaceAllMapped(
+      RegExp(r"<\/p\s*>(?=<p(?:\s+[^>]*)?>)", caseSensitive: false),
+      (_) => '</p>\n',
+    );
 
     // 2025-10-23 Fix: Remove title attributes from markdown links to work around gpt_markdown's
     // link regex limitation. The package's regex `[^\s]*` stops at spaces, so
@@ -2617,15 +2632,238 @@ class BackslashEscapeMd extends InlineMd {
   }
 }
 
-/// Whitelist-based HTML tag renderer.
-/// Currently supports <br> tags for manual line breaks.
-class AllowedHtmlTagsMd extends InlineMd {
+class DetailsHtmlMd extends BlockMd {
   @override
-  RegExp get exp => RegExp(r"<br\s*/?>", caseSensitive: false);
+  String get expString =>
+      r"<details(?:\s+[^>]*)?>\s*<summary(?:\s+[^>]*)?>[\s\S]*?<\/summary>[\s\S]*?<\/details>";
+
+  @override
+  Widget build(BuildContext context, String text, GptMarkdownConfig config) {
+    final match = RegExp(
+      r"^<details(?<attrs>[^>]*)>\s*<summary(?:\s+[^>]*)?>(?<summary>[\s\S]*?)<\/summary>(?<body>[\s\S]*?)<\/details>$",
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(text.trim());
+
+    if (match == null) {
+      return config.getRich(TextSpan(text: text, style: config.style));
+    }
+
+    final attrs = match.namedGroup('attrs') ?? '';
+    final summary = _plainHtmlText(match.namedGroup('summary') ?? '').trim();
+    final body = (match.namedGroup('body') ?? '').trim();
+    final initiallyExpanded = RegExp(
+      r"(?:^|\s)open(?:\s|$|=)",
+      caseSensitive: false,
+    ).hasMatch(attrs);
+
+    return _DetailsHtmlBlock(
+      summary: summary,
+      body: body,
+      initiallyExpanded: initiallyExpanded,
+      config: config,
+    );
+  }
+
+  static String _plainHtmlText(String input) {
+    return input
+        .replaceAll(RegExp(r"<br\s*/?>", caseSensitive: false), '\n')
+        .replaceAll(RegExp(r"<[^>]+>"), '')
+        .trim();
+  }
+}
+
+class _DetailsHtmlBlock extends StatefulWidget {
+  const _DetailsHtmlBlock({
+    required this.summary,
+    required this.body,
+    required this.initiallyExpanded,
+    required this.config,
+  });
+
+  final String summary;
+  final String body;
+  final bool initiallyExpanded;
+  final GptMarkdownConfig config;
+
+  @override
+  State<_DetailsHtmlBlock> createState() => _DetailsHtmlBlockState();
+}
+
+class _DetailsHtmlBlockState extends State<_DetailsHtmlBlock> {
+  late bool _expanded = widget.initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = Color.alphaBlend(
+      cs.primary.withValues(alpha: isDark ? 0.05 : 0.025),
+      cs.surface,
+    );
+    final borderColor = cs.outlineVariant.withValues(
+      alpha: isDark ? 0.18 : 0.30,
+    );
+    final summaryStyle = (widget.config.style ?? const TextStyle()).copyWith(
+      color: cs.onSurface,
+      fontWeight: FontWeight.w500,
+    );
+    final bodyStyle = (widget.config.style ?? const TextStyle()).copyWith(
+      color: cs.onSurface,
+    );
+    final bodyConfig = widget.config.copyWith(style: bodyStyle);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor, width: 0.8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IosCardPress(
+            onTap: () => setState(() => _expanded = !_expanded),
+            baseColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            haptics: false,
+            child: Row(
+              children: [
+                AnimatedRotation(
+                  turns: _expanded ? 0.25 : 0.0,
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  child: Icon(
+                    Lucide.ChevronRight,
+                    size: 15,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    widget.summary,
+                    style: summaryStyle,
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...previousChildren,
+                  if (currentChild != null) currentChild,
+                ],
+              );
+            },
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1,
+                  child: child,
+                ),
+              );
+            },
+            child: _expanded && widget.body.isNotEmpty
+                ? Container(
+                    key: const ValueKey('details-expanded'),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: borderColor, width: 0.8),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: widget.config.getRich(
+                        TextSpan(
+                          style: bodyStyle,
+                          children: MarkdownComponent.generate(
+                            context,
+                            widget.body,
+                            bodyConfig,
+                            true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('details-collapsed')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HtmlAnchorMd extends InlineMd {
+  @override
+  RegExp get exp => RegExp(
+    r'''<a\s+[^>]*href\s*=\s*(['"])(.*?)\1[^>]*>([\s\S]*?)<\/a>''',
+    caseSensitive: false,
+    dotAll: true,
+  );
 
   @override
   InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
-    return const TextSpan(text: '\n');
+    final match = exp.firstMatch(text);
+    if (match == null) return TextSpan(text: text, style: config.style);
+
+    final url = (match.group(2) ?? '').trim();
+    final linkText = _stripTags(match.group(3) ?? '');
+    final cs = Theme.of(context).colorScheme;
+
+    return WidgetSpan(
+      baseline: TextBaseline.alphabetic,
+      alignment: PlaceholderAlignment.baseline,
+      child: GestureDetector(
+        onTap: url.isEmpty ? null : () => config.onLinkTap?.call(url, linkText),
+        child: Text(
+          linkText,
+          style: (config.style ?? const TextStyle()).copyWith(
+            color: cs.primary,
+            decoration: TextDecoration.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _stripTags(String input) =>
+      input.replaceAll(RegExp(r"<[^>]+>"), '').trim();
+}
+
+/// Whitelist-based HTML tag renderer.
+/// Currently supports simple paragraph and line-break tags.
+class AllowedHtmlTagsMd extends InlineMd {
+  @override
+  RegExp get exp =>
+      RegExp(r"<br\s*/?>|<p(?:\s+[^>]*)?>|<\/p\s*>", caseSensitive: false);
+
+  @override
+  InlineSpan span(BuildContext context, String text, GptMarkdownConfig config) {
+    if (RegExp(r"<br\s*/?>", caseSensitive: false).hasMatch(text)) {
+      return const TextSpan(text: '\n');
+    }
+    if (RegExp(r"<\/p\s*>", caseSensitive: false).hasMatch(text)) {
+      return const TextSpan(text: '\n');
+    }
+    return const TextSpan(text: '');
   }
 }
 
@@ -2671,8 +2909,13 @@ class SelectableHighlightView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final result = highlight.parse(source, language: language);
-    final codeTextSpans = _convertNodes(result.nodes ?? []);
+    List<TextSpan> codeTextSpans = const [];
+    try {
+      final result = highlight.parse(source, language: language);
+      codeTextSpans = _convertNodes(result.nodes ?? []);
+    } catch (_) {
+      codeTextSpans = const [];
+    }
 
     return SelectableText.rich(
       TextSpan(
