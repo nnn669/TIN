@@ -1179,6 +1179,8 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final Color bodyBg = cs.surfaceContainer;
     final Color headerBg = cs.surfaceContainerHighest;
     final borderColor = _codeBlockBorderColor(cs, isDark);
+    final isEffectivelyExpanded = _isEffectivelyExpanded(settings);
+    final isCollapsed = !isEffectivelyExpanded;
 
     return Container(
       width: double.infinity,
@@ -1255,7 +1257,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
           Container(
             width: double.infinity,
             color: bodyBg,
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -1266,16 +1268,16 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                   alignment: Alignment.topLeft,
                   clipBehavior: Clip.hardEdge,
                   child: buildCodeView(
-                    _expanded
-                        ? _trimTrailingNewlines(widget.code)
-                        : _collapsedHighlightedCode(settings),
+                    isCollapsed
+                        ? _collapsedHighlightedCode(settings)
+                        : _trimTrailingNewlines(widget.code),
                   ),
                 ),
                 if (_shouldShowFoldControl(settings)) ...[
                   const SizedBox(height: 4),
                   _CodeBlockFoldControl(
-                    expanded: _expanded,
-                    onTap: _toggleExpanded,
+                    expanded: isEffectivelyExpanded,
+                    onTap: () => _toggleExpanded(settings),
                     textStyle: codeTextStyle,
                   ),
                 ],
@@ -1287,10 +1289,20 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     );
   }
 
-  void _toggleExpanded() {
+  bool _isEffectivelyExpanded(SettingsProvider settings) {
+    if (!settings.autoCollapseCodeBlock) return true;
+    if (_manuallyToggled) return _expanded;
+    return !_exceedsLineThreshold(
+      widget.code,
+      settings.autoCollapseCodeBlockLines,
+    );
+  }
+
+  void _toggleExpanded(SettingsProvider settings) {
+    final nextExpanded = !_isEffectivelyExpanded(settings);
     setState(() {
       _manuallyToggled = true;
-      _expanded = !_expanded;
+      _expanded = nextExpanded;
       _rememberManualExpansionState();
     });
   }

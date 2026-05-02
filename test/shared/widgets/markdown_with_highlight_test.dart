@@ -54,6 +54,26 @@ Widget _streamingMarkdownHarness(
   );
 }
 
+Widget _settingsHarness({
+  required Widget child,
+  Map<String, Object>? preferences,
+  required void Function(SettingsProvider settings) onSettingsReady,
+}) {
+  SharedPreferences.setMockInitialValues(preferences ?? {});
+  return ChangeNotifierProvider(
+    create: (_) {
+      final settings = SettingsProvider();
+      onSettingsReady(settings);
+      return settings;
+    },
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
+  );
+}
+
 void main() {
   testWidgets('SelectableHighlightView 为已注册语言生成高亮 span', (tester) async {
     await tester.pumpWidget(
@@ -160,6 +180,45 @@ line3
     expect(find.text('Collapse'), findsOneWidget);
     expect(find.textContaining('line3'), findsOneWidget);
   });
+
+  testWidgets(
+    'MarkdownWithCodeHighlight shows full code after auto-collapse is disabled',
+    (tester) async {
+      late SettingsProvider settings;
+
+      await tester.pumpWidget(
+        _settingsHarness(
+          onSettingsReady: (value) => settings = value,
+          child: const MarkdownWithCodeHighlight(
+            text: '''
+```dart
+disable1
+disable2
+disable3
+```
+''',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('disable3'), findsOneWidget);
+
+      await settings.setAutoCollapseCodeBlockLines(2);
+      await settings.setAutoCollapseCodeBlock(true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Expand'), findsOneWidget);
+      expect(find.textContaining('disable3'), findsNothing);
+
+      await settings.setAutoCollapseCodeBlock(false);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Expand'), findsNothing);
+      expect(find.text('Collapse'), findsNothing);
+      expect(find.textContaining('disable3'), findsOneWidget);
+    },
+  );
 
   testWidgets('MarkdownWithCodeHighlight keeps manual toggle while streaming', (
     tester,
