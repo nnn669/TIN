@@ -2786,7 +2786,7 @@ class _DetailsHtmlBlockState extends State<_DetailsHtmlBlock> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = Color.alphaBlend(
-      cs.primary.withValues(alpha: isDark ? 0.05 : 0.025),
+      cs.onSurface.withValues(alpha: isDark ? 0.05 : 0.025),
       cs.surface,
     );
     final borderColor = cs.outlineVariant.withValues(
