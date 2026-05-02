@@ -263,6 +263,10 @@
   "assistantEditVariableMessage": "內容",
   "assistantEditPreviewTitle": "預覽",
   "codeBlockPreviewButton": "預覽",
+  "codeBlockSaveAsButton": "另存為檔案",
+  "codeBlockCollapseButton": "摺疊",
+  "codeBlockExpandButton": "展開",
+  "codeBlockDefaultFileNameStem": "程式碼",
   "codeBlockCollapsedLines": "… 已摺疊 {n} 行",
   "@codeBlockCollapsedLines": {
     "placeholders": {

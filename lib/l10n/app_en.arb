@@ -448,6 +448,10 @@
   "assistantEditVariableMessage": "Message",
   "assistantEditPreviewTitle": "Preview",
   "codeBlockPreviewButton": "Preview",
+  "codeBlockSaveAsButton": "Save as file",
+  "codeBlockCollapseButton": "Collapse",
+  "codeBlockExpandButton": "Expand",
+  "codeBlockDefaultFileNameStem": "code",
   "codeBlockCollapsedLines": "… {n} lines folded",
   "@codeBlockCollapsedLines": {
     "placeholders": {

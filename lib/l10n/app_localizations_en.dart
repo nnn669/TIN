@@ -1047,6 +1047,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get codeBlockPreviewButton => 'Preview';
 
   @override
+  String get codeBlockSaveAsButton => 'Save as file';
+
+  @override
+  String get codeBlockCollapseButton => 'Collapse';
+
+  @override
+  String get codeBlockExpandButton => 'Expand';
+
+  @override
+  String get codeBlockDefaultFileNameStem => 'code';
+
+  @override
   String codeBlockCollapsedLines(int n) {
     return '… $n lines folded';
   }

@@ -1018,6 +1018,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codeBlockPreviewButton => '预览';
 
   @override
+  String get codeBlockSaveAsButton => '另存为文件';
+
+  @override
+  String get codeBlockCollapseButton => '折叠';
+
+  @override
+  String get codeBlockExpandButton => '展开';
+
+  @override
+  String get codeBlockDefaultFileNameStem => '代码';
+
+  @override
   String codeBlockCollapsedLines(int n) {
     return '… 已折叠 $n 行';
   }
@@ -5373,6 +5385,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get codeBlockPreviewButton => '预览';
 
   @override
+  String get codeBlockSaveAsButton => '另存为文件';
+
+  @override
+  String get codeBlockCollapseButton => '折叠';
+
+  @override
+  String get codeBlockExpandButton => '展开';
+
+  @override
+  String get codeBlockDefaultFileNameStem => '代码';
+
+  @override
   String codeBlockCollapsedLines(int n) {
     return '… 已折叠 $n 行';
   }
@@ -9726,6 +9750,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get codeBlockPreviewButton => '預覽';
+
+  @override
+  String get codeBlockSaveAsButton => '另存為檔案';
+
+  @override
+  String get codeBlockCollapseButton => '摺疊';
+
+  @override
+  String get codeBlockExpandButton => '展開';
+
+  @override
+  String get codeBlockDefaultFileNameStem => '程式碼';
 
   @override
   String codeBlockCollapsedLines(int n) {

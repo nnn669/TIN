@@ -1,13 +1,18 @@
 import 'package:Kelivo/shared/widgets/markdown_with_highlight.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Widget _markdownHarness(String text, {double? width}) {
-  SharedPreferences.setMockInitialValues({});
+Widget _markdownHarness(
+  String text, {
+  double? width,
+  Map<String, Object>? preferences,
+}) {
+  SharedPreferences.setMockInitialValues(preferences ?? {});
   return ChangeNotifierProvider(
     create: (_) => SettingsProvider(),
     child: MaterialApp(
@@ -23,6 +28,27 @@ Widget _markdownHarness(String text, {double? width}) {
                   child: MarkdownWithCodeHighlight(text: text),
                 ),
               ),
+      ),
+    ),
+  );
+}
+
+Widget _streamingMarkdownHarness(
+  ValueListenable<String> text, {
+  Map<String, Object>? preferences,
+}) {
+  SharedPreferences.setMockInitialValues(preferences ?? {});
+  return ChangeNotifierProvider(
+    create: (_) => SettingsProvider(),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: ValueListenableBuilder<String>(
+          valueListenable: text,
+          builder: (context, value, _) =>
+              MarkdownWithCodeHighlight(text: value),
+        ),
       ),
     ),
   );
@@ -49,6 +75,213 @@ void main() {
     expect(children, isNotEmpty);
     expect(children.length, greaterThan(1));
   });
+
+  testWidgets('SelectableHighlightView 同内容父级重建时复用高亮 span', (tester) async {
+    late StateSetter rebuild;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              rebuild = setState;
+              return const SelectableHighlightView(
+                'final value = 1;',
+                language: 'dart',
+                theme: {},
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    final before = tester
+        .widget<SelectableText>(find.byType(SelectableText))
+        .textSpan!
+        .children;
+
+    rebuild(() {});
+    await tester.pump();
+
+    final after = tester
+        .widget<SelectableText>(find.byType(SelectableText))
+        .textSpan!
+        .children;
+
+    expect(identical(before, after), isTrue);
+  });
+
+  testWidgets('MarkdownWithCodeHighlight renders code block actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _markdownHarness('''
+```dart
+void main() {}
+```
+'''),
+    );
+    await tester.pump();
+
+    expect(find.byTooltip('Save as file'), findsOneWidget);
+    expect(find.byTooltip('Copy'), findsOneWidget);
+    expect(find.text('dart'), findsOneWidget);
+  });
+
+  testWidgets('MarkdownWithCodeHighlight toggles auto-collapsed code block', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _markdownHarness(
+        '''
+```dart
+line1
+line2
+line3
+```
+''',
+        preferences: const {
+          'display_auto_collapse_code_block_v1': true,
+          'display_auto_collapse_code_block_lines_v1': 2,
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Expand'), findsOneWidget);
+    expect(find.textContaining('line3'), findsNothing);
+    expect(find.textContaining('folded'), findsNothing);
+
+    await tester.tap(find.text('Expand'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Collapse'), findsOneWidget);
+    expect(find.textContaining('line3'), findsOneWidget);
+  });
+
+  testWidgets('MarkdownWithCodeHighlight keeps manual toggle while streaming', (
+    tester,
+  ) async {
+    final streamText = ValueNotifier<String>('''
+```dart
+alpha1
+alpha2
+alpha3
+```
+''');
+
+    await tester.pumpWidget(
+      _streamingMarkdownHarness(
+        streamText,
+        preferences: const {
+          'display_auto_collapse_code_block_v1': true,
+          'display_auto_collapse_code_block_lines_v1': 2,
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Expand'), findsOneWidget);
+    expect(find.textContaining('alpha3'), findsNothing);
+
+    await tester.tap(find.text('Expand'));
+    await tester.pumpAndSettle();
+
+    streamText.value = '''
+```dart
+alpha1
+alpha2
+alpha3
+alpha4
+```
+''';
+    await tester.pumpAndSettle();
+
+    expect(find.text('Collapse'), findsOneWidget);
+    expect(find.textContaining('alpha4'), findsOneWidget);
+
+    await tester.tap(find.text('Collapse'));
+    await tester.pumpAndSettle();
+
+    streamText.value = '''
+```dart
+beta1
+alpha2
+alpha3
+alpha4
+alpha5
+```
+''';
+    await tester.pumpAndSettle();
+
+    expect(find.text('Expand'), findsOneWidget);
+    expect(find.textContaining('alpha5'), findsNothing);
+  });
+
+  testWidgets(
+    'MarkdownWithCodeHighlight accepts fold tap during streaming rebuild',
+    (tester) async {
+      final streamText = ValueNotifier<String>('''
+```dart
+press1
+press2
+press3
+```
+''');
+
+      await tester.pumpWidget(
+        _streamingMarkdownHarness(
+          streamText,
+          preferences: const {
+            'display_auto_collapse_code_block_v1': true,
+            'display_auto_collapse_code_block_lines_v1': 2,
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+
+      final expandGesture = await tester.startGesture(
+        tester.getCenter(find.text('Expand')),
+      );
+      streamText.value = '''
+```dart
+press1
+press2
+press3
+press4
+```
+''';
+      await tester.pump();
+      await expandGesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Collapse'), findsOneWidget);
+      expect(find.textContaining('press4'), findsOneWidget);
+
+      final collapseGesture = await tester.startGesture(
+        tester.getCenter(find.text('Collapse')),
+      );
+      streamText.value = '''
+```dart
+press1
+press2
+press3
+press4
+press5
+```
+''';
+      await tester.pump();
+      await collapseGesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Expand'), findsOneWidget);
+      expect(find.textContaining('press5'), findsNothing);
+    },
+  );
 
   testWidgets(
     'MarkdownWithCodeHighlight renders details collapsed then expands',

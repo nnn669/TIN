@@ -280,6 +280,10 @@
   "assistantEditVariableMessage": "内容",
   "assistantEditPreviewTitle": "预览",
   "codeBlockPreviewButton": "预览",
+  "codeBlockSaveAsButton": "另存为文件",
+  "codeBlockCollapseButton": "折叠",
+  "codeBlockExpandButton": "展开",
+  "codeBlockDefaultFileNameStem": "代码",
   "codeBlockCollapsedLines": "… 已折叠 {n} 行",
   "@codeBlockCollapsedLines": {
     "placeholders": {

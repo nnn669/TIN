@@ -2045,6 +2045,30 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get codeBlockPreviewButton;
 
+  /// No description provided for @codeBlockSaveAsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as file'**
+  String get codeBlockSaveAsButton;
+
+  /// No description provided for @codeBlockCollapseButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get codeBlockCollapseButton;
+
+  /// No description provided for @codeBlockExpandButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get codeBlockExpandButton;
+
+  /// No description provided for @codeBlockDefaultFileNameStem.
+  ///
+  /// In en, this message translates to:
+  /// **'code'**
+  String get codeBlockDefaultFileNameStem;
+
   /// No description provided for @codeBlockCollapsedLines.
   ///
   /// In en, this message translates to:

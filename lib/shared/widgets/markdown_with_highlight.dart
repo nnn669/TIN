@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart'
@@ -22,6 +23,7 @@ import 'mermaid_bridge.dart';
 import 'export_capture_scope.dart';
 import 'mermaid_image_cache.dart';
 import 'plantuml_block.dart';
+import 'package:path/path.dart' as p;
 import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:Kelivo/theme/theme_factory.dart' show getPlatformFontFallback;
 import 'package:provider/provider.dart';
@@ -1040,22 +1042,41 @@ class _CollapsibleCodeBlock extends StatefulWidget {
 }
 
 class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
+  static final Map<String, bool> _manualExpansionByCodeKey = <String, bool>{};
+  static const int _maxStoredManualExpansionStates = 80;
+
   bool _expanded = true;
   bool _manuallyToggled = false;
+  late String _stateKey;
 
   @override
   void initState() {
     super.initState();
+    _stateKey = _codeBlockStateKey(widget.language, widget.code);
     _applyInitialAutoCollapse();
   }
 
   @override
   void didUpdateWidget(covariant _CollapsibleCodeBlock oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncStateKeyForStreamingUpdate();
+    _applyAutoCollapseIfNeeded();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _applyAutoCollapseIfNeeded();
   }
 
   void _applyInitialAutoCollapse() {
+    final stored = _manualExpansionByCodeKey[_stateKey];
+    if (stored != null) {
+      _expanded = stored;
+      _manuallyToggled = true;
+      return;
+    }
+
     final sp = context.read<SettingsProvider>();
     if (!sp.autoCollapseCodeBlock) return;
     final threshold = sp.autoCollapseCodeBlockLines;
@@ -1074,6 +1095,31 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     if (_exceedsLineThreshold(widget.code, threshold)) {
       setState(() => _expanded = false);
     }
+  }
+
+  void _syncStateKeyForStreamingUpdate() {
+    final nextKey = _codeBlockStateKey(widget.language, widget.code);
+    if (nextKey == _stateKey) return;
+
+    if (_manuallyToggled) {
+      _stateKey = nextKey;
+      _rememberManualExpansionState();
+      return;
+    }
+
+    _stateKey = nextKey;
+    final stored = _manualExpansionByCodeKey[_stateKey];
+    if (stored == null) return;
+    _expanded = stored;
+    _manuallyToggled = true;
+  }
+
+  void _rememberManualExpansionState() {
+    _manualExpansionByCodeKey[_stateKey] = _expanded;
+    if (_manualExpansionByCodeKey.length <= _maxStoredManualExpansionStates) {
+      return;
+    }
+    _manualExpansionByCodeKey.remove(_manualExpansionByCodeKey.keys.first);
   }
 
   @override
@@ -1096,399 +1142,267 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     }
 
     final codeFontFamily = resolveCodeFont();
+    final codeTextStyle = TextStyle(
+      fontFamily: codeFontFamily,
+      fontSize: 13,
+      height: 1.5,
+    );
+    final codeLanguage =
+        MarkdownWithCodeHighlight._normalizeLanguage(widget.language) ??
+        'plaintext';
+    final codeTheme = MarkdownWithCodeHighlight._transparentBgTheme(
+      isDark ? atomOneDarkReasonableTheme : githubTheme,
+    );
 
-    // Use theme-tinted surfaces so headers follow the current theme color.
-    final Color bodyBg = Color.alphaBlend(
-      cs.primary.withValues(alpha: isDark ? 0.06 : 0.03),
-      cs.surface,
-    );
-    final Color headerBg = Color.alphaBlend(
-      cs.primary.withValues(alpha: isDark ? 0.16 : 0.10),
-      cs.surface,
-    );
+    Widget buildCodeView(String visibleCode) {
+      final codeView = SelectableHighlightView(
+        visibleCode,
+        language: codeLanguage,
+        theme: codeTheme,
+        padding: EdgeInsets.zero,
+        textStyle: codeTextStyle,
+      );
+
+      final bool isDesktop =
+          Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      if (isDesktop || settings.mobileCodeBlockWrap) {
+        return codeView;
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        primary: false,
+        child: codeView,
+      );
+    }
+
+    final Color bodyBg = cs.surfaceContainer;
+    final Color headerBg = cs.surfaceContainerHighest;
+    final borderColor = _codeBlockBorderColor(cs, isDark);
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bodyBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
       // Clip children to the same radius so they don't overpaint corners
       clipBehavior: Clip.antiAlias,
       // Draw the border on top so it remains visible at corners
       foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header layout: language (left) + copy action (icon + label) + expand/collapse icon
-          Material(
+          Container(
             color: headerBg,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() {
-                _manuallyToggled = true;
-                _expanded = !_expanded;
-              }),
-              splashColor: Platform.isIOS ? Colors.transparent : null,
-              highlightColor: Platform.isIOS ? Colors.transparent : null,
-              hoverColor: Platform.isIOS ? Colors.transparent : null,
-              overlayColor: Platform.isIOS
-                  ? const WidgetStatePropertyAll(Colors.transparent)
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.28),
-                      width: 1.0,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    MarkdownWithCodeHighlight._displayLanguage(
+                      context,
+                      widget.language,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+                      height: 1.0,
                     ),
                   ),
                 ),
-                child: Row(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(width: 2),
-                    Text(
-                      MarkdownWithCodeHighlight._displayLanguage(
+                    _CodeBlockIconAction(
+                      icon: Lucide.Download,
+                      label: AppLocalizations.of(
                         context,
-                        widget.language,
-                      ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                        height: 1.0,
-                      ),
+                      )!.codeBlockSaveAsButton,
+                      onTap: () => _saveCodeAsFile(context),
                     ),
-                    const Spacer(),
-                    if (_isHtml(widget.language))
-                      InkWell(
-                        onTap: () {
-                          final l10n = AppLocalizations.of(context)!;
-                          if (Platform.isAndroid || Platform.isIOS) {
-                            // Mobile: navigate to preview page
-                            Navigator.of(context).push(
-                              PageRouteBuilder(
-                                pageBuilder: (_, __, ___) =>
-                                    HtmlPreviewPage(html: widget.code),
-                                transitionDuration: const Duration(
-                                  milliseconds: 300,
-                                ),
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 240,
-                                ),
-                                transitionsBuilder:
-                                    (context, anim, sec, child) {
-                                      final curved = CurvedAnimation(
-                                        parent: anim,
-                                        curve: Curves.easeOutCubic,
-                                        reverseCurve: Curves.easeInCubic,
-                                      );
-                                      return FadeTransition(
-                                        opacity: curved,
-                                        child: child,
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (Platform.isLinux) {
-                            // Linux: show not supported
-                            showAppSnackBar(
-                              context,
-                              message: l10n.htmlPreviewNotSupportedOnLinux,
-                              type: NotificationType.warning,
-                            );
-                          } else {
-                            // Desktop (macOS/Windows): open dialog
-                            showHtmlPreviewDesktopDialog(
-                              context,
-                              html: widget.code,
-                            );
-                          }
-                        },
-                        splashColor: Platform.isIOS ? Colors.transparent : null,
-                        highlightColor: Platform.isIOS
-                            ? Colors.transparent
-                            : null,
-                        hoverColor: Platform.isIOS ? Colors.transparent : null,
-                        overlayColor: Platform.isIOS
-                            ? const WidgetStatePropertyAll(Colors.transparent)
-                            : null,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Lucide.Eye,
-                                size: 14,
-                                color: cs.onSurface.withValues(alpha: 0.6),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.codeBlockPreviewButton,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: cs.onSurface.withValues(alpha: 0.6),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    // Copy action: icon + label ("复制"/localized)
-                    InkWell(
-                      onTap: () async {
-                        final copiedMessage = AppLocalizations.of(
+                    const SizedBox(width: 16),
+                    _CodeBlockIconAction(
+                      icon: Lucide.Copy,
+                      label: AppLocalizations.of(
+                        context,
+                      )!.shareProviderSheetCopyButton,
+                      onTap: () => _copyCode(context),
+                    ),
+                    if (_isHtml(widget.language)) ...[
+                      const SizedBox(width: 16),
+                      _CodeBlockIconAction(
+                        icon: Lucide.Eye,
+                        label: AppLocalizations.of(
                           context,
-                        )!.chatMessageWidgetCopiedToClipboard;
-                        await Clipboard.setData(
-                          ClipboardData(text: widget.code),
-                        );
-                        if (!context.mounted) return;
-                        showAppSnackBar(
-                          context,
-                          message: copiedMessage,
-                          type: NotificationType.success,
-                        );
-                      },
-                      splashColor: Platform.isIOS ? Colors.transparent : null,
-                      highlightColor: Platform.isIOS
-                          ? Colors.transparent
-                          : null,
-                      hoverColor: Platform.isIOS ? Colors.transparent : null,
-                      overlayColor: Platform.isIOS
-                          ? const WidgetStatePropertyAll(Colors.transparent)
-                          : null,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 6,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Lucide.Copy,
-                              size: 14,
-                              color: cs.onSurface.withValues(alpha: 0.6),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              AppLocalizations.of(
-                                context,
-                              )!.shareProviderSheetCopyButton,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: cs.onSurface.withValues(alpha: 0.6),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                        )!.codeBlockPreviewButton,
+                        onTap: () => _previewHtml(context),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    AnimatedRotation(
-                      turns: _expanded ? 0.25 : 0.0, // right -> down
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        Lucide.ChevronRight,
-                        size: 16,
-                        color: cs.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
-              ),
+              ],
             ),
           ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SizeTransition(
-                sizeFactor: anim,
-                axisAlignment: -1.0,
-                child: child,
-              ),
-            ),
-            child: _expanded
-                ? Container(
-                    key: const ValueKey('code-expanded'),
-                    width: double.infinity,
-                    color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
-                    child: () {
-                      // Desktop: enable word wrap, allow selection, no height limit, no scroll
-                      // Mobile: horizontal scroll by default, or word wrap if setting enabled
-                      final bool isDesktop =
-                          Platform.isMacOS ||
-                          Platform.isWindows ||
-                          Platform.isLinux;
-
-                      if (isDesktop) {
-                        // Desktop: auto wrap, selectable, no height limit, no scroll
-                        return SelectableHighlightView(
-                          _trimTrailingNewlines(widget.code),
-                          language:
-                              MarkdownWithCodeHighlight._normalizeLanguage(
-                                widget.language,
-                              ) ??
-                              'plaintext',
-                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
-                          ),
-                          padding: EdgeInsets.zero,
-                          textStyle: TextStyle(
-                            fontFamily: codeFontFamily,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
-                        );
-                      }
-
-                      // Mobile: check settings for word wrap
-                      final bool shouldWrap = settings.mobileCodeBlockWrap;
-
-                      if (shouldWrap) {
-                        // Mobile with wrap enabled: selectable, auto wrap
-                        return SelectableHighlightView(
-                          _trimTrailingNewlines(widget.code),
-                          language:
-                              MarkdownWithCodeHighlight._normalizeLanguage(
-                                widget.language,
-                              ) ??
-                              'plaintext',
-                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
-                          ),
-                          padding: EdgeInsets.zero,
-                          textStyle: TextStyle(
-                            fontFamily: codeFontFamily,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
-                        );
-                      }
-
-                      // Mobile without wrap: horizontal scroll, selectable
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        primary: false,
-                        child: SelectableHighlightView(
-                          _trimTrailingNewlines(widget.code),
-                          language:
-                              MarkdownWithCodeHighlight._normalizeLanguage(
-                                widget.language,
-                              ) ??
-                              'plaintext',
-                          theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
-                          ),
-                          padding: EdgeInsets.zero,
-                          textStyle: TextStyle(
-                            fontFamily: codeFontFamily,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
-                        ),
-                      );
-                    }(),
-                  )
-                : Container(
-                    key: const ValueKey('code-collapsed'),
-                    width: double.infinity,
-                    color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                    child: () {
-                      final l10n = AppLocalizations.of(context)!;
-                      final code = widget.code;
-                      final end = _trimTrailingNewlinesEndIndex(code);
-
-                      final preview = <String>[];
-                      int totalLines = 0;
-                      if (end > 0) {
-                        totalLines = 1;
-                        int lineStart = 0;
-                        for (int i = 0; i < end; i++) {
-                          final cu = code.codeUnitAt(i);
-                          if (cu == 0x0A /* \n */ || cu == 0x0D /* \r */ ) {
-                            if (preview.length < 2) {
-                              preview.add(code.substring(lineStart, i));
-                            }
-                            totalLines++;
-                            if (cu == 0x0D /* \r */ &&
-                                i + 1 < end &&
-                                code.codeUnitAt(i + 1) == 0x0A /* \n */ ) {
-                              i++;
-                            }
-                            lineStart = i + 1;
-                          }
-                        }
-                        if (preview.length < 2) {
-                          preview.add(code.substring(lineStart, end));
-                        }
-                      }
-
-                      final hiddenLines = (totalLines - preview.length).clamp(
-                        0,
-                        999999,
-                      );
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final line in preview)
-                            Text(
-                              line,
-                              style: TextStyle(
-                                fontFamily: codeFontFamily,
-                                fontSize: 13,
-                                height: 1.5,
-                                color: cs.onSurface,
-                              ),
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          if (hiddenLines > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                l10n.codeBlockCollapsedLines(hiddenLines),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 1.4,
-                                  color: cs.onSurface.withValues(alpha: 0.55),
-                                ),
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      );
-                    }(),
+          Container(
+            width: double.infinity,
+            color: bodyBg,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topLeft,
+                  clipBehavior: Clip.hardEdge,
+                  child: buildCodeView(
+                    _expanded
+                        ? _trimTrailingNewlines(widget.code)
+                        : _collapsedHighlightedCode(settings),
                   ),
+                ),
+                if (_shouldShowFoldControl(settings)) ...[
+                  const SizedBox(height: 4),
+                  _CodeBlockFoldControl(
+                    expanded: _expanded,
+                    onTap: _toggleExpanded,
+                    textStyle: codeTextStyle,
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _manuallyToggled = true;
+      _expanded = !_expanded;
+      _rememberManualExpansionState();
+    });
+  }
+
+  Future<void> _copyCode(BuildContext context) async {
+    final copiedMessage = AppLocalizations.of(
+      context,
+    )!.chatMessageWidgetCopiedToClipboard;
+    await Clipboard.setData(ClipboardData(text: widget.code));
+    if (!context.mounted) return;
+    showAppSnackBar(
+      context,
+      message: copiedMessage,
+      type: NotificationType.success,
+    );
+  }
+
+  Future<void> _saveCodeAsFile(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final extension = _codeFileExtension(widget.language);
+    final timestamp = DateTime.now().toLocal().toIso8601String().replaceAll(
+      RegExp(r'[:.]'),
+      '-',
+    );
+    final filename =
+        '${l10n.codeBlockDefaultFileNameStem}_$timestamp$extension';
+
+    try {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        final savePath = await FilePicker.platform.saveFile(
+          dialogTitle: l10n.backupPageExportToFile,
+          fileName: filename,
+          type: FileType.custom,
+          allowedExtensions: [_extensionWithoutDot(extension)],
+        );
+        if (savePath == null) return;
+        await File(savePath).parent.create(recursive: true);
+        await File(savePath).writeAsString(widget.code);
+        if (!context.mounted) return;
+        showAppSnackBar(
+          context,
+          message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+          type: NotificationType.success,
+        );
+        return;
+      }
+
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: l10n.backupPageExportToFile,
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: [_extensionWithoutDot(extension)],
+        bytes: Uint8List.fromList(utf8.encode(widget.code)),
+      );
+      if (savePath == null || !context.mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.messageExportSheetExportedAs(p.basename(savePath)),
+        type: NotificationType.success,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      showAppSnackBar(
+        context,
+        message: l10n.messageExportSheetExportFailed('$e'),
+        type: NotificationType.error,
+      );
+    }
+  }
+
+  void _previewHtml(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (Platform.isAndroid || Platform.isIOS) {
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => HtmlPreviewPage(html: widget.code),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 240),
+          transitionsBuilder: (context, anim, sec, child) {
+            final curved = CurvedAnimation(
+              parent: anim,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return FadeTransition(opacity: curved, child: child);
+          },
+        ),
+      );
+    } else if (Platform.isLinux) {
+      showAppSnackBar(
+        context,
+        message: l10n.htmlPreviewNotSupportedOnLinux,
+        type: NotificationType.warning,
+      );
+    } else {
+      showHtmlPreviewDesktopDialog(context, html: widget.code);
+    }
+  }
+
+  bool _shouldShowFoldControl(SettingsProvider settings) {
+    if (!settings.autoCollapseCodeBlock) return false;
+    return _exceedsLineThreshold(
+      widget.code,
+      settings.autoCollapseCodeBlockLines,
+    );
+  }
+
+  String _collapsedHighlightedCode(SettingsProvider settings) {
+    final visibleLines = settings.autoCollapseCodeBlockLines.clamp(1, 999999);
+    final trimmed = _trimTrailingNewlines(widget.code);
+    if (trimmed.isEmpty) return trimmed;
+    return trimmed.split(RegExp(r'\r\n|\r|\n')).take(visibleLines).join('\n');
   }
 
   bool _exceedsLineThreshold(String code, int threshold) {
@@ -1532,6 +1446,180 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final end = _trimTrailingNewlinesEndIndex(s);
     return end == s.length ? s : s.substring(0, end);
   }
+}
+
+Color _codeBlockBorderColor(ColorScheme cs, bool isDark) {
+  final outlineVariant = cs.outlineVariant;
+  final isExtreme =
+      outlineVariant == Colors.black || outlineVariant == Colors.white;
+  if (!isExtreme) return outlineVariant;
+  return Color.alphaBlend(
+    cs.onSurfaceVariant.withValues(alpha: isDark ? 0.32 : 0.24),
+    cs.surface,
+  );
+}
+
+String _codeBlockStateKey(String language, String code) {
+  final normalizedLanguage = language.trim().toLowerCase();
+  final normalizedCode = code.trimLeft().replaceAll(RegExp(r'\s+'), ' ');
+  final anchor = normalizedCode.length <= 16
+      ? normalizedCode
+      : normalizedCode.substring(0, 16);
+  return '$normalizedLanguage|$anchor';
+}
+
+class _CodeBlockIconAction extends StatelessWidget {
+  const _CodeBlockIconAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(
+      context,
+    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5);
+    return Tooltip(
+      message: label,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: IosIconButton(
+          icon: icon,
+          semanticLabel: label,
+          onTap: onTap,
+          size: 16,
+          padding: const EdgeInsets.all(4),
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _CodeBlockFoldControl extends StatelessWidget {
+  const _CodeBlockFoldControl({
+    required this.expanded,
+    required this.onTap,
+    required this.textStyle,
+  });
+
+  final bool expanded;
+  final VoidCallback onTap;
+  final TextStyle textStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final label = expanded
+        ? l10n.codeBlockCollapseButton
+        : l10n.codeBlockExpandButton;
+
+    return SelectionContainer.disabled(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => onTap(),
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      expanded ? Lucide.ChevronUp : Lucide.ChevronDown,
+                      size: (textStyle.fontSize ?? 13) * 1.18,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(label, style: textStyle.copyWith(color: cs.onSurface)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _codeFileExtension(String? language) {
+  switch ((language ?? '').trim().toLowerCase()) {
+    case 'kotlin':
+    case 'kt':
+      return '.kt';
+    case 'java':
+      return '.java';
+    case 'python':
+    case 'py':
+      return '.py';
+    case 'javascript':
+    case 'js':
+      return '.js';
+    case 'typescript':
+    case 'ts':
+      return '.ts';
+    case 'dart':
+      return '.dart';
+    case 'cpp':
+    case 'c++':
+      return '.cpp';
+    case 'c':
+      return '.c';
+    case 'csharp':
+    case 'cs':
+    case 'c#':
+      return '.cs';
+    case 'go':
+    case 'golang':
+      return '.go';
+    case 'rust':
+    case 'rs':
+      return '.rs';
+    case 'swift':
+      return '.swift';
+    case 'html':
+    case 'htm':
+    case 'rawhtml':
+    case 'raw_html':
+      return '.html';
+    case 'css':
+      return '.css';
+    case 'xml':
+      return '.xml';
+    case 'json':
+      return '.json';
+    case 'yaml':
+    case 'yml':
+      return '.yml';
+    case 'markdown':
+    case 'md':
+      return '.md';
+    case 'sql':
+      return '.sql';
+    case 'shell':
+    case 'bash':
+    case 'sh':
+    case 'zsh':
+      return '.sh';
+    case 'svg':
+      return '.svg';
+    default:
+      return '.txt';
+  }
+}
+
+String _extensionWithoutDot(String extension) {
+  return extension.startsWith('.') ? extension.substring(1) : extension;
 }
 
 bool _isHtml(String? lang) {
@@ -2869,7 +2957,7 @@ class AllowedHtmlTagsMd extends InlineMd {
 
 /// A selectable version of HighlightView that allows users to select
 /// and copy portions of the code instead of just the entire block.
-class SelectableHighlightView extends StatelessWidget {
+class SelectableHighlightView extends StatefulWidget {
   const SelectableHighlightView(
     this.source, {
     super.key,
@@ -2885,6 +2973,41 @@ class SelectableHighlightView extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final TextStyle? textStyle;
 
+  @override
+  State<SelectableHighlightView> createState() =>
+      _SelectableHighlightViewState();
+}
+
+class _SelectableHighlightViewState extends State<SelectableHighlightView> {
+  late List<TextSpan> _codeTextSpans;
+
+  @override
+  void initState() {
+    super.initState();
+    _codeTextSpans = _highlightSource();
+  }
+
+  @override
+  void didUpdateWidget(covariant SelectableHighlightView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source == widget.source &&
+        oldWidget.language == widget.language &&
+        oldWidget.textStyle == widget.textStyle &&
+        _highlightThemeEquals(oldWidget.theme, widget.theme)) {
+      return;
+    }
+    _codeTextSpans = _highlightSource();
+  }
+
+  List<TextSpan> _highlightSource() {
+    try {
+      final result = highlight.parse(widget.source, language: widget.language);
+      return _convertNodes(result.nodes ?? const []);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Converts a highlight Node tree to a TextSpan tree with appropriate styling
   List<TextSpan> _convertNodes(List<Node> nodes) {
     final List<TextSpan> spans = [];
@@ -2892,13 +3015,15 @@ class SelectableHighlightView extends StatelessWidget {
     for (final node in nodes) {
       if (node.value != null) {
         // Leaf node with text content
-        spans.add(TextSpan(text: node.value, style: theme[node.className]));
+        spans.add(
+          TextSpan(text: node.value, style: widget.theme[node.className]),
+        );
       } else if (node.children != null) {
         // Node with children - recurse
         spans.add(
           TextSpan(
             children: _convertNodes(node.children!),
-            style: theme[node.className],
+            style: widget.theme[node.className],
           ),
         );
       }
@@ -2909,21 +3034,22 @@ class SelectableHighlightView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    List<TextSpan> codeTextSpans = const [];
-    try {
-      final result = highlight.parse(source, language: language);
-      codeTextSpans = _convertNodes(result.nodes ?? []);
-    } catch (_) {
-      codeTextSpans = const [];
-    }
-
     return SelectableText.rich(
       TextSpan(
-        style: textStyle,
-        children: codeTextSpans.isEmpty
-            ? [TextSpan(text: source)]
-            : codeTextSpans,
+        style: widget.textStyle,
+        children: _codeTextSpans.isEmpty
+            ? [TextSpan(text: widget.source)]
+            : _codeTextSpans,
       ),
     );
   }
+}
+
+bool _highlightThemeEquals(Map<String, TextStyle> a, Map<String, TextStyle> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    if (b[entry.key] != entry.value) return false;
+  }
+  return true;
 }
