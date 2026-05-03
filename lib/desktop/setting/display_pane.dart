@@ -74,6 +74,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowShowModelTimestamp(),
                   _RowDivider(),
+                  _ToggleRowShowProviderInChatMessage(),
+                  _RowDivider(),
                   _ToggleRowShowTokenStats(),
                 ],
               ),
@@ -2024,6 +2026,21 @@ class _ToggleRowShowModelTimestamp extends StatelessWidget {
       value: sp.showModelTimestamp,
       onChanged: (v) =>
           context.read<SettingsProvider>().setShowModelTimestamp(v),
+    );
+  }
+}
+
+class _ToggleRowShowProviderInChatMessage extends StatelessWidget {
+  const _ToggleRowShowProviderInChatMessage();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowProviderInChatMessageTitle,
+      value: sp.showProviderInChatMessage,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowProviderInChatMessage(v),
     );
   }
 }
