@@ -46,6 +46,7 @@ import '../widgets/learning_prompt_sheet.dart';
 import '../widgets/scroll_nav_buttons.dart';
 import '../widgets/message_list_view.dart';
 import '../widgets/chat_input_section.dart';
+import '../widgets/chat_input_overlay_layout.dart';
 import '../widgets/chat_selection_app_bar.dart';
 import '../widgets/chat_selection_export_bar.dart';
 import '../utils/model_display_helper.dart';
@@ -337,85 +338,68 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildMobileBody(BuildContext context, ColorScheme cs) {
-    return Stack(
-      children: [
-        // Background
-        _buildChatBackground(context, cs),
-        // Main content
-        Padding(
-          padding: EdgeInsets.only(
-            top: kToolbarHeight + MediaQuery.paddingOf(context).top,
-          ),
-          child: Column(
-            children: [
-              Expanded(
+    final bottomContentPadding = _controller.inputBarHeight + 16;
+
+    return ChatInputOverlayLayout(
+      topInset: kToolbarHeight + MediaQuery.paddingOf(context).top,
+      background: _buildChatBackground(context, cs),
+      content: Builder(
+        builder: (context) {
+          final content = KeyedSubtree(
+            key: ValueKey<String>(
+              _controller.currentConversation?.id ?? 'none',
+            ),
+            child: _buildMessageListView(
+              context,
+              bottomContentPadding: bottomContentPadding,
+              dividerPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: AppSpacing.md,
+              ),
+            ),
+          );
+          final isAndroid =
+              Theme.of(context).platform == TargetPlatform.android;
+          Widget w = content;
+          if (!isAndroid) {
+            w = w
+                .animate(
+                  key: ValueKey(
+                    'mob_body_${_controller.currentConversation?.id ?? 'none'}',
+                  ),
+                )
+                .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic);
+            w = FadeTransition(opacity: _controller.convoFade, child: w);
+          }
+          return w;
+        },
+      ),
+      bottomOverlay: _controller.selecting
+          ? ChatSelectionExportBar(
+              key: _selectionExportBarKey,
+              onExportMarkdown: _controller.exportSelectedAsMarkdown,
+              onExportTxt: _controller.exportSelectedAsTxt,
+              onExportImage: _controller.exportSelectedAsImage,
+              showThinkingTools: _controller.showThinkingTools,
+              showThinkingContent: _controller.showThinkingContent,
+              onToggleThinkingTools: _controller.toggleThinkingTools,
+              onToggleThinkingContent: _controller.toggleThinkingContent,
+            )
+          : NotificationListener<SizeChangedLayoutNotification>(
+              onNotification: (n) {
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _controller.measureInputBar(),
+                );
+                return false;
+              },
+              child: SizeChangedLayoutNotifier(
                 child: Builder(
-                  builder: (context) {
-                    final content = KeyedSubtree(
-                      key: ValueKey<String>(
-                        _controller.currentConversation?.id ?? 'none',
-                      ),
-                      child: _buildMessageListView(
-                        context,
-                        dividerPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: AppSpacing.md,
-                        ),
-                      ),
-                    );
-                    final isAndroid =
-                        Theme.of(context).platform == TargetPlatform.android;
-                    Widget w = content;
-                    if (!isAndroid) {
-                      w = w
-                          .animate(
-                            key: ValueKey(
-                              'mob_body_${_controller.currentConversation?.id ?? 'none'}',
-                            ),
-                          )
-                          .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic);
-                      w = FadeTransition(
-                        opacity: _controller.convoFade,
-                        child: w,
-                      );
-                    }
-                    return w;
-                  },
+                  builder: (context) =>
+                      _buildChatInputBar(context, isTablet: false),
                 ),
               ),
-              if (_controller.selecting)
-                ChatSelectionExportBar(
-                  key: _selectionExportBarKey,
-                  onExportMarkdown: _controller.exportSelectedAsMarkdown,
-                  onExportTxt: _controller.exportSelectedAsTxt,
-                  onExportImage: _controller.exportSelectedAsImage,
-                  showThinkingTools: _controller.showThinkingTools,
-                  showThinkingContent: _controller.showThinkingContent,
-                  onToggleThinkingTools: _controller.toggleThinkingTools,
-                  onToggleThinkingContent: _controller.toggleThinkingContent,
-                )
-              else
-                // Input bar
-                NotificationListener<SizeChangedLayoutNotification>(
-                  onNotification: (n) {
-                    WidgetsBinding.instance.addPostFrameCallback(
-                      (_) => _controller.measureInputBar(),
-                    );
-                    return false;
-                  },
-                  child: SizeChangedLayoutNotifier(
-                    child: Builder(
-                      builder: (context) =>
-                          _buildChatInputBar(context, isTablet: false),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // Scroll navigation buttons
-        _buildScrollButtons(),
-      ],
+            ),
+      foreground: _buildScrollButtons(),
     );
   }
 
@@ -524,91 +508,74 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildTabletBody(BuildContext context, ColorScheme cs) {
-    return Stack(
-      children: [
-        Padding(
-          padding: EdgeInsets.only(
-            top: kToolbarHeight + MediaQuery.paddingOf(context).top,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: FadeTransition(
-                  opacity: _controller.convoFade,
-                  child:
-                      KeyedSubtree(
-                            key: ValueKey<String>(
-                              _controller.currentConversation?.id ?? 'none',
-                            ),
-                            child: _buildMessageListView(
-                              context,
-                              dividerPadding: const EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal: 12,
-                              ),
-                            ),
-                          )
-                          .animate(
-                            key: ValueKey(
-                              'tab_body_${_controller.currentConversation?.id ?? 'none'}',
-                            ),
-                          )
-                          .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic),
-                ),
-              ),
-              if (_controller.selecting)
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: ChatLayoutConstants.maxInputWidth,
-                    ),
-                    child: ChatSelectionExportBar(
-                      key: _selectionExportBarKey,
-                      onExportMarkdown: _controller.exportSelectedAsMarkdown,
-                      onExportTxt: _controller.exportSelectedAsTxt,
-                      onExportImage: _controller.exportSelectedAsImage,
-                      showThinkingTools: _controller.showThinkingTools,
-                      showThinkingContent: _controller.showThinkingContent,
-                      onToggleThinkingTools: _controller.toggleThinkingTools,
-                      onToggleThinkingContent:
-                          _controller.toggleThinkingContent,
+    final bottomContentPadding = _controller.inputBarHeight + 16;
+
+    return ChatInputOverlayLayout(
+      topInset: kToolbarHeight + MediaQuery.paddingOf(context).top,
+      content: FadeTransition(
+        opacity: _controller.convoFade,
+        child:
+            KeyedSubtree(
+                  key: ValueKey<String>(
+                    _controller.currentConversation?.id ?? 'none',
+                  ),
+                  child: _buildMessageListView(
+                    context,
+                    bottomContentPadding: bottomContentPadding,
+                    dividerPadding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
                     ),
                   ),
                 )
-              else
-                NotificationListener<SizeChangedLayoutNotification>(
-                  onNotification: (n) {
-                    WidgetsBinding.instance.addPostFrameCallback(
-                      (_) => _controller.measureInputBar(),
-                    );
-                    return false;
-                  },
-                  child: SizeChangedLayoutNotifier(
-                    child: Builder(
-                      builder: (context) {
-                        Widget input = _buildChatInputBar(
-                          context,
-                          isTablet: true,
-                        );
-                        input = Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: ChatLayoutConstants.maxInputWidth,
-                            ),
-                            child: input,
-                          ),
-                        );
-                        return input;
-                      },
-                    ),
+                .animate(
+                  key: ValueKey(
+                    'tab_body_${_controller.currentConversation?.id ?? 'none'}',
                   ),
+                )
+                .fadeIn(duration: 200.ms, curve: Curves.easeOutCubic),
+      ),
+      bottomOverlay: _controller.selecting
+          ? ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: ChatLayoutConstants.maxInputWidth,
+              ),
+              child: ChatSelectionExportBar(
+                key: _selectionExportBarKey,
+                onExportMarkdown: _controller.exportSelectedAsMarkdown,
+                onExportTxt: _controller.exportSelectedAsTxt,
+                onExportImage: _controller.exportSelectedAsImage,
+                showThinkingTools: _controller.showThinkingTools,
+                showThinkingContent: _controller.showThinkingContent,
+                onToggleThinkingTools: _controller.toggleThinkingTools,
+                onToggleThinkingContent: _controller.toggleThinkingContent,
+              ),
+            )
+          : NotificationListener<SizeChangedLayoutNotification>(
+              onNotification: (n) {
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _controller.measureInputBar(),
+                );
+                return false;
+              },
+              child: SizeChangedLayoutNotifier(
+                child: Builder(
+                  builder: (context) {
+                    Widget input = _buildChatInputBar(context, isTablet: true);
+                    input = Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: ChatLayoutConstants.maxInputWidth,
+                        ),
+                        child: input,
+                      ),
+                    );
+                    return input;
+                  },
                 ),
-            ],
-          ),
-        ),
-        _buildScrollButtons(),
-      ],
+              ),
+            ),
+      foreground: _buildScrollButtons(),
     );
   }
 
@@ -744,6 +711,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildMessageListView(
     BuildContext context, {
+    required double bottomContentPadding,
     required EdgeInsetsGeometry dividerPadding,
   }) {
     return BackdropGroup(
@@ -763,6 +731,7 @@ class _HomePageState extends State<HomePage>
         translations: _buildTranslationUiStates(),
         selecting: _controller.selecting,
         selectedItems: _controller.selectedItems,
+        bottomContentPadding: bottomContentPadding,
         dividerPadding: dividerPadding,
         streamingContentNotifier: _controller.streamingContentNotifier,
         spotlightMessageId: _controller.spotlightMessageId,

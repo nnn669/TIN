@@ -84,6 +84,7 @@ class MessageListView extends StatelessWidget {
     required this.selecting,
     required this.selectedItems,
     required this.dividerPadding,
+    this.bottomContentPadding = 16,
     this.pinnedStreamingMessageId,
     this.isPinnedIndicatorActive = false,
     required this.isProcessingFiles,
@@ -130,6 +131,7 @@ class MessageListView extends StatelessWidget {
   final bool selecting;
   final Set<String> selectedItems;
   final EdgeInsetsGeometry dividerPadding;
+  final double bottomContentPadding;
   final String? pinnedStreamingMessageId;
   final bool isPinnedIndicatorActive;
   final ValueNotifier<bool> isProcessingFiles;
@@ -216,7 +218,7 @@ class MessageListView extends StatelessWidget {
                 horizontalPad,
                 8,
                 horizontalPad,
-                isPinnedIndicatorActive ? 28 : 16,
+                bottomContentPadding + (isPinnedIndicatorActive ? 12 : 0),
               ),
               itemCount: messages.length,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
