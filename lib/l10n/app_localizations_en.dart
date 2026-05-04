@@ -256,6 +256,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPageAbout => 'About';
 
   @override
+  String get settingsPageStatistics => 'Statistics';
+
+  @override
   String get settingsPageDocs => 'Docs';
 
   @override
@@ -266,6 +269,117 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPageShare => 'Share';
+
+  @override
+  String get statsPageTitle => 'Statistics';
+
+  @override
+  String get statsPageRangeAllTime => 'All Time';
+
+  @override
+  String get statsPageRangeLast30Days => 'Last 30 Days';
+
+  @override
+  String get statsPageRangePreviousMonth => 'Last Month';
+
+  @override
+  String get statsPageRangePreviousQuarter => 'Last Quarter';
+
+  @override
+  String get statsPageRangeCustom => 'Custom';
+
+  @override
+  String get statsPageHeatmapTitle => 'Chat Heatmap';
+
+  @override
+  String get statsPageHeatmapLess => 'Less';
+
+  @override
+  String get statsPageHeatmapMore => 'More';
+
+  @override
+  String get statsPageSummaryTitle => 'Overview';
+
+  @override
+  String get statsPageTotalConversations => 'Total Conversations';
+
+  @override
+  String get statsPageTotalMessages => 'Total Messages';
+
+  @override
+  String get statsPageInputTokens => 'Input Tokens';
+
+  @override
+  String get statsPageOutputTokens => 'Output Tokens';
+
+  @override
+  String get statsPageCachedTokens => 'Cached Tokens';
+
+  @override
+  String get statsPageLaunchCount => 'App Launches';
+
+  @override
+  String get statsPageUsageTrendTitle => 'Usage Trend';
+
+  @override
+  String get statsPageModelUsageTitle => 'Model Usage';
+
+  @override
+  String get statsPageAssistantUsageTitle => 'Assistant Usage';
+
+  @override
+  String get statsPageTopicVolumeTitle => 'Topic Volume';
+
+  @override
+  String get statsPageModelColumn => 'Model';
+
+  @override
+  String get statsPageAssistantColumn => 'Assistant';
+
+  @override
+  String get statsPageTopicColumn => 'Topic';
+
+  @override
+  String get statsPageMessagesColumn => 'Messages';
+
+  @override
+  String get statsPageTopicsColumn => 'Topics';
+
+  @override
+  String get statsPageEmptyTitle => 'No statistics yet';
+
+  @override
+  String get statsPageShowAllTooltip => 'Show all';
+
+  @override
+  String get statsPageClose => 'Close';
+
+  @override
+  String get statsPageUnknownProvider => 'Unknown Provider';
+
+  @override
+  String get statsPageUnknownAssistant => 'Default Assistant';
+
+  @override
+  String get statsPageUnknownModel => 'Unknown Model';
+
+  @override
+  String get statsPageUnknownTopic => 'Untitled Topic';
+
+  @override
+  String get statsPageCustomRangeTitle => 'Custom Range';
+
+  @override
+  String get statsPageCustomRangeStart => 'Start';
+
+  @override
+  String get statsPageCustomRangeEnd => 'End';
+
+  @override
+  String get statsPageCustomRangeCancel => 'Cancel';
+
+  @override
+  String get statsPageCustomRangeApply => 'Apply';
 
   @override
   String get sponsorPageMethodsSectionTitle => 'Sponsorship Methods';

@@ -158,6 +158,8 @@ class Lucide {
   static const IconData ChevronsUp = lucide.LucideIcons.chevronsUp;
   static const IconData ChevronsDown = lucide.LucideIcons.chevronsDown;
   static const IconData Timer = lucide.LucideIcons.timer;
+  static const IconData ChartColumnBig = lucide.LucideIcons.chartColumnBig;
+  static const IconData Maximize = lucide.LucideIcons.maximize;
   static const IconData Maximize2 = lucide.LucideIcons.maximize2;
   static const IconData FolderOpen = lucide.LucideIcons.folderOpen;
   static const IconData FileQuestion = lucide.LucideIcons.fileQuestionMark;

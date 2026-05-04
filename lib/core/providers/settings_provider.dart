@@ -188,6 +188,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _logSaveOutputKey = 'log_save_output_v1';
   static const String _logAutoDeleteDaysKey = 'log_auto_delete_days_v1';
   static const String _logMaxSizeMBKey = 'log_max_size_mb_v1';
+  static const String _appLaunchCountKey = 'app_launch_count_v1';
   // Desktop topic panel placement + right sidebar open state
   static const String _desktopTopicPositionKey = 'desktop_topic_position_v1';
   static const String _desktopRightSidebarOpenKey =
@@ -407,6 +408,9 @@ class SettingsProvider extends ChangeNotifier {
   String get globalProxyUsername => _globalProxyUsername;
   String get globalProxyPassword => _globalProxyPassword;
   String get globalProxyBypass => _globalProxyBypass;
+
+  int _appLaunchCount = 0;
+  int get appLaunchCount => _appLaunchCount;
 
   SettingsProvider() {
     _load();
@@ -802,6 +806,7 @@ class SettingsProvider extends ChangeNotifier {
     RequestLogger.saveOutput = _logSaveOutput;
     _logAutoDeleteDays = prefs.getInt(_logAutoDeleteDaysKey) ?? 0;
     _logMaxSizeMB = prefs.getInt(_logMaxSizeMBKey) ?? 0;
+    _appLaunchCount = prefs.getInt(_appLaunchCountKey) ?? 0;
     // Run log cleanup based on current settings
     RequestLogger.cleanupLogs(
       autoDeleteDays: _logAutoDeleteDays,
@@ -3285,6 +3290,14 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await FlutterLogger.setEnabled(v);
   }
 
+  Future<void> incrementAppLaunchCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final next = (prefs.getInt(_appLaunchCountKey) ?? _appLaunchCount) + 1;
+    _appLaunchCount = next;
+    await prefs.setInt(_appLaunchCountKey, next);
+    notifyListeners();
+  }
+
   // Log settings: save output
   bool _logSaveOutput = true;
   bool get logSaveOutput => _logSaveOutput;
@@ -3457,6 +3470,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._logSaveOutput = _logSaveOutput;
     copy._logAutoDeleteDays = _logAutoDeleteDays;
     copy._logMaxSizeMB = _logMaxSizeMB;
+    copy._appLaunchCount = _appLaunchCount;
     copy._newChatOnLaunch = _newChatOnLaunch;
     copy._newChatOnAssistantSwitch = _newChatOnAssistantSwitch;
     copy._newChatAfterDelete = _newChatAfterDelete;

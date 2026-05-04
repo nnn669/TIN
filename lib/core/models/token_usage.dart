@@ -21,7 +21,11 @@ class TokenUsage {
         ? other.completionTokens
         : completionTokens;
     final cached = other.cachedTokens > 0 ? other.cachedTokens : cachedTokens;
-    final total = prompt + completion;
+    final splitTotal = prompt + completion;
+    final explicitTotal = other.totalTokens > 0
+        ? other.totalTokens
+        : totalTokens;
+    final total = splitTotal > 0 ? splitTotal : explicitTotal;
     return TokenUsage(
       promptTokens: prompt,
       completionTokens: completion,
