@@ -252,7 +252,7 @@ class _RankRow extends StatelessWidget {
     final widthFactor = (0.36 + ratio * 0.64).clamp(0.36, 1.0);
     final fillColor = isDark
         ? Colors.white.withValues(alpha: 0.1)
-        : const Color(0xFFECEEF1);
+        : const Color(0xFFF2F3F5);
     final leading = leadingBuilder?.call(context, item);
 
     return Row(
