@@ -228,5 +228,81 @@ void main() {
         expect(userParts.single.containsKey('functionResponse'), isTrue);
       },
     );
+
+    test('keeps image parts in live tool-call continuation contents', () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'kelivo_gemini_tool_img_',
+      );
+      addTearDown(() async {
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      });
+      final file = File('${dir.path}/gemini.png');
+      await file.writeAsBytes(const [1, 2, 3, 4]);
+
+      final requestBodies = <Map<String, dynamic>>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      var requestCount = 0;
+      server.listen((request) async {
+        requestCount++;
+        requestBodies.add(
+          jsonDecode(await utf8.decoder.bind(request).join())
+              as Map<String, dynamic>,
+        );
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType(
+          'text',
+          'event-stream',
+        );
+        request.response.headers.set('Transfer-Encoding', 'chunked');
+
+        if (requestCount == 1) {
+          request.response.write(
+            'data: ${jsonEncode(_streamChunk([
+              {
+                'functionCall': {'name': 'lookup', 'args': <String, dynamic>{}},
+              },
+            ], finishReason: 'STOP'))}\n\n',
+          );
+        } else {
+          request.response.write(
+            'data: ${jsonEncode(_streamChunk([
+              {'text': 'done'},
+            ], finishReason: 'STOP'))}\n\n',
+          );
+        }
+        request.response.write('data: [DONE]');
+        await request.response.close();
+      });
+
+      final chunks = await ChatApiService.sendMessageStream(
+        config: _geminiConfig(
+          'http://${server.address.address}:${server.port}/v1beta',
+        ),
+        modelId: 'gemini-2.5-pro',
+        messages: [
+          {'role': 'user', 'content': 'inspect [image:${file.path}]'},
+        ],
+        onToolCall: (name, args) async => '{"result":"ok"}',
+      ).toList();
+
+      expect(chunks.last.isDone, isTrue);
+      expect(requestBodies, hasLength(2));
+      final contents = (requestBodies[1]['contents'] as List).cast<Map>();
+      final firstUserParts = (contents.first['parts'] as List).cast<Map>();
+
+      expect(firstUserParts.first['text'], 'inspect');
+      expect(firstUserParts.any((part) => part['inline_data'] is Map), isTrue);
+      final imagePart = firstUserParts.firstWhere(
+        (part) => part['inline_data'] is Map,
+      );
+      expect(imagePart['inline_data']['mime_type'], 'image/png');
+      expect(imagePart['inline_data']['data'], 'AQIDBA==');
+    });
   });
 }
