@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../models/stats_models.dart';
@@ -22,6 +23,7 @@ class StatsHeatmap extends StatelessWidget {
     for (var i = 0; i < days.length; i += 7) {
       weeks.add(days.skip(i).take(7).toList());
     }
+    final localeName = Localizations.localeOf(context).toLanguageTag();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -29,23 +31,38 @@ class StatsHeatmap extends StatelessWidget {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           reverse: true,
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final week in weeks) ...[
-                Column(
-                  children: [
-                    for (final day in week)
-                      Padding(
-                        padding: const EdgeInsets.all(1.5),
-                        child: _HeatCell(
-                          level: _level(day.count, q1: q1, q2: q2, q3: q3),
-                        ),
-                      ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final week in weeks) ...[
+                    _MonthLabel(week: week, localeName: localeName),
+                    const SizedBox(width: 1),
                   ],
-                ),
-                const SizedBox(width: 1),
-              ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final week in weeks) ...[
+                    Column(
+                      children: [
+                        for (final day in week)
+                          Padding(
+                            padding: const EdgeInsets.all(1.5),
+                            child: _HeatCell(
+                              level: _level(day.count, q1: q1, q2: q2, q3: q3),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 1),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -84,6 +101,52 @@ class StatsHeatmap extends StatelessWidget {
     if (count <= q2) return 2;
     if (count <= q3) return 3;
     return 4;
+  }
+}
+
+class _MonthLabel extends StatelessWidget {
+  const _MonthLabel({required this.week, required this.localeName});
+
+  final List<StatsHeatmapDay> week;
+  final String localeName;
+
+  @override
+  Widget build(BuildContext context) {
+    StatsHeatmapDay? firstOfMonth;
+    for (final day in week) {
+      if (day.date.day == 1) {
+        firstOfMonth = day;
+        break;
+      }
+    }
+    final cs = Theme.of(context).colorScheme;
+    final textStyle = TextStyle(
+      fontSize: 10,
+      height: 1,
+      fontWeight: FontWeight.w600,
+      color: cs.onSurface.withValues(alpha: 0.46),
+    );
+    return SizedBox(
+      width: 14,
+      height: 12,
+      child: firstOfMonth == null
+          ? const SizedBox.shrink()
+          : OverflowBox(
+              alignment: Alignment.centerLeft,
+              minWidth: 0,
+              maxWidth: 44,
+              child: Text(
+                DateFormat.MMM(localeName).format(firstOfMonth.date),
+                key: ValueKey(
+                  'stats-heatmap-month-${firstOfMonth.date.year}-${firstOfMonth.date.month}',
+                ),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+                style: textStyle,
+              ),
+            ),
+    );
   }
 }
 

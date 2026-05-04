@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/features/stats/models/stats_models.dart';
 import 'package:Kelivo/features/stats/pages/stats_page.dart';
+import 'package:Kelivo/features/stats/widgets/stats_heatmap.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 
 Widget _harness(StatsSnapshot snapshot) {
@@ -58,6 +59,27 @@ StatsSnapshot _snapshot({
 }
 
 void main() {
+  testWidgets('heatmap shows month labels above columns', (tester) async {
+    final days = [
+      for (var i = 0; i < 14; i++)
+        StatsHeatmapDay(date: DateTime(2026, 4, 25 + i), count: i),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: StatsHeatmap(days: days)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('stats-heatmap-month-2026-5')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('renders summary sections and empty rankings', (tester) async {
     await tester.pumpWidget(_harness(_snapshot()));
     await tester.pumpAndSettle();
