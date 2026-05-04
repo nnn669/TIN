@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:gpt_markdown/custom_widgets/markdown_config.dart'
     show GptMarkdownConfig;
 import 'package:flutter_highlight/themes/github.dart';
@@ -28,6 +27,7 @@ import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:Kelivo/theme/theme_factory.dart' show getPlatformFontFallback;
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import '../../core/providers/settings_provider.dart';
 import 'package:Kelivo/desktop/html_preview_dialog.dart';
 
@@ -75,6 +75,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     final components = List<MarkdownComponent>.from(
       MarkdownComponent.globalComponents,
     );
+    components.removeWhere((c) => c is LatexMathMultiLine);
     final hrIdx = components.indexWhere((c) => c is HrLine);
     if (hrIdx != -1) components[hrIdx] = SoftHrLine();
     final bqIdx = components.indexWhere((c) => c is BlockQuote);
@@ -104,6 +105,9 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Inline components: keep defaults but make link parsing line-scoped
     final inlineComponents = List<MarkdownComponent>.from(
       MarkdownComponent.inlineComponents,
+    );
+    inlineComponents.removeWhere(
+      (c) => c is LatexMath || c is LatexMathMultiLine,
     );
     // Add whitelist-based HTML tag renderer (e.g., <br>)
     inlineComponents.insert(0, HtmlAnchorMd());
@@ -164,7 +168,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Force rebuild of the markdown when key theme colors change to avoid stale styles
     final markdownWidget = GptMarkdown(
       key: ValueKey(
-        '${Theme.of(context).brightness.index}-${cs.surface.toARGB32()}-${cs.onSurface.toARGB32()}-${cs.primary.toARGB32()}-${cs.outlineVariant.toARGB32()}',
+        '${Theme.of(context).brightness.index}-${cs.surface.toARGB32()}-${cs.onSurface.toARGB32()}-${cs.primary.toARGB32()}-${cs.outlineVariant.toARGB32()}-${settings.enableMathRendering}-${settings.enableDollarLatex}',
       ),
       normalized,
       style: baseTextStyle,
@@ -896,15 +900,15 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
   static Widget _renderMath(
     String tex, {
     TextStyle? style,
-    MathStyle mathStyle = MathStyle.text,
+    bool displayMode = false,
   }) {
     final resolved = style ?? const TextStyle();
     try {
       return Math.tex(
         tex,
-        mathStyle: mathStyle,
+        mathStyle: displayMode ? MathStyle.display : MathStyle.text,
         textStyle: resolved,
-        onErrorFallback: (err) => Text(tex, style: resolved),
+        onErrorFallback: (_) => Text(tex, style: resolved),
       );
     } catch (_) {
       return Text(tex, style: resolved);
@@ -2172,7 +2176,7 @@ class LatexBlockScrollableMd extends BlockMd {
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
       style: config.style,
-      mathStyle: MathStyle.display,
+      displayMode: true,
     );
     // Wrap in horizontal scroll to avoid overflow and center within available width
     return Padding(
@@ -2195,7 +2199,7 @@ class LatexBlockScrollableMd extends BlockMd {
   }
 }
 
-/// Inline LaTeX `$...$` rendered in a horizontally scrollable bubble to avoid line overflow
+/// Inline LaTeX `$...$` rendered in the text flow.
 class InlineLatexScrollableMd extends InlineMd {
   @override
   // Match single-dollar $...$ or \(...\) inline math (avoid $$ block)
@@ -2210,31 +2214,15 @@ class InlineLatexScrollableMd extends InlineMd {
     if (body.isEmpty) return TextSpan(text: text, style: config.style);
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
-      mathStyle: MathStyle.text,
       style: () {
         final base = (config.style ?? const TextStyle());
         final baseSize = base.fontSize ?? 15.5;
-        // Slightly enlarge inline math for readability
         return base.copyWith(fontSize: baseSize * 1.2);
       }(),
     );
-    // Wrap in horizontal scroll to prevent line overflow; no extra background
-    final w = LayoutBuilder(
-      builder: (context, constraints) {
-        return SelectionContainer.disabled(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: math,
-          ),
-        );
-      },
-    );
-
     return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: w,
+      alignment: PlaceholderAlignment.middle,
+      child: SelectionContainer.disabled(child: math),
     );
   }
 }
@@ -2252,28 +2240,15 @@ class InlineLatexDollarScrollableMd extends InlineMd {
     if (body.isEmpty) return TextSpan(text: text, style: config.style);
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
-      mathStyle: MathStyle.text,
       style: () {
         final base = (config.style ?? const TextStyle());
         final baseSize = base.fontSize ?? 15.5;
         return base.copyWith(fontSize: baseSize * 1.2);
       }(),
     );
-    final w = LayoutBuilder(
-      builder: (context, constraints) {
-        return SelectionContainer.disabled(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: math,
-          ),
-        );
-      },
-    );
     return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: w,
+      alignment: PlaceholderAlignment.middle,
+      child: SelectionContainer.disabled(child: math),
     );
   }
 }
@@ -2291,28 +2266,15 @@ class InlineLatexParenScrollableMd extends InlineMd {
     if (body.isEmpty) return TextSpan(text: text, style: config.style);
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
-      mathStyle: MathStyle.text,
       style: () {
         final base = (config.style ?? const TextStyle());
         final baseSize = base.fontSize ?? 15.5;
         return base.copyWith(fontSize: baseSize * 1.2);
       }(),
     );
-    final w = LayoutBuilder(
-      builder: (context, constraints) {
-        return SelectionContainer.disabled(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: math,
-          ),
-        );
-      },
-    );
     return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: w,
+      alignment: PlaceholderAlignment.middle,
+      child: SelectionContainer.disabled(child: math),
     );
   }
 }

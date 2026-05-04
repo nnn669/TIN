@@ -3,9 +3,33 @@ import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+Finder _findMathWidget() {
+  return find.byType(Math);
+}
+
+List<WidgetSpan> _collectWidgetSpans(InlineSpan span) {
+  final spans = <WidgetSpan>[];
+  if (span is WidgetSpan) spans.add(span);
+  final children = span is TextSpan ? span.children : null;
+  if (children == null) return spans;
+  for (final child in children) {
+    spans.addAll(_collectWidgetSpans(child));
+  }
+  return spans;
+}
+
+List<WidgetSpan> _widgetSpansFromRichText(WidgetTester tester) {
+  final spans = <WidgetSpan>[];
+  for (final richText in tester.widgetList<RichText>(find.byType(RichText))) {
+    spans.addAll(_collectWidgetSpans(richText.text));
+  }
+  return spans;
+}
 
 Widget _markdownHarness(
   String text, {
@@ -75,6 +99,105 @@ Widget _settingsHarness({
 }
 
 void main() {
+  testWidgets(
+    'MarkdownWithCodeHighlight uses flutter_math_fork for inline and block math',
+    (tester) async {
+      await tester.pumpWidget(
+        _markdownHarness('Inline \\(a^2+b^2=c^2\\)\n\n\\[E=mc^2\\]'),
+      );
+      await tester.pump();
+
+      expect(_findMathWidget(), findsNWidgets(2));
+    },
+  );
+
+  testWidgets('MarkdownWithCodeHighlight vertically centers inline math', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _markdownHarness(r'Text before \(a+b\) text after'),
+    );
+    await tester.pump();
+
+    final mathSpans = _widgetSpansFromRichText(tester)
+        .where(
+          (span) => find
+              .descendant(
+                of: find.byWidget(span.child),
+                matching: _findMathWidget(),
+              )
+              .evaluate()
+              .isNotEmpty,
+        )
+        .toList();
+
+    expect(mathSpans, hasLength(1));
+    expect(mathSpans.single.alignment, PlaceholderAlignment.middle);
+    expect(
+      find.ancestor(
+        of: _findMathWidget(),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('MarkdownWithCodeHighlight keeps dollar math switch scoped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _markdownHarness(
+        r'Inline $a+b$ and \(c+d\)',
+        preferences: const {'display_enable_dollar_latex_v1': false},
+      ),
+    );
+    await tester.pump();
+
+    expect(_findMathWidget(), findsOneWidget);
+    expect(find.textContaining(r'$a+b$'), findsOneWidget);
+  });
+
+  testWidgets(
+    'MarkdownWithCodeHighlight disables all math rendering by setting',
+    (tester) async {
+      late SettingsProvider settings;
+
+      await tester.pumpWidget(
+        _settingsHarness(
+          onSettingsReady: (value) => settings = value,
+          child: const MarkdownWithCodeHighlight(
+            text: r'Inline \(a+b\) and $$c+d$$',
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(_findMathWidget(), findsWidgets);
+
+      await settings.setEnableMathRendering(false);
+      await tester.pumpAndSettle();
+
+      expect(_findMathWidget(), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'MarkdownWithCodeHighlight does not render math inside code blocks',
+    (tester) async {
+      await tester.pumpWidget(
+        _markdownHarness(r'''
+```dart
+final price = "$12";
+```
+'''),
+      );
+      await tester.pump();
+
+      expect(_findMathWidget(), findsNothing);
+      expect(find.textContaining(r'final price = "$12";'), findsOneWidget);
+    },
+  );
+
   testWidgets('SelectableHighlightView 为已注册语言生成高亮 span', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
