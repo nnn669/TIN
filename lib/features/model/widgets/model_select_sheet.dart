@@ -16,6 +16,7 @@ import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/model_tag_wrap.dart';
 import '../../../desktop/desktop_home_page.dart' show DesktopHomePage;
 import '../../provider/widgets/provider_avatar.dart';
+import '../../provider/widgets/provider_balance_badge.dart';
 import '../../../core/services/model_override_resolver.dart';
 
 class ModelSelection {
@@ -854,7 +855,11 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
       itemBuilder: (context, index) {
         final row = _rows[index];
         if (row is _HeaderRow) {
-          return _sectionHeader(context, row.title);
+          String? providerKey;
+          _headerIndexMap.forEach((k, v) {
+            if (v == index && k != '__fav__') providerKey = k;
+          });
+          return _sectionHeader(context, row.title, providerKey: providerKey);
         } else if (row is _ModelRow) {
           return _modelTile(
             context,
@@ -905,18 +910,37 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String title) {
+  Widget _sectionHeader(
+    BuildContext context,
+    String title, {
+    String? providerKey,
+  }) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: cs.onSurface.withValues(alpha: 0.6),
-        ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          if (providerKey != null)
+            ProviderBalanceBadge(
+              providerKey: providerKey,
+              displayName: title,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              color: cs.primary,
+            ),
+        ],
       ),
     );
   }
@@ -1923,6 +1947,17 @@ class _DesktopModelSelectDialogBodyState
             ),
           ),
           const Spacer(),
+          if (providerKey != null)
+            ProviderBalanceBadge(
+              providerKey: providerKey,
+              displayName: displayName,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+              color: cs.primary,
+            ),
+          if (providerKey != null) const SizedBox(width: 8),
           if (providerKey != null)
             Tooltip(
               message: AppLocalizations.of(context)!.settingsPageTitle,

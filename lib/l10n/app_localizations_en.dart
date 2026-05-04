@@ -2741,6 +2741,41 @@ class AppLocalizationsEn extends AppLocalizations {
       'Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.';
 
   @override
+  String get providerDetailPageBalanceTitle => 'Account Balance';
+
+  @override
+  String get providerDetailPageBalanceInfo => 'Get account balance';
+
+  @override
+  String get providerDetailPageBalanceApiPathLabel => 'Balance API Path';
+
+  @override
+  String get providerDetailPageBalanceResultPathLabel => 'Result JSON Path';
+
+  @override
+  String get providerDetailPageBalanceQueryButton => 'Check Balance';
+
+  @override
+  String get providerDetailPageBalanceQuerying => 'Checking...';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsButton => 'Reset';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsTooltip =>
+      'Reset balance settings';
+
+  @override
+  String providerDetailPageBalanceResult(String value) {
+    return 'Balance: $value';
+  }
+
+  @override
+  String providerDetailPageBalanceError(String message) {
+    return 'Balance query failed: $message';
+  }
+
+  @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';
 
   @override

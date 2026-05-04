@@ -26,8 +26,10 @@ import '../../../shared/widgets/ios_checkbox.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import 'multi_key_manager_page.dart';
+import 'provider_balance_page.dart';
 import 'provider_network_page.dart';
 import '../../../core/services/haptics.dart';
+import '../../provider/widgets/provider_balance_badge.dart';
 import '../../provider/widgets/provider_avatar.dart';
 import '../../../utils/model_grouping.dart';
 
@@ -770,6 +772,7 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
                   },
                 ),
               ),
+            if (_kind == ProviderKind.openai) _buildBalanceEntry(context),
             if (_kind == ProviderKind.google)
               _iosRow(
                 context,
@@ -1613,6 +1616,85 @@ class _ProviderDetailPageState extends State<ProviderDetailPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBalanceEntry(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final settings = context.watch<SettingsProvider>();
+    final cfg = settings.getProviderConfig(
+      widget.keyName,
+      defaultName: widget.displayName,
+    );
+    final enabled = cfg.balanceEnabled == true;
+    return _TactileRow(
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProviderBalancePage(
+              providerKey: widget.keyName,
+              providerDisplayName: widget.displayName,
+            ),
+          ),
+        );
+        if (!mounted) return;
+        setState(() {
+          _cfg = context.read<SettingsProvider>().getProviderConfig(
+            widget.keyName,
+            defaultName: widget.displayName,
+          );
+        });
+      },
+      builder: (pressed) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final base = cs.onSurface;
+        final target = pressed
+            ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ??
+                  base)
+            : base;
+        return TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: target),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          builder: (context, color, _) {
+            final c = color ?? base;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  // Icon(Lucide.Coins, size: 18, color: c),
+                  // const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.providerDetailPageBalanceInfo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 15, color: c),
+                    ),
+                  ),
+                  if (enabled) ...[
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 108),
+                      child: ProviderBalanceBadge(
+                        providerKey: widget.keyName,
+                        displayName: widget.displayName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Icon(Lucide.ChevronRight, size: 16, color: c),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

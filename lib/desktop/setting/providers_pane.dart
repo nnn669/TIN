@@ -952,6 +952,9 @@ class _DesktopProviderDetailPaneState
   final TextEditingController _projectIdCtrl = TextEditingController();
   final TextEditingController _saJsonCtrl = TextEditingController();
   final TextEditingController _apiPathCtrl = TextEditingController();
+  final TextEditingController _balanceApiPathCtrl = TextEditingController();
+  final TextEditingController _balanceResultPathCtrl = TextEditingController();
+  bool _balanceLoading = false;
 
   void _syncCtrl(TextEditingController c, String newText) {
     final v = c.value;
@@ -972,6 +975,24 @@ class _DesktopProviderDetailPaneState
     _syncCtrl(_locationCtrl, cfg.location ?? '');
     _syncCtrl(_projectIdCtrl, cfg.projectId ?? '');
     _syncCtrl(_saJsonCtrl, cfg.serviceAccountJson ?? '');
+    _syncCtrl(
+      _balanceApiPathCtrl,
+      cfg.balanceApiPath ??
+          ProviderConfig.defaultsFor(
+            widget.providerKey,
+            displayName: widget.displayName,
+          ).balanceApiPath ??
+          '/credits',
+    );
+    _syncCtrl(
+      _balanceResultPathCtrl,
+      cfg.balanceResultPath ??
+          ProviderConfig.defaultsFor(
+            widget.providerKey,
+            displayName: widget.displayName,
+          ).balanceResultPath ??
+          'data.total_usage',
+    );
   }
 
   @override
@@ -984,6 +1005,8 @@ class _DesktopProviderDetailPaneState
     _projectIdCtrl.dispose();
     _saJsonCtrl.dispose();
     _apiPathCtrl.dispose();
+    _balanceApiPathCtrl.dispose();
+    _balanceResultPathCtrl.dispose();
     super.dispose();
   }
 
@@ -1108,6 +1131,22 @@ class _DesktopProviderDetailPaneState
                       icon: lucide.Lucide.Settings,
                       onTap: () => _showProviderSettingsDialog(context),
                     ),
+                    if (kind == ProviderKind.openai &&
+                        cfg.balanceEnabled == true) ...[
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: ProviderBalanceBadge(
+                          providerKey: widget.providerKey,
+                          displayName: widget.displayName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          color: cs.primary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const Spacer(),
@@ -2073,6 +2112,55 @@ class _DesktopProviderDetailPaneState
     );
   }
 
+  void _syncControllerText(TextEditingController controller, String value) {
+    if (controller.text == value) return;
+    controller.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
+  Future<void> _queryProviderBalance(BuildContext context) async {
+    if (_balanceLoading) return;
+    final sp = context.read<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _balanceLoading = true;
+    });
+    try {
+      final old = sp.getProviderConfig(
+        widget.providerKey,
+        defaultName: widget.displayName,
+      );
+      final updated = old.copyWith(
+        balanceApiPath: _balanceApiPathCtrl.text.trim(),
+        balanceResultPath: _balanceResultPathCtrl.text.trim(),
+      );
+      await sp.setProviderConfig(widget.providerKey, updated);
+      ProviderBalanceBadge.clearCacheFor(widget.providerKey);
+      final value = await ProviderBalanceService.fetchBalance(updated);
+      if (!mounted) return;
+      if (context.mounted) {
+        showAppSnackBar(
+          context,
+          message: l10n.providerDetailPageBalanceResult(value),
+          type: NotificationType.success,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (context.mounted) {
+        showAppSnackBar(
+          context,
+          message: l10n.providerDetailPageBalanceError(e.toString()),
+          type: NotificationType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _balanceLoading = false);
+    }
+  }
+
   InputDecoration _proxyInputDecoration(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
@@ -2169,6 +2257,20 @@ class _DesktopProviderDetailPaneState
                 syncCtrl(proxyPortCtrl, cfgNow.proxyPort ?? '8080');
                 syncCtrl(proxyUserCtrl, cfgNow.proxyUsername ?? '');
                 syncCtrl(proxyPassCtrl, cfgNow.proxyPassword ?? '');
+                final balanceDefaults = ProviderConfig.defaultsFor(
+                  widget.providerKey,
+                  displayName: widget.displayName,
+                );
+                syncCtrl(
+                  _balanceApiPathCtrl,
+                  cfgNow.balanceApiPath ?? balanceDefaults.balanceApiPath ?? '',
+                );
+                syncCtrl(
+                  _balanceResultPathCtrl,
+                  cfgNow.balanceResultPath ??
+                      balanceDefaults.balanceResultPath ??
+                      '',
+                );
                 final kindNow =
                     cfgNow.providerType ??
                     ProviderConfig.classify(
@@ -2178,6 +2280,7 @@ class _DesktopProviderDetailPaneState
                 final multiNow = cfgNow.multiKeyEnabled ?? false;
                 final respNow = cfgNow.useResponseApi ?? false;
                 final vertexNow = cfgNow.vertexAI ?? false;
+                final balanceEnabledNow = cfgNow.balanceEnabled ?? false;
                 final proxyEnabledNow = cfgNow.proxyEnabled ?? false;
                 final proxyTypeNow = ProviderConfig.resolveProxyType(
                   cfgNow.proxyType,
@@ -2621,6 +2724,194 @@ class _DesktopProviderDetailPaneState
                                 );
                               }(),
                             ),
+                            const SizedBox(height: 4),
+                            if (kindNow == ProviderKind.openai) ...[
+                              row(
+                                l10n.providerDetailPageBalanceInfo,
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: IosSwitch(
+                                    value: balanceEnabledNow,
+                                    onChanged: (v) async {
+                                      final old = spWatch.getProviderConfig(
+                                        widget.providerKey,
+                                        defaultName: widget.displayName,
+                                      );
+                                      await spWatch.setProviderConfig(
+                                        widget.providerKey,
+                                        old.copyWith(balanceEnabled: v),
+                                      );
+                                      ProviderBalanceBadge.clearCacheFor(
+                                        widget.providerKey,
+                                      );
+                                      if (mounted) setState(() {});
+                                    },
+                                  ),
+                                ),
+                              ),
+                              AnimatedCrossFade(
+                                firstChild: const SizedBox.shrink(),
+                                secondChild: Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      row(
+                                        l10n.providerDetailPageBalanceApiPathLabel,
+                                        TextField(
+                                          controller: _balanceApiPathCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ),
+                                          onChanged: (_) async {
+                                            if (_balanceApiPathCtrl
+                                                .value
+                                                .composing
+                                                .isValid) {
+                                              return;
+                                            }
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                balanceApiPath:
+                                                    _balanceApiPathCtrl.text
+                                                        .trim(),
+                                              ),
+                                            );
+                                            ProviderBalanceBadge.clearCacheFor(
+                                              widget.providerKey,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      row(
+                                        l10n.providerDetailPageBalanceResultPathLabel,
+                                        TextField(
+                                          controller: _balanceResultPathCtrl,
+                                          style: const TextStyle(fontSize: 13),
+                                          decoration: _proxyInputDecoration(
+                                            ctx,
+                                          ),
+                                          onChanged: (_) async {
+                                            if (_balanceResultPathCtrl
+                                                .value
+                                                .composing
+                                                .isValid) {
+                                              return;
+                                            }
+                                            final old = spWatch
+                                                .getProviderConfig(
+                                                  widget.providerKey,
+                                                  defaultName:
+                                                      widget.displayName,
+                                                );
+                                            await spWatch.setProviderConfig(
+                                              widget.providerKey,
+                                              old.copyWith(
+                                                balanceResultPath:
+                                                    _balanceResultPathCtrl.text
+                                                        .trim(),
+                                              ),
+                                            );
+                                            ProviderBalanceBadge.clearCacheFor(
+                                              widget.providerKey,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      row(
+                                        l10n.providerDetailPageBalanceTitle,
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: ProviderBalanceBadge(
+                                                providerKey: widget.providerKey,
+                                                displayName: widget.displayName,
+                                                color: cs.primary,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _DeskIosButton(
+                                              label: l10n
+                                                  .providerDetailPageBalanceResetDefaultsButton,
+                                              filled: false,
+                                              dense: true,
+                                              onTap: () async {
+                                                _syncControllerText(
+                                                  _balanceApiPathCtrl,
+                                                  balanceDefaults
+                                                          .balanceApiPath ??
+                                                      '',
+                                                );
+                                                _syncControllerText(
+                                                  _balanceResultPathCtrl,
+                                                  balanceDefaults
+                                                          .balanceResultPath ??
+                                                      '',
+                                                );
+                                                final old = spWatch
+                                                    .getProviderConfig(
+                                                      widget.providerKey,
+                                                      defaultName:
+                                                          widget.displayName,
+                                                    );
+                                                await spWatch.setProviderConfig(
+                                                  widget.providerKey,
+                                                  old.copyWith(
+                                                    balanceEnabled:
+                                                        balanceDefaults
+                                                            .balanceEnabled ??
+                                                        false,
+                                                    balanceApiPath:
+                                                        _balanceApiPathCtrl.text
+                                                            .trim(),
+                                                    balanceResultPath:
+                                                        _balanceResultPathCtrl
+                                                            .text
+                                                            .trim(),
+                                                  ),
+                                                );
+                                                ProviderBalanceBadge.clearCacheFor(
+                                                  widget.providerKey,
+                                                );
+                                                if (mounted) setState(() {});
+                                              },
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _DeskIosButton(
+                                              label: _balanceLoading
+                                                  ? l10n.providerDetailPageBalanceQuerying
+                                                  : l10n.providerDetailPageBalanceQueryButton,
+                                              filled: false,
+                                              dense: true,
+                                              onTap: () =>
+                                                  _queryProviderBalance(
+                                                    context,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                crossFadeState: balanceEnabledNow
+                                    ? CrossFadeState.showSecond
+                                    : CrossFadeState.showFirst,
+                                duration: const Duration(milliseconds: 180),
+                                sizeCurve: Curves.easeOutCubic,
+                              ),
+                            ],
                             const SizedBox(height: 4),
                             if (_isAihubmix(cfgNow))
                               row(

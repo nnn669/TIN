@@ -12,6 +12,7 @@ import '../theme/palettes.dart';
 import '../core/providers/settings_provider.dart';
 import '../core/providers/model_provider.dart';
 import '../core/services/model_override_resolver.dart';
+import '../core/services/provider_balance_service.dart';
 import 'model_fetch_dialog.dart' show showModelFetchDialog;
 import 'widgets/desktop_select_dropdown.dart';
 import '../shared/widgets/ios_switch.dart';
@@ -58,6 +59,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import '../features/provider/widgets/provider_avatar.dart';
+import '../features/provider/widgets/provider_balance_badge.dart';
 import '../features/provider/widgets/share_provider_sheet.dart'
     show encodeProviderConfig;
 import '../utils/clipboard_images.dart';
@@ -296,9 +298,9 @@ class _SettingsMenu extends StatelessWidget {
         l10n.settingsPageHotkeys,
       ),
       (
-      _SettingsMenuItem.stats,
-      lucide.Lucide.ChartColumnBig,
-      l10n.settingsPageStatistics,
+        _SettingsMenuItem.stats,
+        lucide.Lucide.ChartColumnBig,
+        l10n.settingsPageStatistics,
       ),
       (
         _SettingsMenuItem.about,

@@ -862,6 +862,30 @@
   "providerDetailPageResponseApiTitle": "Response API (/responses)",
   "providerDetailPageAihubmixAppCodeLabel": "應用 Code（享 10% 優惠）",
   "providerDetailPageAihubmixAppCodeHelp": "為請求附加 APP-Code，可享 10% 優惠，僅對 AIhubmix 生效。",
+  "providerDetailPageBalanceTitle": "帳戶餘額",
+  "providerDetailPageBalanceInfo": "取得帳戶餘額",
+  "providerDetailPageBalanceApiPathLabel": "餘額 API 路徑",
+  "providerDetailPageBalanceResultPathLabel": "結果 JSON 路徑",
+  "providerDetailPageBalanceQueryButton": "查詢餘額",
+  "providerDetailPageBalanceQuerying": "查詢中...",
+  "providerDetailPageBalanceResetDefaultsButton": "重設",
+  "providerDetailPageBalanceResetDefaultsTooltip": "重設餘額設定",
+  "providerDetailPageBalanceResult": "餘額：{value}",
+  "@providerDetailPageBalanceResult": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailPageBalanceError": "餘額查詢失敗：{message}",
+  "@providerDetailPageBalanceError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "providerDetailPageVertexAiTitle": "Vertex AI",
   "providerDetailPageLocationLabel": "區域 Location",
   "providerDetailPageProjectIdLabel": "專案 ID",

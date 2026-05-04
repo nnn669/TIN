@@ -873,6 +873,30 @@
   "providerDetailPageResponseApiTitle": "Response API (/responses)",
   "providerDetailPageAihubmixAppCodeLabel": "应用 Code（享 10% 优惠）",
   "providerDetailPageAihubmixAppCodeHelp": "为请求附加 APP-Code，可享 10% 优惠，仅对 AIhubmix 生效。",
+  "providerDetailPageBalanceTitle": "账户余额",
+  "providerDetailPageBalanceInfo": "获取账户余额",
+  "providerDetailPageBalanceApiPathLabel": "余额 API 路径",
+  "providerDetailPageBalanceResultPathLabel": "结果 JSON 路径",
+  "providerDetailPageBalanceQueryButton": "查询余额",
+  "providerDetailPageBalanceQuerying": "查询中...",
+  "providerDetailPageBalanceResetDefaultsButton": "重置",
+  "providerDetailPageBalanceResetDefaultsTooltip": "重置余额设置",
+  "providerDetailPageBalanceResult": "余额：{value}",
+  "@providerDetailPageBalanceResult": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailPageBalanceError": "余额查询失败：{message}",
+  "@providerDetailPageBalanceError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "providerDetailPageVertexAiTitle": "Vertex AI",
   "providerDetailPageLocationLabel": "区域 Location",
   "providerDetailPageProjectIdLabel": "项目 ID",

@@ -2651,6 +2651,40 @@ class AppLocalizationsZh extends AppLocalizations {
       '为请求附加 APP-Code，可享 10% 优惠，仅对 AIhubmix 生效。';
 
   @override
+  String get providerDetailPageBalanceTitle => '账户余额';
+
+  @override
+  String get providerDetailPageBalanceInfo => '获取账户余额';
+
+  @override
+  String get providerDetailPageBalanceApiPathLabel => '余额 API 路径';
+
+  @override
+  String get providerDetailPageBalanceResultPathLabel => '结果 JSON 路径';
+
+  @override
+  String get providerDetailPageBalanceQueryButton => '查询余额';
+
+  @override
+  String get providerDetailPageBalanceQuerying => '查询中...';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsButton => '重置';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsTooltip => '重置余额设置';
+
+  @override
+  String providerDetailPageBalanceResult(String value) {
+    return '余额：$value';
+  }
+
+  @override
+  String providerDetailPageBalanceError(String message) {
+    return '余额查询失败：$message';
+  }
+
+  @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';
 
   @override
@@ -7132,6 +7166,40 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '为请求附加 APP-Code，可享 10% 优惠，仅对 AIhubmix 生效。';
 
   @override
+  String get providerDetailPageBalanceTitle => '账户余额';
+
+  @override
+  String get providerDetailPageBalanceInfo => '获取账户余额';
+
+  @override
+  String get providerDetailPageBalanceApiPathLabel => '余额 API 路径';
+
+  @override
+  String get providerDetailPageBalanceResultPathLabel => '结果 JSON 路径';
+
+  @override
+  String get providerDetailPageBalanceQueryButton => '查询余额';
+
+  @override
+  String get providerDetailPageBalanceQuerying => '查询中...';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsButton => '重置';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsTooltip => '重置余额设置';
+
+  @override
+  String providerDetailPageBalanceResult(String value) {
+    return '余额：$value';
+  }
+
+  @override
+  String providerDetailPageBalanceError(String message) {
+    return '余额查询失败：$message';
+  }
+
+  @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';
 
   @override
@@ -11610,6 +11678,40 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get providerDetailPageAihubmixAppCodeHelp =>
       '為請求附加 APP-Code，可享 10% 優惠，僅對 AIhubmix 生效。';
+
+  @override
+  String get providerDetailPageBalanceTitle => '帳戶餘額';
+
+  @override
+  String get providerDetailPageBalanceInfo => '取得帳戶餘額';
+
+  @override
+  String get providerDetailPageBalanceApiPathLabel => '餘額 API 路徑';
+
+  @override
+  String get providerDetailPageBalanceResultPathLabel => '結果 JSON 路徑';
+
+  @override
+  String get providerDetailPageBalanceQueryButton => '查詢餘額';
+
+  @override
+  String get providerDetailPageBalanceQuerying => '查詢中...';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsButton => '重設';
+
+  @override
+  String get providerDetailPageBalanceResetDefaultsTooltip => '重設餘額設定';
+
+  @override
+  String providerDetailPageBalanceResult(String value) {
+    return '餘額：$value';
+  }
+
+  @override
+  String providerDetailPageBalanceError(String message) {
+    return '餘額查詢失敗：$message';
+  }
 
   @override
   String get providerDetailPageVertexAiTitle => 'Vertex AI';

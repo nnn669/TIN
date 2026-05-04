@@ -5156,6 +5156,66 @@ abstract class AppLocalizations {
   /// **'Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.'**
   String get providerDetailPageAihubmixAppCodeHelp;
 
+  /// No description provided for @providerDetailPageBalanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Balance'**
+  String get providerDetailPageBalanceTitle;
+
+  /// No description provided for @providerDetailPageBalanceInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Get account balance'**
+  String get providerDetailPageBalanceInfo;
+
+  /// No description provided for @providerDetailPageBalanceApiPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance API Path'**
+  String get providerDetailPageBalanceApiPathLabel;
+
+  /// No description provided for @providerDetailPageBalanceResultPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Result JSON Path'**
+  String get providerDetailPageBalanceResultPathLabel;
+
+  /// No description provided for @providerDetailPageBalanceQueryButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Balance'**
+  String get providerDetailPageBalanceQueryButton;
+
+  /// No description provided for @providerDetailPageBalanceQuerying.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking...'**
+  String get providerDetailPageBalanceQuerying;
+
+  /// No description provided for @providerDetailPageBalanceResetDefaultsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get providerDetailPageBalanceResetDefaultsButton;
+
+  /// No description provided for @providerDetailPageBalanceResetDefaultsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset balance settings'**
+  String get providerDetailPageBalanceResetDefaultsTooltip;
+
+  /// No description provided for @providerDetailPageBalanceResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance: {value}'**
+  String providerDetailPageBalanceResult(String value);
+
+  /// No description provided for @providerDetailPageBalanceError.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance query failed: {message}'**
+  String providerDetailPageBalanceError(String message);
+
   /// No description provided for @providerDetailPageVertexAiTitle.
   ///
   /// In en, this message translates to:

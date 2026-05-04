@@ -1186,6 +1186,30 @@
   "providerDetailPageResponseApiTitle": "Response API (/responses)",
   "providerDetailPageAihubmixAppCodeLabel": "APP-Code (10% off)",
   "providerDetailPageAihubmixAppCodeHelp": "Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.",
+  "providerDetailPageBalanceTitle": "Account Balance",
+  "providerDetailPageBalanceInfo": "Get account balance",
+  "providerDetailPageBalanceApiPathLabel": "Balance API Path",
+  "providerDetailPageBalanceResultPathLabel": "Result JSON Path",
+  "providerDetailPageBalanceQueryButton": "Check Balance",
+  "providerDetailPageBalanceQuerying": "Checking...",
+  "providerDetailPageBalanceResetDefaultsButton": "Reset",
+  "providerDetailPageBalanceResetDefaultsTooltip": "Reset balance settings",
+  "providerDetailPageBalanceResult": "Balance: {value}",
+  "@providerDetailPageBalanceResult": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailPageBalanceError": "Balance query failed: {message}",
+  "@providerDetailPageBalanceError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "providerDetailPageVertexAiTitle": "Vertex AI",
   "providerDetailPageLocationLabel": "Location",
   "providerDetailPageProjectIdLabel": "Project ID",
