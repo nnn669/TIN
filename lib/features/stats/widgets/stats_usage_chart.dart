@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/stats_models.dart';
 
+const double _usageDetailBubbleWidth = 228;
+const double _usageDetailBubbleTop = 8;
+
 class StatsUsageChart extends StatefulWidget {
   const StatsUsageChart({super.key, required this.days});
 
@@ -41,12 +44,17 @@ class _StatsUsageChartState extends State<StatsUsageChart> {
       if (dayTotal > maxDayTotal) maxDayTotal = dayTotal;
     }
     final providerList = providers.toList();
+    final maxDetailRows = widget.days.fold<int>(0, (previous, day) {
+      final count = day.providerTokens.values.where(_hasDetailTokens).length;
+      return count > previous ? count : previous;
+    });
+    final chartHeight = (82 + maxDetailRows * 31.0).clamp(160.0, 360.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 160,
+          height: chartHeight,
           child: widget.days.isEmpty
               ? const SizedBox.shrink()
               : LayoutBuilder(
@@ -217,16 +225,29 @@ class _StatsUsageChartState extends State<StatsUsageChart> {
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || !_scrollController.hasClients) return;
     final position = _scrollController.position;
-    final scrollDelta = event.scrollDelta.dx.abs() > event.scrollDelta.dy.abs()
-        ? event.scrollDelta.dx
-        : event.scrollDelta.dy;
-    if (scrollDelta == 0) return;
-    final nextOffset = (_scrollController.offset + scrollDelta).clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
-    if (nextOffset == _scrollController.offset) return;
-    _scrollController.jumpTo(nextOffset);
+    if (position.maxScrollExtent <= position.minScrollExtent) return;
+    GestureBinding.instance.pointerSignalResolver.register(event, (
+      PointerSignalEvent resolvedEvent,
+    ) {
+      if (resolvedEvent is! PointerScrollEvent ||
+          !_scrollController.hasClients) {
+        return;
+      }
+      final position = _scrollController.position;
+      if (position.maxScrollExtent <= position.minScrollExtent) return;
+      final scrollDelta =
+          resolvedEvent.scrollDelta.dx.abs() >
+              resolvedEvent.scrollDelta.dy.abs()
+          ? resolvedEvent.scrollDelta.dx
+          : resolvedEvent.scrollDelta.dy;
+      if (scrollDelta == 0) return;
+      final nextOffset = (_scrollController.offset + scrollDelta).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      if (nextOffset == _scrollController.offset) return;
+      _scrollController.jumpTo(nextOffset);
+    });
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
@@ -399,9 +420,11 @@ class _UsageDetailBubble extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const bubbleWidth = 228.0;
-    final maxLeft = (chartWidth - bubbleWidth).clamp(0.0, double.infinity);
-    final left = (barLeft - bubbleWidth / 2).clamp(0.0, maxLeft);
+    final maxLeft = (chartWidth - _usageDetailBubbleWidth).clamp(
+      0.0,
+      double.infinity,
+    );
+    final left = (barLeft - _usageDetailBubbleWidth / 2).clamp(0.0, maxLeft);
     final providerRows = <(int, String, StatsTokenBucket)>[];
     for (var i = 0; i < providers.length; i++) {
       final bucket = day.providerTokens[providers[i]];
@@ -413,7 +436,7 @@ class _UsageDetailBubble extends StatelessWidget {
 
     return Positioned(
       left: left,
-      top: 8,
+      top: _usageDetailBubbleTop,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF24272D) : const Color(0xFFF7F8FA),
@@ -427,7 +450,7 @@ class _UsageDetailBubble extends StatelessWidget {
           ],
         ),
         child: SizedBox(
-          width: bubbleWidth,
+          width: _usageDetailBubbleWidth,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
             child: Column(
