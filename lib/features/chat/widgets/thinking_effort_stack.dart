@@ -12,7 +12,7 @@ class ThinkingEffortOption {
     required this.budget,
     this.description,
     this.trailingText,
-    this.icon,
+    this.leadingBuilder,
     this.accent = false,
   });
 
@@ -29,7 +29,11 @@ class ThinkingEffortOption {
   /// 右侧附加文案，例如自定义档位显示当前数值。
   final String? trailingText;
 
-  final IconData? icon;
+  /// 前置图标构建器，参数为当前应使用的前景色。
+  ///
+  /// 用 builder 而不是 [IconData]，是为了能直接复用 `ReasoningIcons` 的 SVG
+  /// 档位图标（与桌面端推理面板保持同一套视觉）。
+  final Widget Function(Color color)? leadingBuilder;
 
   /// 是否使用强调色描绘（用于 Ultracode 这类特殊档位）。
   final bool accent;
@@ -131,6 +135,7 @@ class _ThinkingEffortRow extends StatelessWidget {
         ? activeColor
         : cs.onSurface.withValues(alpha: 0.86);
     final Color descColor = cs.onSurface.withValues(alpha: 0.56);
+    final Color leadingColor = selected ? activeColor : descColor;
 
     return Semantics(
       button: true,
@@ -142,7 +147,9 @@ class _ThinkingEffortRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         baseColor: selected
             ? activeColor.withValues(alpha: isDark ? 0.20 : 0.10)
-            : cs.surfaceContainerHighest.withValues(alpha: isDark ? 0.34 : 0.46),
+            : cs.surfaceContainerHighest.withValues(
+                alpha: isDark ? 0.34 : 0.46,
+              ),
         border: Border.all(
           color: selected
               ? activeColor.withValues(alpha: 0.55)
@@ -153,11 +160,11 @@ class _ThinkingEffortRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            if (option.icon != null) ...[
-              Icon(
-                option.icon,
-                size: 17,
-                color: selected ? activeColor : descColor,
+            if (option.leadingBuilder != null) ...[
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Center(child: option.leadingBuilder!(leadingColor)),
               ),
               const SizedBox(width: 10),
             ],
@@ -235,9 +242,7 @@ class _SelectionDot extends StatelessWidget {
         shape: BoxShape.circle,
         color: selected ? activeColor : Colors.transparent,
         border: Border.all(
-          color: selected
-              ? activeColor
-              : cs.onSurface.withValues(alpha: 0.28),
+          color: selected ? activeColor : cs.onSurface.withValues(alpha: 0.28),
           width: selected ? 1.4 : 1.2,
         ),
       ),
