@@ -47,7 +47,6 @@ import '../utils/thinking_tag_parser.dart';
 import 'citation_sources_sheet.dart';
 import 'chat_suggestion_bubbles.dart';
 import 'token_display_widget.dart';
-import 'generation_timer_badge.dart';
 import '../../../theme/app_font_weights.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
