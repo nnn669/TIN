@@ -77,7 +77,9 @@ Future<void> _openSheet(WidgetTester tester) async {
 }
 
 Future<void> _tapOption(WidgetTester tester, String id) async {
-  await tester.tap(find.byKey(ThinkingEffortStack.optionKey(id)));
+  final finder = find.byKey(ThinkingEffortStack.optionKey(id));
+  await tester.ensureVisible(finder);
+  await tester.tap(finder);
   await tester.pump(const Duration(milliseconds: 240));
 }
 
