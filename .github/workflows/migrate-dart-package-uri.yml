@@ -1,0 +1,42 @@
+name: Migrate Dart package URI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace legacy package URI
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed=0
+          while IFS= read -r -d '' file; do
+            if grep -q 'package:Kelivo/' "$file"; then
+              sed -i 's/package:Kelivo\//package:tin\//g' "$file"
+              changed=1
+            fi
+          done < <(find lib test -type f -name '*.dart' -print0 2>/dev/null || true)
+          git rm -f .github/workflows/migrate-dart-package-uri.yml
+          if [[ "$changed" -eq 1 ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git commit -m 'Migrate Dart package URI to tin'
+            git push origin HEAD:main
+          else
+            git commit -m 'Remove temporary package URI migration workflow'
+            git push origin HEAD:main
+          fi
