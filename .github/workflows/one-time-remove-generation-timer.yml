@@ -41,6 +41,6 @@ jobs:
           git rm .github/workflows/one-time-remove-generation-timer.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add lib/features/chat/widgets/one-time-remove-generation-timer.yml lib/features/chat/widgets/chat_message_widget.dart
+          git add lib/features/chat/widgets/chat_message_widget.dart
           git commit -m 'fix(chat): remove stale generation timer call'
           git push origin HEAD:main
