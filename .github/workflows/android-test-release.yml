@@ -1,0 +1,138 @@
+name: Android Test Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: Optional version name override
+        required: false
+        type: string
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-test-release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  pull-request-check:
+    name: Flutter check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+  android-release:
+    name: Signed Android prerelease
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Prepare release keystore
+        shell: bash
+        env:
+          SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
+          SIGN_STORE_PASSWORD: ${{ secrets.SIGN_STORE_PASSWORD }}
+          SIGN_KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
+          SIGN_KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in SIGN_KEYSTORE_BASE64 SIGN_STORE_PASSWORD SIGN_KEY_ALIAS SIGN_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required repository secret: ${name}" >&2
+              exit 1
+            fi
+          done
+          printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
+          test -s android/release-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=../release-keystore.jks
+          storePassword=${SIGN_STORE_PASSWORD}
+          keyAlias=${SIGN_KEY_ALIAS}
+          keyPassword=${SIGN_KEY_PASSWORD}
+          EOF
+          chmod 600 android/release-keystore.jks android/key.properties
+
+      - name: Build signed release APK
+        env:
+          BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${BUILD_NAME_OVERRIDE}" ]]; then
+            flutter build apk --release --build-name "${BUILD_NAME_OVERRIDE}" --build-number "${GITHUB_RUN_NUMBER}"
+          else
+            flutter build apk --release --build-number "${GITHUB_RUN_NUMBER}"
+          fi
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          sha256sum "$APK"
+
+      - name: Upload signed APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TIN-android-test-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --prerelease \
+            --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" \
+            --notes "自动构建的 Android signed release APK，仅用于测试。Commit: ${GITHUB_SHA}"

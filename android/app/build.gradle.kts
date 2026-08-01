@@ -20,11 +20,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/projects/android-library).
         applicationId = appIdOverride ?: "com.psyche.kelivo"
         manifestPlaceholders["appLabel"] = appLabelOverride ?: "Kelivo"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -35,6 +33,14 @@ android {
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(keystorePropertiesFile.inputStream())
+    }
+    val releaseTaskRequested = gradle.startParameter.taskNames.any {
+        it.contains("release", ignoreCase = true)
+    }
+    if (releaseTaskRequested && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Missing android/key.properties. Release builds must use a configured signing key."
+        )
     }
 
     signingConfigs {
@@ -50,9 +56,8 @@ android {
 
     buildTypes {
         getByName("release") {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            // Never silently fall back to the debug keystore for a release artifact.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
