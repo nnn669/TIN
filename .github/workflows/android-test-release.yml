@@ -25,43 +25,6 @@ env:
   FLUTTER_VERSION: 3.44.1
 
 jobs:
-  cleanup-stale-generation-timer:
-    name: Remove stale generation timer call
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Remove stale call and push
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('lib/features/chat/widgets/chat_message_widget.dart')
-          text = path.read_text()
-          old = '''                          const SizedBox(width: 6),
-                          GenerationTimerBadge(
-                            isStreaming: widget.message.isStreaming,
-                            startTime: widget.message.timestamp,
-                            durationMs: widget.message.durationMs,
-                          ),
-'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one stale timer call, found {text.count(old)}')
-          path.write_text(text.replace(old, ''))
-          if 'GenerationTimerBadge' in path.read_text():
-              raise SystemExit('stale GenerationTimerBadge reference remains')
-          PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add lib/features/chat/widgets/chat_message_widget.dart
-          git commit -m 'fix(chat): remove stale generation timer call'
-          git push origin HEAD:main
-
   pull-request-check:
     name: Flutter check
     if: github.event_name == 'pull_request'
@@ -76,6 +39,12 @@ jobs:
           channel: stable
           cache: true
       - name: Resolve dependencies
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
         run: flutter pub get
       - name: Run targeted regression tests
         run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart
@@ -83,7 +52,6 @@ jobs:
   android-release:
     name: Signed Android prerelease
     if: github.event_name != 'pull_request'
-    needs: cleanup-stale-generation-timer
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -158,6 +126,7 @@ jobs:
           found=0
           for apk in build/app/outputs/flutter-apk/app-*.apk; do
             test -s "$apk"
+            test "$(du -m "$apk" | cut -f1)" -lt 60
             "$apksigner" verify --verbose --print-certs "$apk"
             test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
             sha256sum "$apk"
