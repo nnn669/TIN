@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// 生成计时徽章，紧跟在模型名称右侧。
@@ -51,14 +52,16 @@ class _GenerationTimerBadgeState extends State<GenerationTimerBadge> {
     _elapsedMs = DateTime.now()
         .difference(widget.startTime)
         .inMilliseconds
-        .clamp(0, 9999999);
+        .clamp(0, 9999999)
+        .toInt();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
       setState(() {
         _elapsedMs = DateTime.now()
             .difference(widget.startTime)
             .inMilliseconds
-            .clamp(0, 9999999);
+            .clamp(0, 9999999)
+            .toInt();
       });
     });
   }
