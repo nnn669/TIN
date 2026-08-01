@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
 import '../../../theme/app_font_weights.dart';
+import '../../../core/services/mcp/mcp_tool_auto_approval.dart';
 
 class McpPage extends StatelessWidget {
   const McpPage({super.key});
@@ -321,376 +322,507 @@ class McpPage extends StatelessWidget {
           const SizedBox(width: 12),
         ],
       ),
-      body: servers.isEmpty
-          ? Center(
-              child: Text(
-                l10n.mcpPageNoServers,
-                style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6)),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              itemCount: servers.length,
-              itemBuilder: (context, index) {
-                final s = servers[index];
-                final st = mcp.statusFor(s.id);
-                final err = mcp.errorFor(s.id);
-                final isBuiltin = mcp.isBuiltinServer(s);
-                final isGithub = mcp.isBuiltinGithubServer(s);
-
-                Widget tagStyled(String text, {Color? color}) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (color ?? cs.primary).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: (color ?? cs.primary).withValues(alpha: 0.35),
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _McpAutoApprovalTile(),
+          ),
+          Expanded(
+            child: servers.isEmpty
+                ? Center(
+                    child: Text(
+                      l10n.mcpPageNoServers,
+                      style: TextStyle(
+                        color: cs.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: color ?? cs.primary,
-                      fontWeight: AppFontWeights.emphasis,
-                    ),
-                  ),
-                );
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    itemCount: servers.length,
+                    itemBuilder: (context, index) {
+                      final s = servers[index];
+                      final st = mcp.statusFor(s.id);
+                      final err = mcp.errorFor(s.id);
+                      final isBuiltin = mcp.isBuiltinServer(s);
+                      final isGithub = mcp.isBuiltinGithubServer(s);
 
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                final row = _TactileRow(
-                  pressedScale: 1.00,
-                  haptics: false,
-                  onTap: () async {
-                    await showMcpServerEditSheet(context, serverId: s.id);
-                  },
-                  builder: (pressed) {
-                    final base = cs.onSurface.withValues(alpha: 0.9);
-                    return _AnimatedPressColor(
-                      pressed: pressed,
-                      base: base,
-                      builder: (c) {
-                        final overlay = pressed
-                            ? (isDark
-                                  ? Colors.black.withValues(alpha: 0.06)
-                                  : Colors.white.withValues(alpha: 0.05))
-                            : Colors.transparent;
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white10
-                                : Colors.white.withValues(alpha: 0.96),
-                            // Soften the list card corners a bit
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: cs.outlineVariant.withValues(
-                                alpha: isDark ? 0.1 : 0.08,
-                              ),
-                              width: 0.6,
-                            ),
-                          ),
-                          child: Padding(
+                      Widget tagStyled(String text, {Color? color}) =>
+                          Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 11,
+                              horizontal: 8,
+                              vertical: 2,
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? Colors.white10
-                                            : const Color(0xFFF2F3F5),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        Lucide.Terminal,
-                                        size: 20,
-                                        color: cs.primary,
-                                      ),
+                            decoration: BoxDecoration(
+                              color: (color ?? cs.primary).withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: (color ?? cs.primary).withValues(
+                                  alpha: 0.35,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              text,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: color ?? cs.primary,
+                                fontWeight: AppFontWeights.emphasis,
+                              ),
+                            ),
+                          );
+
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
+                      final row = _TactileRow(
+                        pressedScale: 1.00,
+                        haptics: false,
+                        onTap: () async {
+                          await showMcpServerEditSheet(context, serverId: s.id);
+                        },
+                        builder: (pressed) {
+                          final base = cs.onSurface.withValues(alpha: 0.9);
+                          return _AnimatedPressColor(
+                            pressed: pressed,
+                            base: base,
+                            builder: (c) {
+                              final overlay = pressed
+                                  ? (isDark
+                                        ? Colors.black.withValues(alpha: 0.06)
+                                        : Colors.white.withValues(alpha: 0.05))
+                                  : Colors.transparent;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white10
+                                      : Colors.white.withValues(alpha: 0.96),
+                                  // Soften the list card corners a bit
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: isDark ? 0.1 : 0.08,
                                     ),
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: st == McpStatus.connecting
-                                          ? SizedBox(
-                                              width: 12,
-                                              height: 12,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(cs.primary),
-                                              ),
-                                            )
-                                          : Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: s.enabled
-                                                    ? _statusColor(context, st)
-                                                    : cs.outline,
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: cs.surface,
-                                                  width: 1.5,
+                                    width: 0.6,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 11,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            width: 42,
+                                            height: 42,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.white10
+                                                  : const Color(0xFFF2F3F5),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Icon(
+                                              Lucide.Terminal,
+                                              size: 20,
+                                              color: cs.primary,
+                                            ),
+                                          ),
+                                          Positioned(
+                                            right: 0,
+                                            bottom: 0,
+                                            child: st == McpStatus.connecting
+                                                ? SizedBox(
+                                                    width: 12,
+                                                    height: 12,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(cs.primary),
+                                                    ),
+                                                  )
+                                                : Container(
+                                                    width: 12,
+                                                    height: 12,
+                                                    decoration: BoxDecoration(
+                                                      color: s.enabled
+                                                          ? _statusColor(
+                                                              context,
+                                                              st,
+                                                            )
+                                                          : cs.outline,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: cs.surface,
+                                                        width: 1.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                          ),
+                                          if (overlay != Colors.transparent)
+                                            Positioned.fill(
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: overlay,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
                                                 ),
                                               ),
-                                            ),
-                                    ),
-                                    if (overlay != Colors.transparent)
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: overlay,
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        s.name,
-                                        style: TextStyle(
-                                          fontWeight: AppFontWeights.emphasis,
-                                          color: c,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: [
-                                          tagStyled(
-                                            st == McpStatus.connected
-                                                ? l10n.mcpPageStatusConnected
-                                                : (st == McpStatus.connecting
-                                                      ? l10n.mcpPageStatusConnecting
-                                                      : l10n.mcpPageStatusDisconnected),
-                                            color: st == McpStatus.connected
-                                                ? Colors.green
-                                                : (st == McpStatus.connecting
-                                                      ? cs.primary
-                                                      : Colors.redAccent),
-                                          ),
-                                          tagStyled(
-                                            s.transport ==
-                                                    McpTransportType.inmemory
-                                                ? l10n.mcpTransportTagInmemory
-                                                : (s.transport ==
-                                                          McpTransportType.sse
-                                                      ? l10n.mcpTransportTagSse
-                                                      : l10n.mcpTransportTagHttp),
-                                          ),
-                                          tagStyled(
-                                            l10n.mcpPageToolsCount(
-                                              s.tools
-                                                  .where((t) => t.enabled)
-                                                  .length,
-                                              s.tools.length,
-                                            ),
-                                          ),
-                                          if (!s.enabled)
-                                            tagStyled(
-                                              l10n.mcpPageStatusDisabled,
-                                              color: cs.onSurface.withValues(
-                                                alpha: 0.7,
-                                              ),
-                                            ),
-                                          if (isGithub)
-                                            tagStyled(
-                                              mcp.hasGithubToken
-                                                  ? 'Token 已配置'
-                                                  : 'Token 未配置',
-                                              color: mcp.hasGithubToken
-                                                  ? Colors.green
-                                                  : Colors.orange,
                                             ),
                                         ],
                                       ),
-                                      if (st == McpStatus.error &&
-                                          (err?.isNotEmpty ?? false)) ...[
-                                        const SizedBox(height: 8),
-                                        Row(
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Icon(
-                                              Lucide.MessageCircleWarning,
-                                              size: 14,
-                                              color: Colors.red,
+                                            Text(
+                                              s.name,
+                                              style: TextStyle(
+                                                fontWeight:
+                                                    AppFontWeights.emphasis,
+                                                color: c,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                l10n.mcpPageConnectionFailed,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.red,
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 6,
+                                              children: [
+                                                tagStyled(
+                                                  st == McpStatus.connected
+                                                      ? l10n.mcpPageStatusConnected
+                                                      : (st ==
+                                                                McpStatus
+                                                                    .connecting
+                                                            ? l10n.mcpPageStatusConnecting
+                                                            : l10n.mcpPageStatusDisconnected),
+                                                  color:
+                                                      st == McpStatus.connected
+                                                      ? Colors.green
+                                                      : (st ==
+                                                                McpStatus
+                                                                    .connecting
+                                                            ? cs.primary
+                                                            : Colors.redAccent),
                                                 ),
-                                              ),
+                                                tagStyled(
+                                                  s.transport ==
+                                                          McpTransportType
+                                                              .inmemory
+                                                      ? l10n.mcpTransportTagInmemory
+                                                      : (s.transport ==
+                                                                McpTransportType
+                                                                    .sse
+                                                            ? l10n.mcpTransportTagSse
+                                                            : l10n.mcpTransportTagHttp),
+                                                ),
+                                                tagStyled(
+                                                  l10n.mcpPageToolsCount(
+                                                    s.tools
+                                                        .where((t) => t.enabled)
+                                                        .length,
+                                                    s.tools.length,
+                                                  ),
+                                                ),
+                                                if (!s.enabled)
+                                                  tagStyled(
+                                                    l10n.mcpPageStatusDisabled,
+                                                    color: cs.onSurface
+                                                        .withValues(alpha: 0.7),
+                                                  ),
+                                                if (isGithub)
+                                                  tagStyled(
+                                                    mcp.hasGithubToken
+                                                        ? 'Token 已配置'
+                                                        : 'Token 未配置',
+                                                    color: mcp.hasGithubToken
+                                                        ? Colors.green
+                                                        : Colors.orange,
+                                                  ),
+                                              ],
                                             ),
-                                            TextButton(
-                                              onPressed: () => showErrorDetails(
-                                                s.id,
-                                                err,
-                                                s.name,
+                                            if (st == McpStatus.error &&
+                                                (err?.isNotEmpty ?? false)) ...[
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Lucide.MessageCircleWarning,
+                                                    size: 14,
+                                                    color: Colors.red,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Text(
+                                                      l10n.mcpPageConnectionFailed,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.red,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        showErrorDetails(
+                                                          s.id,
+                                                          err,
+                                                          s.name,
+                                                        ),
+                                                    child: Text(
+                                                      l10n.mcpPageDetails,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              child: Text(l10n.mcpPageDetails),
-                                            ),
+                                            ],
                                           ],
                                         ),
-                                      ],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Lucide.ChevronRight,
+                                        size: 16,
+                                        color: c,
+                                      ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Icon(Lucide.ChevronRight, size: 16, color: c),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
+                              );
+                            },
+                          );
+                        },
+                      );
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Slidable(
-                    key: ValueKey('mcp-${s.id}'),
-                    enabled: !isBuiltin,
-                    endActionPane: isBuiltin
-                        ? null
-                        : ActionPane(
-                            motion: const StretchMotion(),
-                            extentRatio: 0.42,
-                            children: [
-                              CustomSlidableAction(
-                                autoClose: true,
-                                backgroundColor: Colors.transparent,
-                                child: Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? cs.error.withValues(alpha: 0.22)
-                                        : cs.error.withValues(alpha: 0.14),
-                                    // Match list card radius for consistency
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: cs.error.withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Lucide.Trash2,
-                                          color: cs.error,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          l10n.mcpPageDelete,
-                                          style: TextStyle(
-                                            color: cs.error,
-                                            fontWeight: AppFontWeights.emphasis,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Slidable(
+                          key: ValueKey('mcp-${s.id}'),
+                          enabled: !isBuiltin,
+                          endActionPane: isBuiltin
+                              ? null
+                              : ActionPane(
+                                  motion: const StretchMotion(),
+                                  extentRatio: 0.42,
+                                  children: [
+                                    CustomSlidableAction(
+                                      autoClose: true,
+                                      backgroundColor: Colors.transparent,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? cs.error.withValues(alpha: 0.22)
+                                              : cs.error.withValues(
+                                                  alpha: 0.14,
+                                                ),
+                                          // Match list card radius for consistency
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: cs.error.withValues(
+                                              alpha: 0.35,
+                                            ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                onPressed: (_) async {
-                                  final prov = context.read<McpProvider>();
-                                  final prev = prov.getById(s.id);
-                                  final ok = await showDialog<bool>(
-                                    context: context,
-                                    builder: (dctx) => AlertDialog(
-                                      backgroundColor: cs.surface,
-                                      title: Text(
-                                        l10n.mcpPageConfirmDeleteTitle,
-                                      ),
-                                      content: Text(
-                                        l10n.mcpPageConfirmDeleteContent,
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(dctx).pop(false),
-                                          child: Text(l10n.mcpPageCancel),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
                                         ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(dctx).pop(true),
-                                          child: Text(l10n.mcpPageDelete),
+                                        alignment: Alignment.center,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Lucide.Trash2,
+                                                color: cs.error,
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                l10n.mcpPageDelete,
+                                                style: TextStyle(
+                                                  color: cs.error,
+                                                  fontWeight:
+                                                      AppFontWeights.emphasis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                  if (ok != true) return;
-                                  await prov.removeServer(s.id);
-                                  if (!context.mounted) return;
-                                  showAppSnackBar(
-                                    context,
-                                    message: l10n.mcpPageServerDeleted,
-                                    type: NotificationType.info,
-                                    actionLabel: l10n.mcpPageUndo,
-                                    onAction: () {
-                                      if (prev == null) return;
-                                      Future(() async {
-                                        final newId = await prov.addServer(
-                                          enabled: prev.enabled,
-                                          name: prev.name,
-                                          transport: prev.transport,
-                                          url: prev.url,
-                                          headers: prev.headers,
+                                      ),
+                                      onPressed: (_) async {
+                                        final prov = context
+                                            .read<McpProvider>();
+                                        final prev = prov.getById(s.id);
+                                        final ok = await showDialog<bool>(
+                                          context: context,
+                                          builder: (dctx) => AlertDialog(
+                                            backgroundColor: cs.surface,
+                                            title: Text(
+                                              l10n.mcpPageConfirmDeleteTitle,
+                                            ),
+                                            content: Text(
+                                              l10n.mcpPageConfirmDeleteContent,
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(
+                                                  dctx,
+                                                ).pop(false),
+                                                child: Text(l10n.mcpPageCancel),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.of(
+                                                  dctx,
+                                                ).pop(true),
+                                                child: Text(l10n.mcpPageDelete),
+                                              ),
+                                            ],
+                                          ),
                                         );
-                                        // Try to refresh tools when back online
-                                        try {
-                                          await prov.refreshTools(newId);
-                                        } catch (_) {}
-                                      });
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                    child: row,
+                                        if (ok != true) return;
+                                        await prov.removeServer(s.id);
+                                        if (!context.mounted) return;
+                                        showAppSnackBar(
+                                          context,
+                                          message: l10n.mcpPageServerDeleted,
+                                          type: NotificationType.info,
+                                          actionLabel: l10n.mcpPageUndo,
+                                          onAction: () {
+                                            if (prev == null) return;
+                                            Future(() async {
+                                              final newId = await prov
+                                                  .addServer(
+                                                    enabled: prev.enabled,
+                                                    name: prev.name,
+                                                    transport: prev.transport,
+                                                    url: prev.url,
+                                                    headers: prev.headers,
+                                                  );
+                                              // Try to refresh tools when back online
+                                              try {
+                                                await prov.refreshTools(newId);
+                                              } catch (_) {}
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                          child: row,
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Global MCP tool execution switch. The app-control gateway has its own
+/// approval policy and is intentionally not affected by this switch.
+class _McpAutoApprovalTile extends StatelessWidget {
+  const _McpAutoApprovalTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final store = McpToolAutoApprovalStore.instance;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: store.listenable,
+      builder: (context, enabled, _) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white10
+                : Colors.white.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: isDark ? 0.1 : 0.08),
+              width: 0.6,
             ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white10 : const Color(0xFFF2F3F5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Lucide.Activity,
+                  size: 20,
+                  color: enabled
+                      ? cs.primary
+                      : cs.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MCP 工具自动执行',
+                      style: TextStyle(
+                        fontWeight: AppFontWeights.emphasis,
+                        color: cs.onSurface.withValues(alpha: 0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      enabled ? '所有工具直接执行，无需审批' : '按每个工具的配置逐个审批',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurface.withValues(alpha: 0.58),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                value: enabled,
+                onChanged: (value) {
+                  Haptics.light();
+                  store.setEnabled(value);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
