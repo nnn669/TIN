@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../icons/lucide_adapter.dart';
+import '../../../icons/reasoning_icons.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/dialogs/reasoning_budget_custom_dialog.dart';
 import '../../../shared/widgets/ios_tactile.dart';
@@ -108,6 +109,12 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     Navigator.of(context).maybePop();
   }
 
+  /// 复用桌面端推理面板同一套 SVG 档位图标。
+  Widget Function(Color) _budgetIcon(int budget) {
+    return (Color color) =>
+        ReasoningIcons.budgetIcon(budget, size: 17, color: color);
+  }
+
   /// 构建堆叠式档位列表。
   ///
   /// 顺序固定为：关闭 → 自动 → 轻度 → 中度 → 重度，之后按模型能力追加
@@ -122,31 +129,34 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
         id: _EffortIds.off,
         label: l10n.reasoningBudgetSheetOff,
         budget: 0,
-        icon: Lucide.Power,
+        leadingBuilder: _budgetIcon(ReasoningIcons.offBudget),
       ),
       ThinkingEffortOption(
         id: _EffortIds.auto,
         label: l10n.reasoningBudgetSheetAuto,
         budget: -1,
-        icon: Lucide.Wand2,
+        leadingBuilder: _budgetIcon(ReasoningIcons.autoBudget),
       ),
       ThinkingEffortOption(
         id: _EffortIds.light,
         label: l10n.reasoningBudgetSheetLight,
         budget: 1024,
         description: l10n.reasoningBudgetSheetLightSubtitle,
+        leadingBuilder: _budgetIcon(ReasoningIcons.lightBudget),
       ),
       ThinkingEffortOption(
         id: _EffortIds.medium,
         label: l10n.reasoningBudgetSheetMedium,
         budget: 16000,
         description: l10n.reasoningBudgetSheetMediumSubtitle,
+        leadingBuilder: _budgetIcon(ReasoningIcons.mediumBudget),
       ),
       ThinkingEffortOption(
         id: _EffortIds.heavy,
         label: l10n.reasoningBudgetSheetHeavy,
         budget: 32000,
         description: l10n.reasoningBudgetSheetHeavySubtitle,
+        leadingBuilder: _budgetIcon(ReasoningIcons.heavyBudget),
       ),
       if (showXhigh)
         ThinkingEffortOption(
@@ -154,6 +164,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
           label: l10n.reasoningBudgetSheetXhigh,
           budget: 64000,
           description: l10n.reasoningBudgetSheetXhighSubtitle,
+          leadingBuilder: _budgetIcon(ReasoningIcons.xhighBudget),
         ),
       if (showMax)
         ThinkingEffortOption(
@@ -161,6 +172,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
           label: l10n.reasoningBudgetSheetMax,
           budget: 128000,
           description: l10n.reasoningBudgetSheetMaxSubtitle,
+          leadingBuilder: _budgetIcon(ReasoningIcons.maxBudget),
         ),
       if (showXhigh || showMax)
         ThinkingEffortOption(
@@ -168,7 +180,8 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
           label: l10n.reasoningBudgetSheetUltracode,
           budget: showMax ? 128000 : 64000,
           description: l10n.reasoningBudgetSheetUltracodeSubtitle,
-          icon: Lucide.Sparkles,
+          leadingBuilder: (color) =>
+              Icon(Lucide.Sparkles, size: 17, color: color),
           accent: true,
         ),
     ];
