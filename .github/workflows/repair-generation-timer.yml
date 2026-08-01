@@ -1,0 +1,43 @@
+name: Repair generation timer on branch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Remove stale generation timer call
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('lib/features/chat/widgets/chat_message_widget.dart')
+          text = path.read_text()
+          marker = 'GenerationTimerBadge('
+          if marker not in text:
+              raise SystemExit('GenerationTimerBadge call not found')
+          pattern = r'\n[ \t]*const SizedBox\(width: 6\),\n[ \t]*GenerationTimerBadge\([\s\S]*?\n[ \t]*\),'
+          updated, count = re.subn(pattern, '', text, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one timer block, removed {count}')
+          path.write_text(updated)
+      - name: Remove one-time workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/repair-generation-timer.yml
+          git config user.name 'nnn669'
+          git config user.email '510875510@qq.com'
+          git add lib/features/chat/widgets/chat_message_widget.dart .github/workflows/repair-generation-timer.yml
+          git commit -m 'fix(chat): remove stale generation timer call'
+          git push origin "${GITHUB_REF_NAME}"
