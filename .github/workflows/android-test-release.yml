@@ -23,10 +23,6 @@ concurrency:
 
 env:
   FLUTTER_VERSION: 3.44.1
-  BASE_VERSION_CODE: 9015
-
-auto_cancel:
-  enabled: true
 
 jobs:
   pull-request-check:
@@ -74,11 +70,16 @@ jobs:
         run: flutter pub get
 
       - name: Calculate Android version code
+        id: version
         shell: bash
         run: |
           set -euo pipefail
+          BASE_VERSION_CODE=$(sed -nE 's/^version: [^+]+\+([0-9]+)\s*$/\1/p' pubspec.yaml | head -n 1)
+          test -n "$BASE_VERSION_CODE"
           VERSION_CODE=$((BASE_VERSION_CODE + GITHUB_RUN_NUMBER))
+          test "$VERSION_CODE" -gt "$BASE_VERSION_CODE"
           echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
           echo "Building versionCode=${VERSION_CODE} from base=${BASE_VERSION_CODE} and run=${GITHUB_RUN_NUMBER}"
 
       - name: Prepare release keystore
@@ -141,7 +142,7 @@ jobs:
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           test -x "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$APK" | grep -qx "$VERSION_CODE"
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$APK" | grep -qx "$VERSION_CODE"
           sha256sum "$APK"
 
       - name: Upload signed APK artifact
@@ -168,4 +169,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --prerelease \
             --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" \
-            --notes "自动构建的 Android signed release APK，仅用于测试。${SIGNING_NOTE}\n\nversionCode: ${VERSION_CODE}\nCommit: ${GITHUB_SHA}"
+            --notes "自动构建的 Android signed release APK，仅用于测试。${SIGNING_NOTE}
+
+versionCode: ${VERSION_CODE}
+Commit: ${GITHUB_SHA}"
