@@ -1,0 +1,75 @@
+name: Temporary fix applicator
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/fix-android-install-latency-custom-provider
+          fetch-depth: 0
+      - name: Patch sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/features/provider/widgets/add_provider_sheet.dart'); s=p.read_text()
+          s=s.replace('TabController(length: 3', 'TabController(length: 4')
+          s=s.replace("  bool _claudeEnabled = true;", """  bool _claudeEnabled = true;
+  bool _customEnabled = true;
+  late final TextEditingController _customName = TextEditingController(text: 'Custom');
+  late final TextEditingController _customKey = TextEditingController();
+  late final TextEditingController _customBase = TextEditingController();
+  late final TextEditingController _customPath = TextEditingController(text: '/chat/completions');""")
+          marker='  Widget _claudeForm(AppLocalizations l10n) {'
+          form="""  Widget _customForm(AppLocalizations l10n) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _iosCard(children: [_switchRow(label: l10n.addProviderSheetEnabledLabel, value: _customEnabled, onChanged: (v) => setState(() => _customEnabled = v))]),
+            const SizedBox(height: 10), _inputRow(label: l10n.addProviderSheetNameLabel, controller: _customName),
+            const SizedBox(height: 10), _inputRow(label: 'API Key', controller: _customKey, obscure: true),
+            const SizedBox(height: 10), _inputRow(label: 'API Base Url', controller: _customBase, hint: 'https://example.com/v1'),
+            const SizedBox(height: 10), _inputRow(label: l10n.addProviderSheetApiPathLabel, controller: _customPath, hint: '/chat/completions'),
+          ]);
+
+"""
+          s=s.replace(marker, form+marker)
+          s=s.replace("    } else {\n      final rawName = _claudeName.text.trim();", "    } else if (idx == 2) {\n      final rawName = _claudeName.text.trim();")
+          needle='''      await settings.setProviderConfig(keyName, cfg);\n      createdKey = keyName;\n    }\n\n    // Ensure providers appear in order list at least once'''
+          addition='''      await settings.setProviderConfig(keyName, cfg);\n      createdKey = keyName;\n    } else {\n      final display = _customName.text.trim().isEmpty ? 'Custom' : _customName.text.trim();\n      final keyName = uniqueKey('Custom', display);\n      final base = _customBase.text.trim();\n      if (base.isEmpty) return;\n      final cfg = ProviderConfig(id: keyName, enabled: _customEnabled, name: display, apiKey: _customKey.text.trim(), baseUrl: base, providerType: ProviderKind.openai, chatPath: _customPath.text.trim().isEmpty ? '/chat/completions' : _customPath.text.trim(), useResponseApi: false, models: const [], modelOverrides: const {}, proxyEnabled: false, proxyHost: '', proxyPort: '8080', proxyUsername: '', proxyPassword: '');\n      await settings.setProviderConfig(keyName, cfg);\n      createdKey = keyName;\n    }\n\n    // Ensure providers appear in order list at least once'''
+          if needle not in s: raise SystemExit('provider insertion point missing')
+          s=s.replace(needle, addition, 1)
+          s=s.replace("tabs: const ['OpenAI', 'Google', 'Claude'],", "tabs: const ['OpenAI', 'Google', 'Claude', '自定义'],")
+          s=s.replace('if (idx == 2) _claudeForm(l10n),', 'if (idx == 2) _claudeForm(l10n),\n                              if (idx == 3) _customForm(l10n),')
+          p.write_text(s)
+          p=Path('lib/core/services/chat/chat_service.dart'); s=p.read_text()
+          s=s.replace("import 'package:flutter/foundation.dart';", "import 'dart:async';\nimport 'package:flutter/foundation.dart';")
+          s=s.replace('  final Map<String, String> _temporaryGeminiThoughtSigs = <String, String>{};', '  final Map<String, String> _temporaryGeminiThoughtSigs = <String, String>{};\n  final Map<String, Timer> _streamPersistTimers = <String, Timer>{};')
+          marker='  /// Update message content during streaming without triggering notifyListeners.'
+          helper="""  void _scheduleStreamingPersist(ChatMessage message) {
+    final id = message.id; _streamPersistTimers[id]?.cancel();
+    _streamPersistTimers[id] = Timer(const Duration(milliseconds: 250), () async {
+      _streamPersistTimers.remove(id); final list = _messagesCache[message.conversationId];
+      final latest = list == null ? null : list.firstWhere((m) => m.id == id, orElse: () => message);
+      if (latest.isStreaming == false) return; try { await _messagesBox.put(id, latest); } catch (_) {}
+    });
+  }
+
+"""
+          s=s.replace(marker, helper+marker)
+          pos=s.find('  Future<void> updateMessageSilent(')
+          a,b=s[:pos],s[pos:]
+          old='''    await _messagesBox.put(messageId, updatedMessage);\n\n    // Update streaming tracking for crash-recovery'''
+          new='''    _replaceCachedMessage(updatedMessage);\n    _scheduleStreamingPersist(updatedMessage);\n\n    // Update streaming tracking for crash-recovery'''
+          if old not in b: raise SystemExit('stream persistence block missing')
+          b=b.replace(old,new,1); p.write_text(a+b)
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/provider/widgets/add_provider_sheet.dart lib/core/services/chat/chat_service.dart
+          git commit -m 'fix: add custom provider and throttle stream persistence' || true
+          git push origin HEAD:codex/fix-android-install-latency-custom-provider
