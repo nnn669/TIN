@@ -7,6 +7,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/dialogs/reasoning_budget_custom_dialog.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../core/services/haptics.dart';
+import '../../../theme/app_font_weights.dart';
 import 'thinking_effort_stack.dart';
 
 Future<void> showReasoningBudgetSheet(
@@ -121,13 +122,13 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
         id: _EffortIds.off,
         label: l10n.reasoningBudgetSheetOff,
         budget: 0,
-        icon: Lucide.CircleOff,
+        icon: Lucide.Power,
       ),
       ThinkingEffortOption(
         id: _EffortIds.auto,
         label: l10n.reasoningBudgetSheetAuto,
         budget: -1,
-        icon: Lucide.Wand,
+        icon: Lucide.Wand2,
       ),
       ThinkingEffortOption(
         id: _EffortIds.light,
@@ -241,7 +242,9 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: active
+                    ? AppFontWeights.emphasis
+                    : AppFontWeights.medium,
                 color: color,
               ),
             ),
@@ -251,7 +254,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
               _selected.toString(),
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
+                fontWeight: AppFontWeights.medium,
                 color: color,
               ),
             ),
