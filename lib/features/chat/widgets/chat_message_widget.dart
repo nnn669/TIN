@@ -2269,12 +2269,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          GenerationTimerBadge(
-                            isStreaming: widget.message.isStreaming,
-                            startTime: widget.message.timestamp,
-                            durationMs: widget.message.durationMs,
-                          ),
                         ],
                       ),
                     Builder(
