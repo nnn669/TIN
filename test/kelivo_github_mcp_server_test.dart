@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Kelivo/core/services/mcp/kelivo_github/github_api_client.dart';
-import 'package:Kelivo/core/services/mcp/kelivo_github/kelivo_github_server.dart';
+import 'package:tin/core/services/mcp/kelivo_github/github_api_client.dart';
+import 'package:tin/core/services/mcp/kelivo_github/kelivo_github_server.dart';
 
 void main() {
   group('GitHubApiClient', () {

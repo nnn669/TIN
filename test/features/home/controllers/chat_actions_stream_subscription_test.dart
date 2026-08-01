@@ -1,7 +1,7 @@
 import 'dart:async' as async;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:Kelivo/features/home/controllers/chat_actions.dart';
+import 'package:tin/features/home/controllers/chat_actions.dart';
 
 void main() {
   group('ChatActions.listenSequentiallyToStream', () {

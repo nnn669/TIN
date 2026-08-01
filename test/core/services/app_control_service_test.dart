@@ -5,19 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:Kelivo/core/models/assistant.dart';
-import 'package:Kelivo/core/models/app_control_policy.dart';
-import 'package:Kelivo/core/providers/assistant_provider.dart';
-import 'package:Kelivo/core/providers/instruction_injection_provider.dart';
-import 'package:Kelivo/core/providers/memory_provider.dart';
-import 'package:Kelivo/core/providers/mcp_provider.dart';
-import 'package:Kelivo/core/providers/quick_phrase_provider.dart';
-import 'package:Kelivo/core/providers/settings_provider.dart';
-import 'package:Kelivo/core/providers/skill_provider.dart';
-import 'package:Kelivo/core/providers/world_book_provider.dart';
-import 'package:Kelivo/core/services/app_control/app_control_service.dart';
-import 'package:Kelivo/core/services/search/search_service.dart';
-import 'package:Kelivo/features/home/services/local_tools_service.dart';
+import 'package:tin/core/models/assistant.dart';
+import 'package:tin/core/models/app_control_policy.dart';
+import 'package:tin/core/providers/assistant_provider.dart';
+import 'package:tin/core/providers/instruction_injection_provider.dart';
+import 'package:tin/core/providers/memory_provider.dart';
+import 'package:tin/core/providers/mcp_provider.dart';
+import 'package:tin/core/providers/quick_phrase_provider.dart';
+import 'package:tin/core/providers/settings_provider.dart';
+import 'package:tin/core/providers/skill_provider.dart';
+import 'package:tin/core/providers/world_book_provider.dart';
+import 'package:tin/core/services/app_control/app_control_service.dart';
+import 'package:tin/core/services/search/search_service.dart';
+import 'package:tin/features/home/services/local_tools_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

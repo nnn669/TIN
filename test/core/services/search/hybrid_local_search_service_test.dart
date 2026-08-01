@@ -1,5 +1,5 @@
-import 'package:Kelivo/core/services/search/providers/hybrid_local_search_service.dart';
-import 'package:Kelivo/core/services/search/search_service.dart';
+import 'package:tin/core/services/search/providers/hybrid_local_search_service.dart';
+import 'package:tin/core/services/search/search_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

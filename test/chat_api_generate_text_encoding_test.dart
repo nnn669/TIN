@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Kelivo/core/providers/settings_provider.dart';
-import 'package:Kelivo/core/services/api/chat_api_service.dart';
+import 'package:tin/core/providers/settings_provider.dart';
+import 'package:tin/core/services/api/chat_api_service.dart';
 
 ProviderConfig _openAIConfig(String baseUrl) {
   return ProviderConfig(

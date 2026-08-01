@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:Kelivo/core/providers/mcp_provider.dart';
+import 'package:tin/core/providers/mcp_provider.dart';
 
 void main() {
   group('McpProvider built-ins', () {

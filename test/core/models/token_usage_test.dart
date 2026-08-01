@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Kelivo/core/models/token_usage.dart';
+import 'package:tin/core/models/token_usage.dart';
 
 void main() {
   group('TokenUsage', () {

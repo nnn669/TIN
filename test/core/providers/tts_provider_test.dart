@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:Kelivo/core/providers/tts_provider.dart';
-import 'package:Kelivo/core/services/tts/tts_playback_models.dart';
+import 'package:tin/core/providers/tts_provider.dart';
+import 'package:tin/core/services/tts/tts_playback_models.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

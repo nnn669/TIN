@@ -5,12 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:Kelivo/core/providers/assistant_provider.dart';
-import 'package:Kelivo/core/providers/settings_provider.dart';
-import 'package:Kelivo/features/model/widgets/model_select_sheet.dart';
-import 'package:Kelivo/icons/lucide_adapter.dart';
-import 'package:Kelivo/l10n/app_localizations.dart';
-import 'package:Kelivo/shared/widgets/ios_tactile.dart';
+import 'package:tin/core/providers/assistant_provider.dart';
+import 'package:tin/core/providers/settings_provider.dart';
+import 'package:tin/features/model/widgets/model_select_sheet.dart';
+import 'package:tin/icons/lucide_adapter.dart';
+import 'package:tin/l10n/app_localizations.dart';
+import 'package:tin/shared/widgets/ios_tactile.dart';
 
 ProviderConfig _providerConfig(String key, String name, List<String> models) {
   return ProviderConfig(

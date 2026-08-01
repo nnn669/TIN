@@ -5,19 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:Kelivo/core/models/chat_message.dart';
-import 'package:Kelivo/core/providers/settings_provider.dart';
-import 'package:Kelivo/core/providers/tts_provider.dart';
-import 'package:Kelivo/core/services/api/chat_api_service.dart';
-import 'package:Kelivo/core/services/chat/chat_service.dart';
-import 'package:Kelivo/features/chat/widgets/chat_message_widget.dart';
-import 'package:Kelivo/features/home/controllers/stream_controller.dart'
+import 'package:tin/core/models/chat_message.dart';
+import 'package:tin/core/providers/settings_provider.dart';
+import 'package:tin/core/providers/tts_provider.dart';
+import 'package:tin/core/services/api/chat_api_service.dart';
+import 'package:tin/core/services/chat/chat_service.dart';
+import 'package:tin/features/chat/widgets/chat_message_widget.dart';
+import 'package:tin/features/home/controllers/stream_controller.dart'
     as home_stream;
-import 'package:Kelivo/features/home/services/ask_user_interaction_service.dart';
-import 'package:Kelivo/icons/lucide_adapter.dart';
-import 'package:Kelivo/features/home/services/tool_approval_service.dart';
-import 'package:Kelivo/l10n/app_localizations.dart';
-import 'package:Kelivo/shared/widgets/ios_tactile.dart';
+import 'package:tin/features/home/services/ask_user_interaction_service.dart';
+import 'package:tin/icons/lucide_adapter.dart';
+import 'package:tin/features/home/services/tool_approval_service.dart';
+import 'package:tin/l10n/app_localizations.dart';
+import 'package:tin/shared/widgets/ios_tactile.dart';
 
 SettingsProvider _createSettings(ChatMessageBackgroundStyle style) {
   final rawStyle = switch (style) {

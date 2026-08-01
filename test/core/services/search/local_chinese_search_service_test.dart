@@ -1,7 +1,7 @@
-import 'package:Kelivo/core/services/search/providers/baidu_search_service.dart';
-import 'package:Kelivo/core/services/search/providers/so360_search_service.dart';
-import 'package:Kelivo/core/services/search/providers/sogou_search_service.dart';
-import 'package:Kelivo/core/services/search/search_service.dart';
+import 'package:tin/core/services/search/providers/baidu_search_service.dart';
+import 'package:tin/core/services/search/providers/so360_search_service.dart';
+import 'package:tin/core/services/search/providers/sogou_search_service.dart';
+import 'package:tin/core/services/search/search_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

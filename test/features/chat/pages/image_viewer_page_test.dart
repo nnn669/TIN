@@ -1,5 +1,5 @@
-import 'package:Kelivo/features/chat/pages/image_viewer_page.dart';
-import 'package:Kelivo/l10n/app_localizations.dart';
+import 'package:tin/features/chat/pages/image_viewer_page.dart';
+import 'package:tin/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

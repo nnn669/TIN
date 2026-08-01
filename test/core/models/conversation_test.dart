@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Kelivo/core/models/conversation.dart';
+import 'package:tin/core/models/conversation.dart';
 
 void main() {
   group('Conversation chat suggestions compatibility', () {

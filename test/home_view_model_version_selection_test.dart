@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:Kelivo/core/models/chat_message.dart';
-import 'package:Kelivo/features/home/controllers/home_view_model.dart';
+import 'package:tin/core/models/chat_message.dart';
+import 'package:tin/features/home/controllers/home_view_model.dart';
 
 ChatMessage _message(String id, int version) {
   return ChatMessage(

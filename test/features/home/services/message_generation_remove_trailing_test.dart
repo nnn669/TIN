@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Kelivo/core/models/chat_message.dart';
-import 'package:Kelivo/features/home/services/message_generation_service.dart';
+import 'package:tin/core/models/chat_message.dart';
+import 'package:tin/features/home/services/message_generation_service.dart';
 
 ChatMessage _message({
   required String id,

@@ -1,8 +1,8 @@
-import 'package:Kelivo/core/providers/assistant_provider.dart';
-import 'package:Kelivo/core/providers/settings_provider.dart';
-import 'package:Kelivo/desktop/desktop_settings_page.dart';
-import 'package:Kelivo/l10n/app_localizations.dart';
-import 'package:Kelivo/shared/widgets/ios_checkbox.dart';
+import 'package:tin/core/providers/assistant_provider.dart';
+import 'package:tin/core/providers/settings_provider.dart';
+import 'package:tin/desktop/desktop_settings_page.dart';
+import 'package:tin/l10n/app_localizations.dart';
+import 'package:tin/shared/widgets/ios_checkbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
