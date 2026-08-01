@@ -78,13 +78,25 @@ jobs:
           SIGN_KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in SIGN_KEYSTORE_BASE64 SIGN_STORE_PASSWORD SIGN_KEY_ALIAS SIGN_KEY_PASSWORD; do
-            if [[ -z "${!name}" ]]; then
-              echo "Missing required repository secret: ${name}" >&2
-              exit 1
-            fi
-          done
-          printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
+          if [[ -n "$SIGN_KEYSTORE_BASE64" && -n "$SIGN_STORE_PASSWORD" && -n "$SIGN_KEY_ALIAS" && -n "$SIGN_KEY_PASSWORD" ]]; then
+            echo "Using configured repository signing key"
+            printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
+          else
+            echo "Signing Secrets are not configured; generating an ephemeral test keystore"
+            SIGN_STORE_PASSWORD="test-${GITHUB_RUN_ID}-${RANDOM}"
+            SIGN_KEY_PASSWORD="$SIGN_STORE_PASSWORD"
+            SIGN_KEY_ALIAS="tin-test"
+            keytool -genkeypair \
+              -keystore android/release-keystore.jks \
+              -storepass "$SIGN_STORE_PASSWORD" \
+              -keypass "$SIGN_KEY_PASSWORD" \
+              -alias "$SIGN_KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 3650 \
+              -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" \
+              -noprompt
+          fi
           test -s android/release-keystore.jks
           cat > android/key.properties <<EOF
           storeFile=../release-keystore.jks
