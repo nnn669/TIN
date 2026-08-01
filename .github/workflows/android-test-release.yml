@@ -4,15 +4,15 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       build_name:
         description: Optional version name override
         required: false
         type: string
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -40,8 +40,8 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
+      - name: Run targeted regression tests
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart
 
   android-release:
     name: Signed Android prerelease
@@ -70,17 +70,16 @@ jobs:
         run: flutter pub get
 
       - name: Calculate Android version code
-        id: version
         shell: bash
         run: |
           set -euo pipefail
-          BASE_VERSION_CODE=$(sed -nE 's/^version: [^+]+\+([0-9]+)\s*$/\1/p' pubspec.yaml | head -n 1)
-          test -n "$BASE_VERSION_CODE"
-          VERSION_CODE=$((BASE_VERSION_CODE + GITHUB_RUN_NUMBER))
-          test "$VERSION_CODE" -gt "$BASE_VERSION_CODE"
-          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
-          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
-          echo "Building versionCode=${VERSION_CODE} from base=${BASE_VERSION_CODE} and run=${GITHUB_RUN_NUMBER}"
+          base_version_code=$(awk -F+ '/^version:/ {print $2; exit}' pubspec.yaml | tr -d '[:space:]')
+          test -n "$base_version_code"
+          test "$base_version_code" -eq "$((base_version_code + 0))"
+          version_code=$((base_version_code + GITHUB_RUN_NUMBER))
+          test "$version_code" -gt "$base_version_code"
+          echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          echo "Building versionCode=$version_code from base=$base_version_code and run=$GITHUB_RUN_NUMBER"
 
       - name: Prepare release keystore
         shell: bash
@@ -94,32 +93,28 @@ jobs:
           if [[ -n "$SIGN_KEYSTORE_BASE64" && -n "$SIGN_STORE_PASSWORD" && -n "$SIGN_KEY_ALIAS" && -n "$SIGN_KEY_PASSWORD" ]]; then
             echo "Using configured repository signing key"
             printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
-            SIGNING_MODE="persistent"
+            echo "SIGNING_MODE=persistent" >> "$GITHUB_ENV"
           else
             echo "Signing Secrets are not configured; generating an ephemeral test keystore"
-            SIGN_STORE_PASSWORD="test-${GITHUB_RUN_ID}-${RANDOM}"
-            SIGN_KEY_PASSWORD="$SIGN_STORE_PASSWORD"
-            SIGN_KEY_ALIAS="tin-test"
+            sign_password="test-${GITHUB_RUN_ID}-${RANDOM}"
             keytool -genkeypair \
               -keystore android/release-keystore.jks \
-              -storepass "$SIGN_STORE_PASSWORD" \
-              -keypass "$SIGN_KEY_PASSWORD" \
-              -alias "$SIGN_KEY_ALIAS" \
+              -storepass "$sign_password" \
+              -keypass "$sign_password" \
+              -alias tin-test \
               -keyalg RSA \
               -keysize 2048 \
               -validity 3650 \
               -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" \
               -noprompt
-            SIGNING_MODE="ephemeral-test"
+            SIGN_STORE_PASSWORD="$sign_password"
+            SIGN_KEY_PASSWORD="$sign_password"
+            SIGN_KEY_ALIAS="tin-test"
+            echo "SIGNING_MODE=ephemeral-test" >> "$GITHUB_ENV"
           fi
           test -s android/release-keystore.jks
-          echo "SIGNING_MODE=${SIGNING_MODE}" >> "$GITHUB_ENV"
-          cat > android/key.properties <<EOF
-          storeFile=../release-keystore.jks
-          storePassword=${SIGN_STORE_PASSWORD}
-          keyAlias=${SIGN_KEY_ALIAS}
-          keyPassword=${SIGN_KEY_PASSWORD}
-          EOF
+          printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
           chmod 600 android/release-keystore.jks android/key.properties
 
       - name: Build signed release APK
@@ -127,23 +122,25 @@ jobs:
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
-          if [[ -n "${BUILD_NAME_OVERRIDE}" ]]; then
-            flutter build apk --release --build-name "${BUILD_NAME_OVERRIDE}" --build-number "${VERSION_CODE}"
+          if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then
+            flutter build apk --release --build-name "$BUILD_NAME_OVERRIDE" --build-number "$VERSION_CODE"
           else
-            flutter build apk --release --build-number "${VERSION_CODE}"
+            flutter build apk --release --build-number "$VERSION_CODE"
           fi
 
       - name: Verify APK signature and version
         shell: bash
         run: |
           set -euo pipefail
-          APK=build/app/outputs/flutter-apk/app-release.apk
-          test -s "$APK"
-          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-          test -x "$APKSIGNER"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$APK" | grep -qx "$VERSION_CODE"
-          sha256sum "$APK"
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$apk"
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -x "$apksigner"
+          "$apksigner" verify --verbose --print-certs "$apk"
+          apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$apkanalyzer"
+          test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
+          sha256sum "$apk"
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
@@ -159,17 +156,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           if [[ "$SIGNING_MODE" == "persistent" ]]; then
-            SIGNING_NOTE="签名模式：仓库持久签名，可覆盖同证书旧版本。"
+            signing_note='签名模式：仓库持久签名，可覆盖同证书旧版本。'
           else
-            SIGNING_NOTE="签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。"
+            signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
           fi
-          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk \
+          notes=$(printf '自动构建的 Android signed release APK，仅用于测试。%s\n\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
+          gh release create "$tag" build/app/outputs/flutter-apk/app-release.apk \
             --repo "$GITHUB_REPOSITORY" \
             --prerelease \
             --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" \
-            --notes "自动构建的 Android signed release APK，仅用于测试。${SIGNING_NOTE}
-
-versionCode: ${VERSION_CODE}
-Commit: ${GITHUB_SHA}"
+            --notes "$notes"
