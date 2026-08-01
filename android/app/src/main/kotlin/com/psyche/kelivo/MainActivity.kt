@@ -1,4 +1,4 @@
-package com.psyche.kelivo
+package com.psyche.tin
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -115,7 +115,6 @@ class MainActivity : FlutterActivity() {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: Exception) {
-            // Many share intents grant only transient read access; copying immediately is enough.
         }
 
         val cacheDir = File(filesDir, "shared_files").apply { mkdirs() }
