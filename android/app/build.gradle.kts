@@ -2,17 +2,15 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.psyche.kelivo"
+    namespace = "com.psyche.tin"
     compileSdk = flutter.compileSdkVersion
-//    ndkVersion = flutter.ndkVersion
     ndkVersion = "28.2.13676358"
-    val appIdOverride = (findProperty("kelivoApplicationId") as String?)?.takeIf { it.isNotBlank() }
-    val appLabelOverride = (findProperty("kelivoAppLabel") as String?)?.takeIf { it.isNotBlank() }
+    val appIdOverride = (findProperty("tinApplicationId") as String?)?.takeIf { it.isNotBlank() }
+    val appLabelOverride = (findProperty("tinAppLabel") as String?)?.takeIf { it.isNotBlank() }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -20,9 +18,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/projects/android-library).
-        applicationId = appIdOverride ?: "com.psyche.kelivo"
-        manifestPlaceholders["appLabel"] = appLabelOverride ?: "Kelivo"
+        applicationId = appIdOverride ?: "com.psyche.tin"
+        manifestPlaceholders["appLabel"] = appLabelOverride ?: "TIN"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -56,7 +53,6 @@ android {
 
     buildTypes {
         getByName("release") {
-            // Never silently fall back to the debug keystore for a release artifact.
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -73,6 +69,5 @@ flutter {
 }
 
 dependencies {
-    // Required for core library desugaring (used by flutter_local_notifications)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
