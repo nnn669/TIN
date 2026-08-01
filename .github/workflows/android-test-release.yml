@@ -41,7 +41,7 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
       - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart
 
   android-release:
     name: Signed Android prerelease
@@ -52,23 +52,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-
       - name: Resolve dependencies
         run: flutter pub get
-
       - name: Calculate Android version code
         shell: bash
         run: |
@@ -80,7 +76,6 @@ jobs:
           test "$version_code" -gt "$base_version_code"
           echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
           echo "Building versionCode=$version_code from base=$base_version_code and run=$GITHUB_RUN_NUMBER"
-
       - name: Prepare release keystore
         shell: bash
         env:
@@ -97,59 +92,47 @@ jobs:
           else
             echo "Signing Secrets are not configured; generating an ephemeral test keystore"
             sign_password="test-${GITHUB_RUN_ID}-${RANDOM}"
-            keytool -genkeypair \
-              -keystore android/release-keystore.jks \
-              -storepass "$sign_password" \
-              -keypass "$sign_password" \
-              -alias tin-test \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 3650 \
-              -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" \
-              -noprompt
+            keytool -genkeypair -keystore android/release-keystore.jks -storepass "$sign_password" -keypass "$sign_password" -alias tin-test -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" -noprompt
             SIGN_STORE_PASSWORD="$sign_password"
             SIGN_KEY_PASSWORD="$sign_password"
             SIGN_KEY_ALIAS="tin-test"
             echo "SIGNING_MODE=ephemeral-test" >> "$GITHUB_ENV"
           fi
           test -s android/release-keystore.jks
-          printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
+          printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
           chmod 600 android/release-keystore.jks android/key.properties
-
-      - name: Build signed release APK
+      - name: Build signed split APKs
         env:
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
-          if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then
-            flutter build apk --release --build-name "$BUILD_NAME_OVERRIDE" --build-number "$VERSION_CODE"
-          else
-            flutter build apk --release --build-number "$VERSION_CODE"
-          fi
-
-      - name: Verify APK signature and version
+          args=(--release --split-per-abi --build-number "$VERSION_CODE")
+          if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
+          flutter build apk "${args[@]}"
+      - name: Verify APK signatures and versions
         shell: bash
         run: |
           set -euo pipefail
-          apk=build/app/outputs/flutter-apk/app-release.apk
-          test -s "$apk"
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-          test -x "$apksigner"
-          "$apksigner" verify --verbose --print-certs "$apk"
           apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$apksigner"
           test -x "$apkanalyzer"
-          test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
-          sha256sum "$apk"
-
-      - name: Upload signed APK artifact
+          found=0
+          for apk in build/app/outputs/flutter-apk/app-*.apk; do
+            test -s "$apk"
+            "$apksigner" verify --verbose --print-certs "$apk"
+            test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
+            sha256sum "$apk"
+            found=1
+          done
+          test "$found" -eq 1
+      - name: Upload split APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TIN-android-test-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-*.apk
           if-no-files-found: error
           retention-days: 14
-
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -162,9 +145,5 @@ jobs:
           else
             signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
           fi
-          notes=$(printf '自动构建的 Android signed release APK，仅用于测试。%s\n\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
-          gh release create "$tag" build/app/outputs/flutter-apk/app-release.apk \
-            --repo "$GITHUB_REPOSITORY" \
-            --prerelease \
-            --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" \
-            --notes "$notes"
+          notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\narm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
+          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
