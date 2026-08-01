@@ -1,6 +1,9 @@
 name: Repair generation timer on branch
 
 on:
+  push:
+    branches:
+      - repair/remove-generation-timer
   workflow_dispatch:
 
 permissions:
@@ -20,18 +23,14 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           path = Path('lib/features/chat/widgets/chat_message_widget.dart')
           text = path.read_text()
-          marker = 'GenerationTimerBadge('
-          if marker not in text:
-              raise SystemExit('GenerationTimerBadge call not found')
           pattern = r'\n[ \t]*const SizedBox\(width: 6\),\n[ \t]*GenerationTimerBadge\([\s\S]*?\n[ \t]*\),'
           updated, count = re.subn(pattern, '', text, count=1)
           if count != 1:
               raise SystemExit(f'expected one timer block, removed {count}')
           path.write_text(updated)
-      - name: Remove one-time workflow and commit
+      - name: Commit repaired source
         shell: bash
         run: |
           set -euo pipefail
