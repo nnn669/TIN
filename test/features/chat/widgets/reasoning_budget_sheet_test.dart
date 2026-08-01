@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Kelivo/core/providers/assistant_provider.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/features/chat/widgets/reasoning_budget_sheet.dart';
-import 'package:Kelivo/features/chat/widgets/thinking_effort_slider.dart';
+import 'package:Kelivo/features/chat/widgets/thinking_effort_stack.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 
 Future<SettingsProvider> _settingsForClaudeModel(
@@ -76,11 +76,66 @@ Future<void> _openSheet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapOption(WidgetTester tester, String id) async {
+  await tester.tap(find.byKey(ThinkingEffortStack.optionKey(id)));
+  await tester.pump(const Duration(milliseconds: 240));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('ReasoningBudgetSheet', () {
-    testWidgets('shows slider max reasoning for Claude Fable 5', (
+  group('ReasoningBudgetSheet (stacked layout)', () {
+    testWidgets('renders the five base levels in stacked order', (tester) async {
+      final settings = await _settingsForClaudeModel(
+        tester,
+        'claude-sonnet-4-5',
+      );
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        modelProvider: 'Claude',
+        modelId: 'claude-sonnet-4-5',
+      );
+
+      await _openSheet(tester);
+
+      expect(find.byKey(ThinkingEffortStack.stackKey), findsOneWidget);
+      for (final id in const ['off', 'auto', 'light', 'medium', 'heavy']) {
+        expect(
+          find.byKey(ThinkingEffortStack.optionKey(id)),
+          findsOneWidget,
+          reason: 'option "$id" should be present',
+        );
+      }
+    });
+
+    testWidgets('tapping a level writes the matching thinkingBudget', (
+      tester,
+    ) async {
+      final settings = await _settingsForClaudeModel(
+        tester,
+        'claude-sonnet-4-5',
+      );
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        modelProvider: 'Claude',
+        modelId: 'claude-sonnet-4-5',
+      );
+
+      await _openSheet(tester);
+
+      await _tapOption(tester, 'light');
+      expect(settings.thinkingBudget, 1024);
+
+      await _tapOption(tester, 'medium');
+      expect(settings.thinkingBudget, 16000);
+
+      await _tapOption(tester, 'heavy');
+      expect(settings.thinkingBudget, 32000);
+    });
+
+    testWidgets('exposes Ultracode and max reasoning for Claude Fable 5', (
       tester,
     ) async {
       const modelId = 'claude-fable-5';
@@ -94,14 +149,13 @@ void main() {
 
       await _openSheet(tester);
 
-      expect(find.text('Faster'), findsOneWidget);
-      expect(find.text('Smarter'), findsOneWidget);
+      expect(find.byKey(ThinkingEffortStack.optionKey('max')), findsOneWidget);
+      expect(
+        find.byKey(ThinkingEffortStack.optionKey('ultracode')),
+        findsOneWidget,
+      );
 
-      final track = find.byKey(ThinkingEffortSlider.sliderKey);
-      final rect = tester.getRect(track);
-      await tester.tapAt(rect.centerRight - const Offset(2, 0));
-      await tester.pump(const Duration(milliseconds: 120));
-
+      await _tapOption(tester, 'ultracode');
       expect(settings.thinkingBudget, 128000);
       expect(find.text('Ultracode'), findsOneWidget);
     });
@@ -122,13 +176,35 @@ void main() {
 
       await _openSheet(tester);
 
-      final track = find.byKey(ThinkingEffortSlider.sliderKey);
-      final rect = tester.getRect(track);
-      await tester.tapAt(rect.centerRight - const Offset(2, 0));
-      await tester.pump(const Duration(milliseconds: 120));
-
+      expect(find.byKey(ThinkingEffortStack.optionKey('max')), findsNothing);
+      expect(find.byKey(ThinkingEffortStack.optionKey('xhigh')), findsNothing);
+      expect(
+        find.byKey(ThinkingEffortStack.optionKey('ultracode')),
+        findsNothing,
+      );
       expect(find.text('Ultracode'), findsNothing);
-      expect(settings.thinkingBudget, 32000);
+    });
+
+    testWidgets('off level maps to budget 0 and closes the sheet', (
+      tester,
+    ) async {
+      final settings = await _settingsForClaudeModel(
+        tester,
+        'claude-sonnet-4-5',
+      );
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        modelProvider: 'Claude',
+        modelId: 'claude-sonnet-4-5',
+      );
+
+      await _openSheet(tester);
+      await _tapOption(tester, 'off');
+      await tester.pumpAndSettle();
+
+      expect(settings.thinkingBudget, 0);
+      expect(find.byKey(ThinkingEffortStack.stackKey), findsNothing);
     });
   });
 }

@@ -11,6 +11,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/app_control/app_control_service.dart';
+import '../../../core/services/mcp/mcp_tool_auto_approval.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import 'ask_user_interaction_service.dart';
@@ -24,10 +25,17 @@ import 'tool_approval_service.dart';
 /// - Memory 工具 (create/edit/delete)
 /// - Search 工具
 class ToolHandlerService {
-  ToolHandlerService({required this.contextProvider});
+  ToolHandlerService({
+    required this.contextProvider,
+    McpToolAutoApprovalStore? autoApprovalStore,
+  }) : autoApprovalStore =
+           autoApprovalStore ?? McpToolAutoApprovalStore.instance;
 
   /// Build context (used for accessing providers)
   final BuildContext contextProvider;
+
+  /// 全局「MCP 工具自动执行」开关。开启时跳过所有 MCP 工具审批。
+  final McpToolAutoApprovalStore autoApprovalStore;
 
   // ============================================================================
   // Tool Schema Sanitization
@@ -336,6 +344,21 @@ class ToolHandlerService {
   // Tool Call Handler
   // ============================================================================
 
+  /// 判断某个 MCP 工具本次调用是否需要审批。
+  ///
+  /// 规则：
+  /// - 全局「工具自动执行」开关开启（默认）→ 一律不审批。
+  /// - 开关关闭 → 回落到原有的逐工具 `needsApproval` 配置。
+  ///
+  /// 助手「神经权能网关」的审批不经过这里，由 `assistant.appControlPolicy`
+  /// 单独判定，不受本开关影响。
+  @visibleForTesting
+  Future<bool> shouldRequestMcpApproval(McpProvider mcp, String toolName) async {
+    await autoApprovalStore.ensureLoaded();
+    if (autoApprovalStore.enabled) return false;
+    return mcp.toolNeedsApproval(toolName);
+  }
+
   /// Build tool call handler function.
   ///
   /// Returns a function that handles tool calls by name and arguments.
@@ -374,6 +397,8 @@ class ToolHandlerService {
         }
 
         // 神经权能网关 tool
+        //
+        // 注意：这里的审批流程按需求保持不动，不受全局 MCP 自动执行开关影响。
         if (name == AppControlToolNames.appControl) {
           if (assistant?.appControlEnabled != true) {
             return _toolError(
@@ -479,8 +504,12 @@ class ToolHandlerService {
           }
         }
 
-        // Approval gate for MCP tools
-        if (approvalService != null && mcp.toolNeedsApproval(name)) {
+        // Approval gate for MCP tools.
+        //
+        // 全局「工具自动执行」开关开启时（默认）直接放行，逐工具的 needsApproval
+        // 配置被忽略；关闭时回到原有审批逻辑。
+        if (approvalService != null &&
+            await shouldRequestMcpApproval(mcp, name)) {
           final approvalToolCallId = toolCallId?.trim().isNotEmpty == true
               ? toolCallId!.trim()
               : '${name}_${DateTime.now().microsecondsSinceEpoch}';

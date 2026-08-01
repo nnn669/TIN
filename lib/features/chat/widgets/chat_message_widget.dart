@@ -47,6 +47,7 @@ import '../utils/thinking_tag_parser.dart';
 import 'citation_sources_sheet.dart';
 import 'chat_suggestion_bubbles.dart';
 import 'token_display_widget.dart';
+import 'generation_timer_badge.dart';
 import '../../../theme/app_font_weights.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
@@ -2250,18 +2251,32 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (settings.showModelName)
-                      Text(
-                        widget.useAssistantName
-                            ? (widget.assistantName?.trim().isNotEmpty == true
-                                  ? widget.assistantName!.trim()
-                                  : _assistantNameFallback())
-                            : _resolveModelDisplayName(settings),
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: AppFontWeights.medium,
-                          color: cs.onSurface.withValues(alpha: 0.7),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.useAssistantName
+                                  ? (widget.assistantName?.trim().isNotEmpty ==
+                                            true
+                                        ? widget.assistantName!.trim()
+                                        : _assistantNameFallback())
+                                  : _resolveModelDisplayName(settings),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: AppFontWeights.medium,
+                                color: cs.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GenerationTimerBadge(
+                            isStreaming: widget.message.isStreaming,
+                            startTime: widget.message.timestamp,
+                            durationMs: widget.message.durationMs,
+                          ),
+                        ],
                       ),
                     Builder(
                       builder: (context) {
