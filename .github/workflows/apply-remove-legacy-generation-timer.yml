@@ -68,18 +68,25 @@ jobs:
           PY
           python3 .github/scripts/remove_legacy_generation_timer.py
           python3 - <<'PY'
+          import re
           from pathlib import Path
 
           path = Path('lib/features/home/controllers/streaming_content_notifier.dart')
           content = path.read_text(encoding='utf-8')
-          content = content.replace(
-              '          cachedTokens == other.cachedTokens &&\n\n  @override',
-              '          cachedTokens == other.cachedTokens;\n\n  @override',
+          content, equality_count = re.subn(
+              r'(cachedTokens == other\.cachedTokens)\s*&&\s*(?=@override)',
+              r'\1;\n\n  ',
+              content,
           )
-          content = content.replace(
-              '      cachedTokens.hashCode ^\n}',
-              '      cachedTokens.hashCode;\n}',
+          content, hash_count = re.subn(
+              r'(cachedTokens\.hashCode)\s*\^\s*(?=\})',
+              r'\1;\n',
+              content,
           )
+          if equality_count != 1 or hash_count != 1:
+              raise SystemExit(
+                  f'expected one trailing operator each, got {equality_count}, {hash_count}'
+              )
           path.write_text(content, encoding='utf-8')
           PY
 
