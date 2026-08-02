@@ -308,32 +308,32 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _iosCard(
-children: [
-  _switchRow(
-    label: l10n.addProviderSheetEnabledLabel,
-    value: _customEnabled,
-    onChanged: (v) => setState(() => _customEnabled = v),
-  ),
-],
+          children: [
+            _switchRow(
+              label: l10n.addProviderSheetEnabledLabel,
+              value: _customEnabled,
+              onChanged: (v) => setState(() => _customEnabled = v),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
         _inputRow(
-label: l10n.addProviderSheetNameLabel,
-controller: _customName,
+          label: l10n.addProviderSheetNameLabel,
+          controller: _customName,
         ),
         const SizedBox(height: 10),
         _inputRow(label: 'API Key', controller: _customKey),
         const SizedBox(height: 10),
         _inputRow(
-label: 'API Base Url',
-controller: _customBase,
-hint: 'https://example.com/v1',
+          label: 'API Base Url',
+          controller: _customBase,
+          hint: 'https://example.com/v1',
         ),
         const SizedBox(height: 10),
         _inputRow(
-label: l10n.addProviderSheetApiPathLabel,
-controller: _customPath,
-hint: '/chat/completions',
+          label: l10n.addProviderSheetApiPathLabel,
+          controller: _customPath,
+          hint: '/chat/completions',
         ),
       ],
     );
@@ -506,8 +506,8 @@ hint: '/chat/completions',
         baseUrl: base,
         providerType: ProviderKind.openai,
         chatPath: _customPath.text.trim().isEmpty
-  ? '/chat/completions'
-  : _customPath.text.trim(),
+            ? '/chat/completions'
+            : _customPath.text.trim(),
         useResponseApi: false,
         models: const [],
         modelOverrides: const {},
@@ -612,7 +612,7 @@ hint: '/chat/completions',
                               if (idx == 0) _openaiForm(l10n),
                               if (idx == 1) _googleForm(l10n),
                               if (idx == 2) _claudeForm(l10n),
-                    if (idx == 3) _customForm(l10n),
+                              if (idx == 3) _customForm(l10n),
                             ],
                           );
                         },
