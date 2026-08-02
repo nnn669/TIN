@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// Lightweight notifier for streaming message content updates.
@@ -7,15 +9,20 @@ import 'package:flutter/foundation.dart';
 /// which causes the entire HomePage to rebuild, this uses ValueNotifier
 /// so only the specific message widget that's listening will rebuild.
 ///
-/// Usage:
-/// 1. StreamController updates content via updateContent()
-/// 2. ChatMessageWidget uses ValueListenableBuilder to listen to contentNotifier
-/// 3. Only the streaming message widget rebuilds, not the entire page
+/// Incoming stream chunks may be throttled by the controller. This notifier
+/// publishes growing text at roughly the display frame rate so those chunks do
+/// not appear as visible two-character jumps on Android.
 class StreamingContentNotifier {
+  static const Duration _smoothFrameInterval = Duration(milliseconds: 16);
+  static const int _smoothCatchUpFrames = 6;
+  static const int _smoothMaxCharsPerFrame = 40;
+
   /// Map of message ID to its content notifier.
-  /// Each streaming message has its own `ValueNotifier<String>`.
   final Map<String, ValueNotifier<StreamingContentData>> _notifiers =
       <String, ValueNotifier<StreamingContentData>>{};
+  final Map<String, StreamingContentData> _pendingData =
+      <String, StreamingContentData>{};
+  final Map<String, Timer> _smoothTimers = <String, Timer>{};
 
   /// Get or create a notifier for a message.
   ValueNotifier<StreamingContentData> getNotifier(String messageId) {
@@ -44,25 +51,84 @@ class StreamingContentNotifier {
     int? cachedTokens,
   }) {
     final notifier = _notifiers[messageId];
-    if (notifier != null) {
-      final current = notifier.value;
-      notifier.value = StreamingContentData(
-        content: content,
-        totalTokens: totalTokens,
-        reasoningText: current.reasoningText,
-        reasoningStartAt: current.reasoningStartAt,
-        reasoningFinishedAt: current.reasoningFinishedAt,
-        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
-        reasoningCountAtSplit:
-            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
-        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
-        toolPartsVersion: current.toolPartsVersion,
-        uiVersion: current.uiVersion,
-        promptTokens: promptTokens ?? current.promptTokens,
-        completionTokens: completionTokens ?? current.completionTokens,
-        cachedTokens: cachedTokens ?? current.cachedTokens,
-      );
+    if (notifier == null) return;
+
+    final current = _pendingData[messageId] ?? notifier.value;
+    final next = current.copyWith(
+      content: content,
+      totalTokens: totalTokens,
+      contentSplitOffsets: contentSplitOffsets,
+      reasoningCountAtSplit: reasoningCountAtSplit,
+      toolCountAtSplit: toolCountAtSplit,
+      promptTokens: promptTokens,
+      completionTokens: completionTokens,
+      cachedTokens: cachedTokens,
+    );
+    _pendingData[messageId] = next;
+
+    final visible = notifier.value.content;
+    if (content == visible) {
+      notifier.value = next;
+      _stopSmoothTimer(messageId);
+      return;
     }
+    if (!content.startsWith(visible)) {
+      notifier.value = next;
+      _stopSmoothTimer(messageId);
+      return;
+    }
+    _smoothTimers.putIfAbsent(
+      messageId,
+      () => Timer.periodic(
+        _smoothFrameInterval,
+        (_) => _publishSmoothFrame(messageId),
+      ),
+    );
+  }
+
+  void _publishSmoothFrame(String messageId) {
+    final notifier = _notifiers[messageId];
+    final target = _pendingData[messageId];
+    if (notifier == null || target == null) {
+      _stopSmoothTimer(messageId);
+      return;
+    }
+
+    final visible = notifier.value.content;
+    if (visible == target.content || !target.content.startsWith(visible)) {
+      if (notifier.value != target) notifier.value = target;
+      _stopSmoothTimer(messageId);
+      return;
+    }
+
+    final backlog = target.content.length - visible.length;
+    final charsPerFrame = (backlog / _smoothCatchUpFrames)
+        .ceil()
+        .clamp(1, _smoothMaxCharsPerFrame);
+    final nextLength = _safeSliceEnd(
+      target.content,
+      (visible.length + charsPerFrame).clamp(0, target.content.length),
+    );
+    notifier.value = target.copyWith(
+      content: target.content.substring(0, nextLength),
+    );
+    if (nextLength >= target.content.length) _stopSmoothTimer(messageId);
+  }
+
+  int _safeSliceEnd(String text, int end) {
+    if (end <= 0 || end >= text.length) return end;
+    final previous = text.codeUnitAt(end - 1);
+    final next = text.codeUnitAt(end);
+    final splitsSurrogatePair =
+        previous >= 0xD800 &&
+        previous <= 0xDBFF &&
+        next >= 0xDC00 &&
+        next <= 0xDFFF;
+    return splitsSurrogatePair ? end + 1 : end;
+  }
+
+  void _stopSmoothTimer(String messageId) {
+    _smoothTimers.remove(messageId)?.cancel();
   }
 
   /// Update reasoning content for a streaming message.
@@ -77,22 +143,22 @@ class StreamingContentNotifier {
   }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
-      final current = notifier.value;
-      notifier.value = StreamingContentData(
-        content: current.content,
-        totalTokens: current.totalTokens,
-        reasoningText: reasoningText ?? current.reasoningText,
-        reasoningStartAt: reasoningStartAt ?? current.reasoningStartAt,
-        reasoningFinishedAt: reasoningFinishedAt ?? current.reasoningFinishedAt,
-        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
-        reasoningCountAtSplit:
-            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
-        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
-        toolPartsVersion: current.toolPartsVersion,
-        uiVersion: current.uiVersion,
-        promptTokens: current.promptTokens,
-        completionTokens: current.completionTokens,
-        cachedTokens: current.cachedTokens,
+      final pending = _pendingData[messageId] ?? notifier.value;
+      _pendingData[messageId] = pending.copyWith(
+        reasoningText: reasoningText,
+        reasoningStartAt: reasoningStartAt,
+        reasoningFinishedAt: reasoningFinishedAt,
+        contentSplitOffsets: contentSplitOffsets,
+        reasoningCountAtSplit: reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit,
+      );
+      notifier.value = notifier.value.copyWith(
+        reasoningText: reasoningText,
+        reasoningStartAt: reasoningStartAt,
+        reasoningFinishedAt: reasoningFinishedAt,
+        contentSplitOffsets: contentSplitOffsets,
+        reasoningCountAtSplit: reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit,
       );
     }
   }
@@ -107,55 +173,49 @@ class StreamingContentNotifier {
   }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
-      final current = notifier.value;
-      notifier.value = StreamingContentData(
-        content: current.content,
-        totalTokens: current.totalTokens,
-        reasoningText: current.reasoningText,
-        reasoningStartAt: current.reasoningStartAt,
-        reasoningFinishedAt: current.reasoningFinishedAt,
-        contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
-        reasoningCountAtSplit:
-            reasoningCountAtSplit ?? current.reasoningCountAtSplit,
-        toolCountAtSplit: toolCountAtSplit ?? current.toolCountAtSplit,
-        toolPartsVersion: current.toolPartsVersion + 1,
-        uiVersion: current.uiVersion,
-        promptTokens: current.promptTokens,
-        completionTokens: current.completionTokens,
-        cachedTokens: current.cachedTokens,
+      final pending = _pendingData[messageId] ?? notifier.value;
+      final version = pending.toolPartsVersion + 1;
+      _pendingData[messageId] = pending.copyWith(
+        contentSplitOffsets: contentSplitOffsets,
+        reasoningCountAtSplit: reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit,
+        toolPartsVersion: version,
+      );
+      notifier.value = notifier.value.copyWith(
+        contentSplitOffsets: contentSplitOffsets,
+        reasoningCountAtSplit: reasoningCountAtSplit,
+        toolCountAtSplit: toolCountAtSplit,
+        toolPartsVersion: version,
       );
     }
   }
 
   /// Force a rebuild of the streaming message widget.
-  /// Used when external state like reasoning expanded changes.
   void forceRebuild(String messageId) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
-      final current = notifier.value;
-      notifier.value = StreamingContentData(
-        content: current.content,
-        totalTokens: current.totalTokens,
-        reasoningText: current.reasoningText,
-        reasoningStartAt: current.reasoningStartAt,
-        reasoningFinishedAt: current.reasoningFinishedAt,
-        toolPartsVersion: current.toolPartsVersion,
-        uiVersion: current.uiVersion + 1,
-        promptTokens: current.promptTokens,
-        completionTokens: current.completionTokens,
-        cachedTokens: current.cachedTokens,
-      );
+      final pending = _pendingData[messageId] ?? notifier.value;
+      final version = pending.uiVersion + 1;
+      _pendingData[messageId] = pending.copyWith(uiVersion: version);
+      notifier.value = notifier.value.copyWith(uiVersion: version);
     }
   }
 
   /// Remove notifier when streaming is complete.
   void removeNotifier(String messageId) {
+    _stopSmoothTimer(messageId);
+    _pendingData.remove(messageId);
     final notifier = _notifiers.remove(messageId);
     notifier?.dispose();
   }
 
   /// Clear all notifiers (e.g., when switching conversations).
   void clear() {
+    for (final timer in _smoothTimers.values) {
+      timer.cancel();
+    }
+    _smoothTimers.clear();
+    _pendingData.clear();
     for (final notifier in _notifiers.values) {
       notifier.dispose();
     }
@@ -206,6 +266,39 @@ class StreamingContentData {
   final int? promptTokens;
   final int? completionTokens;
   final int? cachedTokens;
+
+  StreamingContentData copyWith({
+    String? content,
+    int? totalTokens,
+    String? reasoningText,
+    DateTime? reasoningStartAt,
+    DateTime? reasoningFinishedAt,
+    List<int>? contentSplitOffsets,
+    List<int>? reasoningCountAtSplit,
+    List<int>? toolCountAtSplit,
+    int? toolPartsVersion,
+    int? uiVersion,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+  }) {
+    return StreamingContentData(
+      content: content ?? this.content,
+      totalTokens: totalTokens ?? this.totalTokens,
+      reasoningText: reasoningText ?? this.reasoningText,
+      reasoningStartAt: reasoningStartAt ?? this.reasoningStartAt,
+      reasoningFinishedAt: reasoningFinishedAt ?? this.reasoningFinishedAt,
+      contentSplitOffsets: contentSplitOffsets ?? this.contentSplitOffsets,
+      reasoningCountAtSplit:
+          reasoningCountAtSplit ?? this.reasoningCountAtSplit,
+      toolCountAtSplit: toolCountAtSplit ?? this.toolCountAtSplit,
+      toolPartsVersion: toolPartsVersion ?? this.toolPartsVersion,
+      uiVersion: uiVersion ?? this.uiVersion,
+      promptTokens: promptTokens ?? this.promptTokens,
+      completionTokens: completionTokens ?? this.completionTokens,
+      cachedTokens: cachedTokens ?? this.cachedTokens,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
