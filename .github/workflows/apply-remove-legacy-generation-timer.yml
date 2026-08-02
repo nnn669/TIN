@@ -67,6 +67,21 @@ jobs:
           path.write_text(content.replace(old, new, 1), encoding='utf-8')
           PY
           python3 .github/scripts/remove_legacy_generation_timer.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/home/controllers/streaming_content_notifier.dart')
+          content = path.read_text(encoding='utf-8')
+          content = content.replace(
+              '          cachedTokens == other.cachedTokens &&\n\n  @override',
+              '          cachedTokens == other.cachedTokens;\n\n  @override',
+          )
+          content = content.replace(
+              '      cachedTokens.hashCode ^\n}',
+              '      cachedTokens.hashCode;\n}',
+          )
+          path.write_text(content, encoding='utf-8')
+          PY
 
       - name: Regenerate localizations and format
         run: |
