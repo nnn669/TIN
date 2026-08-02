@@ -48,10 +48,16 @@ Stream<List<int>> _normalizeStreamingResponse(
 
   // Some OpenAI-compatible providers ignore stream=true and return one normal
   // JSON response. Wrap it as one SSE event so the existing provider parser can
-  // consume it without buffering or duplicating JSON parsing at another layer.
-  yield utf8.encode('data: ');
-  yield* source;
-  yield utf8.encode('\n\n');
+  // consume it without duplicating JSON parsing at another layer.
+  var started = false;
+  await for (final chunk in source) {
+    if (!started) {
+      started = true;
+      yield utf8.encode('data: ');
+    }
+    yield chunk;
+  }
+  if (started) yield utf8.encode('\n\n');
 }
 
 class NetworkProxyConfig {
@@ -233,9 +239,7 @@ class DioHttpClient extends http.BaseClient {
           );
         }
         if (requestedEventStream && responseIsJson) {
-          RequestLogger.logLine(
-            '[RES $reqId] normalized_json_as_sse=true',
-          );
+          RequestLogger.logLine('[RES $reqId] normalized_json_as_sse=true');
         }
       }
 
@@ -294,9 +298,9 @@ class DioHttpClient extends http.BaseClient {
       };
       controller.onPause = () => bodySubscription?.pause();
       controller.onResume = () => bodySubscription?.resume();
-      controller.onCancel = () async {
-        await bodySubscription?.cancel();
-      };
+      // Do not cancel the Dio body stream here. Provider parsers may stop one
+      // response round before issuing a tool-call follow-up with this client.
+      controller.onCancel = () {};
 
       return http.StreamedResponse(
         http.ByteStream(controller.stream),
