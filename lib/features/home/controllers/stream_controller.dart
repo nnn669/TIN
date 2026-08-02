@@ -114,7 +114,7 @@ class StreamController {
   // ============================================================================
 
   /// UI output interval for streaming content.
-  static const Duration _streamThrottleInterval = Duration(milliseconds: 50);
+  static const Duration _streamThrottleInterval = Duration(milliseconds: 16);
   static const int _streamSmoothMinCount = 2;
   static const int _streamSmoothBaseCount = 40;
   static const int _streamSmoothMaxCount = 240;

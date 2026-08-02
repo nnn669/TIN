@@ -532,7 +532,7 @@ void main() {
     expect(updates, isEmpty);
     expect(listUpdateCount, 0);
 
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 16));
 
     expect(updates, hasLength(1));
     expect(updates.single, isNot('abcdefghijklmnopqrstuvwxyz'));
@@ -574,7 +574,7 @@ void main() {
       updateMessageInList: (_, __, ___) {},
     );
 
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 16));
 
     expect(contents, hasLength(1));
     expect(contents.single.length, greaterThan(40));
@@ -614,8 +614,8 @@ void main() {
       updateMessageInList: (_, __, ___) {},
     );
 
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
 
     expect(contents, const ['ok']);
     smoothController.dispose();
@@ -653,8 +653,8 @@ void main() {
       updateMessageInList: (_, __, ___) {},
     );
 
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
 
     expect(tester.takeException(), isNull);
     expect(contents, const ['ab', 'abc']);
