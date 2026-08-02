@@ -1,47 +1,25 @@
-name: Apply stream 60 FPS patch
+name: Validate stream 60 FPS
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.44.1
 
 jobs:
-  apply:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-      - name: Apply focused scheduler and test patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          controller = Path('lib/features/home/controllers/stream_controller.dart')
-          text = controller.read_text()
-          old = 'static const Duration _streamThrottleInterval = Duration(milliseconds: 50);'
-          new = 'static const Duration _streamThrottleInterval = Duration(milliseconds: 16);'
-          if old in text:
-            controller.write_text(text.replace(old, new))
-
-          test = Path('test/features/home/controllers/stream_controller_content_split_test.dart')
-          text = test.read_text()
-          old_delay = 'Duration(milliseconds: 50)'
-          if old_delay in text:
-            test.write_text(text.replace(old_delay, 'Duration(milliseconds: 16)'))
-          PY
-          if git diff --quiet; then
-            echo 'Patch already applied'
-            exit 0
-          fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add lib/features/home/controllers/stream_controller.dart test/features/home/controllers/stream_controller_content_split_test.dart
-          git commit -m 'fix(chat): raise sole stream scheduler to 60fps'
-          git push origin HEAD:${{ github.head_ref }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib/features/home/controllers/stream_controller.dart test/features/home/controllers/stream_controller_content_split_test.dart
+      - run: flutter test test/features/home/controllers/stream_controller_content_split_test.dart
