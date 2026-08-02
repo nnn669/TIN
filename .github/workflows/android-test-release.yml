@@ -40,10 +40,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Analyze changed API identity, chat persistence and provider UI code
-        run: flutter analyze lib/core/services/api/provider_request_headers.dart lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart lib/features/provider/widgets/add_provider_sheet.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart
+      - name: Analyze changed streaming and provider code
+        run: flutter analyze lib/core/services/network/dio_http_client.dart lib/core/services/api/provider_request_headers.dart lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart lib/features/home/controllers/streaming_content_notifier.dart lib/features/provider/widgets/add_provider_sheet.dart test/sse_buffer_flush_test.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
       - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/chat_service_temporary_conversation_test.dart test/core/services/chat/streaming_message_persistence_test.dart
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/chat_service_temporary_conversation_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
 
   android-release:
     name: Signed Android prerelease
@@ -108,7 +108,6 @@ jobs:
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
-          # TIN 只发布 64 位包体，因此不构建 armeabi-v7a。
           args=(--release --split-per-abi --target-platform android-arm64,android-x64 --build-number "$VERSION_CODE")
           if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
           flutter build apk "${args[@]}"
@@ -120,7 +119,6 @@ jobs:
           apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
           test -x "$apksigner"
           test -x "$apkanalyzer"
-          # 32 位包体不允许出现在发布产物中。
           test ! -e build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           found=0
           max_bytes=$((60 * 1024 * 1024))
@@ -130,7 +128,6 @@ jobs:
             "$apksigner" verify --verbose --print-certs "$apk"
             actual_version_code=$("$apkanalyzer" manifest version-code "$apk" | tr -d '[:space:]')
             if [[ "$actual_version_code" != "$VERSION_CODE" ]]; then
-              # Flutter split APKs add an ABI offset (ABI code * 1000).
               version_code_delta=$((actual_version_code - VERSION_CODE))
               test "$version_code_delta" -gt 0
               test "$((version_code_delta % 1000))" -eq 0
