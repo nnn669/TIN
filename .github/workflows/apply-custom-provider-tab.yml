@@ -1,0 +1,24 @@
+name: Apply custom provider source patch
+
+on:
+  push:
+    branches:
+      - feat/custom-provider-add-tab
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/custom-provider-add-tab
+          fetch-depth: 0
+      - name: Run staged exact patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -n "/^          python3 - <<'PY'$/,$ p" .github/workflows/android-test-release.yml | sed 's/^          //' > /tmp/apply.sh
+          bash /tmp/apply.sh
