@@ -1,0 +1,87 @@
+name: Apply legacy generation timer removal
+
+on:
+  push:
+    branches:
+      - feat/local-first-response-timer
+    paths:
+      - .github/scripts/remove_legacy_generation_timer.py
+      - .github/workflows/apply-remove-legacy-generation-timer.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/local-first-response-timer
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+
+      - name: Apply precise removal
+        run: python3 .github/scripts/remove_legacy_generation_timer.py
+
+      - name: Regenerate localizations and format
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format \
+            lib/core/models/chat_message.dart \
+            lib/core/models/chat_message.g.dart \
+            lib/core/services/chat/chat_service.dart \
+            lib/core/services/chat/local_response_timer.dart \
+            lib/features/chat/widgets/chat_message_widget.dart \
+            lib/features/chat/widgets/local_response_timer_badge.dart \
+            lib/features/chat/widgets/token_detail_popup.dart \
+            lib/features/chat/widgets/token_display_widget.dart \
+            lib/features/home/controllers/chat_actions.dart \
+            lib/features/home/controllers/stream_controller.dart \
+            lib/features/home/controllers/streaming_content_notifier.dart \
+            test/legacy_generation_timer_removal_test.dart \
+            test/local_response_timer_test.dart
+
+      - name: Verify legacy timer is gone
+        run: |
+          set -euo pipefail
+          ! grep -R -n -E 'durationMs|streamStartedAt|tokenDetailSpeed|tokenDetailDuration|GenerationTimerBadge|generation_timer_badge' lib test
+
+      - name: Analyze affected code
+        run: >-
+          flutter analyze
+          lib/core/models/chat_message.dart
+          lib/core/services/chat/chat_service.dart
+          lib/core/services/chat/local_response_timer.dart
+          lib/features/chat/widgets/chat_message_widget.dart
+          lib/features/chat/widgets/local_response_timer_badge.dart
+          lib/features/chat/widgets/token_detail_popup.dart
+          lib/features/chat/widgets/token_display_widget.dart
+          lib/features/home/controllers/chat_actions.dart
+          lib/features/home/controllers/stream_controller.dart
+          lib/features/home/controllers/streaming_content_notifier.dart
+          test/legacy_generation_timer_removal_test.dart
+          test/local_response_timer_test.dart
+
+      - name: Run timer regression tests
+        run: flutter test test/local_response_timer_test.dart test/legacy_generation_timer_removal_test.dart
+
+      - name: Commit verified change and remove temporary automation
+        run: |
+          set -euo pipefail
+          rm -f .github/scripts/remove_legacy_generation_timer.py
+          rm -f .github/workflows/apply-remove-legacy-generation-timer.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'refactor(chat): remove legacy whole-generation timer'
+          git push origin HEAD:feat/local-first-response-timer
