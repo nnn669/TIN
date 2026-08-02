@@ -1,0 +1,77 @@
+name: Repair generation timer call site
+
+on:
+  push:
+    branches:
+      - ci/fix-generation-timer
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ci/fix-generation-timer
+
+      - name: Remove orphaned GenerationTimerBadge call site
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -q 'GenerationTimerBadge' lib/features/chat/widgets/chat_message_widget.dart; then
+            echo "already clean"
+            exit 0
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+
+          target = Path('lib/features/chat/widgets/chat_message_widget.dart')
+          source = target.read_text(encoding='utf-8')
+
+          old = """                          const SizedBox(width: 6),
+                          GenerationTimerBadge(
+                            isStreaming: widget.message.isStreaming,
+                            startTime: widget.message.timestamp,
+                            durationMs: widget.message.durationMs,
+                          ),
+"""
+
+          count = source.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one call site, found {count}')
+
+          source = source.replace(old, '', 1)
+          if 'GenerationTimerBadge' in source:
+              raise SystemExit('GenerationTimerBadge still referenced')
+
+          target.write_text(source, encoding='utf-8')
+          print('removed orphaned GenerationTimerBadge call site')
+          PY
+
+      - name: Remove this one-time workflow
+        run: rm -f .github/workflows/repair-generation-timer-callsite.yml
+
+      - name: Commit to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -F - <<'MSG'
+          fix(chat): drop orphaned GenerationTimerBadge call site
+
+          Commit 3efb5d9 deleted generation_timer_badge.dart and its import but
+          left the widget call site in _buildAssistantMessage(), so the release
+          build failed with "The method 'GenerationTimerBadge' isn't defined".
+          Tests never caught it because CI only runs targeted test files and
+          does not run flutter analyze.
+          MSG
+          git push origin ci/fix-generation-timer
