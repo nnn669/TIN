@@ -1,0 +1,192 @@
+name: Apply nonblocking stream persistence
+
+on:
+  push:
+    branches:
+      - fix/nonblocking-stream-persistence
+    paths:
+      - .github/workflows/apply-nonblocking-stream-persistence.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/nonblocking-stream-persistence
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - name: Apply exact patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/core/services/chat/chat_service.dart')
+          text = path.read_text()
+
+          def replace_once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one match, found {count}: {old[:80]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import '../../../utils/app_directories.dart';\n\nclass ChatService",
+              "import '../../../utils/app_directories.dart';\nimport 'streaming_message_persistence.dart';\n\nclass ChatService",
+          )
+
+          replace_once(
+              "  final Map<String, String> _temporaryGeminiThoughtSigs = <String, String>{};\n",
+              "  final Map<String, String> _temporaryGeminiThoughtSigs = <String, String>{};\n"
+              "  final StreamingMessagePersistence<ChatMessage>\n"
+              "  _streamingMessagePersistence = StreamingMessagePersistence<ChatMessage>();\n",
+          )
+
+          replace_once(
+              "  ChatMessage? _cachedTemporaryMessage(String messageId) {\n",
+              "  ChatMessage? _cachedMessage(String messageId) {\n"
+              "    for (final messages in _messagesCache.values) {\n"
+              "      for (final message in messages) {\n"
+              "        if (message.id == messageId) return message;\n"
+              "      }\n"
+              "    }\n"
+              "    return null;\n"
+              "  }\n\n"
+              "  ChatMessage? _cachedTemporaryMessage(String messageId) {\n",
+          )
+
+          replace_once(
+              "  }) async {\n    if (!_initialized) return;\n\n    final message =\n        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n",
+              "  }) async {\n    if (!_initialized) return;\n\n"
+              "    await _streamingMessagePersistence.flush(messageId);\n"
+              "    final message =\n"
+              "        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n",
+          )
+
+          start = text.index('  Future<void> updateMessageSilent(')
+          end = text.index('  // Tool events persistence (per assistant message)', start)
+          replacement = '''  Future<void> updateMessageSilent(
+    String messageId, {
+    String? content,
+    int? totalTokens,
+    bool? isStreaming,
+    String? reasoningText,
+    DateTime? reasoningStartAt,
+    DateTime? reasoningFinishedAt,
+    String? translation,
+    String? reasoningSegmentsJson,
+    int? promptTokens,
+    int? completionTokens,
+    int? cachedTokens,
+  }) {
+    if (!_initialized) return Future<void>.value();
+
+    // Prefer the cache because it contains the latest queued snapshot while
+    // Hive may still be finishing an older write.
+    final message =
+        _cachedMessage(messageId) ??
+        _messagesBox.get(messageId) ??
+        _cachedTemporaryMessage(messageId);
+    if (message == null) return Future<void>.value();
+
+    final updatedMessage = message.copyWith(
+      content: content ?? message.content,
+      totalTokens: totalTokens ?? message.totalTokens,
+      isStreaming: isStreaming ?? message.isStreaming,
+      reasoningText: reasoningText ?? message.reasoningText,
+      reasoningStartAt: reasoningStartAt ?? message.reasoningStartAt,
+      reasoningFinishedAt: reasoningFinishedAt ?? message.reasoningFinishedAt,
+      translation: translation,
+      reasoningSegmentsJson:
+          reasoningSegmentsJson ?? message.reasoningSegmentsJson,
+      promptTokens: promptTokens ?? message.promptTokens,
+      completionTokens: completionTokens ?? message.completionTokens,
+      cachedTokens: cachedTokens ?? message.cachedTokens,
+    );
+
+    _replaceCachedMessage(updatedMessage);
+    if (isTemporaryConversation(message.conversationId)) {
+      return Future<void>.value();
+    }
+
+    _streamingMessagePersistence.schedule(
+      messageId,
+      updatedMessage,
+      (snapshot) => _messagesBox.put(messageId, snapshot),
+    );
+
+    if (isStreaming == false) {
+      _untrackStreamingId(messageId);
+    }
+    // Do not notify or await Hive here. Terminal updateMessage calls flush the
+    // latest queued snapshot before writing the definitive message state.
+    return Future<void>.value();
+  }
+
+'''
+          text = text[:start] + replacement + text[end:]
+
+          replace_once(
+              "    for (final messageId in conversation.messageIds) {\n      final msg = _messagesBox.get(messageId);",
+              "    for (final messageId in conversation.messageIds) {\n"
+              "      await _streamingMessagePersistence.flush(messageId);\n"
+              "      final msg = _messagesBox.get(messageId);",
+          )
+
+          replace_once(
+              "  Future<void> deleteMessage(String messageId) async {\n    if (!_initialized) return;\n\n    final message =",
+              "  Future<void> deleteMessage(String messageId) async {\n"
+              "    if (!_initialized) return;\n\n"
+              "    await _streamingMessagePersistence.flush(messageId);\n"
+              "    final message =",
+          )
+
+          replace_once(
+              "  Future<void> clearAllData() async {\n    if (!_initialized) return;\n\n    await _messagesBox.clear();",
+              "  Future<void> clearAllData() async {\n"
+              "    if (!_initialized) return;\n\n"
+              "    await _streamingMessagePersistence.flushAll();\n"
+              "    await _messagesBox.clear();",
+          )
+
+          path.write_text(text)
+
+          workflow = Path('.github/workflows/android-test-release.yml')
+          wf = workflow.read_text()
+          old = "flutter analyze lib/core/services/api/provider_request_headers.dart lib/features/provider/widgets/add_provider_sheet.dart test/provider_request_headers_test.dart"
+          new = "flutter analyze lib/core/services/api/provider_request_headers.dart lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart lib/features/provider/widgets/add_provider_sheet.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart"
+          if wf.count(old) != 1:
+              raise SystemExit('analyze command did not match exactly once')
+          wf = wf.replace(old, new, 1)
+          old = "flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart"
+          new = "flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart"
+          if wf.count(old) != 1:
+              raise SystemExit('test command did not match exactly once')
+          workflow.write_text(wf.replace(old, new, 1))
+          PY
+          dart format lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart test/core/services/chat/streaming_message_persistence_test.dart
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze affected files
+        run: flutter analyze lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart test/core/services/chat/streaming_message_persistence_test.dart
+      - name: Run affected tests
+        run: flutter test test/core/services/chat/streaming_message_persistence_test.dart test/sse_buffer_flush_test.dart
+      - name: Commit verified patch and remove applicator
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/apply-nonblocking-stream-persistence.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart test/core/services/chat/streaming_message_persistence_test.dart .github/workflows/android-test-release.yml
+          git commit -m "fix(chat): persist streaming snapshots without blocking chunks"
+          git push origin HEAD:fix/nonblocking-stream-persistence
