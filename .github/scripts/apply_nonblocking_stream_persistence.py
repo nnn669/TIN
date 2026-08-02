@@ -34,13 +34,27 @@ replace_once(
     "  }\n\n"
     "  ChatMessage? _cachedTemporaryMessage(String messageId) {\n",
 )
-replace_once(
-    "  }) async {\n    if (!_initialized) return;\n\n    final message =\n        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n",
+
+update_start = text.index('  Future<void> updateMessage(')
+silent_start = text.index('  Future<void> updateMessageSilent(', update_start)
+update_method = text[update_start:silent_start]
+old = (
+    "  }) async {\n    if (!_initialized) return;\n\n"
+    "    final message =\n"
+    "        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n"
+)
+new = (
     "  }) async {\n    if (!_initialized) return;\n\n"
     "    await _streamingMessagePersistence.flush(messageId);\n"
     "    final message =\n"
-    "        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n",
+    "        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);\n"
 )
+if update_method.count(old) != 1:
+    raise SystemExit(
+        f'updateMessage terminal patch expected one match, found {update_method.count(old)}'
+    )
+update_method = update_method.replace(old, new, 1)
+text = text[:update_start] + update_method + text[silent_start:]
 
 start = text.index('  Future<void> updateMessageSilent(')
 end = text.index('  // Tool events persistence (per assistant message)', start)
