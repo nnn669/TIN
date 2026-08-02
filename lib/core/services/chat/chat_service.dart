@@ -6,6 +6,7 @@ import '../../models/chat_message.dart';
 import '../../models/conversation.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/app_directories.dart';
+import 'streaming_message_persistence.dart';
 
 class ChatService extends ChangeNotifier {
   static const String _conversationsBoxName = 'conversations';
@@ -31,6 +32,8 @@ class ChatService extends ChangeNotifier {
   final Map<String, List<Map<String, dynamic>>> _temporaryToolEvents =
       <String, List<Map<String, dynamic>>>{};
   final Map<String, String> _temporaryGeminiThoughtSigs = <String, String>{};
+  final StreamingMessagePersistence<ChatMessage> _streamingMessagePersistence =
+      StreamingMessagePersistence<ChatMessage>();
 
   // Localized default title for new conversations; set by UI on startup.
   String _defaultConversationTitle = 'New Chat';
@@ -374,6 +377,7 @@ class ChatService extends ChangeNotifier {
     if (conversation == null) return false;
 
     for (final messageId in conversation.messageIds) {
+      await _streamingMessagePersistence.flush(messageId);
       final msg = _messagesBox.get(messageId);
       if (msg != null && msg.role == 'assistant') {
         try {
@@ -915,6 +919,15 @@ class ChatService extends ChangeNotifier {
     return message;
   }
 
+  ChatMessage? _cachedMessage(String messageId) {
+    for (final messages in _messagesCache.values) {
+      for (final message in messages) {
+        if (message.id == messageId) return message;
+      }
+    }
+    return null;
+  }
+
   ChatMessage? _cachedTemporaryMessage(String messageId) {
     for (final entry in _messagesCache.entries) {
       if (!_temporaryConversationIds.contains(entry.key)) continue;
@@ -954,6 +967,7 @@ class ChatService extends ChangeNotifier {
   }) async {
     if (!_initialized) return;
 
+    await _streamingMessagePersistence.flush(messageId);
     final message =
         _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);
     if (message == null) return;
@@ -1015,12 +1029,16 @@ class ChatService extends ChangeNotifier {
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
-  }) async {
-    if (!_initialized) return;
+  }) {
+    if (!_initialized) return Future<void>.value();
 
+    // Prefer the cache because it contains the latest queued snapshot while
+    // Hive may still be finishing an older write.
     final message =
-        _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);
-    if (message == null) return;
+        _cachedMessage(messageId) ??
+        _messagesBox.get(messageId) ??
+        _cachedTemporaryMessage(messageId);
+    if (message == null) return Future<void>.value();
 
     final updatedMessage = message.copyWith(
       content: content ?? message.content,
@@ -1037,28 +1055,23 @@ class ChatService extends ChangeNotifier {
       cachedTokens: cachedTokens ?? message.cachedTokens,
     );
 
+    _replaceCachedMessage(updatedMessage);
     if (isTemporaryConversation(message.conversationId)) {
-      _replaceCachedMessage(updatedMessage);
-      return;
+      return Future<void>.value();
     }
 
-    await _messagesBox.put(messageId, updatedMessage);
+    _streamingMessagePersistence.schedule(
+      messageId,
+      updatedMessage,
+      (snapshot) => _messagesBox.put(messageId, snapshot),
+    );
 
-    // Update streaming tracking for crash-recovery
     if (isStreaming == false) {
       _untrackStreamingId(messageId);
     }
-
-    // Update cache
-    final conversationId = message.conversationId;
-    if (_messagesCache.containsKey(conversationId)) {
-      final messages = _messagesCache[conversationId]!;
-      final index = messages.indexWhere((m) => m.id == messageId);
-      if (index != -1) {
-        messages[index] = updatedMessage;
-      }
-    }
-    // NOTE: Do NOT call notifyListeners() here to avoid UI rebuilds during streaming
+    // Do not notify or await Hive here. Terminal updateMessage calls flush the
+    // latest queued snapshot before writing the definitive message state.
+    return Future<void>.value();
   }
 
   // Tool events persistence (per assistant message)
@@ -1371,6 +1384,7 @@ class ChatService extends ChangeNotifier {
   Future<void> deleteMessage(String messageId) async {
     if (!_initialized) return;
 
+    await _streamingMessagePersistence.flush(messageId);
     final message =
         _messagesBox.get(messageId) ?? _cachedTemporaryMessage(messageId);
     if (message == null) return;
@@ -1465,6 +1479,7 @@ class ChatService extends ChangeNotifier {
   Future<void> clearAllData() async {
     if (!_initialized) return;
 
+    await _streamingMessagePersistence.flushAll();
     await _messagesBox.clear();
     await _conversationsBox.clear();
     await _toolEventsBox.clear();
