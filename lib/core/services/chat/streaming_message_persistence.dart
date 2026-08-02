@@ -19,7 +19,7 @@ class StreamingMessagePersistence<T> {
       ..persist = persist
       ..error = null
       ..stackTrace = null;
-    _startIfNeeded(key, write);
+    _startIfNeeded(write);
   }
 
   Future<void> flush(String key) async {
@@ -47,14 +47,14 @@ class StreamingMessagePersistence<T> {
     }
   }
 
-  void _startIfNeeded(String key, _PendingWrite<T> write) {
+  void _startIfNeeded(_PendingWrite<T> write) {
     if (write.running != null) return;
-    final running = _drain(key, write);
+    final running = _drain(write);
     write.running = running;
     unawaited(running);
   }
 
-  Future<void> _drain(String key, _PendingWrite<T> write) async {
+  Future<void> _drain(_PendingWrite<T> write) async {
     try {
       while (write.latest != null) {
         final snapshot = write.latest as T;
@@ -67,7 +67,7 @@ class StreamingMessagePersistence<T> {
     } finally {
       write.running = null;
       if (write.latest != null && write.error == null) {
-        _startIfNeeded(key, write);
+        _startIfNeeded(write);
       }
     }
   }
