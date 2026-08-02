@@ -9,6 +9,7 @@ import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
+import '../../../core/services/chat/local_response_timer.dart';
 import '../../../core/services/ios_background_generation.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/assistant_regex.dart';
@@ -937,6 +938,7 @@ class ChatActions {
     if (streaming != null) {
       // Mark streaming as ended to allow UI rebuilds again
       streamController.markStreamingEnded(streaming.id);
+      LocalResponseTimer.cancel(streaming.id);
       streamController.cleanupTimers(streaming.id);
 
       final idx = _messages.indexWhere((m) => m.id == streaming!.id);
@@ -1012,6 +1014,7 @@ class ChatActions {
 
     try {
       await _startIosBackgroundGeneration(ctx);
+      LocalResponseTimer.start(state.messageId);
       final stream = ChatApiService.sendMessageStream(
         config: ctx.config,
         modelId: ctx.modelId,
@@ -1061,6 +1064,14 @@ class ChatActions {
           )
         : '';
 
+    final hasFirstResponse =
+        chunkContent.isNotEmpty ||
+        (chunk.reasoning?.isNotEmpty ?? false) ||
+        (chunk.toolCalls?.isNotEmpty ?? false) ||
+        (chunk.toolResults?.isNotEmpty ?? false);
+    if (hasFirstResponse) {
+      LocalResponseTimer.stopOnFirstResponse(state.messageId);
+    }
     // Handle reasoning
     if ((chunk.reasoning ?? '').isNotEmpty && state.ctx.supportsReasoning) {
       await _handleReasoningChunk(chunk, state);
@@ -1424,6 +1435,7 @@ class ChatActions {
 
     // Mark streaming as ended to allow UI rebuilds again
     streamController.markStreamingEnded(messageId);
+    LocalResponseTimer.cancel(messageId);
 
     // Clean up stream throttle timer and flush final content
     streamController.cleanupTimers(messageId);
@@ -1553,6 +1565,7 @@ class ChatActions {
 
     // Mark streaming as ended to allow UI rebuilds again
     streamController.markStreamingEnded(messageId);
+    LocalResponseTimer.cancel(messageId);
 
     streamController.cleanupTimers(messageId);
     final rawContent = state.fullContentRaw.isNotEmpty
