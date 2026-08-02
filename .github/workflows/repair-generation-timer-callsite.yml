@@ -21,35 +21,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! grep -q 'GenerationTimerBadge' lib/features/chat/widgets/chat_message_widget.dart; then
+          file=lib/features/chat/widgets/chat_message_widget.dart
+          hits=$(grep -c 'GenerationTimerBadge' "$file" || true)
+          if [[ "$hits" == "0" ]]; then
             echo "already clean"
             exit 0
           fi
-          python3 - <<'PY'
-          from pathlib import Path
-
-          target = Path('lib/features/chat/widgets/chat_message_widget.dart')
-          source = target.read_text(encoding='utf-8')
-
-          old = """                          const SizedBox(width: 6),
-                          GenerationTimerBadge(
-                            isStreaming: widget.message.isStreaming,
-                            startTime: widget.message.timestamp,
-                            durationMs: widget.message.durationMs,
-                          ),
-"""
-
-          count = source.count(old)
-          if count != 1:
-              raise SystemExit(f'expected exactly one call site, found {count}')
-
-          source = source.replace(old, '', 1)
-          if 'GenerationTimerBadge' in source:
-              raise SystemExit('GenerationTimerBadge still referenced')
-
-          target.write_text(source, encoding='utf-8')
-          print('removed orphaned GenerationTimerBadge call site')
-          PY
+          if [[ "$hits" != "1" ]]; then
+            echo "expected exactly one reference, found $hits"
+            exit 1
+          fi
+          n=$(grep -n 'GenerationTimerBadge(' "$file" | cut -d: -f1)
+          start=$((n - 1))
+          end=$((n + 4))
+          echo "removing lines ${start}-${end}:"
+          sed -n "${start},${end}p" "$file"
+          sed -n "${start}p" "$file" | grep -q 'const SizedBox(width: 6),'
+          sed -n "$((n + 1))p" "$file" | grep -q 'isStreaming: widget.message.isStreaming,'
+          sed -n "$((n + 2))p" "$file" | grep -q 'startTime: widget.message.timestamp,'
+          sed -n "$((n + 3))p" "$file" | grep -q 'durationMs: widget.message.durationMs,'
+          sed -n "${end}p" "$file" | grep -qE '^\s+\),$'
+          sed -i "${start},${end}d" "$file"
+          if grep -q 'GenerationTimerBadge' "$file"; then
+            echo "reference still present"
+            exit 1
+          fi
+          echo "call site removed"
 
       - name: Remove this one-time workflow
         run: rm -f .github/workflows/repair-generation-timer-callsite.yml
@@ -65,13 +62,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -F - <<'MSG'
-          fix(chat): drop orphaned GenerationTimerBadge call site
-
-          Commit 3efb5d9 deleted generation_timer_badge.dart and its import but
-          left the widget call site in _buildAssistantMessage(), so the release
-          build failed with "The method 'GenerationTimerBadge' isn't defined".
-          Tests never caught it because CI only runs targeted test files and
-          does not run flutter analyze.
-          MSG
+          git commit -m 'fix(chat): drop orphaned GenerationTimerBadge call site' -m 'Commit 3efb5d9 deleted generation_timer_badge.dart and its import but left the widget call site in _buildAssistantMessage(), so the release build failed with "The method GenerationTimerBadge isnt defined". CI only runs targeted test files and does not run flutter analyze, so no check caught it.'
           git push origin ci/fix-generation-timer
