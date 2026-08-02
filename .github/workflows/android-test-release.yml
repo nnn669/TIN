@@ -130,12 +130,15 @@ jobs:
             "$apksigner" verify --verbose --print-certs "$apk"
             actual_version_code=$("$apkanalyzer" manifest version-code "$apk" | tr -d '[:space:]')
             if [[ "$actual_version_code" != "$VERSION_CODE" ]]; then
-              # Split APKs may encode the ABI in the low three digits.
-              test "$((actual_version_code / 1000))" -eq "$VERSION_CODE"
-              abi_code=$((actual_version_code % 1000))
+              # Flutter split APKs add an ABI offset (ABI code * 1000).
+              version_code_delta=$((actual_version_code - VERSION_CODE))
+              test "$version_code_delta" -gt 0
+              test "$((version_code_delta % 1000))" -eq 0
+              abi_code=$((version_code_delta / 1000))
               test "$abi_code" -ge 1
               test "$abi_code" -le 4
             fi
+            echo "Verified $(basename "$apk"): versionCode=$actual_version_code"
             sha256sum "$apk"
             found=1
           done
