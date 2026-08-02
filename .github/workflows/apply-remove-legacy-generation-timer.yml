@@ -122,8 +122,7 @@ jobs:
             lib/features/home/controllers/chat_actions.dart \
             lib/features/home/controllers/stream_controller.dart \
             lib/features/home/controllers/streaming_content_notifier.dart \
-            lib/l10n \
-            test
+            lib/l10n
 
       - name: Analyze affected code
         run: >-
