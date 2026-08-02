@@ -1,4 +1,4 @@
-name: Apply custom provider source patch
+name: Finalize custom provider source patch
 
 on:
   push:
@@ -9,16 +9,27 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/custom-provider-add-tab
           fetch-depth: 0
-      - name: Run staged exact patch
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - name: Format and remove temporary workflow
         shell: bash
         run: |
           set -euo pipefail
-          sed -n "/^          python3 - <<'PY'$/,$ p" .github/workflows/android-test-release.yml | sed 's/^          //' > /tmp/apply.sh
-          bash /tmp/apply.sh
+          dart format lib/features/provider/widgets/add_provider_sheet.dart
+          rm .github/workflows/apply-custom-provider-tab.yml
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/provider/widgets/add_provider_sheet.dart .github/workflows/apply-custom-provider-tab.yml
+          git commit -m "chore(provider): format custom provider implementation"
+          git push origin HEAD:feat/custom-provider-add-tab
