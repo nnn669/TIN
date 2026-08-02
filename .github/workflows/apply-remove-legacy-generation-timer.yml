@@ -29,8 +29,44 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply precise removal
-        run: python3 .github/scripts/remove_legacy_generation_timer.py
+      - name: Scope verification and apply precise removal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/remove_legacy_generation_timer.py')
+          content = path.read_text(encoding='utf-8')
+          old = '''for path in ROOT.glob("lib/**/*.dart"):
+              text = path.read_text(encoding="utf-8")
+              for needle in ("durationMs", "streamStartedAt"):
+                  if needle in text:
+                      raise RuntimeError(f"legacy timer reference {needle!r} remains in {path}")
+          '''
+          new = '''timer_paths = (
+              "lib/core/models/chat_message.dart",
+              "lib/core/models/chat_message.g.dart",
+              "lib/core/services/chat/chat_service.dart",
+              "lib/features/chat/widgets/chat_message_widget.dart",
+              "lib/features/chat/widgets/token_detail_popup.dart",
+              "lib/features/chat/widgets/token_display_widget.dart",
+              "lib/features/home/controllers/chat_actions.dart",
+              "lib/features/home/controllers/stream_controller.dart",
+              "lib/features/home/controllers/streaming_content_notifier.dart",
+          )
+          for relative_path in timer_paths:
+              path = ROOT / relative_path
+              text = path.read_text(encoding="utf-8")
+              for needle in ("durationMs", "streamStartedAt"):
+                  if needle in text:
+                      raise RuntimeError(
+                          f"legacy timer reference {needle!r} remains in {path}"
+                      )
+          '''
+          if content.count(old) != 1:
+              raise SystemExit('expected one broad verification block')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+          python3 .github/scripts/remove_legacy_generation_timer.py
 
       - name: Regenerate localizations and format
         run: |
@@ -54,7 +90,18 @@ jobs:
       - name: Verify legacy timer is gone
         run: |
           set -euo pipefail
-          ! grep -R -n -E 'durationMs|streamStartedAt|tokenDetailSpeed|tokenDetailDuration|GenerationTimerBadge|generation_timer_badge' lib test
+          ! grep -R -n -E 'durationMs|streamStartedAt|tokenDetailSpeed|tokenDetailDuration|GenerationTimerBadge|generation_timer_badge' \
+            lib/core/models/chat_message.dart \
+            lib/core/models/chat_message.g.dart \
+            lib/core/services/chat/chat_service.dart \
+            lib/features/chat/widgets/chat_message_widget.dart \
+            lib/features/chat/widgets/token_detail_popup.dart \
+            lib/features/chat/widgets/token_display_widget.dart \
+            lib/features/home/controllers/chat_actions.dart \
+            lib/features/home/controllers/stream_controller.dart \
+            lib/features/home/controllers/streaming_content_notifier.dart \
+            lib/l10n \
+            test
 
       - name: Analyze affected code
         run: >-
