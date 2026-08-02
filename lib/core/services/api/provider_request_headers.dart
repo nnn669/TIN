@@ -1,7 +1,8 @@
 import '../../providers/settings_provider.dart';
 
-const String _openRouterAppReferer = 'https://github.com/Chevey339/kelivo';
-const String _openRouterAppTitle = 'Kelivo';
+const String _appUserAgent = 'TIN';
+const String _openRouterAppReferer = 'https://github.com/nnn669/TIN';
+const String _openRouterAppTitle = 'TIN';
 const String _openRouterAppCategories = 'general-chat';
 
 bool isOpenRouterProvider(ProviderConfig config) {
@@ -10,8 +11,11 @@ bool isOpenRouterProvider(ProviderConfig config) {
 }
 
 Map<String, String> providerDefaultHeaders(ProviderConfig config) {
-  if (!isOpenRouterProvider(config)) return const <String, String>{};
+  if (!isOpenRouterProvider(config)) {
+    return const <String, String>{'User-Agent': _appUserAgent};
+  }
   return const <String, String>{
+    'User-Agent': _appUserAgent,
     'HTTP-Referer': _openRouterAppReferer,
     'X-OpenRouter-Title': _openRouterAppTitle,
     'X-OpenRouter-Categories': _openRouterAppCategories,

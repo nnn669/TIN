@@ -40,8 +40,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Analyze changed API identity code
+        run: flutter analyze lib/core/services/api/provider_request_headers.dart test/provider_request_headers_test.dart
       - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart
 
   android-release:
     name: Signed Android prerelease
@@ -126,7 +128,14 @@ jobs:
             test -s "$apk"
             test "$(stat -c '%s' "$apk")" -lt "$max_bytes"
             "$apksigner" verify --verbose --print-certs "$apk"
-            test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
+            actual_version_code=$("$apkanalyzer" manifest version-code "$apk" | tr -d '[:space:]')
+            if [[ "$actual_version_code" != "$VERSION_CODE" ]]; then
+              # Split APKs may encode the ABI in the low three digits.
+              test "$((actual_version_code / 1000))" -eq "$VERSION_CODE"
+              abi_code=$((actual_version_code % 1000))
+              test "$abi_code" -ge 1
+              test "$abi_code" -le 4
+            fi
             sha256sum "$apk"
             found=1
           done
