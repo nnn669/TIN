@@ -33,7 +33,7 @@ class _AddProviderSheet extends StatefulWidget {
 
 class _AddProviderSheetState extends State<_AddProviderSheet>
     with SingleTickerProviderStateMixin {
-  late final TabController _tab = TabController(length: 3, vsync: this);
+  late final TabController _tab = TabController(length: 4, vsync: this);
 
   @override
   void initState() {
@@ -84,6 +84,17 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
 
   // Claude
   bool _claudeEnabled = true;
+
+  // OpenAI-compatible custom provider
+  bool _customEnabled = true;
+  late final TextEditingController _customName = TextEditingController(
+    text: '自定义',
+  );
+  late final TextEditingController _customKey = TextEditingController();
+  late final TextEditingController _customBase = TextEditingController();
+  late final TextEditingController _customPath = TextEditingController(
+    text: '/chat/completions',
+  );
   late final TextEditingController _claudeName = TextEditingController(
     text: 'Claude',
   );
@@ -292,6 +303,42 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
     );
   }
 
+  Widget _customForm(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _iosCard(
+children: [
+  _switchRow(
+    label: l10n.addProviderSheetEnabledLabel,
+    value: _customEnabled,
+    onChanged: (v) => setState(() => _customEnabled = v),
+  ),
+],
+        ),
+        const SizedBox(height: 10),
+        _inputRow(
+label: l10n.addProviderSheetNameLabel,
+controller: _customName,
+        ),
+        const SizedBox(height: 10),
+        _inputRow(label: 'API Key', controller: _customKey),
+        const SizedBox(height: 10),
+        _inputRow(
+label: 'API Base Url',
+controller: _customBase,
+hint: 'https://example.com/v1',
+        ),
+        const SizedBox(height: 10),
+        _inputRow(
+label: l10n.addProviderSheetApiPathLabel,
+controller: _customPath,
+hint: '/chat/completions',
+        ),
+      ],
+    );
+  }
+
   Widget _claudeForm(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,7 +465,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
       );
       await settings.setProviderConfig(keyName, cfg);
       createdKey = keyName;
-    } else {
+    } else if (idx == 2) {
       final rawName = _claudeName.text.trim();
       final display = rawName.isEmpty ? 'Claude' : rawName;
       final keyName = uniqueKey('Claude', display);
@@ -433,6 +480,35 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
         apiKey: _claudeKey.text.trim(),
         baseUrl: base,
         providerType: ProviderKind.claude, // Explicitly set as Claude type
+        models: const [],
+        modelOverrides: const {},
+        proxyEnabled: false,
+        proxyHost: '',
+        proxyPort: '8080',
+        proxyUsername: '',
+        proxyPassword: '',
+        aihubmixAppCodeEnabled: promo,
+      );
+      await settings.setProviderConfig(keyName, cfg);
+      createdKey = keyName;
+    } else {
+      final rawName = _customName.text.trim();
+      final display = rawName.isEmpty ? '自定义' : rawName;
+      final keyName = uniqueKey('Custom', display);
+      final base = _customBase.text.trim();
+      if (base.isEmpty) return;
+      final promo = base.toLowerCase().contains('aihubmix.com');
+      final cfg = ProviderConfig(
+        id: keyName,
+        enabled: _customEnabled,
+        name: display,
+        apiKey: _customKey.text.trim(),
+        baseUrl: base,
+        providerType: ProviderKind.openai,
+        chatPath: _customPath.text.trim().isEmpty
+  ? '/chat/completions'
+  : _customPath.text.trim(),
+        useResponseApi: false,
         models: const [],
         modelOverrides: const {},
         proxyEnabled: false,
@@ -517,7 +593,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _SegTabBar(
                   controller: _tab,
-                  tabs: const ['OpenAI', 'Google', 'Claude'],
+                  tabs: const ['OpenAI', 'Google', 'Claude', '自定义'],
                 ),
               ),
               const SizedBox(height: 12),
@@ -536,6 +612,7 @@ class _AddProviderSheetState extends State<_AddProviderSheet>
                               if (idx == 0) _openaiForm(l10n),
                               if (idx == 1) _googleForm(l10n),
                               if (idx == 2) _claudeForm(l10n),
+                    if (idx == 3) _customForm(l10n),
                             ],
                           );
                         },
