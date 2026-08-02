@@ -106,7 +106,8 @@ jobs:
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
-          args=(--release --split-per-abi --build-number "$VERSION_CODE")
+          # TIN 只发布 64 位包体，因此不构建 armeabi-v7a。
+          args=(--release --split-per-abi --target-platform android-arm64,android-x64 --build-number "$VERSION_CODE")
           if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
           flutter build apk "${args[@]}"
       - name: Verify APK signatures and versions
@@ -117,6 +118,8 @@ jobs:
           apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
           test -x "$apksigner"
           test -x "$apkanalyzer"
+          # 32 位包体不允许出现在发布产物中。
+          test ! -e build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           found=0
           for apk in build/app/outputs/flutter-apk/app-*.apk; do
             test -s "$apk"
@@ -146,5 +149,5 @@ jobs:
           else
             signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
           fi
-          notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\narm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
-          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
+          notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
+          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
