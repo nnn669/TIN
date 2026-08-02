@@ -24,7 +24,6 @@ void main() {
 
   testWidgets('keeps live MCP sessions usable after resume', (tester) async {
     final provider = McpProvider();
-    addTearDown(provider.dispose);
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -57,5 +56,13 @@ void main() {
     await _settleUntil(tester, () => provider.isConnected(fetch.id));
     expect(provider.isConnected(fetch.id), isTrue);
     expect(provider.statusFor(files.id), McpStatus.idle);
+
+    // Live connections keep a periodic heartbeat timer; close them inside the
+    // test body so the framework does not see pending timers.
+    for (final server in provider.servers) {
+      await provider.disconnect(server.id);
+    }
+    provider.dispose();
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
