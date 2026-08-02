@@ -18,14 +18,12 @@ ProviderConfig _testConfig(String baseUrl) {
 }
 
 void main() {
-  group('SSE buffer flush – last line without trailing newline', () {
+  group('SSE response parsing', () {
     test(
-      'content is NOT truncated when final SSE chunk lacks trailing \\n',
+      'content is not truncated when final SSE chunk lacks trailing newline',
       () async {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-        addTearDown(() async {
-          await server.close(force: true);
-        });
+        addTearDown(() async => server.close(force: true));
 
         server.listen((request) {
           request.response.statusCode = 200;
@@ -50,40 +48,32 @@ void main() {
             ],
           });
 
-          // First chunk: properly terminated
           request.response.write('data: $chunk1\n\n');
-          // Second chunk: properly terminated
           request.response.write('data: $chunk2\n\n');
-          // [DONE] without trailing newline – this is the edge case
           request.response.write('data: [DONE]');
           request.response.close();
         });
 
         final config = _testConfig('http://localhost:${server.port}/v1');
         final chunks = <ChatStreamChunk>[];
-
-        await for (final c in ChatApiService.sendMessageStream(
+        await for (final chunk in ChatApiService.sendMessageStream(
           config: config,
           modelId: 'test-model',
-          messages: [
+          messages: const [
             {'role': 'user', 'content': 'hi'},
           ],
         )) {
-          chunks.add(c);
+          chunks.add(chunk);
         }
 
-        final fullContent = chunks.map((c) => c.content).join();
-        expect(fullContent, contains('Hello '));
-        expect(fullContent, contains('World'));
+        expect(chunks.map((chunk) => chunk.content).join(), 'Hello World');
         expect(chunks.last.isDone, isTrue);
       },
     );
 
-    test('stream without [DONE] still yields all content', () async {
+    test('stream without done sentinel still yields all content', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      addTearDown(() async {
-        await server.close(force: true);
-      });
+      addTearDown(() async => server.close(force: true));
 
       server.listen((request) {
         request.response.statusCode = 200;
@@ -109,35 +99,26 @@ void main() {
         });
 
         request.response.write('data: $chunk1\n\n');
-        // Last chunk without trailing newline AND no [DONE]
         request.response.write('data: $chunk2');
         request.response.close();
       });
 
       final config = _testConfig('http://localhost:${server.port}/v1');
-      final chunks = <ChatStreamChunk>[];
-
-      await for (final c in ChatApiService.sendMessageStream(
+      final chunks = await ChatApiService.sendMessageStream(
         config: config,
         modelId: 'test-model',
-        messages: [
+        messages: const [
           {'role': 'user', 'content': 'hi'},
         ],
-      )) {
-        chunks.add(c);
-      }
+      ).toList();
 
-      final fullContent = chunks.map((c) => c.content).join();
-      expect(fullContent, contains('Partial'));
-      expect(fullContent, contains(' response'));
+      expect(chunks.map((chunk) => chunk.content).join(), 'Partial response');
       expect(chunks.last.isDone, isTrue);
     });
 
-    test('usage-only chunk after stop still populates token details', () async {
+    test('usage-only chunk after stop populates token details', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      addTearDown(() async {
-        await server.close(force: true);
-      });
+      addTearDown(() async => server.close(force: true));
 
       server.listen((request) {
         request.response.statusCode = 200;
@@ -156,8 +137,6 @@ void main() {
           ],
           'object': 'chat.completion.chunk',
           'usage': null,
-          'created': 1777256825,
-          'system_fingerprint': null,
           'model': 'deepseek-v4-pro',
           'id': 'chatcmpl-test',
         });
@@ -171,8 +150,6 @@ void main() {
             'completion_tokens_details': {'reasoning_tokens': 30},
             'prompt_tokens_details': {'cached_tokens': 384},
           },
-          'created': 1777256825,
-          'system_fingerprint': null,
           'model': 'deepseek-v4-pro',
           'id': 'chatcmpl-test',
         });
@@ -187,7 +164,7 @@ void main() {
       final chunks = await ChatApiService.sendMessageStream(
         config: config,
         modelId: 'deepseek-v4-pro',
-        messages: [
+        messages: const [
           {'role': 'user', 'content': 'hi'},
         ],
       ).toList();
@@ -197,6 +174,47 @@ void main() {
       expect(chunks.last.usage?.promptTokens, 842);
       expect(chunks.last.usage?.completionTokens, 53);
       expect(chunks.last.usage?.cachedTokens, 384);
+    });
+
+    test('stream request accepts a normal JSON response', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async => server.close(force: true));
+
+      server.listen((request) async {
+        final requestBody = await utf8.decoder.bind(request).join();
+        expect(jsonDecode(requestBody)['stream'], isTrue);
+        request.response.statusCode = 200;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'role': 'assistant', 'content': 'JSON fallback'},
+                'finish_reason': 'stop',
+              },
+            ],
+            'usage': {
+              'prompt_tokens': 2,
+              'completion_tokens': 3,
+              'total_tokens': 5,
+            },
+          }),
+        );
+        await request.response.close();
+      });
+
+      final config = _testConfig('http://localhost:${server.port}/v1');
+      final chunks = await ChatApiService.sendMessageStream(
+        config: config,
+        modelId: 'test-model',
+        messages: const [
+          {'role': 'user', 'content': 'hi'},
+        ],
+      ).toList();
+
+      expect(chunks.map((chunk) => chunk.content).join(), 'JSON fallback');
+      expect(chunks.last.isDone, isTrue);
+      expect(chunks.last.totalTokens, 5);
     });
   });
 }
