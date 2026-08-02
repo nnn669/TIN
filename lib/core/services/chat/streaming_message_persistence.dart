@@ -32,12 +32,11 @@ class StreamingMessagePersistence<T> {
 
     final error = write.error;
     final stackTrace = write.stackTrace;
-    if (error != null) {
-      Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current);
-    }
-
     if (write.latest == null) {
       _writes.remove(key);
+    }
+    if (error != null) {
+      Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current);
     }
   }
 
