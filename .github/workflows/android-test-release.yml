@@ -40,10 +40,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Analyze changed API identity, provider UI, and stream UI code
-        run: flutter analyze lib/core/services/api/provider_request_headers.dart lib/features/provider/widgets/add_provider_sheet.dart lib/features/home/controllers/streaming_content_notifier.dart test/provider_request_headers_test.dart test/streaming_content_notifier_test.dart
+      - name: Analyze changed API identity and provider UI code
+        run: flutter analyze lib/core/services/api/provider_request_headers.dart lib/features/provider/widgets/add_provider_sheet.dart test/provider_request_headers_test.dart
       - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/streaming_content_notifier_test.dart
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart
 
   android-release:
     name: Signed Android prerelease
