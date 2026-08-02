@@ -36,6 +36,24 @@ ConnectionTask<Socket> _directConnection(Uri uri, SecurityContext? context) {
   return ConnectionTask.fromSocket(socket, () async => (await socket).close());
 }
 
+Stream<List<int>> _normalizeStreamingResponse(
+  Stream<List<int>> source, {
+  required bool requestedEventStream,
+  required bool responseIsJson,
+}) async* {
+  if (!requestedEventStream || !responseIsJson) {
+    yield* source;
+    return;
+  }
+
+  // Some OpenAI-compatible providers ignore stream=true and return one normal
+  // JSON response. Wrap it as one SSE event so the existing provider parser can
+  // consume it without buffering or duplicating JSON parsing at another layer.
+  yield utf8.encode('data: ');
+  yield* source;
+  yield utf8.encode('\n\n');
+}
+
 class NetworkProxyConfig {
   final bool enabled;
   final String type;
@@ -134,19 +152,8 @@ class DioHttpClient extends http.BaseClient {
 
   @override
   void close() {
-    // 注意：不要在这里取消 CancelToken！
-    // close() 是在 finally 块中被调用的，此时流可能还没有被完全消费。
-    // 如果取消 CancelToken，会中断 Dio 的请求，导致流收到错误，
-    // 进而影响工具调用后的后续请求。
-    // CancelToken 的取消应该只在 onCancel 回调中进行（用户主动取消订阅时）。
-    // try {
-    //   if (!_cancelToken.isCancelled) {
-    //     _cancelToken.cancel('closed');
-    //   }
-    // } catch (_) {}
-    // try {
-    //   _dio.close(force: true);
-    // } catch (_) {}
+    // Do not cancel the shared token here: tool-call follow-up requests reuse
+    // this client after an earlier response stream naturally stops.
     try {
       _dio.close();
     } catch (_) {}
@@ -157,6 +164,7 @@ class DioHttpClient extends http.BaseClient {
     final reqId = RequestLogger.nextRequestId();
     final uri = request.url;
     final method = request.method.toUpperCase();
+    final requestStarted = Stopwatch()..start();
 
     List<int> bodyBytes = const <int>[];
     try {
@@ -164,7 +172,7 @@ class DioHttpClient extends http.BaseClient {
     } catch (_) {}
 
     final reqHeaders = Map<String, String>.from(request.headers);
-    reqHeaders.putIfAbsent('User-Agent', () => 'Kelivo');
+    reqHeaders.putIfAbsent('User-Agent', () => 'TIN');
 
     if (RequestLogger.enabled) {
       RequestLogger.logLine('[REQ $reqId] $method $uri');
@@ -206,23 +214,54 @@ class DioHttpClient extends http.BaseClient {
         headers[name] = values.join(',');
       });
 
+      final contentType = (headers['content-type'] ?? '').toLowerCase();
+      final requestedEventStream =
+          (reqHeaders['Accept'] ?? reqHeaders['accept'] ?? '')
+              .toLowerCase()
+              .contains('text/event-stream');
+      final responseIsJson =
+          contentType.contains('application/json') ||
+          contentType.contains('+json');
+
       if (RequestLogger.enabled) {
-        RequestLogger.logLine('[RES $reqId] status=$statusCode');
+        RequestLogger.logLine(
+          '[RES $reqId] status=$statusCode headers_ms=${requestStarted.elapsedMilliseconds}',
+        );
         if (headers.isNotEmpty) {
           RequestLogger.logLine(
             '[RES $reqId] headers=${RequestLogger.encodeObject(headers)}',
           );
         }
+        if (requestedEventStream && responseIsJson) {
+          RequestLogger.logLine(
+            '[RES $reqId] normalized_json_as_sse=true',
+          );
+        }
       }
 
       final body = resp.data!;
-      final int? contentLength = (body.contentLength >= 0)
+      final int? contentLength = body.contentLength >= 0
           ? body.contentLength
           : null;
+      final normalizedStream = _normalizeStreamingResponse(
+        body.stream,
+        requestedEventStream: requestedEventStream,
+        responseIsJson: responseIsJson,
+      );
       final controller = StreamController<List<int>>(sync: true);
+      StreamSubscription<List<int>>? bodySubscription;
+      var sawBodyBytes = false;
       controller.onListen = () {
-        body.stream.listen(
+        bodySubscription = normalizedStream.listen(
           (chunk) {
+            if (!sawBodyBytes && chunk.isNotEmpty) {
+              sawBodyBytes = true;
+              if (RequestLogger.enabled) {
+                RequestLogger.logLine(
+                  '[RES $reqId] first_byte_ms=${requestStarted.elapsedMilliseconds}',
+                );
+              }
+            }
             controller.add(chunk);
             if (RequestLogger.enabled && RequestLogger.saveOutput) {
               final s = RequestLogger.safeDecodeUtf8(chunk);
@@ -233,7 +272,7 @@ class DioHttpClient extends http.BaseClient {
               }
             }
           },
-          onError: (e, st) {
+          onError: (Object e, StackTrace st) {
             if (RequestLogger.enabled) {
               RequestLogger.logLine(
                 '[RES $reqId] error=${RequestLogger.escape(e.toString())}',
@@ -244,30 +283,27 @@ class DioHttpClient extends http.BaseClient {
           },
           onDone: () {
             if (RequestLogger.enabled) {
-              RequestLogger.logLine('[RES $reqId] done');
+              RequestLogger.logLine(
+                '[RES $reqId] done_ms=${requestStarted.elapsedMilliseconds}',
+              );
             }
             controller.close();
           },
           cancelOnError: false,
         );
       };
-      controller.onCancel = () {
-        // 注意：当 await for 循环被 break 中断时（如工具调用处理），Dart 会取消流订阅，
-        // 触发 onCancel。这里不要做任何清理操作！
-        //
-        // 原因：
-        // 1. 不能取消 _cancelToken - 会导致后续请求失败
-        // 2. 不能调用 sub?.cancel() - 会影响 Dio 的 HTTP 连接状态，
-        //    导致使用同一个 Dio 实例的后续请求失败
-        // 3. 不能调用 controller.close() - controller 会在流自然结束时自动关闭
-        //
-        // 让旧的流自然结束或被垃圾回收，不要主动干预。
+      controller.onPause = () => bodySubscription?.pause();
+      controller.onResume = () => bodySubscription?.resume();
+      controller.onCancel = () async {
+        await bodySubscription?.cancel();
       };
 
       return http.StreamedResponse(
         http.ByteStream(controller.stream),
         statusCode,
-        contentLength: contentLength,
+        contentLength: responseIsJson && requestedEventStream
+            ? null
+            : contentLength,
         request: request,
         headers: headers,
         isRedirect: resp.isRedirect,
