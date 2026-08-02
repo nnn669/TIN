@@ -32,7 +32,6 @@ void main() {
     tester,
   ) async {
     final streaming = StreamingContentNotifier();
-    addTearDown(streaming.dispose);
     final notifier = streaming.getNotifier('emoji');
 
     streaming.updateContent('emoji', '😀ok', 0);
@@ -40,6 +39,7 @@ void main() {
 
     expect(notifier.value.content, '😀');
     expect(notifier.value.content.codeUnits, <int>[0xD83D, 0xDE00]);
+    streaming.dispose();
   });
 
   testWidgets('non-growing replacements are published immediately', (
