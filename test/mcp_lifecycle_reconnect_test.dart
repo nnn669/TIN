@@ -29,7 +29,9 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: provider,
-        child: const McpLifecycleReconnect(child: Text('TIN')),
+        child: const MaterialApp(
+          home: McpLifecycleReconnect(child: Text('TIN')),
+        ),
       ),
     );
 
