@@ -5,34 +5,37 @@ import 'package:tin/core/services/chat/streaming_message_persistence.dart';
 
 void main() {
   group('StreamingMessagePersistence', () {
-    test('schedule does not wait for storage and coalesces queued snapshots', () async {
-      final persistence = StreamingMessagePersistence<String>();
-      final firstWriteStarted = Completer<void>();
-      final allowFirstWrite = Completer<void>();
-      final written = <String>[];
+    test(
+      'schedule does not wait for storage and coalesces queued snapshots',
+      () async {
+        final persistence = StreamingMessagePersistence<String>();
+        final firstWriteStarted = Completer<void>();
+        final allowFirstWrite = Completer<void>();
+        final written = <String>[];
 
-      Future<void> persist(String snapshot) async {
-        written.add(snapshot);
-        if (snapshot == 'first') {
-          firstWriteStarted.complete();
-          await allowFirstWrite.future;
+        Future<void> persist(String snapshot) async {
+          written.add(snapshot);
+          if (snapshot == 'first') {
+            firstWriteStarted.complete();
+            await allowFirstWrite.future;
+          }
         }
-      }
 
-      persistence.schedule('message', 'first', persist);
-      await firstWriteStarted.future;
+        persistence.schedule('message', 'first', persist);
+        await firstWriteStarted.future;
 
-      persistence.schedule('message', 'second', persist);
-      persistence.schedule('message', 'latest', persist);
-      await Future<void>.delayed(Duration.zero);
+        persistence.schedule('message', 'second', persist);
+        persistence.schedule('message', 'latest', persist);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(written, const ['first']);
+        expect(written, const ['first']);
 
-      allowFirstWrite.complete();
-      await persistence.flush('message');
+        allowFirstWrite.complete();
+        await persistence.flush('message');
 
-      expect(written, const ['first', 'latest']);
-    });
+        expect(written, const ['first', 'latest']);
+      },
+    );
 
     test('flush waits for the latest queued snapshot', () async {
       final persistence = StreamingMessagePersistence<int>();
