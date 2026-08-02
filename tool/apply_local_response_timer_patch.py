@@ -59,9 +59,3 @@ replace_once(
     "    streamController.markStreamingEnded(messageId);\n\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
     "    streamController.markStreamingEnded(messageId);\n    LocalResponseTimer.cancel(messageId);\n\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
 )
-replace_once(
-    'targeted test list',
-    '.github/workflows/android-test-release.yml',
-    "test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart\n",
-    "test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/local_response_timer_test.dart\n",
-)
