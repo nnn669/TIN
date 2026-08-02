@@ -80,14 +80,40 @@ class _LocalResponseTimerBadgeState extends State<LocalResponseTimerBadge> {
         if (elapsed == null) return const SizedBox.shrink();
 
         final cs = Theme.of(context).colorScheme;
-        return Text(
-          _format(elapsed),
+        final foreground = snapshot.running
+            ? cs.primary
+            : cs.onSurface.withValues(alpha: 0.56);
+        final background = snapshot.running
+            ? cs.primary.withValues(alpha: 0.10)
+            : cs.onSurface.withValues(alpha: 0.055);
+        final border = snapshot.running
+            ? cs.primary.withValues(alpha: 0.20)
+            : cs.outlineVariant.withValues(alpha: 0.28);
+
+        return Container(
           key: ValueKey('local-response-timer:${widget.messageId}'),
-          style: TextStyle(
-            fontSize: 11,
-            color: snapshot.running
-                ? cs.primary.withValues(alpha: 0.75)
-                : cs.onSurface.withValues(alpha: 0.42),
+          constraints: const BoxConstraints(minHeight: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border, width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.alarm_rounded, size: 12, color: foreground),
+              const SizedBox(width: 3),
+              Text(
+                _format(elapsed),
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.15,
+                  fontWeight: FontWeight.w600,
+                  color: foreground,
+                ),
+              ),
+            ],
           ),
         );
       },
