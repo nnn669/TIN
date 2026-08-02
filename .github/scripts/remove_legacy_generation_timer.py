@@ -122,7 +122,13 @@ for old in (
     "      (widget.durationMs != null && widget.durationMs! > 0);\n",
     "                durationMs: widget.durationMs,\n",
 ):
-    replace_once(path, old, "      (widget.completionTokens != null && widget.completionTokens! > 0);\n" if old.startswith("      (widget.completionTokens") else "")
+    replace_once(
+        path,
+        old,
+        "      (widget.completionTokens != null && widget.completionTokens! > 0);\n"
+        if old.startswith("      (widget.completionTokens")
+        else "",
+    )
 
 path = "lib/features/chat/widgets/token_detail_popup.dart"
 replace_once(
@@ -228,8 +234,12 @@ replace_once(
 )
 replace_once(
     workflow,
-    "          test/mcp_lifecycle_reconnect_test.dart\n"
-    "          test/provider_request_headers_test.dart\n",
+    "        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart\n",
+    "        run: >-\n"
+    "          flutter test\n"
+    "          test/features/chat/widgets/reasoning_budget_sheet_test.dart\n"
+    "          test/kelivo_github_mcp_server_test.dart\n"
+    "          test/sse_buffer_flush_test.dart\n"
     "          test/mcp_lifecycle_reconnect_test.dart\n"
     "          test/provider_request_headers_test.dart\n"
     "          test/local_response_timer_test.dart\n"
