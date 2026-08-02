@@ -2271,9 +2271,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          LocalResponseTimerBadge(
-                            messageId: widget.message.id,
-                          ),
+                          LocalResponseTimerBadge(messageId: widget.message.id),
                         ],
                       ),
                     Builder(
@@ -2779,7 +2777,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             promptTokens: widget.message.promptTokens,
                             completionTokens: widget.message.completionTokens,
                             cachedTokens: widget.message.cachedTokens,
-                            durationMs: widget.message.durationMs,
                           ),
                         ],
                       ],

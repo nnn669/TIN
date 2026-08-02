@@ -951,7 +951,6 @@ class ChatService extends ChangeNotifier {
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
-    int? durationMs,
   }) async {
     if (!_initialized) return;
 
@@ -972,7 +971,6 @@ class ChatService extends ChangeNotifier {
       promptTokens: promptTokens ?? message.promptTokens,
       completionTokens: completionTokens ?? message.completionTokens,
       cachedTokens: cachedTokens ?? message.cachedTokens,
-      durationMs: durationMs ?? message.durationMs,
     );
 
     if (isTemporaryConversation(message.conversationId)) {
@@ -1017,7 +1015,6 @@ class ChatService extends ChangeNotifier {
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
-    int? durationMs,
   }) async {
     if (!_initialized) return;
 
@@ -1038,7 +1035,6 @@ class ChatService extends ChangeNotifier {
       promptTokens: promptTokens ?? message.promptTokens,
       completionTokens: completionTokens ?? message.completionTokens,
       cachedTokens: cachedTokens ?? message.cachedTokens,
-      durationMs: durationMs ?? message.durationMs,
     );
 
     if (isTemporaryConversation(message.conversationId)) {

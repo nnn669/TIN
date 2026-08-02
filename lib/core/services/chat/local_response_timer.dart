@@ -67,9 +67,7 @@ class LocalResponseTimer {
     _notifiers.clear();
   }
 
-  static ValueNotifier<LocalResponseTimerSnapshot> _notifier(
-    String messageId,
-  ) {
+  static ValueNotifier<LocalResponseTimerSnapshot> _notifier(String messageId) {
     return _notifiers.putIfAbsent(
       messageId,
       () => ValueNotifier<LocalResponseTimerSnapshot>(

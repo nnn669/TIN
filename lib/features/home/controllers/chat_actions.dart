@@ -1214,7 +1214,6 @@ class ChatActions {
     }
 
     state.fullContentRaw += chunkContent;
-    state.streamStartedAt ??= DateTime.now();
     if (chunk.totalTokens > 0) {
       state.totalTokens = chunk.totalTokens;
     }
@@ -1298,9 +1297,6 @@ class ChatActions {
         promptTokens: state.usage?.promptTokens,
         completionTokens: state.usage?.completionTokens,
         cachedTokens: state.usage?.cachedTokens,
-        durationMs: state.streamStartedAt != null
-            ? DateTime.now().difference(state.streamStartedAt!).inMilliseconds
-            : null,
         updateMessageInList: (id, content, tokens) {
           onContentUpdated?.call(id, content, tokens);
         },
@@ -1457,10 +1453,6 @@ class ChatActions {
     // Replace extremely long inline base64 images with local files to avoid jank
     final processedContent = _transformAssistantContent(state);
 
-    // Compute final duration
-    final finalDurationMs = state.streamStartedAt != null
-        ? DateTime.now().difference(state.streamStartedAt!).inMilliseconds
-        : null;
     final finalPromptTokens = state.usage?.promptTokens;
     final finalCompletionTokens = state.usage?.completionTokens;
     final finalCachedTokens = state.usage?.cachedTokens;
@@ -1479,7 +1471,6 @@ class ChatActions {
       promptTokens: finalPromptTokens,
       completionTokens: finalCompletionTokens,
       cachedTokens: finalCachedTokens,
-      durationMs: finalDurationMs,
     );
 
     final sanitizedContent =
@@ -1494,7 +1485,6 @@ class ChatActions {
       promptTokens: finalPromptTokens,
       completionTokens: finalCompletionTokens,
       cachedTokens: finalCachedTokens,
-      durationMs: finalDurationMs,
     );
 
     final finalizedMessage = state.ctx.assistantMessage.copyWith(
@@ -1504,7 +1494,6 @@ class ChatActions {
       promptTokens: finalPromptTokens,
       completionTokens: finalCompletionTokens,
       cachedTokens: finalCachedTokens,
-      durationMs: finalDurationMs,
     );
 
     final index = _messages.indexWhere((m) => m.id == messageId);

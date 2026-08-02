@@ -29,15 +29,18 @@ class _LocalResponseTimerBadgeState extends State<LocalResponseTimerBadge> {
   void didUpdateWidget(covariant LocalResponseTimerBadge oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.messageId == widget.messageId) return;
-    LocalResponseTimer.listenable(oldWidget.messageId)
-        .removeListener(_syncTicker);
+    LocalResponseTimer.listenable(
+      oldWidget.messageId,
+    ).removeListener(_syncTicker);
     LocalResponseTimer.listenable(widget.messageId).addListener(_syncTicker);
     _syncTicker();
   }
 
   void _syncTicker() {
     if (!mounted) return;
-    final running = LocalResponseTimer.listenable(widget.messageId).value.running;
+    final running = LocalResponseTimer.listenable(
+      widget.messageId,
+    ).value.running;
     if (running && _ticker == null) {
       _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) {
         if (mounted) setState(() {});

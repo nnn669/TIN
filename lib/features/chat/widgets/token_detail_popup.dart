@@ -4,24 +4,18 @@ import '../../../l10n/app_localizations.dart';
 
 /// A bubble card showing detailed token usage info.
 ///
-/// Shows up to 4 rows (hidden when data is null/0):
-/// - ArrowUp: prompt tokens (with cached count if > 0)
-/// - ArrowDown: completion tokens
-/// - Zap: tok/s (completionTokens / durationSeconds)
-/// - Timer: duration in seconds
+/// Shows prompt and completion token counts when available.
 class TokenDetailPopup extends StatelessWidget {
   const TokenDetailPopup({
     super.key,
     this.promptTokens,
     this.completionTokens,
     this.cachedTokens,
-    this.durationMs,
   });
 
   final int? promptTokens;
   final int? completionTokens;
   final int? cachedTokens;
-  final int? durationMs;
 
   @override
   Widget build(BuildContext context) {
@@ -32,46 +26,26 @@ class TokenDetailPopup extends StatelessWidget {
     // Prompt tokens row
     if (promptTokens != null && promptTokens! > 0) {
       final cached = (cachedTokens ?? 0) > 0 ? cachedTokens! : 0;
-      rows.add(_buildRow(
-        icon: Lucide.ArrowUp,
-        text: cached > 0
-            ? l10n.tokenDetailPromptTokensWithCache(promptTokens!, cached)
-            : l10n.tokenDetailPromptTokens(promptTokens!),
-        cs: cs,
-      ));
+      rows.add(
+        _buildRow(
+          icon: Lucide.ArrowUp,
+          text: cached > 0
+              ? l10n.tokenDetailPromptTokensWithCache(promptTokens!, cached)
+              : l10n.tokenDetailPromptTokens(promptTokens!),
+          cs: cs,
+        ),
+      );
     }
 
     // Completion tokens row
     if (completionTokens != null && completionTokens! > 0) {
-      rows.add(_buildRow(
-        icon: Lucide.ArrowDown,
-        text: l10n.tokenDetailCompletionTokens(completionTokens!),
-        cs: cs,
-      ));
-    }
-
-    // tok/s row
-    if (completionTokens != null &&
-        completionTokens! > 0 &&
-        durationMs != null &&
-        durationMs! > 0) {
-      final durationSec = durationMs! / 1000.0;
-      final tokPerSec = completionTokens! / durationSec;
-      rows.add(_buildRow(
-        icon: Lucide.Zap,
-        text: l10n.tokenDetailSpeed(tokPerSec.toStringAsFixed(1)),
-        cs: cs,
-      ));
-    }
-
-    // Duration row
-    if (durationMs != null && durationMs! > 0) {
-      final durationSec = (durationMs! / 1000.0).toStringAsFixed(1);
-      rows.add(_buildRow(
-        icon: Lucide.clock,
-        text: l10n.tokenDetailDuration(durationSec),
-        cs: cs,
-      ));
+      rows.add(
+        _buildRow(
+          icon: Lucide.ArrowDown,
+          text: l10n.tokenDetailCompletionTokens(completionTokens!),
+          cs: cs,
+        ),
+      );
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
@@ -137,4 +111,3 @@ class TokenDetailPopup extends StatelessWidget {
     );
   }
 }
-
