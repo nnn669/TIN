@@ -16,14 +16,12 @@ class TokenDisplayWidget extends StatefulWidget {
     this.promptTokens,
     this.completionTokens,
     this.cachedTokens,
-    this.durationMs,
   });
 
   final int totalTokens;
   final int? promptTokens;
   final int? completionTokens;
   final int? cachedTokens;
-  final int? durationMs;
 
   @override
   State<TokenDisplayWidget> createState() => _TokenDisplayWidgetState();
@@ -54,8 +52,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
   bool get _hasDetailData =>
       (widget.promptTokens != null && widget.promptTokens! > 0) ||
-      (widget.completionTokens != null && widget.completionTokens! > 0) ||
-      (widget.durationMs != null && widget.durationMs! > 0);
+      (widget.completionTokens != null && widget.completionTokens! > 0);
 
   static const double _estimatedPopupHeight = 120;
 
@@ -156,7 +153,6 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
                 promptTokens: widget.promptTokens,
                 completionTokens: widget.completionTokens,
                 cachedTokens: widget.cachedTokens,
-                durationMs: widget.durationMs,
               ),
             ),
           ),
@@ -270,10 +266,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       return CompositedTransformTarget(link: _layerLink, child: label);
     }
 
-    Widget child = CompositedTransformTarget(
-      link: _layerLink,
-      child: label,
-    );
+    Widget child = CompositedTransformTarget(link: _layerLink, child: label);
 
     if (_isDesktop) {
       child = MouseRegion(
@@ -323,12 +316,11 @@ class _AnimatedPopupContent extends StatelessWidget {
     final begin = Offset(0, showBelow ? -0.15 : 0.15);
 
     Widget content = SlideTransition(
-      position:
-          Tween<Offset>(begin: begin, end: Offset.zero).animate(animation),
-      child: FadeTransition(
-        opacity: animation,
-        child: child,
-      ),
+      position: Tween<Offset>(
+        begin: begin,
+        end: Offset.zero,
+      ).animate(animation),
+      child: FadeTransition(opacity: animation, child: child),
     );
 
     if (isDesktop) {

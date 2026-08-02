@@ -47,6 +47,7 @@ import '../utils/thinking_tag_parser.dart';
 import 'citation_sources_sheet.dart';
 import 'chat_suggestion_bubbles.dart';
 import 'token_display_widget.dart';
+import 'local_response_timer_badge.dart';
 import '../../../theme/app_font_weights.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
@@ -2269,6 +2270,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          LocalResponseTimerBadge(messageId: widget.message.id),
                         ],
                       ),
                     Builder(
@@ -2774,7 +2777,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             promptTokens: widget.message.promptTokens,
                             completionTokens: widget.message.completionTokens,
                             cachedTokens: widget.message.cachedTokens,
-                            durationMs: widget.message.durationMs,
                           ),
                         ],
                       ],

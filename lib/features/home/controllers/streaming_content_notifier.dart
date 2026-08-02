@@ -42,7 +42,6 @@ class StreamingContentNotifier {
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
-    int? durationMs,
   }) {
     final notifier = _notifiers[messageId];
     if (notifier != null) {
@@ -62,7 +61,6 @@ class StreamingContentNotifier {
         promptTokens: promptTokens ?? current.promptTokens,
         completionTokens: completionTokens ?? current.completionTokens,
         cachedTokens: cachedTokens ?? current.cachedTokens,
-        durationMs: durationMs ?? current.durationMs,
       );
     }
   }
@@ -95,7 +93,6 @@ class StreamingContentNotifier {
         promptTokens: current.promptTokens,
         completionTokens: current.completionTokens,
         cachedTokens: current.cachedTokens,
-        durationMs: current.durationMs,
       );
     }
   }
@@ -126,7 +123,6 @@ class StreamingContentNotifier {
         promptTokens: current.promptTokens,
         completionTokens: current.completionTokens,
         cachedTokens: current.cachedTokens,
-        durationMs: current.durationMs,
       );
     }
   }
@@ -148,7 +144,6 @@ class StreamingContentNotifier {
         promptTokens: current.promptTokens,
         completionTokens: current.completionTokens,
         cachedTokens: current.cachedTokens,
-        durationMs: current.durationMs,
       );
     }
   }
@@ -190,7 +185,6 @@ class StreamingContentData {
     this.promptTokens,
     this.completionTokens,
     this.cachedTokens,
-    this.durationMs,
   });
 
   final String content;
@@ -212,7 +206,6 @@ class StreamingContentData {
   final int? promptTokens;
   final int? completionTokens;
   final int? cachedTokens;
-  final int? durationMs;
 
   @override
   bool operator ==(Object other) =>
@@ -231,8 +224,7 @@ class StreamingContentData {
           uiVersion == other.uiVersion &&
           promptTokens == other.promptTokens &&
           completionTokens == other.completionTokens &&
-          cachedTokens == other.cachedTokens &&
-          durationMs == other.durationMs;
+          cachedTokens == other.cachedTokens;
 
   @override
   int get hashCode =>
@@ -248,6 +240,5 @@ class StreamingContentData {
       uiVersion.hashCode ^
       promptTokens.hashCode ^
       completionTokens.hashCode ^
-      cachedTokens.hashCode ^
-      durationMs.hashCode;
+      cachedTokens.hashCode;
 }

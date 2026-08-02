@@ -550,7 +550,6 @@ class StreamController {
     int? promptTokens,
     int? completionTokens,
     int? cachedTokens,
-    int? durationMs,
   }) {
     final state = _streamSmoothStates.putIfAbsent(
       messageId,
@@ -566,7 +565,6 @@ class StreamController {
       ..promptTokens = promptTokens
       ..completionTokens = completionTokens
       ..cachedTokens = cachedTokens
-      ..durationMs = durationMs
       ..updateMessageInList = updateMessageInList;
 
     // Ensure notifier exists for this message
@@ -610,7 +608,6 @@ class StreamController {
       promptTokens: state.promptTokens,
       completionTokens: state.completionTokens,
       cachedTokens: state.cachedTokens,
-      durationMs: state.durationMs,
     );
     state.updateMessageInList?.call(messageId, content, state.totalTokens);
     onStreamTick?.call();
@@ -1366,7 +1363,6 @@ class StreamingState {
   DateTime? reasoningStartAt;
   bool finishHandled = false;
   bool titleQueued = false;
-  DateTime? streamStartedAt;
   bool hadThinkingBlock = false;
   List<int> contentSplitOffsets = <int>[];
   List<int> reasoningCountAtSplit = <int>[];
@@ -1416,7 +1412,6 @@ class _StreamSmoothState {
   int? promptTokens;
   int? completionTokens;
   int? cachedTokens;
-  int? durationMs;
   void Function(String messageId, String content, int totalTokens)?
   updateMessageInList;
   final List<int> _recentPickCounts = <int>[];
