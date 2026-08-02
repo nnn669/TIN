@@ -90,10 +90,9 @@ jobs:
           path.write_text(content, encoding='utf-8')
           PY
 
-      - name: Regenerate localizations and format
+      - name: Resolve dependencies and format affected Dart files
         run: |
           flutter pub get
-          flutter gen-l10n
           dart format \
             lib/core/models/chat_message.dart \
             lib/core/models/chat_message.g.dart \
@@ -108,11 +107,14 @@ jobs:
             lib/features/home/controllers/streaming_content_notifier.dart \
             test/legacy_generation_timer_removal_test.dart \
             test/local_response_timer_test.dart
+          # Keep this functional commit minimal. Formal CI and localization
+          # cleanup are applied separately through the GitHub API.
+          git checkout HEAD -- .github/workflows/android-test-release.yml lib/l10n
 
-      - name: Verify legacy timer is gone
+      - name: Verify legacy timer is gone from the chat pipeline
         run: |
           set -euo pipefail
-          ! grep -R -n -E 'durationMs|streamStartedAt|tokenDetailSpeed|tokenDetailDuration|GenerationTimerBadge|generation_timer_badge' \
+          ! grep -R -n -E 'durationMs|streamStartedAt|GenerationTimerBadge|generation_timer_badge' \
             lib/core/models/chat_message.dart \
             lib/core/models/chat_message.g.dart \
             lib/core/services/chat/chat_service.dart \
@@ -121,8 +123,7 @@ jobs:
             lib/features/chat/widgets/token_display_widget.dart \
             lib/features/home/controllers/chat_actions.dart \
             lib/features/home/controllers/stream_controller.dart \
-            lib/features/home/controllers/streaming_content_notifier.dart \
-            lib/l10n
+            lib/features/home/controllers/streaming_content_notifier.dart
 
       - name: Analyze affected code
         run: >-
@@ -143,11 +144,10 @@ jobs:
       - name: Run timer regression tests
         run: flutter test test/local_response_timer_test.dart test/legacy_generation_timer_removal_test.dart
 
-      - name: Commit verified change and remove temporary automation
+      - name: Commit verified functional change
         run: |
           set -euo pipefail
           rm -f .github/scripts/remove_legacy_generation_timer.py
-          rm -f .github/workflows/apply-remove-legacy-generation-timer.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
