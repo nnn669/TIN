@@ -1,0 +1,43 @@
+name: Apply local response timer patch
+
+on:
+  push:
+    branches:
+      - feat/local-first-response-timer
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/local-first-response-timer
+      - name: Apply exact patch
+        run: python3 tool/apply_local_response_timer_patch.py
+      - name: Remove one-time patch script
+        run: rm tool/apply_local_response_timer_patch.py
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze affected code
+        run: flutter analyze lib/core/services/chat/local_response_timer.dart lib/features/chat/widgets/local_response_timer_badge.dart lib/features/chat/widgets/chat_message_widget.dart lib/features/home/controllers/chat_actions.dart test/local_response_timer_test.dart
+      - name: Run local timer tests
+        run: flutter test test/local_response_timer_test.dart
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'feat(chat): add local first-response timer badge'
+          git push origin feat/local-first-response-timer
