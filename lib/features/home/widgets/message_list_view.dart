@@ -694,7 +694,6 @@ class _MessageListViewState extends State<MessageListView> {
           promptTokens: data.promptTokens,
           completionTokens: data.completionTokens,
           cachedTokens: data.cachedTokens,
-          durationMs: data.durationMs,
         );
 
         // Update reasoning text from streaming data while preserving expanded state from r
