@@ -1,0 +1,31 @@
+name: Fix stale streaming duration callsite
+
+on:
+  push:
+    branches:
+      - fix/remove-streaming-duration-callsite
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/remove-streaming-duration-callsite
+      - name: Remove stale callsite and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=lib/features/home/widgets/message_list_view.dart
+          test "$(grep -c 'durationMs: data.durationMs,' "$file")" -eq 1
+          sed -i '/durationMs: data\.durationMs,/d' "$file"
+          ! grep -q 'durationMs: data.durationMs,' "$file"
+          rm .github/workflows/fix-streaming-duration-callsite.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "$file" .github/workflows/fix-streaming-duration-callsite.yml
+          git commit -m "fix(chat): remove stale streaming duration callsite"
+          git push origin HEAD:fix/remove-streaming-duration-callsite
