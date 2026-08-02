@@ -50,14 +50,14 @@ replace_once(
 replace_once(
     'successful finish without response',
     'lib/features/home/controllers/chat_actions.dart',
-    "    streamController.markStreamingEnded(messageId);\n    // Clean up stream throttle timer and flush final content\n",
-    "    streamController.markStreamingEnded(messageId);\n    LocalResponseTimer.cancel(messageId);\n    // Clean up stream throttle timer and flush final content\n",
+    "    streamController.markStreamingEnded(messageId);\n\n    // Clean up stream throttle timer and flush final content\n",
+    "    streamController.markStreamingEnded(messageId);\n    LocalResponseTimer.cancel(messageId);\n\n    // Clean up stream throttle timer and flush final content\n",
 )
 replace_once(
     'stream error',
     'lib/features/home/controllers/chat_actions.dart',
-    "    streamController.markStreamingEnded(messageId);\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
-    "    streamController.markStreamingEnded(messageId);\n    LocalResponseTimer.cancel(messageId);\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
+    "    streamController.markStreamingEnded(messageId);\n\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
+    "    streamController.markStreamingEnded(messageId);\n    LocalResponseTimer.cancel(messageId);\n\n    streamController.cleanupTimers(messageId);\n    final rawContent = state.fullContentRaw.isNotEmpty\n",
 )
 replace_once(
     'targeted test list',
