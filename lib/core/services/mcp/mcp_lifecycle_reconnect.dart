@@ -38,26 +38,35 @@ class _McpLifecycleReconnectState extends State<McpLifecycleReconnect>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_reconnectEnabledServers());
+      unawaited(_refreshStaleSessions());
     }
   }
 
-  Future<void> _reconnectEnabledServers() async {
+  Future<void> _refreshStaleSessions() async {
     if (_refreshing || !mounted) return;
     final provider = _provider;
     if (provider == null) return;
     _refreshing = true;
     try {
-      // Reconnect every enabled server, including built-in @kelivo/github.
-      // This intentionally creates a fresh MCP client/session instead of
-      // trusting a status that may have become stale while Android paused us.
+      // Only sessions that were already live (or already failed) can be stale.
+      // Servers left idle on purpose - such as the opt-in @kelivo/files server
+      // that is skipped during auto-connect - must stay untouched here.
       final ids = provider.servers
           .where((server) => server.enabled)
           .map((server) => server.id)
+          .where((id) {
+            final status = provider.statusFor(id);
+            return status == McpStatus.connected || status == McpStatus.error;
+          })
           .toList(growable: false);
       for (final id in ids) {
         if (!mounted) return;
+        // A tool call started before backgrounding may still be streaming.
+        // Dropping its transport would turn a slow call into a failed call.
+        if (_hasRunningCall(provider, id)) continue;
         try {
+          // Drop the possibly dead transport first: ensureConnected() trusts
+          // isConnected(), which still reports true for a stale session.
           await provider.disconnect(id);
           await provider.ensureConnected(id);
         } catch (_) {
@@ -68,6 +77,16 @@ class _McpLifecycleReconnectState extends State<McpLifecycleReconnect>
     } finally {
       _refreshing = false;
     }
+  }
+
+  bool _hasRunningCall(McpProvider provider, String serverId) {
+    for (final entry in provider.callLogs) {
+      if (entry.serverId == serverId &&
+          entry.status == McpCallLogStatus.running) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @override
