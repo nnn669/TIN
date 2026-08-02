@@ -43,7 +43,7 @@ jobs:
           old_tests = 'test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart'
           new_tests = 'test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/stream_controller_content_split_test.dart test/features/home/controllers/streaming_content_notifier_test.dart'
           assert text.count(old_analyze) == 1
-          assert text.count(old_tests) == 1
+          assert text.count(old_tests) == 2
           workflow.write_text(text.replace(old_analyze, new_analyze).replace(old_tests, new_tests))
           PY
           rm .github/workflows/apply-stream-60fps.yml
