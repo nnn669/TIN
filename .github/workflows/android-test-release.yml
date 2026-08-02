@@ -121,9 +121,10 @@ jobs:
           # 32 位包体不允许出现在发布产物中。
           test ! -e build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           found=0
+          max_bytes=$((60 * 1024 * 1024))
           for apk in build/app/outputs/flutter-apk/app-*.apk; do
             test -s "$apk"
-            test "$(du -m "$apk" | cut -f1)" -lt 60
+            test "$(stat -c '%s' "$apk")" -lt "$max_bytes"
             "$apksigner" verify --verbose --print-certs "$apk"
             test "$("$apkanalyzer" manifest version-code "$apk")" = "$VERSION_CODE"
             sha256sum "$apk"
