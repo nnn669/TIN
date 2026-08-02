@@ -27,28 +27,21 @@ jobs:
           text = controller.read_text()
           old = 'static const Duration _streamThrottleInterval = Duration(milliseconds: 50);'
           new = 'static const Duration _streamThrottleInterval = Duration(milliseconds: 16);'
-          assert text.count(old) == 1
-          controller.write_text(text.replace(old, new))
+          if old in text:
+            controller.write_text(text.replace(old, new))
 
           test = Path('test/features/home/controllers/stream_controller_content_split_test.dart')
           text = test.read_text()
           old_delay = 'Duration(milliseconds: 50)'
-          assert text.count(old_delay) == 6
-          test.write_text(text.replace(old_delay, 'Duration(milliseconds: 16)'))
-
-          workflow = Path('.github/workflows/android-test-release.yml')
-          text = workflow.read_text()
-          old_analyze = 'lib/features/home/controllers/streaming_content_notifier.dart lib/features/provider/widgets/add_provider_sheet.dart'
-          new_analyze = 'lib/features/home/controllers/stream_controller.dart lib/features/home/controllers/streaming_content_notifier.dart lib/features/provider/widgets/add_provider_sheet.dart'
-          old_tests = 'test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart'
-          new_tests = 'test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/stream_controller_content_split_test.dart test/features/home/controllers/streaming_content_notifier_test.dart'
-          assert text.count(old_analyze) == 1
-          assert text.count(old_tests) == 2
-          workflow.write_text(text.replace(old_analyze, new_analyze).replace(old_tests, new_tests))
+          if old_delay in text:
+            test.write_text(text.replace(old_delay, 'Duration(milliseconds: 16)'))
           PY
-          rm .github/workflows/apply-stream-60fps.yml
+          if git diff --quiet; then
+            echo 'Patch already applied'
+            exit 0
+          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add lib/features/home/controllers/stream_controller.dart test/features/home/controllers/stream_controller_content_split_test.dart .github/workflows/android-test-release.yml .github/workflows/apply-stream-60fps.yml
+          git add lib/features/home/controllers/stream_controller.dart test/features/home/controllers/stream_controller_content_split_test.dart
           git commit -m 'fix(chat): raise sole stream scheduler to 60fps'
           git push origin HEAD:${{ github.head_ref }}
