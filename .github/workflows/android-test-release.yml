@@ -41,7 +41,7 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
       - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart
+        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart
 
   android-release:
     name: Signed Android prerelease
