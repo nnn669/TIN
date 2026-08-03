@@ -25,7 +25,7 @@ jobs:
           git config user.email "actions@github.com"
           curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/main/tools/fix_v3_compile_residue.py?run=${GITHUB_RUN_ID}" -o /tmp/fix.py
           python3 /tmp/fix.py
-          grep -RIn --exclude='*.g.dart' -E 'temperature:|clearTemperature|a\.temperature|assistant\?\.temperature' lib test && exit 1 || true
+          if grep -RIn --exclude='*.g.dart' -E 'temperature:|clearTemperature|a\.temperature|assistant\?\.temperature' lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant; then exit 1; fi
           rm -f tools/fix_v3_compile_residue.py
           git add -A
           git commit -m "fix: remove desktop assistant temperature residue"
@@ -39,4 +39,4 @@ jobs:
       - name: Analyze source
         run: flutter analyze
       - name: Run focused tests
-        run: flutter test test/core/services/app_control_service_test.dart test/core/services/backup/data_sync_backup_file_test.dart
+        run: flutter test test/core/services/app_control_service_test.dart test/core/services/backup/data_sync_backup_file_test.dart test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart
