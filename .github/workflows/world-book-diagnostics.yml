@@ -1,0 +1,16 @@
+name: World Book Diagnostics
+on:
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: worldbook-removal-wip
+      - name: Remaining references
+        run: git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' || true
+      - name: Relevant malformed regions
+        run: |
+          sed -n '345,375p' lib/core/services/app_control/app_control_service.dart
+          sed -n '605,635p' lib/core/services/app_control/app_control_service.dart
