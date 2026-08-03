@@ -3,24 +3,10 @@ name: Android Test Release
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
     branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      build_name:
-        description: Optional version name override
-        required: false
-        type: string
-      release_type:
-        description: Release channel
-        required: true
-        default: test
-        type: choice
-        options:
-          - test
-          - formal
+    - main
 
 permissions:
   contents: write
