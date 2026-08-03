@@ -1,4 +1,4 @@
-TASK: 项目收尾与完善
-STEP: 已完成
-DONE: 阶段1已完成代码清理；阶段2已确认提交推送；阶段3已更新版本号到 1.1.25+9019；阶段4已创建 Release v1.1.25。
-NEXT: /storage/emulated/0/TIN/pubspec.yaml
+TASK: 修复 v1.1.25 构建失败
+STEP: 阶段2
+DONE: 阶段1已检查 Actions 失败日志；已修复 lib/main.dart 缺少 WorldBookProvider 导入导致的 release 编译错误。
+NEXT: /storage/emulated/0/TIN/lib/main.dart

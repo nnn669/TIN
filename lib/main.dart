@@ -29,6 +29,7 @@ import 'core/providers/tag_provider.dart';
 import 'core/providers/tts_provider.dart';
 import 'core/providers/update_provider.dart';
 import 'core/providers/user_provider.dart';
+import 'core/providers/world_book_provider.dart';
 import 'core/services/android_background.dart';
 import 'core/services/chat/chat_service.dart';
 import 'core/services/logging/flutter_logger.dart';
