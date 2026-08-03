@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Remove desktop temperature residue
+      - name: Validate cleaned v3 source
         shell: bash
         env:
           TARGET_REF: ${{ inputs.ref }}
@@ -23,30 +23,17 @@ jobs:
           set -euo pipefail
           git config user.name "TIN automation"
           git config user.email "actions@github.com"
-          curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/main/tools/fix_v3_compile_residue.py?run=${GITHUB_RUN_ID}" -o /tmp/fix.py
-          python3 /tmp/fix.py
-          python3 - <<'PY'
-          from pathlib import Path
-
-          removals = {
-              Path('test/core/services/app_control_service_test.dart'): "                  'temperature': 0.7,\n",
-              Path('test/core/services/backup/cherry_importer_test.dart'): "            'temperature': 1,\n",
-          }
-          for path, old in removals.items():
-              text = path.read_text()
-              if old not in text:
-                  raise SystemExit(f'expected removable temperature test field missing: {path}')
-              path.write_text(text.replace(old, '', 1))
-          PY
           echo '=== remaining temperature references (informational) ==='
           grep -RIn --exclude='*.g.dart' -i temperature lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant || true
           if grep -RIn --exclude='*.g.dart' -E 'clearTemperature|a\.temperature|assistant\?\.temperature|S3BackupProvider|S3Config|s3Config|setS3Config|webDavConfig|setWebDavConfig|testWebdav|backupToWebDav|listBackupFiles|restoreFromWebDav|deleteWebDavBackupFile|SponsorPage' lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant; then
             exit 1
           fi
-          rm -f tools/fix_v3_compile_residue.py
-          git add -A
-          git commit -m "fix: remove desktop assistant temperature residue"
-          git push origin HEAD:${TARGET_REF}
+          git status --short
+          if ! git diff --quiet; then
+            git add -A
+            git commit -m "fix: remove remaining v3 feature residue"
+            git push origin HEAD:${TARGET_REF}
+          fi
       - name: Flutter analyze
         uses: subosito/flutter-action@v2
         with:
