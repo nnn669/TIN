@@ -90,10 +90,10 @@ jobs:
         run: |
           set -euo pipefail
           configured=0
-          [[ -n "$SIGN_KEYSTORE_BASE64" ]] && configured=$((configured + 1))
-          [[ -n "$SIGN_STORE_PASSWORD" ]] && configured=$((configured + 1))
-          [[ -n "$SIGN_KEY_ALIAS" ]] && configured=$((configured + 1))
-          [[ -n "$SIGN_KEY_PASSWORD" ]] && configured=$((configured + 1))
+          if [[ -n "$SIGN_KEYSTORE_BASE64" ]]; then configured=$((configured + 1)); fi
+          if [[ -n "$SIGN_STORE_PASSWORD" ]]; then configured=$((configured + 1)); fi
+          if [[ -n "$SIGN_KEY_ALIAS" ]]; then configured=$((configured + 1)); fi
+          if [[ -n "$SIGN_KEY_PASSWORD" ]]; then configured=$((configured + 1)); fi
           if [[ "$configured" -eq 4 ]]; then
             echo "Using configured repository signing key"
             printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
