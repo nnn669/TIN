@@ -24,7 +24,8 @@ jobs:
           git config user.name "TIN automation"
           git config user.email "actions@github.com"
           curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/${TARGET_REF}/.github/workflows/apply-feature-removals.yml" -o /tmp/apply.yml
-          awk '/^[[:space:]]*python3 - '\''PY'\''/{flag=1; next} flag && /^[[:space:]]*PY$/{exit} flag {sub(/^          /, ""); print}' /tmp/apply.yml > /tmp/apply.py
+          awk '/python3 - <<'"'"'PY'"'"'/{flag=1; next} flag && /^[[:space:]]*PY$/{exit} flag {sub(/^          /, ""); print}' /tmp/apply.yml > /tmp/apply.py
+          test -s /tmp/apply.py
           python3 /tmp/apply.py
           git add -A
           git commit -m "feat: remove assistant temperature and remote backup UI"
