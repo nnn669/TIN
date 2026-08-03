@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
@@ -87,11 +89,16 @@ jobs:
           SIGN_KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -n "$SIGN_KEYSTORE_BASE64" && -n "$SIGN_STORE_PASSWORD" && -n "$SIGN_KEY_ALIAS" && -n "$SIGN_KEY_PASSWORD" ]]; then
+          configured=0
+          [[ -n "$SIGN_KEYSTORE_BASE64" ]] && configured=$((configured + 1))
+          [[ -n "$SIGN_STORE_PASSWORD" ]] && configured=$((configured + 1))
+          [[ -n "$SIGN_KEY_ALIAS" ]] && configured=$((configured + 1))
+          [[ -n "$SIGN_KEY_PASSWORD" ]] && configured=$((configured + 1))
+          if [[ "$configured" -eq 4 ]]; then
             echo "Using configured repository signing key"
             printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
             echo "SIGNING_MODE=persistent" >> "$GITHUB_ENV"
-          else
+          elif [[ "$configured" -eq 0 ]]; then
             echo "Signing Secrets are not configured; generating an ephemeral test keystore"
             sign_password="test-${GITHUB_RUN_ID}-${RANDOM}"
             keytool -genkeypair -keystore android/release-keystore.jks -storepass "$sign_password" -keypass "$sign_password" -alias tin-test -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" -noprompt
@@ -99,6 +106,9 @@ jobs:
             SIGN_KEY_PASSWORD="$sign_password"
             SIGN_KEY_ALIAS="tin-test"
             echo "SIGNING_MODE=ephemeral-test" >> "$GITHUB_ENV"
+          else
+            echo "Android signing Secrets are only partially configured; refusing to create a mismatched build."
+            exit 1
           fi
           test -s android/release-keystore.jks
           printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
