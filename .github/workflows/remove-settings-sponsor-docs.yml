@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply requested removals
-        shell: python
+        shell: python {0}
         run: |
           from pathlib import Path
           import re
@@ -94,7 +94,7 @@ jobs:
           git add lib/features/settings/pages/settings_page.dart lib/desktop/setting/about_pane.dart lib/features/settings/pages/sponsor_page.dart
           git commit -m "feat: remove sponsor and documentation from settings"
       - name: Bump version and update progress
-        shell: python
+        shell: python {0}
         run: |
           from pathlib import Path
           import re
