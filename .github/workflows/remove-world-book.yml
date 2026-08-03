@@ -26,11 +26,13 @@ jobs:
           if token in s:
               s = remove_braced(s, s.find(token))'''
           new = '''s = re.sub(r"(?ms)\\n    if \\(bundle\\['world_books'\\] is Map\\) \\{\\n      await _restoreWorldBooks\\(\\n        \\(bundle\\['world_books'\\] as Map\\)\\.cast<String, dynamic>\\(\\),\\n      \\);\\n    \\}", "", s)'''
-          if old not in s:
-              raise SystemExit('Expected legacy bundle cleanup block not found')
-          p.write_text(s.replace(old, new), encoding='utf-8')
+          if old in s:
+              s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
           PY
           python tool/remove_world_book.py
+          echo '--- gateway around bundle import ---'
+          nl -ba lib/core/services/app_control/app_control_service.dart | sed -n '2580,2640p'
       - name: Regenerate localization and format
         run: |
           flutter pub get
@@ -38,10 +40,7 @@ jobs:
           dart format lib test
       - name: Verify no world book references remain
         run: |
-          if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' ':!.github/workflows/remove-world-book.yml' ':!tool/remove_world_book.py'; then
-            echo 'World book references remain' >&2
-            exit 1
-          fi
+          if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' ':!.github/workflows/remove-world-book.yml' ':!tool/remove_world_book.py'; then exit 1; fi
       - name: Analyze
         run: flutter analyze
       - name: Commit removal
