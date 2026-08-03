@@ -20,18 +20,22 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('tool/remove_world_book.py')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('return "".join(line for line in text.splitlines(True) if "world_book" not in line.lower())', 'return "".join(line for line in text.splitlines(True) if not (line.lstrip().startswith("import ") and "world_book" in line.lower()))')
-          old = '''token = "if (bundle['world_books'] is Map)"
+          p=Path('tool/remove_world_book.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('return "".join(line for line in text.splitlines(True) if "world_book" not in line.lower())','return "".join(line for line in text.splitlines(True) if not (line.lstrip().startswith("import ") and "world_book" in line.lower()))')
+          old='''token = "if (bundle['world_books'] is Map)"
           if token in s:
               s = remove_braced(s, s.find(token))'''
-          new = '''s = re.sub(r"(?ms)\\n    if \\(bundle\\['world_books'\\] is Map\\) \\{\\n      await _restoreWorldBooks\\(\\n        \\(bundle\\['world_books'\\] as Map\\)\\.cast<String, dynamic>\\(\\),\\n      \\);\\n    \\}", "", s)'''
-          if old in s:
-              s = s.replace(old, new)
-          p.write_text(s, encoding='utf-8')
+          new='''s = re.sub(r"(?ms)\\n    if \\(bundle\\['world_books'\\] is Map\\) \\{\\n      await _restoreWorldBooks\\(\\n        \\(bundle\\['world_books'\\] as Map\\)\\.cast<String, dynamic>\\(\\),\\n      \\);\\n    \\}", "", s)'''
+          if old in s: s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
           PY
           python tool/remove_world_book.py
+          rm -f .github/workflows/finalize-world-book-removal-v2.yml
+          rm -f .github/workflows/finalize-world-book-removal.yml
+          rm -f .github/workflows/remove-world-book-stage.yml
+          rm -f .github/workflows/remove-world-book-v2.yml
+          rm -f .github/workflows/world-book-diagnostics.yml
       - name: Regenerate localization and format
         run: |
           flutter pub get
@@ -39,10 +43,7 @@ jobs:
           dart format lib test
       - name: Verify no world book references remain
         run: |
-          if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' ':!.github/workflows/remove-world-book.yml' ':!tool/remove_world_book.py'; then
-            echo 'World book references remain' >&2
-            exit 1
-          fi
+          if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' ':!.github/workflows/remove-world-book.yml' ':!tool/remove_world_book.py'; then exit 1; fi
       - name: Analyze
         run: flutter analyze
       - name: Commit removal
