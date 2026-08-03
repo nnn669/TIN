@@ -129,6 +129,16 @@ remove_lines(
     lambda line: 'clearTemperature' in line or 'a.temperature' in line,
 )
 
+# Remove the obsolete sponsor page and its only settings entry point.
+replace_once('lib/features/settings/pages/settings_page.dart', "import 'sponsor_page.dart';\n", '')
+remove_regex(
+    'lib/features/settings/pages/settings_page.dart',
+    r"\n              _iosNavRow\(\n                context,\n                icon: Lucide\.Heart,\n                label: l10n\.settingsPageSponsor,.*?\n              \),",
+    '',
+    expected=1,
+)
+(root / 'lib/features/settings/pages/sponsor_page.dart').unlink()
+
 # Keep desktop backup navigation for local ZIP and third-party imports only.
 file('lib/desktop/setting/backup_pane.dart').write_text(r'''import 'dart:io';
 
@@ -243,7 +253,7 @@ remove_dart_call('test/core/services/backup/data_sync_backup_file_test.dart', 'c
 needles = (
     'S3BackupProvider', 'S3Config', 's3Config', 'setS3Config', 'webDavConfig', 'setWebDavConfig',
     'testWebdav', 'backupToWebDav', 'listBackupFiles', 'restoreFromWebDav', 'deleteWebDavBackupFile',
-    'assistant?.temperature', 'a.temperature', 'clearTemperature', 'temperature: assistant',
+    'assistant?.temperature', 'a.temperature', 'clearTemperature', 'temperature: assistant', 'SponsorPage',
 )
 stale = []
 for p in list((root / 'lib').rglob('*.dart')) + list((root / 'test').rglob('*.dart')):
