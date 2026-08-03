@@ -1,0 +1,35 @@
+name: Restore Before Feature Removals
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore target source tree
+        env:
+          TARGET_SHA: 9a0bc35255e2dc00b191a997a0697b1130938b60
+        run: |
+          set -euo pipefail
+          git fetch origin "$TARGET_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git read-tree -u "$TARGET_SHA"
+          git add -A
+          git commit -m "revert: restore version before temperature and backup removal" -m "Restore main source tree to $TARGET_SHA at the user's request. Preserve repository history without force-pushing."
+          git push origin HEAD:main
+      - name: Remove this workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/restore-before-feature-removals.yml" -f message="chore: remove one-shot restore workflow" -f branch=main
