@@ -16,7 +16,21 @@ jobs:
           channel: stable
           cache: true
       - name: Remove world book subsystem and references
-        run: python tool/remove_world_book.py
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tool/remove_world_book.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''token = "if (bundle['world_books'] is Map)"
+          if token in s:
+              s = remove_braced(s, s.find(token))'''
+          new = '''s = re.sub(r"(?ms)\\n    if \\(bundle\\['world_books'\\] is Map\\) \\{\\n      await _restoreWorldBooks\\(\\n        \\(bundle\\['world_books'\\] as Map\\)\\.cast<String, dynamic>\\(\\),\\n      \\);\\n    \\}", "", s)'''
+          if old not in s:
+              raise SystemExit('Expected legacy bundle cleanup block not found')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+          python tool/remove_world_book.py
       - name: Regenerate localization and format
         run: |
           flutter pub get
