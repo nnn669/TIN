@@ -14,20 +14,11 @@ import '../utils/model_display_helper.dart';
 import 'chat_input_bar.dart';
 import 'model_icon.dart';
 
-/// Callback for checking if a model supports tool calling.
 typedef IsToolModelCallback = bool Function(String providerKey, String modelId);
-
-/// Callback for checking if a model supports reasoning.
 typedef IsReasoningModelCallback =
     bool Function(String providerKey, String modelId);
-
-/// Callback for checking if reasoning is enabled.
 typedef IsReasoningEnabledCallback = bool Function(int? budget);
 
-/// Widget that wraps ChatInputBar with all the necessary logic and callbacks.
-///
-/// This widget extracts the _buildChatInputBar logic from HomePageState
-/// to reduce coupling and improve maintainability.
 class ChatInputSection extends StatelessWidget {
   const ChatInputSection({
     super.key,
@@ -61,7 +52,7 @@ class ChatInputSection extends StatelessWidget {
     this.onPickPhotos,
     this.onUploadFiles,
     this.onToggleLearningMode,
-    this.onOpenWorldBook, // 新增世界书支持桌面端
+    this.onOpenWorldBook,
     this.onLongPressLearning,
     this.onClearContext,
     this.onCompressContext,
@@ -76,13 +67,9 @@ class ChatInputSection extends StatelessWidget {
   final ChatInputBarController mediaController;
   final bool isTablet;
   final bool isLoading;
-
-  // Model capability checkers
   final IsToolModelCallback isToolModel;
   final IsReasoningModelCallback isReasoningModel;
   final IsReasoningEnabledCallback isReasoningEnabled;
-
-  // Callbacks
   final VoidCallback? onMore;
   final VoidCallback? onSelectModel;
   final VoidCallback? onLongPressSelectModel;
@@ -92,7 +79,7 @@ class ChatInputSection extends StatelessWidget {
   final VoidCallback? onOpenSearch;
   final VoidCallback? onConfigureReasoning;
   final Future<ChatInputSubmissionResult> Function(ChatInputData)? onSend;
-  final VoidCallback? onStop;
+  final Future<void> Function()? onStop;
   final bool hasQueuedInput;
   final String? queuedPreviewText;
   final VoidCallback? onCancelQueuedInput;
@@ -118,103 +105,109 @@ class ChatInputSection extends StatelessWidget {
     final ap = context.watch<AssistantProvider>();
     final a = ap.currentAssistant;
     final assistantId = a?.id;
-
-    // Use unified helper to get model identifiers
     final modelIds = getActiveModelIds(settings, assistant: a);
     final pk = modelIds.providerKey;
     final mid = modelIds.modelId;
 
-    // Enforce model capabilities: disable MCP selection if model doesn't support tools
     _enforceModelCapabilities(context, settings, ap, a, pk, mid);
 
     final isDesktop = _isDesktopPlatform(context);
     final hasWorldBooks =
         isTablet && context.watch<WorldBookProvider>().books.isNotEmpty;
 
-    return ChatInputBar(
-      key: inputBarKey,
-      onMore: onMore,
-      onSelectModel: onSelectModel,
-      onLongPressSelectModel: onLongPressSelectModel,
-      conversationId: conversationId,
-      onOpenMcp: onOpenMcp,
-      onOpenSkills: onOpenSkills,
-      onLongPressMcp: onLongPressMcp,
-      onStop: onStop,
-      modelIcon: (pk != null && mid != null)
-          ? CurrentModelIcon(
-              providerKey: pk,
-              modelId: mid,
-              size: 40,
-              withBackground: true,
-              backgroundColor: Colors.transparent,
-            )
-          : null,
-      focusNode: inputFocus,
-      controller: inputController,
-      mediaController: mediaController,
-      onConfigureReasoning: onConfigureReasoning,
-      reasoningActive: isReasoningEnabled(
-        (context.watch<AssistantProvider>().currentAssistant?.thinkingBudget) ??
-            settings.thinkingBudget,
-      ),
-      reasoningBudget:
-          (context
-              .watch<AssistantProvider>()
-              .currentAssistant
-              ?.thinkingBudget) ??
-          settings.thinkingBudget,
-      supportsReasoning: (pk != null && mid != null)
-          ? isReasoningModel(pk, mid)
-          : false,
-      onOpenSearch: onOpenSearch,
-      onSend: onSend,
-      loading: isLoading,
-      sendButtonTooltip: sendButtonTooltip,
-      hasQueuedInput: hasQueuedInput,
-      queuedPreviewText: queuedPreviewText,
-      onCancelQueuedInput: onCancelQueuedInput,
-      showMcpButton: _shouldShowMcpButton(context, settings, a, pk, mid),
-      mcpActive: _isMcpActive(context, a),
-      skillsActive: _isSkillsActive(context, a),
-      showQuickPhraseButton: _hasQuickPhrases(context, a),
-      onQuickPhrase: onQuickPhrase,
-      onLongPressQuickPhrase: onLongPressQuickPhrase,
-      // OCR button: show on desktop for mobile layout, always check settings for tablet layout
-      showOcrButton: isTablet
-          ? (settings.ocrModelProvider != null && settings.ocrModelId != null)
-          : (isDesktop &&
-                settings.ocrModelProvider != null &&
-                settings.ocrModelId != null),
-      ocrActive: settings.ocrEnabled,
-      onToggleOcr: onToggleOcr,
-      // Tablet-specific parameters
-      showMiniMapButton: isTablet,
-      onOpenMiniMap: isTablet ? onOpenMiniMap : null,
-      onPickCamera: isTablet ? (isDesktop ? null : onPickCamera) : null,
-      onPickPhotos: isTablet ? (isDesktop ? null : onPickPhotos) : null,
-      onUploadFiles: isTablet ? onUploadFiles : null,
-      onToggleLearningMode: isTablet ? onToggleLearningMode : null,
-      onOpenWorldBook: hasWorldBooks ? onOpenWorldBook : null,
-      onLongPressLearning: isTablet ? onLongPressLearning : null,
-      learningModeActive: isTablet
-          ? context
-                .watch<InstructionInjectionProvider>()
-                .activeIdsFor(assistantId)
-                .isNotEmpty
-          : false,
-      worldBookActive: isTablet
-          ? context
-                .watch<WorldBookProvider>()
-                .activeBookIdsFor(assistantId)
-                .isNotEmpty
-          : false,
-      showMoreButton: !isTablet,
-      onClearContext: isTablet ? onClearContext : null,
-      onCompressContext: isTablet ? onCompressContext : null,
-      backgroundImageActive: backgroundImageActive,
-      inputBackgroundOpacityLight: settings.chatInputBackgroundOpacityLight,
-      inputBackgroundOpacityDark: settings.chatInputBackgroundOpacityDark,
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: inputController,
+      builder: (context, inputValue, _) {
+        final hasInterruptingText = inputValue.text.trim().isNotEmpty;
+        final showStopButton = isLoading && !hasInterruptingText;
+
+        Future<ChatInputSubmissionResult> submit(ChatInputData input) async {
+          if (isLoading) {
+            await onStop?.call();
+          }
+          return await onSend?.call(input) ??
+              ChatInputSubmissionResult.rejected;
+        }
+
+        return ChatInputBar(
+          key: inputBarKey,
+          onMore: onMore,
+          onSelectModel: onSelectModel,
+          onLongPressSelectModel: onLongPressSelectModel,
+          conversationId: conversationId,
+          onOpenMcp: onOpenMcp,
+          onOpenSkills: onOpenSkills,
+          onLongPressMcp: onLongPressMcp,
+          onStop: onStop,
+          modelIcon: (pk != null && mid != null)
+              ? CurrentModelIcon(
+                  providerKey: pk,
+                  modelId: mid,
+                  size: 40,
+                  withBackground: true,
+                  backgroundColor: Colors.transparent,
+                )
+              : null,
+          focusNode: inputFocus,
+          controller: inputController,
+          mediaController: mediaController,
+          onConfigureReasoning: onConfigureReasoning,
+          reasoningActive: isReasoningEnabled(
+            a?.thinkingBudget ?? settings.thinkingBudget,
+          ),
+          reasoningBudget: a?.thinkingBudget ?? settings.thinkingBudget,
+          supportsReasoning: (pk != null && mid != null)
+              ? isReasoningModel(pk, mid)
+              : false,
+          onOpenSearch: onOpenSearch,
+          onSend: submit,
+          loading: showStopButton,
+          sendButtonTooltip: sendButtonTooltip,
+          hasQueuedInput: hasQueuedInput,
+          queuedPreviewText: queuedPreviewText,
+          onCancelQueuedInput: onCancelQueuedInput,
+          showMcpButton: _shouldShowMcpButton(context, settings, a, pk, mid),
+          mcpActive: _isMcpActive(context, a),
+          skillsActive: _isSkillsActive(context, a),
+          showQuickPhraseButton: _hasQuickPhrases(context, a),
+          onQuickPhrase: onQuickPhrase,
+          onLongPressQuickPhrase: onLongPressQuickPhrase,
+          showOcrButton: isTablet
+              ? (settings.ocrModelProvider != null &&
+                    settings.ocrModelId != null)
+              : (isDesktop &&
+                    settings.ocrModelProvider != null &&
+                    settings.ocrModelId != null),
+          ocrActive: settings.ocrEnabled,
+          onToggleOcr: onToggleOcr,
+          showMiniMapButton: isTablet,
+          onOpenMiniMap: isTablet ? onOpenMiniMap : null,
+          onPickCamera: isTablet ? (isDesktop ? null : onPickCamera) : null,
+          onPickPhotos: isTablet ? (isDesktop ? null : onPickPhotos) : null,
+          onUploadFiles: isTablet ? onUploadFiles : null,
+          onToggleLearningMode: isTablet ? onToggleLearningMode : null,
+          onOpenWorldBook: hasWorldBooks ? onOpenWorldBook : null,
+          onLongPressLearning: isTablet ? onLongPressLearning : null,
+          learningModeActive: isTablet
+              ? context
+                    .watch<InstructionInjectionProvider>()
+                    .activeIdsFor(assistantId)
+                    .isNotEmpty
+              : false,
+          worldBookActive: isTablet
+              ? context
+                    .watch<WorldBookProvider>()
+                    .activeBookIdsFor(assistantId)
+                    .isNotEmpty
+              : false,
+          showMoreButton: !isTablet,
+          onClearContext: isTablet ? onClearContext : null,
+          onCompressContext: isTablet ? onCompressContext : null,
+          backgroundImageActive: backgroundImageActive,
+          inputBackgroundOpacityLight: settings.chatInputBackgroundOpacityLight,
+          inputBackgroundOpacityDark: settings.chatInputBackgroundOpacityDark,
+        );
+      },
     );
   }
 
