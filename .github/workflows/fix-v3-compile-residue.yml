@@ -28,18 +28,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          replacements = {
-              Path('test/core/services/app_control_service_test.dart'): (
-                  "                  'temperature': 0.7,\n", ''),
-              Path('lib/features/assistant/pages/assistant_settings_edit_page.dart'): (
-                  '名称、模型、温度、上下文和搜索记忆开关',
-                  '名称、模型、上下文和搜索记忆开关'),
-          }
-          for path, (old, new) in replacements.items():
-              text = path.read_text()
-              if old not in text:
-                  raise SystemExit(f'expected removable temperature reference missing: {path}')
-              path.write_text(text.replace(old, new, 1))
+          path = Path('test/core/services/app_control_service_test.dart')
+          old = "                  'temperature': 0.7,\n"
+          text = path.read_text()
+          if old not in text:
+              raise SystemExit('expected removable temperature test field missing')
+          path.write_text(text.replace(old, '', 1))
           PY
           echo '=== remaining temperature references (informational) ==='
           grep -RIn --exclude='*.g.dart' -i 'temperature' lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant || true
