@@ -40,7 +40,8 @@ jobs:
               raise SystemExit('assistant fixture replacement count changed')
           path.write_text(text.replace(old, new, 1))
           PY
-          if grep -RIn --exclude='*.g.dart' -E 'temperature:|clearTemperature|a\.temperature|assistant\?\.temperature' lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant; then exit 1; fi
+          forbidden='(^|[^A-Za-z0-9_."'"'"'])temperature[[:space:]]*:'
+          if grep -RIn --exclude='*.g.dart' -E "$forbidden|clearTemperature|a\.temperature|assistant\?\.temperature|S3BackupProvider|S3Config|s3Config|setS3Config|webDavConfig|setWebDavConfig|testWebdav|backupToWebDav|listBackupFiles|restoreFromWebDav|deleteWebDavBackupFile|SponsorPage" lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant; then exit 1; fi
           rm -f tools/fix_v3_compile_residue.py
           git add -A
           git commit -m "fix: remove desktop assistant temperature residue"
