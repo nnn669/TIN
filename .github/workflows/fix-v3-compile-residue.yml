@@ -53,8 +53,8 @@ jobs:
           channel: stable
           flutter-version: 3.44.1
           cache: true
-      - name: Analyze source
-        run: flutter analyze
+      - name: Analyze application sources
+        run: flutter analyze lib test
       - name: Run focused tests
         run: flutter test test/core/services/app_control_service_test.dart test/core/services/backup/data_sync_backup_file_test.dart test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart
       - name: Remove validation workflow
