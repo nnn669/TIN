@@ -1,0 +1,15 @@
+name: Temporary background inspection
+
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print focused call sites
+        shell: bash
+        run: |
+          grep -RIn --exclude-dir=.git --exclude-dir=build --exclude='*.g.dart' -E 'background|Background|ImagePicker|imageCropper|BoxFit\.(cover|contain)|WebDav|S3Config|backupPageWebDav|backupPageS3' lib/features lib/core/providers lib/core/models lib/core/services | head -1200
