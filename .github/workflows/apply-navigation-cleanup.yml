@@ -1,7 +1,11 @@
 name: Apply navigation cleanup
 
-on:
-  workflow_dispatch:
+'on':
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-navigation-cleanup.yml
+  workflow_dispatch: {}
 
 permissions:
   contents: write
