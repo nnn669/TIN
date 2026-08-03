@@ -14,7 +14,7 @@ android {
         applicationId = "com.psyche.tin"
         minSdk = 26
         targetSdk = 36
-        versionCode = (project.findProperty("tinVersionCode") as String?)?.toIntOrNull() ?: 9023
+        versionCode = (project.findProperty("tinVersionCode") as String?)?.toIntOrNull() ?: 9110
         versionName = (project.findProperty("tinVersionName") as String?)?.takeIf { it.isNotBlank() } ?: "1.1.23"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
