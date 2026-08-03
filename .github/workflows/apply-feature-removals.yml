@@ -13,9 +13,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/remove-temperature-remote-backups-contain-background-v3
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
       - name: Apply guarded source changes
         shell: bash
         run: |
@@ -28,43 +25,74 @@ jobs:
 
           root = Path('.')
 
-          def require(path):
+          def file(path):
               p = root / path
               if not p.exists():
-                  raise RuntimeError(f'missing required file: {path}')
+                  raise RuntimeError(f'missing file: {path}')
               return p
 
           def replace_once(path, old, new):
-              p = require(path)
+              p = file(path)
               text = p.read_text()
               count = text.count(old)
               if count != 1:
-                  raise RuntimeError(f'{path}: expected 1 match, got {count}: {old[:80]!r}')
+                  raise RuntimeError(f'{path}: expected 1 match, got {count}: {old[:100]!r}')
               p.write_text(text.replace(old, new, 1))
 
           def replace_count(path, old, new, expected):
-              p = require(path)
+              p = file(path)
               text = p.read_text()
               count = text.count(old)
               if count != expected:
-                  raise RuntimeError(f'{path}: expected {expected} matches, got {count}: {old[:80]!r}')
+                  raise RuntimeError(f'{path}: expected {expected} matches, got {count}: {old[:100]!r}')
               p.write_text(text.replace(old, new))
 
-          def regex_once(path, pattern, replacement, flags=re.S):
-              p = require(path)
+          def regex_once(path, pattern, replacement):
+              p = file(path)
               text = p.read_text()
-              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
               if count != 1:
-                  raise RuntimeError(f'{path}: expected one regex match, got {count}: {pattern[:100]!r}')
+                  raise RuntimeError(f'{path}: expected one regex match, got {count}: {pattern[:120]!r}')
               p.write_text(updated)
 
-          # Remove temporary inspection and one-shot workflow files from the final branch.
-          for name in ('temporary-feature-inspection.yml', 'temporary-background-inspection.yml', 'apply-feature-removals.yml'):
+          def remove_method(path, marker):
+              p = file(path)
+              lines = p.read_text().splitlines(keepends=True)
+              starts = [i for i, line in enumerate(lines) if marker in line]
+              if len(starts) != 1:
+                  raise RuntimeError(f'{path}: expected one method marker {marker!r}, got {len(starts)}')
+              start = starts[0]
+              depth = 0
+              seen_brace = False
+              end = None
+              for i in range(start, len(lines)):
+                  line = lines[i]
+                  depth += line.count('{') - line.count('}')
+                  if '{' in line:
+                      seen_brace = True
+                  if seen_brace and depth == 0:
+                      end = i
+                      break
+              if end is None:
+                  raise RuntimeError(f'{path}: unmatched braces for {marker!r}')
+              del lines[start:end + 1]
+              p.write_text(''.join(lines))
+
+          def remove_between_lines(path, start_marker, end_marker):
+              p = file(path)
+              lines = p.read_text().splitlines(keepends=True)
+              starts = [i for i, line in enumerate(lines) if start_marker in line]
+              ends = [i for i, line in enumerate(lines) if end_marker in line]
+              if len(starts) != 1 or len(ends) != 1 or starts[0] >= ends[0]:
+                  raise RuntimeError(f'{path}: invalid block boundaries {start_marker!r} -> {end_marker!r}')
+              del lines[starts[0]:ends[0]]
+              p.write_text(''.join(lines))
+
+          for name in ('temporary-feature-inspection.yml', 'temporary-background-inspection.yml'):
               p = root / '.github' / 'workflows' / name
-              if p.exists() and name != 'apply-feature-removals.yml':
+              if p.exists():
                   p.unlink()
 
-          # Remove assistant-level temperature from the model contract. Old JSON values remain ignored by fromJson.
           replace_once('lib/core/models/assistant.dart', '  final double? temperature; // null to disable; else 0.0 - 2.0\n', '')
           replace_once('lib/core/models/assistant.dart', '    this.temperature,\n', '')
           replace_once('lib/core/models/assistant.dart', '    double? temperature,\n', '')
@@ -72,117 +100,38 @@ jobs:
           replace_once('lib/core/models/assistant.dart', '      temperature: clearTemperature ? null : (temperature ?? this.temperature),\n', '')
           replace_once('lib/core/models/assistant.dart', "    'temperature': temperature,\n", '')
           replace_once('lib/core/models/assistant.dart', "      temperature: (json['temperature'] as num?)?.toDouble(),\n", '')
-
-          # Remove default assistant temperature values.
           replace_count('lib/core/providers/assistant_provider.dart', '    temperature: 0.6,\n', '', 3)
 
-          # Remove the complete temperature control from the assistant editor.
-          regex_once(
-              'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart',
-              r'\n              // Temperature\n              _iosNavRow\(.*?\n              // Top P',
-              '\n              // Top P',
-          )
-          regex_once(
-              'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart',
-              r'\n  Future<void> _showTemperatureSheet\(.*?\n  Future<void> _showTopPSheet',
-              '\n  Future<void> _showTopPSheet',
-          )
-
-          # Remove gateway description and mutation support for the deleted assistant field.
-          replace_once(
-              'lib/core/services/app_control/app_control_service.dart',
-              'context size, temperature, max tokens, or 神经权能网关 permission.',
-              'context size, max tokens, or 神经权能网关 permission.',
-          )
-          regex_once(
-              'lib/core/services/app_control/app_control_service.dart',
-              r"\n    if \(patch\.containsKey\('temperature'\)\) \{.*?\n    \}\n    if \(patch\.containsKey\('top_p'\)\)",
-              "\n    if (patch.containsKey('top_p'))",
-          )
-
-          # Stop passing assistant temperature into generation. Provider protocol temperature remains supported.
+          regex_once('lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart', r'\n              // Temperature\n              _iosNavRow\(.*?\n              // Top P', '\n              // Top P')
+          regex_once('lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart', r'\n  Future<void> _showTemperatureSheet\(.*?\n  Future<void> _showTopPSheet', '\n  Future<void> _showTopPSheet')
+          replace_once('lib/core/services/app_control/app_control_service.dart', 'context size, temperature, max tokens, or 神经权能网关 permission.', 'context size, max tokens, or 神经权能网关 permission.')
+          regex_once('lib/core/services/app_control/app_control_service.dart', r"\n    if \(patch\.containsKey\('temperature'\)\) \{.*?\n    \}\n    if \(patch\.containsKey\('top_p'\)\)", "\n    if (patch.containsKey('top_p'))")
           replace_once('lib/features/home/controllers/chat_actions.dart', '        temperature: assistant?.temperature,\n', '')
 
-          # Importers may read old backups, but no longer create the removed field.
           replace_once('lib/core/services/backup/chatbox_importer.dart', "      final temperature = (sessionSettings['temperature'] as num?)?.toDouble();\n", '')
           replace_once('lib/core/services/backup/chatbox_importer.dart', "        'temperature': temperature,\n", '')
-          regex_once(
-              'lib/core/services/backup/chatbox_importer.dart',
-              r"\n        if \(assistantJson\['temperature'\] != null\) \{\n          local\['temperature'\] = assistantJson\['temperature'\];\n        \}",
-              '',
-          )
+          regex_once('lib/core/services/backup/chatbox_importer.dart', r"\n        if \(assistantJson\['temperature'\] != null\) \{\n          local\['temperature'\] = assistantJson\['temperature'\];\n        \}", '')
           replace_once('lib/core/services/backup/cherry_importer.dart', "      final temperature = (settings?['temperature'] as num?)?.toDouble();\n", '')
           replace_once('lib/core/services/backup/cherry_importer.dart', "        'temperature': temperature,\n", '')
+          replace_once('test/core/services/app_control_service_test.dart', '    expect(updated.temperature, 0.7);\n', '')
 
-          # Keep provider/API temperature tests intact; update only tests that construct Assistant objects.
-          for p in (root / 'test').rglob('*.dart'):
-              text = p.read_text()
-              if 'temperature:' in text and ('Assistant(' in text or 'copyWith(' in text):
-                  updated, count = re.subn(r'^\s*temperature: [^,]+,\n', '', text, flags=re.M)
-                  if count:
-                      p.write_text(updated)
-
-          # Show the selected background image without cropping on mobile, home, and desktop layers.
-          for path in (
-              'lib/features/home/pages/home_page.dart',
-              'lib/features/home/pages/home_mobile_layout.dart',
-              'lib/features/home/pages/home_desktop_layout.dart',
-          ):
-              p = require(path)
+          for path in ('lib/features/home/pages/home_page.dart', 'lib/features/home/pages/home_mobile_layout.dart', 'lib/features/home/pages/home_desktop_layout.dart'):
+              p = file(path)
               text = p.read_text()
               if 'BoxFit.cover' not in text:
                   raise RuntimeError(f'{path}: no background fit call found')
               p.write_text(text.replace('BoxFit.cover', 'BoxFit.contain'))
 
-          # Remove remote backup implementations; local ZIP export/import still uses WebDavConfig include flags.
           for path in ('lib/core/providers/s3_backup_provider.dart', 'lib/core/services/backup/s3_client.dart'):
-              p = root / path
-              if not p.exists():
-                  raise RuntimeError(f'missing remote backup file: {path}')
-              p.unlink()
-
-          regex_once(
-              'lib/core/models/backup.dart',
-              r'\nclass S3Config \{.*?\n\}\n\nclass BackupFileItem',
-              '\nclass BackupFileItem',
-          )
-
-          # DataSync keeps local archive preparation/restoration, but no WebDAV network operations.
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  // ===== WebDAV helpers =====.*?\n  // ===== Public APIs =====',
-              '\n  // ===== Public APIs =====',
-          )
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  Future<void> testWebdav\(.*?\n  Future<File> prepareBackupFile',
-              '\n  Future<File> prepareBackupFile',
-          )
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  Future<void> backupToWebDav\(.*?\n  Future<File> exportToFile',
-              '\n  Future<File> exportToFile',
-          )
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  Future<List<BackupFileItem>> listBackupFiles\(.*?\n  Future<void> restoreFromWebDav',
-              '\n  Future<void> restoreFromWebDav',
-          )
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  Future<void> restoreFromWebDav\(.*?\n  Future<void> deleteWebDavBackupFile',
-              '\n  Future<void> deleteWebDavBackupFile',
-          )
-          regex_once(
-              'lib/core/services/backup/data_sync.dart',
-              r'\n  Future<void> deleteWebDavBackupFile\(.*?\n  Future<File> exportToFile',
-              '\n  Future<File> exportToFile',
-          )
+              file(path).unlink()
+          remove_method('lib/core/models/backup.dart', 'class S3Config {')
+          remove_between_lines('lib/core/services/backup/data_sync.dart', '  // ===== WebDAV helpers =====', '  // ===== Public APIs =====')
+          for marker in ('  Future<void> testWebdav(', '  Future<void> backupToWebDav(', '  Future<List<BackupFileItem>> listBackupFiles(', '  Future<void> restoreFromWebDav(', '  Future<void> deleteWebDavBackupFile('):
+              remove_method('lib/core/services/backup/data_sync.dart', marker)
           replace_once('lib/core/services/backup/data_sync.dart', "import 'package:http/http.dart' as http;\n", '')
           replace_once('lib/core/services/backup/data_sync.dart', "import 'package:xml/xml.dart';\n", '')
 
-          # Simplify the provider to local archive operations only.
-          require('lib/core/providers/backup_provider.dart').write_text("""import 'dart:io';
+          file('lib/core/providers/backup_provider.dart').write_text("""import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -229,8 +178,12 @@ class BackupProvider extends ChangeNotifier {
 }
 """)
 
-          # Replace the remote-heavy page with local ZIP plus existing third-party import entry points.
-          require('lib/features/backup/pages/backup_page.dart').write_text("""import 'dart:io';
+          replace_once('lib/core/providers/settings_provider.dart', "import '../models/backup.dart';\n", '')
+          replace_once('lib/core/providers/settings_provider.dart', "  static const String _webDavConfigKey = 'webdav_config_v1';\n  static const String _s3ConfigKey = 's3_config_v1';\n", '')
+          remove_between_lines('lib/core/providers/settings_provider.dart', '  // ===== Backup & WebDAV settings =====', '  Future<void> _initSearchConnectivityTests')
+
+          # Keep local ZIP and third-party import entry points, remove remote backup UI.
+          file('lib/features/backup/pages/backup_page.dart').write_text("""import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -260,31 +213,19 @@ class BackupPage extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: Text(l10n.backupPageSelectImportMode),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(RestoreMode.merge),
-            child: Text(l10n.backupPageMergeMode),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(RestoreMode.overwrite),
-            child: Text(l10n.backupPageOverwriteMode),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(RestoreMode.merge), child: Text(l10n.backupPageMergeMode)),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(RestoreMode.overwrite), child: Text(l10n.backupPageOverwriteMode)),
         ],
       ),
     );
   }
 
   Future<T> _loading<T>(BuildContext context, Future<T> Function() task) async {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const LoadingDialogCard(),
-    );
+    showDialog<void>(context: context, barrierDismissible: false, builder: (_) => const LoadingDialogCard());
     try {
       return await task();
     } finally {
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
+      if (context.mounted && Navigator.canPop(context)) Navigator.of(context, rootNavigator: true).pop();
     }
   }
 
@@ -293,38 +234,22 @@ class BackupPage extends StatelessWidget {
     final file = await _loading(context, vm.exportToFile);
     try {
       if (!context.mounted) return;
-      final isMobile = Platform.isAndroid || Platform.isIOS;
-      if (isMobile) {
-        final saved = await NativeFileSave.saveFileFromPath(
-          sourcePath: file.path,
-          fileName: file.uri.pathSegments.last,
-        );
-        if (saved && context.mounted) {
-          await context.read<BackupReminderProvider>().recordBackupCompleted();
-        }
+      if (Platform.isAndroid || Platform.isIOS) {
+        final saved = await NativeFileSave.saveFileFromPath(sourcePath: file.path, fileName: file.uri.pathSegments.last);
+        if (saved && context.mounted) await context.read<BackupReminderProvider>().recordBackupCompleted();
       } else {
-        final path = await FilePicker.platform.saveFile(
-          dialogTitle: l10n.backupPageExportToFile,
-          fileName: file.uri.pathSegments.last,
-          type: FileType.custom,
-          allowedExtensions: const ['zip'],
-        );
+        final path = await FilePicker.platform.saveFile(dialogTitle: l10n.backupPageExportToFile, fileName: file.uri.pathSegments.last, type: FileType.custom, allowedExtensions: const ['zip']);
         if (path != null) await file.copy(path);
       }
     } catch (e) {
-      if (context.mounted) {
-        showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
-      }
+      if (context.mounted) showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
     } finally {
       await DataSync.cleanupTemporaryBackupFile(file);
     }
   }
 
   Future<void> _importLocal(BuildContext context, BackupProvider vm) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['zip'],
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['zip']);
     final path = result?.files.single.path;
     if (path == null || !context.mounted) return;
     final mode = await _chooseMode(context);
@@ -333,96 +258,37 @@ class BackupPage extends StatelessWidget {
       await _loading(context, () => vm.restoreFromLocalFile(File(path), mode: mode));
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.backupPageRestartRequired),
-          content: Text(l10n.backupPageRestartContent),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                PlatformUtils.restartApp();
-              },
-              child: Text(l10n.backupPageOK),
-            ),
-          ],
-        ),
-      );
+      await showDialog<void>(context: context, builder: (ctx) => AlertDialog(title: Text(l10n.backupPageRestartRequired), content: Text(l10n.backupPageRestartContent), actions: [TextButton(onPressed: () { Navigator.of(ctx).pop(); PlatformUtils.restartApp(); }, child: Text(l10n.backupPageOK))]));
     } catch (e) {
-      if (context.mounted) {
-        showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
-      }
+      if (context.mounted) showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
     }
   }
 
   Future<void> _importCherry(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['zip', 'bak'],
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['zip', 'bak']);
     final path = result?.files.single.path;
     if (path == null || !context.mounted) return;
     final mode = await _chooseMode(context);
     if (mode == null || !context.mounted) return;
     try {
-      final settings = context.read<SettingsProvider>();
-      final chatService = context.read<ChatService>();
-      final res = await _loading(
-        context,
-        () => CherryImporter.importFromCherryStudio(
-          file: File(path),
-          mode: mode,
-          settings: settings,
-          chatService: chatService,
-        ),
-      );
-      if (context.mounted) {
-        showAppSnackBar(
-          context,
-          message: '${AppLocalizations.of(context)!.backupPageImportFromCherryStudio}: ${res.assistants}',
-          type: NotificationType.success,
-        );
-      }
+      final res = await _loading(context, () => CherryImporter.importFromCherryStudio(file: File(path), mode: mode, settings: context.read<SettingsProvider>(), chatService: context.read<ChatService>()));
+      if (context.mounted) showAppSnackBar(context, message: '${AppLocalizations.of(context)!.backupPageImportFromCherryStudio}: ${res.assistants}', type: NotificationType.success);
     } catch (e) {
-      if (context.mounted) {
-        showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
-      }
+      if (context.mounted) showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
     }
   }
 
   Future<void> _importChatbox(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['json']);
     final path = result?.files.single.path;
     if (path == null || !context.mounted) return;
     final mode = await _chooseMode(context);
     if (mode == null || !context.mounted) return;
     try {
-      final settings = context.read<SettingsProvider>();
-      final chatService = context.read<ChatService>();
-      final res = await _loading(
-        context,
-        () => ChatboxImporter.importFromChatbox(
-          file: File(path),
-          mode: mode,
-          settings: settings,
-          chatService: chatService,
-        ),
-      );
-      if (context.mounted) {
-        showAppSnackBar(
-          context,
-          message: '${AppLocalizations.of(context)!.backupPageImportFromChatbox}: ${res.assistants}',
-          type: NotificationType.success,
-        );
-      }
+      final res = await _loading(context, () => ChatboxImporter.importFromChatbox(file: File(path), mode: mode, settings: context.read<SettingsProvider>(), chatService: context.read<ChatService>()));
+      if (context.mounted) showAppSnackBar(context, message: '${AppLocalizations.of(context)!.backupPageImportFromChatbox}: ${res.assistants}', type: NotificationType.success);
     } catch (e) {
-      if (context.mounted) {
-        showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
-      }
+      if (context.mounted) showAppSnackBar(context, message: e.toString(), type: NotificationType.error);
     }
   }
 
@@ -431,70 +297,31 @@ class BackupPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return ChangeNotifierProvider(
       create: (_) => BackupProvider(chatService: context.read<ChatService>()),
-      child: Builder(
-        builder: (context) {
-          final vm = context.watch<BackupProvider>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(l10n.backupPageTitle),
-              leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
-            ),
-            body: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.file_upload_outlined),
-                  title: Text(l10n.backupPageExportToFile),
-                  onTap: vm.busy ? null : () => _export(context, vm),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.file_download_outlined),
-                  title: Text(l10n.backupPageImportBackupFile),
-                  onTap: vm.busy ? null : () => _importLocal(context, vm),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.archive_outlined),
-                  title: Text(l10n.backupPageImportFromCherryStudio),
-                  onTap: vm.busy ? null : () => _importCherry(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.data_object_outlined),
-                  title: Text(l10n.backupPageImportFromChatbox),
-                  onTap: vm.busy ? null : () => _importChatbox(context),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      child: Builder(builder: (context) {
+        final vm = context.watch<BackupProvider>();
+        return Scaffold(
+          appBar: AppBar(title: Text(l10n.backupPageTitle), leading: BackButton(onPressed: () => Navigator.of(context).maybePop())),
+          body: ListView(padding: const EdgeInsets.all(16), children: [
+            ListTile(leading: const Icon(Icons.file_upload_outlined), title: Text(l10n.backupPageExportToFile), onTap: vm.busy ? null : () => _export(context, vm)),
+            ListTile(leading: const Icon(Icons.file_download_outlined), title: Text(l10n.backupPageImportBackupFile), onTap: vm.busy ? null : () => _importLocal(context, vm)),
+            ListTile(leading: const Icon(Icons.archive_outlined), title: Text(l10n.backupPageImportFromCherryStudio), onTap: vm.busy ? null : () => _importCherry(context)),
+            ListTile(leading: const Icon(Icons.data_object_outlined), title: Text(l10n.backupPageImportFromChatbox), onTap: vm.busy ? null : () => _importChatbox(context)),
+          ]),
+        );
+      }),
     );
   }
 }
 """)
 
-          # Remove remote backup persistence and accessors from SettingsProvider.
-          replace_once('lib/core/providers/settings_provider.dart', "import '../models/backup.dart';\n", '')
-          replace_once('lib/core/providers/settings_provider.dart', "  static const String _webDavConfigKey = 'webdav_config_v1';\n  static const String _s3ConfigKey = 's3_config_v1';\n", '')
-          regex_once(
-              'lib/core/providers/settings_provider.dart',
-              r'\n  // ===== Backup & WebDAV settings =====.*?\n  Future<void> _initSearchConnectivityTests',
-              '\n  Future<void> _initSearchConnectivityTests',
-          )
-
-          # Remove stale source references that would keep deleted APIs reachable.
           stale = []
-          for p in (root / 'lib').rglob('*.dart'):
+          for p in list((root / 'lib').rglob('*.dart')) + list((root / 'test').rglob('*.dart')):
               text = p.read_text()
               for needle in ('S3BackupProvider', 'S3Config', 's3Config', 'setS3Config', 'webDavConfig', 'setWebDavConfig', 'testWebdav', 'backupToWebDav', 'listBackupFiles', 'restoreFromWebDav', 'deleteWebDavBackupFile', 'assistant?.temperature', 'a.temperature', 'clearTemperature', 'temperature: assistant'):
                   if needle in text:
                       stale.append(f'{p}:{needle}')
           if stale:
               raise RuntimeError('stale references found:\n' + '\n'.join(stale))
-
-          # Ensure the provider/API temperature parameter was not accidentally removed.
-          if 'temperature' not in (root / 'lib/core/services/api').read_text() if False else False:
-              pass
-
           print('guarded feature migration completed')
           PY
           git add -A
