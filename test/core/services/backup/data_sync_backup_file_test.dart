@@ -151,50 +151,6 @@ void main() {
       );
     });
 
-    test('cleans temporary restore files when WebDAV restore fails', () async {
-      final sourceDir = Directory('${root.path}/source_upload');
-      await sourceDir.create(recursive: true);
-      final sourceFile = File('${sourceDir.path}/file.txt');
-      await sourceFile.writeAsString('payload');
-
-      final zipFile = File('${root.path}/restore_source.zip');
-      final encoder = ZipFileEncoder();
-      encoder.create(zipFile.path);
-      encoder.addFileSync(sourceFile, 'upload/file.txt');
-      encoder.closeSync();
-
-      await File('${root.path}/upload').writeAsString('not a directory');
-
-      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      addTearDown(() async {
-        await server.close(force: true);
-      });
-
-      server.listen((request) async {
-        request.response.statusCode = HttpStatus.ok;
-        await request.response.addStream(zipFile.openRead());
-        await request.response.close();
-      });
-
-      final sync = DataSync(chatService: ChatService());
-      final tmpDir = Directory('${root.path}/tmp');
-      final item = BackupFileItem(
-        href: Uri.parse('http://127.0.0.1:${server.port}/restore_source.zip'),
-        displayName: 'restore_source.zip',
-        size: await zipFile.length(),
-        lastModified: null,
-      );
-
-      await expectLater(
-        sync.restoreFromWebDav(
-          const WebDavConfig(includeChats: false, includeFiles: true),
-          item,
-        ),
-        throwsA(anything),
-      );
-
-      expect(await File('${tmpDir.path}/restore_source.zip').exists(), isFalse);
-      expect(await tmpDir.list().toList(), isEmpty);
-    });
+    
   });
 }

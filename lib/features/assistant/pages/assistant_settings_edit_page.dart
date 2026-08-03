@@ -2000,30 +2000,23 @@ class _DesktopAssistantBasicPaneState
                       l10n.assistantEditTemperatureTitle,
                       l10n.assistantEditTemperatureDescription,
                     ),
-                    value: a.temperature != null,
                     onChanged: (v) async {
                       if (v) {
                         await context.read<AssistantProvider>().updateAssistant(
-                          a.copyWith(temperature: (a.temperature ?? 0.6)),
                         );
                       } else {
                         await context.read<AssistantProvider>().updateAssistant(
-                          a.copyWith(clearTemperature: true),
                         );
                       }
                     },
                   ),
                   const SizedBox(height: 8),
                   IgnorePointer(
-                    ignoring: a.temperature == null,
                     child: Opacity(
-                      opacity: a.temperature == null ? 0.5 : 1.0,
                       child: _SliderTileNew(
-                        value: (a.temperature ?? 0.6).clamp(0.0, 2.0),
                         min: 0.0,
                         max: 2.0,
                         divisions: 40,
-                        label: ((a.temperature ?? 0.6).clamp(
                           0.0,
                           2.0,
                         )).toStringAsFixed(2),
