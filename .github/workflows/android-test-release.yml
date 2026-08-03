@@ -15,6 +15,11 @@ on:
         description: Optional version name override
         required: false
         type: string
+      check_only:
+        description: Run native tests and Debug build without publishing
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -31,7 +36,7 @@ env:
 jobs:
   native-android-check:
     name: Native Android check
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.check_only == true)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -60,7 +65,7 @@ jobs:
 
   android-release:
     name: Signed native Android prerelease
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && !(github.event_name == 'workflow_dispatch' && inputs.check_only == true)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
