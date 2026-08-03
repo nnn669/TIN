@@ -1,0 +1,274 @@
+name: Remove assistant sampling controls
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remove-assistant-sampling-controls.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: remove-assistant-sampling-controls
+  cancel-in-progress: false
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - name: Remove Temperature and Top P from assistant feature
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
+
+          def remove_braced(text, signature, label):
+              start = text.find(signature)
+              if start < 0:
+                  raise SystemExit(f'{label}: signature not found')
+              brace = text.find('{', start)
+              if brace < 0:
+                  raise SystemExit(f'{label}: opening brace not found')
+              depth = 0
+              quote = None
+              escape = False
+              i = brace
+              while i < len(text):
+                  c = text[i]
+                  if quote:
+                      if escape:
+                          escape = False
+                      elif c == '\\':
+                          escape = True
+                      elif c == quote:
+                          quote = None
+                  else:
+                      if c in ("'", '"'):
+                          quote = c
+                      elif c == '{':
+                          depth += 1
+                      elif c == '}':
+                          depth -= 1
+                          if depth == 0:
+                              end = i + 1
+                              while end < len(text) and text[end] in ' \t':
+                                  end += 1
+                              if end < len(text) and text[end] == '\r':
+                                  end += 1
+                              if end < len(text) and text[end] == '\n':
+                                  end += 1
+                              if end < len(text) and text[end] == '\n':
+                                  end += 1
+                              return text[:start] + text[end:]
+                  i += 1
+              raise SystemExit(f'{label}: closing brace not found')
+
+          # Assistant domain model: legacy JSON keys are intentionally ignored on read.
+          path = 'lib/core/models/assistant.dart'
+          s = read(path)
+          for old in [
+              '  final double? temperature; // null to disable; else 0.0 - 2.0\n',
+              '  final double? topP; // null to disable; else 0.0 - 1.0\n',
+              '    this.temperature,\n',
+              '    this.topP,\n',
+              '    double? temperature,\n',
+              '    double? topP,\n',
+              '    bool clearTemperature = false,\n',
+              '    bool clearTopP = false,\n',
+              '      temperature: clearTemperature ? null : (temperature ?? this.temperature),\n',
+              '      topP: clearTopP ? null : (topP ?? this.topP),\n',
+              "    'temperature': temperature,\n",
+              "    'topP': topP,\n",
+              "      temperature: (json['temperature'] as num?)?.toDouble(),\n",
+              "      topP: (json['topP'] as num?)?.toDouble(),\n",
+          ]:
+              if old not in s:
+                  raise SystemExit(f'assistant.dart missing: {old!r}')
+              s = s.replace(old, '', 1)
+          write(path, s)
+
+          # Defaults and new assistants no longer seed sampling overrides.
+          path = 'lib/core/providers/assistant_provider.dart'
+          s = read(path)
+          for old in ['    temperature: 0.6,\n', '    topP: null,\n']:
+              count = s.count(old)
+              if count != 3:
+                  raise SystemExit(f'assistant_provider {old.strip()}: expected 3, found {count}')
+              s = s.replace(old, '')
+          write(path, s)
+
+          # Remove both rows and their sheets from the shared mobile/desktop basic tab.
+          path = 'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart'
+          s = read(path)
+          start = s.find('              // Temperature\n')
+          end = s.find('              // Context messages\n', start)
+          if start < 0 or end < 0:
+              raise SystemExit('sampling settings rows not found')
+          s = s[:start] + s[end:]
+          s = remove_braced(s, '  Future<void> _showTemperatureSheet(', 'temperature sheet')
+          s = remove_braced(s, '  Future<void> _showTopPSheet(', 'top p sheet')
+          s = s.replace("    subtitle: '名称、模型、温度、上下文和搜索记忆开关',", "    subtitle: '名称、模型、上下文和搜索记忆开关',")
+          write(path, s)
+
+          # The assistant request path no longer forwards either override.
+          path = 'lib/features/home/controllers/chat_actions.dart'
+          s = read(path)
+          for old in ['        temperature: assistant?.temperature,\n', '        topP: assistant?.topP,\n']:
+              s = replace_once(s, old, '', f'chat_actions {old.strip()}')
+          write(path, s)
+
+          # Importers preserve all other assistant data but deliberately discard sampling controls.
+          path = 'lib/core/services/backup/chatbox_importer.dart'
+          s = read(path)
+          for old in [
+              "      final temperature = (sessionSettings['temperature'] as num?)?.toDouble();\n",
+              "      final topP = (sessionSettings['topP'] as num?)?.toDouble();\n",
+              "        'temperature': temperature,\n",
+              "        'topP': topP,\n",
+          ]:
+              s = replace_once(s, old, '', f'chatbox {old.strip()}')
+          for field in ('temperature', 'topP'):
+              block = f"        if (assistantJson['{field}'] != null) {{\n          local['{field}'] = assistantJson['{field}'];\n        }}\n"
+              s = replace_once(s, block, '', f'chatbox merge {field}')
+          write(path, s)
+
+          path = 'lib/core/services/backup/cherry_importer.dart'
+          s = read(path)
+          for old in [
+              "      final temperature = (settings?['temperature'] as num?)?.toDouble();\n",
+              "      final topP = (settings?['topP'] as num?)?.toDouble();\n",
+              "        'temperature': temperature,\n",
+              "        'topP': topP,\n",
+          ]:
+              s = replace_once(s, old, '', f'cherry {old.strip()}')
+          write(path, s)
+
+          # Remove sampling controls from 神经权能网关 assistant settings surface.
+          path = 'lib/core/services/app_control/app_control_service.dart'
+          s = read(path)
+          s = replace_once(
+              s,
+              'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, temperature, max tokens, or 神经权能网关 permission.',
+              'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, max tokens, or 神经权能网关 permission.',
+              'app control capability description',
+          )
+          for key, clear, setter, maximum in [
+              ('temperature', 'clearTemperature', 'temperature', '2.0'),
+              ('top_p', 'clearTopP', 'topP', '1.0'),
+          ]:
+              block = f"    if (patch.containsKey('{key}')) {{\n      final value = patch['{key}'];\n      next = value == null || value.toString().trim().isEmpty\n          ? next.copyWith({clear}: true)\n          : next.copyWith({setter}: _doubleFrom(value).clamp(0.0, {maximum}));\n    }}\n"
+              s = replace_once(s, block, '', f'app control {key}')
+          write(path, s)
+
+          # Tests compile against the reduced assistant model.
+          path = 'test/core/services/app_control_service_test.dart'
+          s = read(path)
+          s = replace_once(s, "                  'temperature': 0.7,\n", '', 'app control test temperature input')
+          s = replace_once(s, "    expect(updated.temperature, 0.7);\n", '', 'app control test temperature assertion')
+          write(path, s)
+
+          path = 'test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart'
+          s = read(path)
+          s = replace_once(
+              s,
+              "      Assistant(id: _assistantId, name: 'Test Assistant', temperature: 0.6),\n",
+              "      Assistant(id: _assistantId, name: 'Test Assistant'),\n",
+              'mcp test assistant seed',
+          )
+          write(path, s)
+
+          # Regression test: stale backup fields are ignored and never serialized again.
+          write('test/core/models/assistant_sampling_controls_removed_test.dart', """import 'package:flutter_test/flutter_test.dart';
+import 'package:tin/core/models/assistant.dart';
+
+void main() {
+  test('legacy assistant sampling controls are discarded', () {
+    final assistant = Assistant.fromJson({
+      'id': 'legacy',
+      'name': 'Legacy',
+      'temperature': 0.7,
+      'topP': 0.9,
+    });
+
+    final json = assistant.toJson();
+    expect(json.containsKey('temperature'), isFalse);
+    expect(json.containsKey('topP'), isFalse);
+    expect(Assistant.fromJson(json).name, 'Legacy');
+  });
+}
+""")
+
+          # Focused residue checks. Generic provider/API sampling support remains for OCR
+          # and provider compatibility; assistant-specific ownership must be gone.
+          forbidden = {
+              'lib/core/models/assistant.dart': ['temperature', 'topP', 'clearTemperature', 'clearTopP'],
+              'lib/core/providers/assistant_provider.dart': ['temperature:', 'topP:'],
+              'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart': [
+                  'Temperature', 'Top P', '_showTemperatureSheet', '_showTopPSheet',
+                  'a.temperature', 'a.topP', 'clearTemperature', 'clearTopP',
+              ],
+              'lib/features/home/controllers/chat_actions.dart': ['assistant?.temperature', 'assistant?.topP'],
+              'lib/core/services/app_control/app_control_service.dart': [
+                  "patch.containsKey('temperature')", "patch.containsKey('top_p')",
+                  'clearTemperature', 'clearTopP',
+              ],
+          }
+          for file, needles in forbidden.items():
+              text = read(file)
+              found = [needle for needle in needles if needle in text]
+              if found:
+                  raise SystemExit(f'{file} still contains {found}')
+          PY
+
+          rm .github/workflows/remove-assistant-sampling-controls.yml
+          dart format \
+            lib/core/models/assistant.dart \
+            lib/core/providers/assistant_provider.dart \
+            lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart \
+            lib/features/home/controllers/chat_actions.dart \
+            lib/core/services/backup/chatbox_importer.dart \
+            lib/core/services/backup/cherry_importer.dart \
+            lib/core/services/app_control/app_control_service.dart \
+            test/core/services/app_control_service_test.dart \
+            test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart \
+            test/core/models/assistant_sampling_controls_removed_test.dart
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze changed code
+        run: flutter analyze lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/features/assistant/pages/assistant_settings_edit_page.dart lib/features/home/controllers/chat_actions.dart lib/core/services/backup/chatbox_importer.dart lib/core/services/backup/cherry_importer.dart lib/core/services/app_control/app_control_service.dart test/core/models/assistant_sampling_controls_removed_test.dart
+      - name: Run focused regression tests
+        run: flutter test test/core/models/assistant_sampling_controls_removed_test.dart test/core/services/app_control_service_test.dart test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart
+      - name: Commit removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'TIN automation'
+          git config user.email 'actions@github.com'
+          git add -A
+          git diff --cached --quiet && { echo 'No changes produced'; exit 1; }
+          git commit -m 'feat: remove assistant temperature and top p controls'
+          git push origin HEAD:main
