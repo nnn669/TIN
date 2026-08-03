@@ -1,88 +1,64 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
-import 'dart:async';
-import 'l10n/app_localizations.dart';
-import 'features/home/pages/home_page.dart';
-import 'desktop/desktop_home_page.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:window_manager/window_manager.dart';
-import 'desktop/desktop_window_controller.dart';
-import 'desktop/desktop_tray_controller.dart';
-// import 'package:logging/logging.dart' as logging;
-// Theme is now managed in SettingsProvider
-import 'theme/theme_factory.dart';
-import 'theme/palettes.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:dynamic_color/dynamic_color.dart';
-import 'core/providers/chat_provider.dart';
-import 'core/providers/user_provider.dart';
-import 'core/providers/settings_provider.dart';
-import 'core/providers/mcp_provider.dart';
-import 'core/providers/tts_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:system_fonts/system_fonts.dart';
+import 'package:window_manager/window_manager.dart';
+
 import 'core/providers/assistant_provider.dart';
-import 'core/providers/tag_provider.dart';
-import 'core/providers/update_provider.dart';
-import 'core/providers/quick_phrase_provider.dart';
-import 'core/providers/skill_provider.dart';
-import 'core/providers/instruction_injection_provider.dart';
-import 'core/providers/instruction_injection_group_provider.dart';
-import 'core/providers/world_book_provider.dart';
-import 'core/providers/memory_provider.dart';
 import 'core/providers/backup_provider.dart';
-import 'core/providers/s3_backup_provider.dart';
 import 'core/providers/backup_reminder_provider.dart';
+import 'core/providers/chat_provider.dart';
 import 'core/providers/hotkey_provider.dart';
+import 'core/providers/instruction_injection_group_provider.dart';
+import 'core/providers/instruction_injection_provider.dart';
+import 'core/providers/mcp_provider.dart';
+import 'core/providers/memory_provider.dart';
+import 'core/providers/quick_phrase_provider.dart';
+import 'core/providers/s3_backup_provider.dart';
+import 'core/providers/settings_provider.dart';
+import 'core/providers/skill_provider.dart';
+import 'core/providers/tag_provider.dart';
+import 'core/providers/tts_provider.dart';
+import 'core/providers/update_provider.dart';
+import 'core/providers/user_provider.dart';
+import 'core/services/android_background.dart';
 import 'core/services/chat/chat_service.dart';
-import 'core/services/mcp/mcp_tool_service.dart';
 import 'core/services/logging/flutter_logger.dart';
+import 'core/services/mcp/mcp_tool_service.dart';
+import 'core/services/notification_service.dart';
+import 'desktop/desktop_home_page.dart';
+import 'desktop/desktop_tray_controller.dart';
+import 'desktop/desktop_window_controller.dart';
+import 'features/home/pages/home_page.dart';
 import 'features/home/services/ask_user_interaction_service.dart';
 import 'features/home/services/tool_approval_service.dart';
-import 'utils/sandbox_path_resolver.dart';
+import 'l10n/app_localizations.dart';
 import 'shared/widgets/app_overlays.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:system_fonts/system_fonts.dart';
-import 'dart:io'
-    show Platform; // kept for global override usage inside provider
-import 'core/services/android_background.dart';
-import 'core/services/notification_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'theme/palettes.dart';
+import 'theme/theme_factory.dart';
+import 'utils/sandbox_path_resolver.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
     RouteObserver<ModalRoute<dynamic>>();
-bool _didCheckUpdates = false; // one-time update check flag
-bool _didEnsureAssistants = false; // ensure defaults after l10n ready
 
 Future<void> main() async {
   await runZoned(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       FlutterLogger.installGlobalHandlers();
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final enabled = prefs.getBool('flutter_log_enabled_v1') ?? false;
-        await FlutterLogger.setEnabled(enabled);
-      } catch (_) {}
-      // Trim Flutter global image cache to reduce memory pressure from large images
-      try {
-        PaintingBinding.instance.imageCache.maximumSize = 200;
-        PaintingBinding.instance.imageCache.maximumSizeBytes =
-            48 << 20; // ~48MB
-      } catch (_) {}
-      // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
+      await _restoreFlutterLogState();
+      _trimImageCache();
       await _initDesktopWindow();
-      // Avoid preloading all system fonts at launch (huge memory on desktop)
-      // Debug logging and global error handlers were enabled previously for diagnosis.
-      // They are commented out now per request to reduce log noise.
-      // FlutterError.onError = (FlutterErrorDetails details) { ... };
-      // WidgetsBinding.instance.platformDispatcher.onError = (Object error, StackTrace stack) { ... };
-      // logging.Logger.root.level = logging.Level.ALL;
-      // logging.Logger.root.onRecord.listen((rec) { ... });
-      // Cache current Documents directory to fix sandboxed absolute paths on iOS
       await SandboxPathResolver.init();
-      // Enable edge-to-edge to allow content under system bars (Android)
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      // Start app (Flutter log capture is toggleable and off by default)
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       runApp(const MyApp());
     },
     zoneSpecification: ZoneSpecification(
@@ -94,21 +70,40 @@ Future<void> main() async {
   );
 }
 
+Future<void> _restoreFlutterLogState() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await FlutterLogger.setEnabled(prefs.getBool('flutter_log_enabled_v1') ?? false);
+  } catch (_) {}
+}
+
+void _trimImageCache() {
+  try {
+    final cache = PaintingBinding.instance.imageCache;
+    cache.maximumSize = 200;
+    cache.maximumSizeBytes = 48 << 20;
+  } catch (_) {}
+}
+
 Future<void> _initDesktopWindow() async {
-  if (kIsWeb) return;
+  if (!isDesktopPlatform) return;
   try {
     if (defaultTargetPlatform == TargetPlatform.windows) {
       await windowManager.ensureInitialized();
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
-    // Initialize and show desktop window with persisted size/position
     await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
-  } catch (_) {
-    // Ignore on unsupported platforms.
-  }
+  } catch (_) {}
 }
 
-// Removed eager system font preloading to reduce memory footprint at launch.
+bool get isDesktopPlatform {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.linux;
+}
+
+bool get isAndroidPlatform => !kIsWeb && Platform.isAndroid;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -132,8 +127,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ToolApprovalService()),
         ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
         ChangeNotifierProvider(
-          create: (ctx) =>
-              AssistantProvider(chatService: ctx.read<ChatService>()),
+          create: (ctx) => AssistantProvider(chatService: ctx.read<ChatService>()),
         ),
         ChangeNotifierProvider(create: (_) => TagProvider()),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
@@ -141,13 +135,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => QuickPhraseProvider()),
         ChangeNotifierProvider(create: (_) => SkillProvider()),
         ChangeNotifierProvider(create: (_) => InstructionInjectionProvider()),
-        ChangeNotifierProvider(
-          create: (_) => InstructionInjectionGroupProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => InstructionInjectionGroupProvider()),
         ChangeNotifierProvider(create: (_) => WorldBookProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => BackupReminderProvider()),
-        // Desktop hotkeys provider
         ChangeNotifierProvider(create: (_) => HotkeyProvider()),
         ChangeNotifierProvider(
           create: (ctx) => BackupProvider(
@@ -162,308 +153,299 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ],
-      child: Builder(
-        builder: (context) {
-          final settings = context.watch<SettingsProvider>();
-          // Apply global proxy overrides when settings change
-          settings.applyGlobalProxyOverridesIfNeeded();
-          // Lazily ensure system fonts only if user selected a system family (desktop only)
-          // Load ONLY selected families to avoid huge memory from loading all system fonts.
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            try {
-              final isDesktop =
-                  !kIsWeb &&
-                  (defaultTargetPlatform == TargetPlatform.windows ||
-                      defaultTargetPlatform == TargetPlatform.macOS ||
-                      defaultTargetPlatform == TargetPlatform.linux);
-              if (!isDesktop) return;
-              // Selected system app/code fonts (not Google, not local alias)
-              final wantsAppSystem =
-                  (settings.appFontFamily?.isNotEmpty == true) &&
-                  !settings.appFontIsGoogle &&
-                  (settings.appFontLocalAlias == null ||
-                      settings.appFontLocalAlias!.isEmpty);
-              final wantsCodeSystem =
-                  (settings.codeFontFamily?.isNotEmpty == true) &&
-                  !settings.codeFontIsGoogle &&
-                  (settings.codeFontLocalAlias == null ||
-                      settings.codeFontLocalAlias!.isEmpty);
-              if (wantsAppSystem || wantsCodeSystem) {
-                final sf = SystemFonts();
-                if (wantsAppSystem) {
-                  final fam = settings.appFontFamily!;
-                  try {
-                    await sf.loadFont(fam);
-                  } catch (_) {}
-                }
-                if (wantsCodeSystem) {
-                  final fam = settings.codeFontFamily!;
-                  try {
-                    if (fam != settings.appFontFamily) await sf.loadFont(fam);
-                  } catch (_) {}
-                }
-              }
-            } catch (_) {}
-          });
-          // One-time app update check after first build
-          if (settings.showAppUpdates && !_didCheckUpdates) {
-            _didCheckUpdates = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              try {
-                context.read<UpdateProvider>().checkForUpdates();
-              } catch (_) {}
-            });
-          }
-          return DynamicColorBuilder(
-            builder: (lightDynamic, darkDynamic) {
-              // if (lightDynamic != null) {
-              //   debugPrint('[DynamicColor] Light dynamic detected. primary=${lightDynamic.primary.value.toRadixString(16)} surface=${lightDynamic.surface.value.toRadixString(16)}');
-              // } else {
-              //   debugPrint('[DynamicColor] Light dynamic not available');
-              // }
-              // if (darkDynamic != null) {
-              //   debugPrint('[DynamicColor] Dark dynamic detected. primary=${darkDynamic.primary.value.toRadixString(16)} surface=${darkDynamic.surface.value.toRadixString(16)}');
-              // } else {
-              //   debugPrint('[DynamicColor] Dark dynamic not available');
-              // }
-              final isAndroid =
-                  Theme.of(context).platform == TargetPlatform.android;
-              // Update dynamic color capability for settings UI (avoid notify during build)
-              final dynSupported =
-                  isAndroid && (lightDynamic != null || darkDynamic != null);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                try {
-                  settings.setDynamicColorSupported(dynSupported);
-                } catch (_) {}
-              });
-
-              // Initialize desktop hotkeys on supported platforms
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  final isDesktop =
-                      !kIsWeb &&
-                      (defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.linux);
-                  if (isDesktop) {
-                    await context.read<HotkeyProvider>().initialize();
-                  }
-                } catch (_) {}
-              });
-
-              // Android-only: ensure background execution matches setting and prepare notifications if needed
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  if (Platform.isAndroid) {
-                    final mode = settings.androidBackgroundChatMode;
-                    if (mode != AndroidBackgroundChatMode.off) {
-                      final l10n = AppLocalizations.of(context);
-                      if (l10n == null) return;
-                      // Enable only if currently disabled to avoid duplicate ROM prompts
-                      try {
-                        final already =
-                            await AndroidBackgroundManager.isEnabled();
-                        if (!already) {
-                          await AndroidBackgroundManager.ensureInitialized(
-                            notificationTitle:
-                                l10n.androidBackgroundNotificationTitle,
-                            notificationText:
-                                l10n.androidBackgroundNotificationText,
-                          );
-                          await AndroidBackgroundManager.setEnabled(true);
-                        }
-                      } catch (_) {}
-                      if (mode == AndroidBackgroundChatMode.onNotify) {
-                        await NotificationService.ensureInitialized();
-                        await NotificationService.ensureAndroidNotificationsPermission();
-                      }
-                    }
-                  }
-                } catch (_) {}
-              });
-
-              final useDyn = isAndroid && settings.useDynamicColor;
-              final palette = ThemePalettes.byId(settings.themePaletteId);
-
-              final light = buildLightThemeForScheme(
-                palette.light,
-                dynamicScheme: useDyn ? lightDynamic : null,
-                pureBackground: settings.usePureBackground,
-              );
-              final dark = buildDarkThemeForScheme(
-                palette.dark,
-                dynamicScheme: useDyn ? darkDynamic : null,
-                pureBackground: settings.usePureBackground,
-              );
-              // Resolve effective app font family (system/Google/local alias)
-              String? effectiveAppFontFamily() {
-                final fam = settings.appFontFamily;
-                if (fam == null || fam.isEmpty) return null;
-                if (settings.appFontIsGoogle) {
-                  try {
-                    final s = GoogleFonts.getFont(fam);
-                    return s.fontFamily ?? fam;
-                  } catch (_) {
-                    return fam;
-                  }
-                }
-                return fam;
-              }
-
-              final effectiveAppFont = effectiveAppFontFamily();
-
-              // Apply user-selected app font to theme text styles and app bar
-              ThemeData applyAppFont(ThemeData base) {
-                if (effectiveAppFont == null || effectiveAppFont.isEmpty) {
-                  return base;
-                }
-                TextStyle? withFamily(TextStyle? s) =>
-                    s?.copyWith(fontFamily: effectiveAppFont);
-                TextTheme apply(TextTheme t) => t.copyWith(
-                  displayLarge: withFamily(t.displayLarge),
-                  displayMedium: withFamily(t.displayMedium),
-                  displaySmall: withFamily(t.displaySmall),
-                  headlineLarge: withFamily(t.headlineLarge),
-                  headlineMedium: withFamily(t.headlineMedium),
-                  headlineSmall: withFamily(t.headlineSmall),
-                  titleLarge: withFamily(t.titleLarge),
-                  titleMedium: withFamily(t.titleMedium),
-                  titleSmall: withFamily(t.titleSmall),
-                  bodyLarge: withFamily(t.bodyLarge),
-                  bodyMedium: withFamily(t.bodyMedium),
-                  bodySmall: withFamily(t.bodySmall),
-                  labelLarge: withFamily(t.labelLarge),
-                  labelMedium: withFamily(t.labelMedium),
-                  labelSmall: withFamily(t.labelSmall),
-                );
-                final bar = base.appBarTheme;
-                final appBar = bar.copyWith(
-                  titleTextStyle: (bar.titleTextStyle ?? const TextStyle())
-                      .copyWith(fontFamily: effectiveAppFont),
-                  toolbarTextStyle: (bar.toolbarTextStyle ?? const TextStyle())
-                      .copyWith(fontFamily: effectiveAppFont),
-                );
-                // Apply as default family to all text in ThemeData
-                return base.copyWith(
-                  textTheme: apply(base.textTheme),
-                  primaryTextTheme: apply(base.primaryTextTheme),
-                  appBarTheme: appBar,
-                );
-              }
-
-              final themedLight = applyAppFont(light);
-              final themedDark = applyAppFont(dark);
-              // Log top-level colors likely used by widgets (card/bg/shadow approximations)
-              // debugPrint('[Theme/App] Light scaffoldBg=${light.colorScheme.surface.value.toRadixString(16)} card≈${light.colorScheme.surface.value.toRadixString(16)} shadow=${light.colorScheme.shadow.value.toRadixString(16)}');
-              // debugPrint('[Theme/App] Dark scaffoldBg=${dark.colorScheme.surface.value.toRadixString(16)} card≈${dark.colorScheme.surface.value.toRadixString(16)} shadow=${dark.colorScheme.shadow.value.toRadixString(16)}');
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'Kelivo',
-                // App UI language; null = follow system (respects iOS per-app language)
-                locale: settings.appLocaleForMaterialApp,
-                supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                theme: themedLight,
-                darkTheme: themedDark,
-                themeMode: settings.themeMode,
-                navigatorObservers: <NavigatorObserver>[routeObserver],
-                home: _selectHome(),
-                builder: (ctx, child) {
-                  final bright = Theme.of(ctx).brightness;
-                  final overlay = bright == Brightness.dark
-                      ? const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.light,
-                          statusBarBrightness: Brightness.dark,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.light,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        )
-                      : const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.dark,
-                          statusBarBrightness: Brightness.light,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.dark,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        );
-                  // Ensure localized defaults (assistants and chat default title) after first frame
-                  if (!_didEnsureAssistants) {
-                    _didEnsureAssistants = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      try {
-                        ctx.read<AssistantProvider>().ensureDefaults(ctx);
-                      } catch (_) {}
-                      try {
-                        ctx.read<ChatService>().setDefaultConversationTitle(
-                          AppLocalizations.of(
-                            ctx,
-                          )!.chatServiceDefaultConversationTitle,
-                        );
-                      } catch (_) {}
-                      try {
-                        ctx.read<UserProvider>().setDefaultNameIfUnset(
-                          AppLocalizations.of(ctx)!.userProviderDefaultUserName,
-                        );
-                      } catch (_) {}
-                    });
-                  }
-
-                  // Desktop tray + close behaviour (minimize to tray) sync
-                  final l10n = AppLocalizations.of(ctx);
-                  if (l10n != null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) async {
-                      try {
-                        final isDesktop =
-                            !kIsWeb &&
-                            (defaultTargetPlatform == TargetPlatform.windows ||
-                                defaultTargetPlatform == TargetPlatform.macOS ||
-                                defaultTargetPlatform == TargetPlatform.linux);
-                        if (!isDesktop) return;
-                        final sp = ctx.read<SettingsProvider>();
-                        await DesktopTrayController.instance.syncFromSettings(
-                          l10n,
-                          showTray: sp.desktopShowTray,
-                          minimizeToTrayOnClose:
-                              sp.desktopMinimizeToTrayOnClose,
-                        );
-                      } catch (_) {}
-                    });
-                  }
-
-                  // Enforce app font as a default across the tree for Texts without explicit family
-                  final appWithOverlays = AppOverlays(
-                    child: child ?? const SizedBox.shrink(),
-                  );
-                  return AnnotatedRegion<SystemUiOverlayStyle>(
-                    value: overlay,
-                    child: effectiveAppFont == null
-                        ? appWithOverlays
-                        : DefaultTextStyle.merge(
-                            style: TextStyle(fontFamily: effectiveAppFont),
-                            child: appWithOverlays,
-                          ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
+      child: const _AppRoot(),
     );
   }
 }
 
-Widget _selectHome() {
-  // Mobile remains the default platform. Desktop is an added platform.
-  if (kIsWeb) return const HomePage();
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
-  return isDesktop ? const DesktopHomePage() : const HomePage();
+class _AppRoot extends StatefulWidget {
+  const _AppRoot();
+
+  @override
+  State<_AppRoot> createState() => _AppRootState();
 }
 
-// Overrides logic is implemented within SettingsProvider now.
+class _AppRootState extends State<_AppRoot> {
+  final SystemFonts _systemFonts = SystemFonts();
+  final Set<String> _loadedSystemFonts = <String>{};
+
+  bool _didCheckUpdates = false;
+  bool _didEnsureLocalizedDefaults = false;
+  bool _didInitDesktopHotkeys = false;
+  bool _didSyncAndroidBackground = false;
+  bool? _lastDynamicColorSupported;
+  String? _lastTraySyncKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    settings.applyGlobalProxyOverridesIfNeeded();
+    _scheduleDesktopFontLoads(settings);
+
+    if (settings.showAppUpdates && !_didCheckUpdates) {
+      _didCheckUpdates = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        try {
+          context.read<UpdateProvider>().checkForUpdates();
+        } catch (_) {}
+      });
+    }
+
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+        final dynSupported = isAndroid && (lightDynamic != null || darkDynamic != null);
+        _scheduleDynamicColorCapabilityUpdate(settings, dynSupported);
+        _scheduleDesktopHotkeyInit();
+        _scheduleAndroidBackgroundSync(settings);
+
+        final useDynamicColor = isAndroid && settings.useDynamicColor;
+        final palette = ThemePalettes.byId(settings.themePaletteId);
+        final themedLight = _applyAppFont(
+          buildLightThemeForScheme(
+            palette.light,
+            dynamicScheme: useDynamicColor ? lightDynamic : null,
+            pureBackground: settings.usePureBackground,
+          ),
+          settings,
+        );
+        final themedDark = _applyAppFont(
+          buildDarkThemeForScheme(
+            palette.dark,
+            dynamicScheme: useDynamicColor ? darkDynamic : null,
+            pureBackground: settings.usePureBackground,
+          ),
+          settings,
+        );
+        final effectiveAppFont = _effectiveAppFontFamily(settings);
+
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Kelivo',
+          locale: settings.appLocaleForMaterialApp,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: themedLight,
+          darkTheme: themedDark,
+          themeMode: settings.themeMode,
+          navigatorObservers: <NavigatorObserver>[routeObserver],
+          home: _selectHome(),
+          builder: (ctx, child) {
+            _scheduleLocalizedDefaults(ctx);
+            _scheduleDesktopTraySync(ctx);
+            final appWithOverlays = AppOverlays(
+              child: child ?? const SizedBox.shrink(),
+            );
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: _overlayStyleFor(Theme.of(ctx).brightness),
+              child: effectiveAppFont == null
+                  ? appWithOverlays
+                  : DefaultTextStyle.merge(
+                      style: TextStyle(fontFamily: effectiveAppFont),
+                      child: appWithOverlays,
+                    ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _scheduleDesktopFontLoads(SettingsProvider settings) {
+    if (!isDesktopPlatform) return;
+    final families = <String>{
+      if (_wantsSystemAppFont(settings)) settings.appFontFamily!,
+      if (_wantsSystemCodeFont(settings)) settings.codeFontFamily!,
+    }..removeWhere((font) => font.isEmpty || _loadedSystemFonts.contains(font));
+    if (families.isEmpty) return;
+    _loadedSystemFonts.addAll(families);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      for (final family in families) {
+        try {
+          await _systemFonts.loadFont(family);
+        } catch (_) {}
+      }
+    });
+  }
+
+  bool _wantsSystemAppFont(SettingsProvider settings) {
+    return settings.appFontFamily?.isNotEmpty == true &&
+        !settings.appFontIsGoogle &&
+        (settings.appFontLocalAlias == null || settings.appFontLocalAlias!.isEmpty);
+  }
+
+  bool _wantsSystemCodeFont(SettingsProvider settings) {
+    return settings.codeFontFamily?.isNotEmpty == true &&
+        !settings.codeFontIsGoogle &&
+        (settings.codeFontLocalAlias == null || settings.codeFontLocalAlias!.isEmpty);
+  }
+
+  void _scheduleDynamicColorCapabilityUpdate(
+    SettingsProvider settings,
+    bool supported,
+  ) {
+    if (_lastDynamicColorSupported == supported) return;
+    _lastDynamicColorSupported = supported;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        settings.setDynamicColorSupported(supported);
+      } catch (_) {}
+    });
+  }
+
+  void _scheduleDesktopHotkeyInit() {
+    if (_didInitDesktopHotkeys || !isDesktopPlatform) return;
+    _didInitDesktopHotkeys = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await context.read<HotkeyProvider>().initialize();
+      } catch (_) {}
+    });
+  }
+
+  void _scheduleAndroidBackgroundSync(SettingsProvider settings) {
+    if (_didSyncAndroidBackground || !isAndroidPlatform) return;
+    final mode = settings.androidBackgroundChatMode;
+    if (mode == AndroidBackgroundChatMode.off) return;
+    _didSyncAndroidBackground = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        final l10n = AppLocalizations.of(context);
+        if (l10n == null) return;
+        final enabled = await AndroidBackgroundManager.isEnabled();
+        if (!enabled) {
+          await AndroidBackgroundManager.ensureInitialized(
+            notificationTitle: l10n.androidBackgroundNotificationTitle,
+            notificationText: l10n.androidBackgroundNotificationText,
+          );
+          await AndroidBackgroundManager.setEnabled(true);
+        }
+        if (mode == AndroidBackgroundChatMode.onNotify) {
+          await NotificationService.ensureInitialized();
+          await NotificationService.ensureAndroidNotificationsPermission();
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _scheduleLocalizedDefaults(BuildContext ctx) {
+    if (_didEnsureLocalizedDefaults) return;
+    _didEnsureLocalizedDefaults = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(ctx);
+      if (l10n == null) return;
+      try {
+        ctx.read<AssistantProvider>().ensureDefaults(ctx);
+      } catch (_) {}
+      try {
+        ctx.read<ChatService>().setDefaultConversationTitle(
+              l10n.chatServiceDefaultConversationTitle,
+            );
+      } catch (_) {}
+      try {
+        ctx.read<UserProvider>().setDefaultNameIfUnset(
+              l10n.userProviderDefaultUserName,
+            );
+      } catch (_) {}
+    });
+  }
+
+  void _scheduleDesktopTraySync(BuildContext ctx) {
+    if (!isDesktopPlatform) return;
+    final l10n = AppLocalizations.of(ctx);
+    if (l10n == null) return;
+    final settings = ctx.read<SettingsProvider>();
+    final syncKey = '${settings.desktopShowTray}:${settings.desktopMinimizeToTrayOnClose}:${Localizations.localeOf(ctx)}';
+    if (_lastTraySyncKey == syncKey) return;
+    _lastTraySyncKey = syncKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await DesktopTrayController.instance.syncFromSettings(
+          l10n,
+          showTray: settings.desktopShowTray,
+          minimizeToTrayOnClose: settings.desktopMinimizeToTrayOnClose,
+        );
+      } catch (_) {}
+    });
+  }
+
+  ThemeData _applyAppFont(ThemeData base, SettingsProvider settings) {
+    final effectiveAppFont = _effectiveAppFontFamily(settings);
+    if (effectiveAppFont == null || effectiveAppFont.isEmpty) return base;
+
+    TextStyle? withFamily(TextStyle? style) =>
+        style?.copyWith(fontFamily: effectiveAppFont);
+    TextTheme apply(TextTheme theme) => theme.copyWith(
+          displayLarge: withFamily(theme.displayLarge),
+          displayMedium: withFamily(theme.displayMedium),
+          displaySmall: withFamily(theme.displaySmall),
+          headlineLarge: withFamily(theme.headlineLarge),
+          headlineMedium: withFamily(theme.headlineMedium),
+          headlineSmall: withFamily(theme.headlineSmall),
+          titleLarge: withFamily(theme.titleLarge),
+          titleMedium: withFamily(theme.titleMedium),
+          titleSmall: withFamily(theme.titleSmall),
+          bodyLarge: withFamily(theme.bodyLarge),
+          bodyMedium: withFamily(theme.bodyMedium),
+          bodySmall: withFamily(theme.bodySmall),
+          labelLarge: withFamily(theme.labelLarge),
+          labelMedium: withFamily(theme.labelMedium),
+          labelSmall: withFamily(theme.labelSmall),
+        );
+
+    final appBar = base.appBarTheme.copyWith(
+      titleTextStyle: (base.appBarTheme.titleTextStyle ?? const TextStyle())
+          .copyWith(fontFamily: effectiveAppFont),
+      toolbarTextStyle: (base.appBarTheme.toolbarTextStyle ?? const TextStyle())
+          .copyWith(fontFamily: effectiveAppFont),
+    );
+    return base.copyWith(
+      textTheme: apply(base.textTheme),
+      primaryTextTheme: apply(base.primaryTextTheme),
+      appBarTheme: appBar,
+    );
+  }
+
+  String? _effectiveAppFontFamily(SettingsProvider settings) {
+    final family = settings.appFontFamily;
+    if (family == null || family.isEmpty) return null;
+    if (!settings.appFontIsGoogle) return family;
+    try {
+      return GoogleFonts.getFont(family).fontFamily ?? family;
+    } catch (_) {
+      return family;
+    }
+  }
+
+  SystemUiOverlayStyle _overlayStyleFor(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+          )
+        : const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+          );
+  }
+}
+
+Widget _selectHome() {
+  if (kIsWeb) return const HomePage();
+  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();
+}
