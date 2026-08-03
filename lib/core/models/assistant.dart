@@ -24,8 +24,6 @@ class Assistant {
   final bool useAssistantName; // replace model name in chat with assistant name
   final String? chatModelProvider; // null -> use global default
   final String? chatModelId; // null -> use global default
-  final double? temperature; // null to disable; else 0.0 - 2.0
-  final double? topP; // null to disable; else 0.0 - 1.0
   final int contextMessageSize; // number of previous messages to include
   final bool limitContextMessages; // whether to enforce contextMessageSize
   final bool streamOutput; // streaming responses
@@ -63,8 +61,6 @@ class Assistant {
     this.useAssistantName = false,
     this.chatModelProvider,
     this.chatModelId,
-    this.temperature,
-    this.topP,
     this.contextMessageSize = 64,
     this.limitContextMessages = true,
     this.streamOutput = true,
@@ -96,8 +92,6 @@ class Assistant {
     bool? useAssistantName,
     String? chatModelProvider,
     String? chatModelId,
-    double? temperature,
-    double? topP,
     int? contextMessageSize,
     bool? limitContextMessages,
     bool? streamOutput,
@@ -121,8 +115,6 @@ class Assistant {
     List<AssistantRegex>? regexRules,
     bool clearChatModel = false,
     bool clearAvatar = false,
-    bool clearTemperature = false,
-    bool clearTopP = false,
     bool clearThinkingBudget = false,
     bool clearMaxTokens = false,
     bool clearBackground = false,
@@ -137,8 +129,6 @@ class Assistant {
           ? null
           : (chatModelProvider ?? this.chatModelProvider),
       chatModelId: clearChatModel ? null : (chatModelId ?? this.chatModelId),
-      temperature: clearTemperature ? null : (temperature ?? this.temperature),
-      topP: clearTopP ? null : (topP ?? this.topP),
       contextMessageSize: contextMessageSize ?? this.contextMessageSize,
       limitContextMessages: limitContextMessages ?? this.limitContextMessages,
       streamOutput: streamOutput ?? this.streamOutput,
@@ -175,8 +165,6 @@ class Assistant {
     'useAssistantName': useAssistantName,
     'chatModelProvider': chatModelProvider,
     'chatModelId': chatModelId,
-    'temperature': temperature,
-    'topP': topP,
     'contextMessageSize': contextMessageSize,
     'limitContextMessages': limitContextMessages,
     'streamOutput': streamOutput,
@@ -217,8 +205,6 @@ class Assistant {
       useAssistantName: json['useAssistantName'] as bool? ?? false,
       chatModelProvider: json['chatModelProvider'] as String?,
       chatModelId: json['chatModelId'] as String?,
-      temperature: (json['temperature'] as num?)?.toDouble(),
-      topP: (json['topP'] as num?)?.toDouble(),
       contextMessageSize: (json['contextMessageSize'] as num?)?.toInt() ?? 64,
       limitContextMessages: json['limitContextMessages'] as bool? ?? true,
       streamOutput: json['streamOutput'] as bool? ?? true,

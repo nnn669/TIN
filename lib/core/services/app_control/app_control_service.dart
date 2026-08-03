@@ -191,7 +191,7 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
         AppControlOperations.exportJson,
       ],
       'description':
-          'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, temperature, max tokens, or 神经权能网关 permission.',
+          'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, max tokens, or 神经权能网关 permission.',
       'requires_confirmation': true,
       'undoable': true,
     },
@@ -1075,18 +1075,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       next = next.copyWith(
         limitContextMessages: _boolFrom(patch['limit_context_messages']),
       );
-    }
-    if (patch.containsKey('temperature')) {
-      final value = patch['temperature'];
-      next = value == null || value.toString().trim().isEmpty
-          ? next.copyWith(clearTemperature: true)
-          : next.copyWith(temperature: _doubleFrom(value).clamp(0.0, 2.0));
-    }
-    if (patch.containsKey('top_p')) {
-      final value = patch['top_p'];
-      next = value == null || value.toString().trim().isEmpty
-          ? next.copyWith(clearTopP: true)
-          : next.copyWith(topP: _doubleFrom(value).clamp(0.0, 1.0));
     }
     if (patch.containsKey('thinking_budget')) {
       final value = patch['thinking_budget'];
@@ -3145,13 +3133,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     final parsed = int.tryParse(raw?.toString().trim() ?? '');
     if (parsed != null) return parsed;
     throw ArgumentError('Expected integer value, got $raw');
-  }
-
-  double _doubleFrom(dynamic raw) {
-    if (raw is num) return raw.toDouble();
-    final parsed = double.tryParse(raw?.toString().trim() ?? '');
-    if (parsed != null) return parsed;
-    throw ArgumentError('Expected numeric value, got $raw');
   }
 
   List<String> _idsArg(Map<String, dynamic> args) {

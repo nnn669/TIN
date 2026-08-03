@@ -345,8 +345,6 @@ class ChatboxImporter {
       // Derive assistant config fields.
       final provider = (sessionSettings['provider'] ?? '').toString().trim();
       final modelId = (sessionSettings['modelId'] ?? '').toString().trim();
-      final temperature = (sessionSettings['temperature'] as num?)?.toDouble();
-      final topP = (sessionSettings['topP'] as num?)?.toDouble();
       final maxTokens = (sessionSettings['maxTokens'] as num?)?.toInt();
       final stream = sessionSettings['stream'] as bool?;
       final contextCount = (sessionSettings['maxContextMessageCount'] as num?)
@@ -373,8 +371,6 @@ class ChatboxImporter {
             (provider.isEmpty || provider == 'chatbox-ai' || modelId.isEmpty)
             ? null
             : modelId,
-        'temperature': temperature,
-        'topP': topP,
         'contextMessageSize': contextCount ?? 64,
         'limitContextMessages': true,
         'streamOutput': stream ?? true,
@@ -407,12 +403,6 @@ class ChatboxImporter {
         }
         if (assistantJson['chatModelId'] != null) {
           local['chatModelId'] = assistantJson['chatModelId'];
-        }
-        if (assistantJson['temperature'] != null) {
-          local['temperature'] = assistantJson['temperature'];
-        }
-        if (assistantJson['topP'] != null) {
-          local['topP'] = assistantJson['topP'];
         }
         if (assistantJson['maxTokens'] != null) {
           local['maxTokens'] = assistantJson['maxTokens'];
