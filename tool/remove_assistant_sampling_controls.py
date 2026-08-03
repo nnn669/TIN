@@ -46,14 +46,24 @@ s = read(path)
 start = s.find('              // Temperature\n')
 end = s.find('              // Context messages\n', start)
 if start < 0 or end < 0:
-    raise SystemExit('sampling settings rows not found')
+    raise SystemExit('mobile sampling settings rows not found')
 s = s[:start] + s[end:]
 start = s.find('  Future<void> _showTemperatureSheet(')
 end = s.find('  Future<void> _showContextMessagesSheet(', start)
 if start < 0 or end < 0:
-    raise SystemExit('sampling settings sheets not found')
+    raise SystemExit('mobile sampling settings sheets not found')
 s = s[:start] + s[end:]
 s = replace_once(s, "    subtitle: '名称、模型、温度、上下文和搜索记忆开关',", "    subtitle: '名称、模型、上下文和搜索记忆开关',", 'gateway subtitle')
+write(path, s)
+
+# Desktop dialog has a separate basic pane in the parent library.
+path = 'lib/features/assistant/pages/assistant_settings_edit_page.dart'
+s = read(path)
+start = s.find('            // Temperature\n')
+end = s.find('            // Context messages\n', start)
+if start < 0 or end < 0:
+    raise SystemExit('desktop sampling controls not found')
+s = s[:start] + s[end:]
 write(path, s)
 
 path = 'lib/features/home/controllers/chat_actions.dart'
@@ -127,6 +137,7 @@ for file, needles in {
     'lib/core/models/assistant.dart': ['temperature', 'topP', 'clearTemperature', 'clearTopP'],
     'lib/core/providers/assistant_provider.dart': ['temperature:', 'topP:'],
     'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart': ['Temperature', 'Top P', '_showTemperatureSheet', '_showTopPSheet', 'a.temperature', 'a.topP'],
+    'lib/features/assistant/pages/assistant_settings_edit_page.dart': ['a.temperature', 'a.topP', 'clearTemperature', 'clearTopP'],
     'lib/features/home/controllers/chat_actions.dart': ['assistant?.temperature', 'assistant?.topP'],
     'lib/core/services/app_control/app_control_service.dart': ["patch.containsKey('temperature')", "patch.containsKey('top_p')", 'clearTemperature', 'clearTopP'],
 }.items():
