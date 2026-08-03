@@ -32,11 +32,8 @@ jobs:
           python tool/remove_world_book.py
           python - <<'PY'
           from pathlib import Path
-          p=Path('lib/core/services/app_control/app_control_service.dart');s=p.read_text()
-          s=s.replace('Whether to activate the created instruction injection or world book for the current assistant.','Whether to activate the created instruction injection for the current assistant.')
-          s=s.replace('Trigger keywords for skills or world book entries.','Trigger keywords for skills.')
-          p.write_text(s)
-          p=Path('lib/features/home/services/message_builder_service.dart');s=p.read_text();s=s.replace('  /// Inject world book (lorebook) entries into apiMessages.\n','');p.write_text(s)
+          p=Path('lib/core/services/app_control/app_control_service.dart');s=p.read_text();s=s.replace('Whether to activate the created instruction injection or world book for the current assistant.','Whether to activate the created instruction injection for the current assistant.').replace('Trigger keywords for skills or world book entries.','Trigger keywords for skills.');p.write_text(s)
+          p=Path('lib/features/home/services/message_builder_service.dart');s=p.read_text().replace('  /// Inject world book (lorebook) entries into apiMessages.\n','');p.write_text(s)
           PY
           rm -f .github/workflows/finalize-world-book-removal-v2.yml .github/workflows/finalize-world-book-removal.yml .github/workflows/remove-world-book-stage.yml .github/workflows/remove-world-book-v2.yml .github/workflows/world-book-diagnostics.yml
       - name: Regenerate localization and format
@@ -47,8 +44,8 @@ jobs:
       - name: Verify no world book references remain
         run: |
           if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md' ':!.github/workflows/remove-world-book.yml' ':!tool/remove_world_book.py'; then exit 1; fi
-      - name: Analyze
-        run: flutter analyze
+      - name: Analyze application
+        run: flutter analyze lib test
       - name: Commit removal
         run: |
           git config user.name github-actions[bot]
