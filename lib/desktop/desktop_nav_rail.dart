@@ -18,16 +18,16 @@ class DesktopNavRail extends StatelessWidget {
     this.globalSearchActive = false,
     required this.onTapChat,
     required this.onTapGlobalSearch,
-    required this.onTapTranslate,
+    required this.onTapStats,
     required this.onTapStorage,
     required this.onTapSettings,
   });
 
-  final int activeIndex; // 0=Chat, 1=Translate, 2=Storage, 3=Settings
+  final int activeIndex; // 0=Chat, 1=Stats, 2=Storage, 3=Settings
   final bool globalSearchActive;
   final VoidCallback onTapChat;
   final VoidCallback onTapGlobalSearch;
-  final VoidCallback onTapTranslate;
+  final VoidCallback onTapStats;
   final VoidCallback onTapStorage;
   final VoidCallback onTapSettings;
 
@@ -41,7 +41,7 @@ class DesktopNavRail extends StatelessWidget {
     final double topGap = isMac ? 36.0 : 8.0;
     final isChatActive = activeIndex == 0 && !globalSearchActive;
     final isGlobalSearchActive = globalSearchActive;
-    final isTranslateActive = activeIndex == 1;
+    final isStatsActive = activeIndex == 1;
     final isStorageActive = activeIndex == 2;
     final isSettingsActive = activeIndex == 3;
 
@@ -71,13 +71,16 @@ class DesktopNavRail extends StatelessWidget {
             iconColor: isGlobalSearchActive ? cs.primary : null,
           ),
           const SizedBox(height: 8),
-          _CircleAction(
-            tooltip: l10n.desktopNavTranslateTooltip,
-            icon: lucide.Lucide.Languages,
-            onTap: onTapTranslate,
-            size: 40,
-            iconSize: 18,
-            iconColor: isTranslateActive ? cs.primary : null,
+          Transform.translate(
+            offset: const Offset(-2, 0),
+            child: _CircleAction(
+              tooltip: l10n.settingsPageStatistics,
+              icon: lucide.Lucide.ChartColumnBig,
+              onTap: onTapStats,
+              size: 40,
+              iconSize: 18,
+              iconColor: isStatsActive ? cs.primary : null,
+            ),
           ),
           const SizedBox(height: 8),
           _CircleAction(
@@ -143,7 +146,6 @@ class _UserAvatarButtonState extends State<_UserAvatarButton> {
         ),
       );
     } else if (type == 'file' && value != null && value.isNotEmpty) {
-      // Local file path (gracefully handle missing files from imported backups)
       final fixed = SandboxPathResolver.fix(value);
       final f = File(fixed);
       if (f.existsSync()) {
@@ -166,11 +168,9 @@ class _UserAvatarButtonState extends State<_UserAvatarButton> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: GestureDetector(
         onTap: () {
-          // Open centered profile dialog
           showUserProfileDialog(context);
         },
         onSecondaryTap: () {
-          // Also open dialog on right-click for consistency
           showUserProfileDialog(context);
         },
         child: _HoverCircle(size: 42, child: avatar),
@@ -194,13 +194,11 @@ class _UserAvatarButtonState extends State<_UserAvatarButton> {
           color: cs.primary,
           fontWeight: AppFontWeights.emphasis,
           decoration: TextDecoration.none,
-          fontSize: 36 * 0.44, // keep initial scaled to avatar size
+          fontSize: 36 * 0.44,
         ),
       ),
     );
   }
-
-  // Context menu moved into the centered dialog (avatar tap opens menu there).
 }
 
 class _CircleAction extends StatelessWidget {
