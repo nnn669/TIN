@@ -34,10 +34,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Analyze changed streaming and provider code
-        run: flutter analyze lib/core/services/network/dio_http_client.dart lib/core/services/api/provider_request_headers.dart lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart lib/features/home/controllers/streaming_content_notifier.dart lib/features/provider/widgets/add_provider_sheet.dart test/sse_buffer_flush_test.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
-      - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/chat_service_temporary_conversation_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
+      - name: Analyze application and tests
+        run: flutter analyze lib test
+      - name: Run full regression suite
+        run: flutter test
 
   android-release:
     name: Signed Android prerelease
@@ -61,6 +61,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Analyze application and tests
+        run: flutter analyze lib test
+      - name: Run full regression suite
+        run: flutter test
       - name: Calculate Android version code
         shell: bash
         run: |
