@@ -1,0 +1,42 @@
+name: Fix v3 compile residue
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: true
+        default: feat/remove-temperature-remote-backups-contain-background-v3
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Remove desktop temperature residue
+        shell: bash
+        env:
+          TARGET_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name "TIN automation"
+          git config user.email "actions@github.com"
+          curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/main/tools/fix_v3_compile_residue.py?run=${GITHUB_RUN_ID}" -o /tmp/fix.py
+          python3 /tmp/fix.py
+          grep -RIn --exclude='*.g.dart' -E 'temperature:|clearTemperature|a\.temperature|assistant\?\.temperature' lib test && exit 1 || true
+          rm -f tools/fix_v3_compile_residue.py
+          git add -A
+          git commit -m "fix: remove desktop assistant temperature residue"
+          git push origin HEAD:${TARGET_REF}
+      - name: Flutter analyze
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.1
+          cache: true
+      - name: Analyze source
+        run: flutter analyze
+      - name: Run focused tests
+        run: flutter test test/core/services/app_control_service_test.dart test/core/services/backup/data_sync_backup_file_test.dart
