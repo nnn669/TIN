@@ -1,0 +1,25 @@
+name: Temporary feature inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: true
+        default: main
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Search call sites
+        shell: bash
+        run: |
+          set +e
+          for pattern in 'temperature' 'temperature:' 'topP' 'background' 'BoxFit.cover' 'BoxFit.contain' 'WebDav' 'S3' 'SponsorPage' 'settingsPageDocs' 'settingsPageSponsor' 'ImagePicker'; do
+            echo "===== $pattern ====="
+            grep -RIn --exclude-dir=.git --exclude-dir=build --exclude='*.g.dart' -- "$pattern" lib test | head -300
+          done
