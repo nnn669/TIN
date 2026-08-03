@@ -26,54 +26,46 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           settings_path = Path('lib/features/settings/pages/settings_page.dart')
           text = settings_path.read_text()
           text = text.replace("import 'sponsor_page.dart';\n", '')
           text = text.replace("import 'package:url_launcher/url_launcher.dart';\n", '')
 
-          docs = """              _iosDivider(context),
-              _iosNavRow(
-                context,
-                icon: Lucide.Library,
-                label: l10n.settingsPageDocs,
-                onTap: () async {
-                  final uri = Uri.parse('https://kelivo.psycheas.top/');
-                  if (!await launchUrl(uri, mode: LaunchMode.platformDefault)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-              ),
-          """
-          sponsor = """              _iosDivider(context),
-              _iosNavRow(
-                context,
-                icon: Lucide.Heart,
-                label: l10n.settingsPageSponsor,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SponsorPage()),
-                  );
-                },
-              ),
-          """
-          if docs not in text or sponsor not in text:
-              raise SystemExit('Expected mobile settings blocks were not found')
-          settings_path.write_text(text.replace(docs, '').replace(sponsor, ''))
+          def remove_mobile_row(source, icon, label):
+              pattern = re.compile(
+                  rf'\n\s*_iosDivider\(context\),\n'
+                  rf'\s*_iosNavRow\(\n'
+                  rf'\s*context,\n'
+                  rf'\s*icon: Lucide\.{icon},\n'
+                  rf'\s*label: l10n\.{label},\n'
+                  rf'.*?\n\s*\),',
+                  re.S,
+              )
+              updated, count = pattern.subn('', source, count=1)
+              if count != 1:
+                  raise SystemExit(f'Expected mobile row {label} was not found')
+              return updated
+
+          text = remove_mobile_row(text, 'Library', 'settingsPageDocs')
+          text = remove_mobile_row(text, 'Heart', 'settingsPageSponsor')
+          settings_path.write_text(text)
 
           desktop_path = Path('lib/desktop/setting/about_pane.dart')
           desktop = desktop_path.read_text()
-          desktop_entry = """                  const _DeskRowDivider(),
-                  // Donation item (desktop): mirrors mobile \"Sponsor\"
-                  _DeskNavRow(
-                    icon: lucide.Lucide.Heart,
-                    label: l10n.settingsPageSponsor,
-                    onTap: () => _showSponsorDesktopDialog(context),
-                  ),
-          """
-          if desktop_entry not in desktop:
+          desktop_pattern = re.compile(
+              r'\n\s*const _DeskRowDivider\(\),\n'
+              r'\s*// Donation item \(desktop\): mirrors mobile "Sponsor"\n'
+              r'\s*_DeskNavRow\(\n'
+              r'\s*icon: lucide\.Lucide\.Heart,\n'
+              r'\s*label: l10n\.settingsPageSponsor,\n'
+              r'\s*onTap: \(\) => _showSponsorDesktopDialog\(context\),\n'
+              r'\s*\),'
+          )
+          desktop, count = desktop_pattern.subn('', desktop, count=1)
+          if count != 1:
               raise SystemExit('Expected desktop sponsor entry was not found')
-          desktop = desktop.replace(desktop_entry, '')
           marker = '\nFuture<void> _showSponsorDesktopDialog(BuildContext context) async {'
           if marker not in desktop:
               raise SystemExit('Expected desktop sponsor dialog was not found')
