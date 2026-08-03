@@ -17,53 +17,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Remove obsolete translation and settings statistics entries
+      - name: Remove obsolete entries
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
-          def patch(path, replacements):
-              p = Path(path)
-              text = p.read_text()
-              for old, new in replacements:
-                  if old not in text:
-                      raise SystemExit(f'Expected block not found in {path}: {old[:80]!r}')
-                  text = text.replace(old, new, 1)
-              p.write_text(text)
-
-          patch('lib/features/home/widgets/side_drawer.dart', [
-              ("import '../../translate/pages/translate_page.dart';\n", ''),
-          ])
-
-          patch('lib/features/settings/pages/settings_page.dart', [
-              ("import '../../stats/pages/stats_page.dart';\n", ''),
-              ("""              _iosDivider(context),
-              _iosNavRow(
-                context,
-                icon: Lucide.ChartColumnBig,
-                label: l10n.settingsPageStatistics,
-                onTap: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => const StatsPage()));
-                },
-              ),
-""", ''),
-          ])
-
-          patch('lib/desktop/desktop_settings_page.dart', [
-              ("import 'setting/stats_pane.dart';\n", ''),
-              ("  stats,\n", ''),
-              ("""                        case _SettingsMenuItem.stats:
-                          return const DesktopStatsPane(key: ValueKey('stats'));
-""", ''),
-              ("""      (
-        _SettingsMenuItem.stats,
-        lucide.Lucide.ChartColumnBig,
-        l10n.settingsPageStatistics,
-      ),
-""", ''),
-          ])
+          import re
+          p = Path('lib/features/home/widgets/side_drawer.dart')
+          s = p.read_text().replace("import '../../translate/pages/translate_page.dart';\n", '')
+          p.write_text(s)
+          p = Path('lib/features/settings/pages/settings_page.dart')
+          s = p.read_text().replace("import '../../stats/pages/stats_page.dart';\n", '')
+          s, n = re.subn(r"\n              _iosDivider\(context\),\n              _iosNavRow\(\n                context,\n                icon: Lucide\.ChartColumnBig,\n                label: l10n\.settingsPageStatistics,\n                onTap: \(\) \{.*?builder: \(_\) => const StatsPage\(\)\)\);\n                \},\n              \),", '', s, count=1, flags=re.S)
+          assert n == 1
+          p.write_text(s)
+          p = Path('lib/desktop/desktop_settings_page.dart')
+          s = p.read_text().replace("import 'setting/stats_pane.dart';\n", '').replace('  stats,\n', '')
+          s, n1 = re.subn(r"\n                        case _SettingsMenuItem\.stats:\n                          return const DesktopStatsPane\(key: ValueKey\('stats'\)\);", '', s, count=1)
+          s, n2 = re.subn(r"\n      \(\n        _SettingsMenuItem\.stats,\n        lucide\.Lucide\.ChartColumnBig,\n        l10n\.settingsPageStatistics,\n      \),", '', s, count=1)
+          assert n1 == n2 == 1
+          p.write_text(s)
           PY
       - name: Commit cleanup
         run: |
