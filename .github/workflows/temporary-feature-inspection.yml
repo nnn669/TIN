@@ -24,7 +24,6 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/${TARGET_REF}/.github/workflows/apply-feature-removals.yml" -o /tmp/apply.yml
           awk '/^[[:space:]]*python3 - '\''PY'\''/{flag=1; next} flag && /^[[:space:]]*PY$/{exit} flag {sub(/^          /, ""); print}' /tmp/apply.yml > /tmp/apply.py
           python3 /tmp/apply.py
-          dart format lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/providers/backup_provider.dart lib/core/providers/settings_provider.dart lib/core/services/app_control/app_control_service.dart lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart lib/features/assistant/pages/assistant_settings_edit_page.dart lib/features/home/controllers/chat_actions.dart lib/features/home/pages/home_page.dart lib/features/home/pages/home_mobile_layout.dart lib/features/home/pages/home_desktop_layout.dart lib/features/settings/pages/settings_page.dart lib/features/backup/pages/backup_page.dart
           git add -A
           git commit -m "feat: remove assistant temperature and remote backup UI"
           git push origin HEAD:${TARGET_REF}
