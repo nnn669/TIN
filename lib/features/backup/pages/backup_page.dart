@@ -83,7 +83,7 @@ class BackupPage extends StatelessWidget {
     );
   }
 
-  Future<T> _loading(
+  Future<T> _loading<T>(
     BuildContext context,
     Future<T> Function() task, {
     String? label,
@@ -112,10 +112,12 @@ class BackupPage extends StatelessWidget {
         label: l10n.backupPageExporting,
       );
       if (!context.mounted) return;
+      final exportedFile = file;
+      if (exportedFile == null) return;
       if (Platform.isAndroid || Platform.isIOS) {
         final saved = await NativeFileSave.saveFileFromPath(
-          sourcePath: file.path,
-          fileName: file.uri.pathSegments.last,
+          sourcePath: exportedFile.path,
+          fileName: exportedFile.uri.pathSegments.last,
         );
         if (saved && context.mounted) {
           await context.read<BackupReminderProvider>().recordBackupCompleted();
@@ -123,13 +125,13 @@ class BackupPage extends StatelessWidget {
       } else {
         final path = await FilePicker.platform.saveFile(
           dialogTitle: l10n.backupPageExportToFile,
-          fileName: file.uri.pathSegments.last,
+          fileName: exportedFile.uri.pathSegments.last,
           type: FileType.custom,
           allowedExtensions: const ['zip'],
         );
         if (path != null) {
           await File(path).parent.create(recursive: true);
-          await file.copy(path);
+          await exportedFile.copy(path);
           if (context.mounted) {
             await context.read<BackupReminderProvider>().recordBackupCompleted();
           }
