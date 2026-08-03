@@ -1,0 +1,67 @@
+name: Repair translate type collision
+
+on:
+  push:
+    branches:
+      - fix/verified-apk-1.1.30
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  repair-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/verified-apk-1.1.30
+          fetch-depth: 0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Resolve TranslatePage name collision
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/home/widgets/side_drawer.dart')
+          source = path.read_text(encoding='utf-8')
+          old_import = "import '../../translate/pages/translate_page.dart';"
+          new_import = "import '../../translate/pages/translate_page.dart' as translate;"
+          old_call = 'builder: (_) => const TranslatePage(),'
+          new_call = 'builder: (_) => const translate.TranslatePage(),'
+          if source.count(old_import) != 1:
+              raise SystemExit('Expected exactly one unaliased translate import')
+          if source.count(old_call) != 1:
+              raise SystemExit('Expected exactly one TranslatePage constructor call')
+          source = source.replace(old_import, new_import).replace(old_call, new_call)
+          path.write_text(source, encoding='utf-8')
+          PY
+          dart format lib/features/home/widgets/side_drawer.dart
+          rm .github/workflows/repair-translate-type-collision.yml
+          git diff --check
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze application and tests
+        run: flutter analyze lib test
+      - name: Run full regression suite
+        run: flutter test
+      - name: Commit verified repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/home/widgets/side_drawer.dart .github/workflows/repair-translate-type-collision.yml
+          git commit -m "fix: disambiguate mobile translate page type"
+          git push origin HEAD:fix/verified-apk-1.1.30
