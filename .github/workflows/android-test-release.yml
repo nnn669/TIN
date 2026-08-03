@@ -145,7 +145,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
-          RELEASE_TYPE: ${{ inputs.release_type || 'test' }}
+          RELEASE_TYPE: formal
         shell: bash
         run: |
           set -euo pipefail
