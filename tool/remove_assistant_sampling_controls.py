@@ -16,37 +16,6 @@ def replace_once(text, old, new, label):
     return text.replace(old, new, 1)
 
 
-def remove_braced(text, signature, label):
-    start = text.find(signature)
-    if start < 0:
-        raise SystemExit(f'{label}: signature not found')
-    brace = text.find('{', start)
-    depth = 0
-    quote = None
-    escape = False
-    for i in range(brace, len(text)):
-        c = text[i]
-        if quote:
-            if escape:
-                escape = False
-            elif c == '\\':
-                escape = True
-            elif c == quote:
-                quote = None
-        elif c in ("'", '"'):
-            quote = c
-        elif c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-            if depth == 0:
-                end = i + 1
-                while end < len(text) and text[end] in ' \t\r\n':
-                    end += 1
-                return text[:start] + text[end:]
-    raise SystemExit(f'{label}: closing brace not found')
-
-
 path = 'lib/core/models/assistant.dart'
 s = read(path)
 for old in [
@@ -79,8 +48,11 @@ end = s.find('              // Context messages\n', start)
 if start < 0 or end < 0:
     raise SystemExit('sampling settings rows not found')
 s = s[:start] + s[end:]
-s = remove_braced(s, '  Future<void> _showTemperatureSheet(', 'temperature sheet')
-s = remove_braced(s, '  Future<void> _showTopPSheet(', 'top p sheet')
+start = s.find('  Future<void> _showTemperatureSheet(')
+end = s.find('  Future<void> _showContextMessagesSheet(', start)
+if start < 0 or end < 0:
+    raise SystemExit('sampling settings sheets not found')
+s = s[:start] + s[end:]
 s = replace_once(s, "    subtitle: '名称、模型、温度、上下文和搜索记忆开关',", "    subtitle: '名称、模型、上下文和搜索记忆开关',", 'gateway subtitle')
 write(path, s)
 
