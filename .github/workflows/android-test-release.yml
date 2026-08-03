@@ -13,6 +13,14 @@ on:
         description: Optional version name override
         required: false
         type: string
+      release_type:
+        description: Release channel
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - formal
 
 permissions:
   contents: write
@@ -147,17 +155,33 @@ jobs:
           path: build/app/outputs/flutter-apk/app-*.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Publish prerelease
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
+          RELEASE_TYPE: ${{ inputs.release_type || 'test' }}
         shell: bash
         run: |
           set -euo pipefail
-          tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
-          if [[ "$SIGNING_MODE" == "persistent" ]]; then
-            signing_note='签名模式：仓库持久签名，可覆盖同证书旧版本。'
-          else
-            signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
+          version_name="$BUILD_NAME_OVERRIDE"
+          if [[ -z "$version_name" ]]; then
+            version_name=$(awk -F: '/^version:/ {gsub(/[[:space:]]/, "", $2); split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml)
           fi
-          notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
-          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
+          test -n "$version_name"
+          if [[ "$RELEASE_TYPE" == "formal" ]]; then
+            tag="v${version_name}"
+            title="TIN Android ${version_name}"
+            notes=$(printf 'TIN Android 正式版，基于提交 %s 构建。\n\n签名模式：%s\nversionName: %s\nversionCode: %s\nCommit: %s' "$GITHUB_SHA" "$SIGNING_MODE" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
+            release_options=()
+          else
+            tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+            title="TIN Android 测试包 ${GITHUB_RUN_NUMBER}"
+            if [[ "$SIGNING_MODE" == "persistent" ]]; then
+              signing_note='签名模式：仓库持久签名，可覆盖同证书旧版本。'
+            else
+              signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
+            fi
+            notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionName: %s\nversionCode: %s\nCommit: %s' "$signing_note" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
+            release_options=(--prerelease)
+          fi
+          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" "${release_options[@]}" --title "$title" --notes "$notes"
