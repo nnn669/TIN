@@ -24,31 +24,42 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: 3.44.1
+  GRADLE_VERSION: 8.14
+  BASE_VERSION_CODE: 9023
+  DEFAULT_VERSION_NAME: 1.1.23
 
 jobs:
-  pull-request-check:
-    name: Flutter check
+  native-android-check:
+    name: Native Android check
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-      - name: Resolve dependencies
-        run: flutter pub get
-      - name: Analyze changed streaming and provider code
-        run: flutter analyze lib/core/services/network/dio_http_client.dart lib/core/services/api/provider_request_headers.dart lib/core/services/chat/chat_service.dart lib/core/services/chat/streaming_message_persistence.dart lib/features/home/controllers/streaming_content_notifier.dart lib/features/provider/widgets/add_provider_sheet.dart test/sse_buffer_flush_test.dart test/provider_request_headers_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
-      - name: Run targeted regression tests
-        run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/chat_service_temporary_conversation_test.dart test/core/services/chat/streaming_message_persistence_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: >-
+            -p android
+            test
+            --no-daemon
+      - name: Assemble debug APK
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: >-
+            -p android
+            assembleDebug
+            --no-daemon
 
   android-release:
-    name: Signed Android prerelease
+    name: Signed native Android prerelease
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -61,25 +72,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-      - name: Resolve dependencies
-        run: flutter pub get
-      - name: Calculate Android version code
+      - name: Calculate Android version
         shell: bash
         run: |
           set -euo pipefail
-          base_version_code=$(awk -F+ '/^version:/ {print $2; exit}' pubspec.yaml | tr -d '[:space:]')
-          test -n "$base_version_code"
-          test "$base_version_code" -eq "$((base_version_code + 0))"
-          version_code=$((base_version_code + GITHUB_RUN_NUMBER))
-          test "$version_code" -gt "$base_version_code"
+          version_name="${{ inputs.build_name }}"
+          if [[ -z "$version_name" ]]; then version_name="$DEFAULT_VERSION_NAME"; fi
+          version_code=$((BASE_VERSION_CODE + GITHUB_RUN_NUMBER))
+          test "$version_code" -gt "$BASE_VERSION_CODE"
+          echo "VERSION_NAME=$version_name" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
-          echo "Building versionCode=$version_code from base=$base_version_code and run=$GITHUB_RUN_NUMBER"
+          echo "Building native Android versionName=$version_name versionCode=$version_code"
       - name: Prepare release keystore
         shell: bash
         env:
@@ -114,14 +117,16 @@ jobs:
           printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
           chmod 600 android/release-keystore.jks android/key.properties
       - name: Build signed split APKs
-        env:
-          BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
-        run: |
-          set -euo pipefail
-          args=(--release --split-per-abi --target-platform android-arm64,android-x64 --build-number "$VERSION_CODE")
-          if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
-          flutter build apk "${args[@]}"
-      - name: Verify APK signatures and versions
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: >-
+            -p android
+            assembleRelease
+            -PtinVersionName=${{ env.VERSION_NAME }}
+            -PtinVersionCode=${{ env.VERSION_CODE }}
+            --no-daemon
+      - name: Verify APK signatures, versions and package names
         shell: bash
         run: |
           set -euo pipefail
@@ -129,23 +134,20 @@ jobs:
           apkanalyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
           test -x "$apksigner"
           test -x "$apkanalyzer"
-          test ! -e build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          test ! -e android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk
           found=0
           max_bytes=$((60 * 1024 * 1024))
-          for apk in build/app/outputs/flutter-apk/app-*.apk; do
+          for apk in android/app/build/outputs/apk/release/app-*-release.apk; do
             test -s "$apk"
             test "$(stat -c '%s' "$apk")" -lt "$max_bytes"
             "$apksigner" verify --verbose --print-certs "$apk"
+            actual_package=$("$apkanalyzer" manifest application-id "$apk" | tr -d '[:space:]')
             actual_version_code=$("$apkanalyzer" manifest version-code "$apk" | tr -d '[:space:]')
-            if [[ "$actual_version_code" != "$VERSION_CODE" ]]; then
-              version_code_delta=$((actual_version_code - VERSION_CODE))
-              test "$version_code_delta" -gt 0
-              test "$((version_code_delta % 1000))" -eq 0
-              abi_code=$((version_code_delta / 1000))
-              test "$abi_code" -ge 1
-              test "$abi_code" -le 4
-            fi
-            echo "Verified $(basename "$apk"): versionCode=$actual_version_code"
+            actual_version_name=$("$apkanalyzer" manifest version-name "$apk" | tr -d '[:space:]')
+            test "$actual_package" = "com.psyche.tin"
+            test "$actual_version_code" = "$VERSION_CODE"
+            test "$actual_version_name" = "$VERSION_NAME"
+            echo "Verified $(basename "$apk"): package=$actual_package versionName=$actual_version_name versionCode=$actual_version_code"
             sha256sum "$apk"
             found=1
           done
@@ -153,8 +155,8 @@ jobs:
       - name: Upload split APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: TIN-android-test-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-*.apk
+          name: TIN-native-android-test-${{ github.run_number }}
+          path: android/app/build/outputs/apk/release/app-*-release.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish prerelease
@@ -163,11 +165,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+          tag="native-test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           if [[ "$SIGNING_MODE" == "persistent" ]]; then
             signing_note='签名模式：仓库持久签名，可覆盖同证书旧版本。'
           else
             signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
           fi
-          notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_CODE" "$GITHUB_SHA")
-          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN Android 测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
+          notes=$(printf 'TIN 原生 Android Kotlin + Jetpack Compose 迁移阶段测试包。%s\n\n当前为迁移基础版本，聊天模型 Provider、MCP 和备份功能尚未迁移完成。\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionName: %s\nversionCode: %s\nCommit: %s' "$signing_note" "$VERSION_NAME" "$VERSION_CODE" "$GITHUB_SHA")
+          gh release create "$tag" android/app/build/outputs/apk/release/app-arm64-v8a-release.apk android/app/build/outputs/apk/release/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --prerelease --title "TIN 原生 Android 迁移测试包 ${GITHUB_RUN_NUMBER}" --notes "$notes"
