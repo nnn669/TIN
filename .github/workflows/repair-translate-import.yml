@@ -1,0 +1,44 @@
+name: Repair missing translate import
+
+on:
+  push:
+    branches:
+      - fix/verified-apk-1.1.30
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/verified-apk-1.1.30
+      - name: Restore missing import and remove this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/home/widgets/side_drawer.dart')
+          source = path.read_text(encoding='utf-8')
+          anchor = "import '../../settings/pages/settings_page.dart';\n"
+          missing = "import '../../translate/pages/translate_page.dart';\n"
+          if missing in source:
+              raise SystemExit('TranslatePage import already exists')
+          if source.count(anchor) != 1:
+              raise SystemExit('Expected exactly one settings page import anchor')
+          path.write_text(source.replace(anchor, anchor + missing), encoding='utf-8')
+          PY
+          rm .github/workflows/repair-translate-import.yml
+          git diff --check
+          git diff --exit-code -- . ':(exclude)lib/features/home/widgets/side_drawer.dart' || true
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/home/widgets/side_drawer.dart .github/workflows/repair-translate-import.yml
+          git commit -m "fix: restore mobile translate page import"
+          git push origin HEAD:fix/verified-apk-1.1.30
