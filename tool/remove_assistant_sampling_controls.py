@@ -56,7 +56,6 @@ s = s[:start] + s[end:]
 s = replace_once(s, "    subtitle: '名称、模型、温度、上下文和搜索记忆开关',", "    subtitle: '名称、模型、上下文和搜索记忆开关',", 'gateway subtitle')
 write(path, s)
 
-# Desktop dialog has a separate basic pane in the parent library.
 path = 'lib/features/assistant/pages/assistant_settings_edit_page.dart'
 s = read(path)
 start = s.find('            // Temperature\n')
@@ -101,6 +100,15 @@ s = replace_once(s, 'context size, temperature, max tokens', 'context size, max 
 for key, clear, setter, maximum in [('temperature', 'clearTemperature', 'temperature', '2.0'), ('top_p', 'clearTopP', 'topP', '1.0')]:
     block = f"    if (patch.containsKey('{key}')) {{\n      final value = patch['{key}'];\n      next = value == null || value.toString().trim().isEmpty\n          ? next.copyWith({clear}: true)\n          : next.copyWith({setter}: _doubleFrom(value).clamp(0.0, {maximum}));\n    }}\n"
     s = replace_once(s, block, '', f'gateway {key}')
+double_parser = """  double _doubleFrom(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    final parsed = double.tryParse(raw?.toString().trim() ?? '');
+    if (parsed != null) return parsed;
+    throw ArgumentError('Expected numeric value, got $raw');
+  }
+
+"""
+s = replace_once(s, double_parser, '', 'obsolete numeric parser')
 write(path, s)
 
 path = 'test/core/services/app_control_service_test.dart'
@@ -139,7 +147,7 @@ for file, needles in {
     'lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart': ['Temperature', 'Top P', '_showTemperatureSheet', '_showTopPSheet', 'a.temperature', 'a.topP'],
     'lib/features/assistant/pages/assistant_settings_edit_page.dart': ['a.temperature', 'a.topP', 'clearTemperature', 'clearTopP'],
     'lib/features/home/controllers/chat_actions.dart': ['assistant?.temperature', 'assistant?.topP'],
-    'lib/core/services/app_control/app_control_service.dart': ["patch.containsKey('temperature')", "patch.containsKey('top_p')", 'clearTemperature', 'clearTopP'],
+    'lib/core/services/app_control/app_control_service.dart': ["patch.containsKey('temperature')", "patch.containsKey('top_p')", 'clearTemperature', 'clearTopP', '_doubleFrom'],
 }.items():
     found = [needle for needle in needles if needle in read(file)]
     if found:
