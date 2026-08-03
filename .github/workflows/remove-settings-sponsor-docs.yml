@@ -3,8 +3,10 @@ name: Remove settings sponsor and docs
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths: ['.github/workflows/remove-settings-sponsor-docs.yml']
+    branches:
+      - main
+    paths:
+      - .github/workflows/remove-settings-sponsor-docs.yml
 
 permissions:
   contents: write
@@ -13,14 +15,17 @@ jobs:
   apply:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Apply requested removals
-        shell: python {0}
+        shell: bash
         run: |
+          set -euo pipefail
+          python3 <<'PY'
           from pathlib import Path
-          import re
 
           settings_path = Path('lib/features/settings/pages/settings_page.dart')
           text = settings_path.read_text()
@@ -39,7 +44,7 @@ jobs:
                   }
                 },
               ),
-"""
+          """
           sponsor = """              _iosDivider(context),
               _iosNavRow(
                 context,
@@ -51,11 +56,10 @@ jobs:
                   );
                 },
               ),
-"""
+          """
           if docs not in text or sponsor not in text:
               raise SystemExit('Expected mobile settings blocks were not found')
-          text = text.replace(docs, '').replace(sponsor, '')
-          settings_path.write_text(text)
+          settings_path.write_text(text.replace(docs, '').replace(sponsor, ''))
 
           desktop_path = Path('lib/desktop/setting/about_pane.dart')
           desktop = desktop_path.read_text()
@@ -66,15 +70,14 @@ jobs:
                     label: l10n.settingsPageSponsor,
                     onTap: () => _showSponsorDesktopDialog(context),
                   ),
-"""
+          """
           if desktop_entry not in desktop:
               raise SystemExit('Expected desktop sponsor entry was not found')
           desktop = desktop.replace(desktop_entry, '')
           marker = '\nFuture<void> _showSponsorDesktopDialog(BuildContext context) async {'
           if marker not in desktop:
               raise SystemExit('Expected desktop sponsor dialog was not found')
-          desktop = desktop[:desktop.index(marker)] + '\n'
-          desktop_path.write_text(desktop)
+          desktop_path.write_text(desktop[:desktop.index(marker)] + '\n')
 
           sponsor_page = Path('lib/features/settings/pages/sponsor_page.dart')
           if not sponsor_page.exists():
@@ -83,21 +86,29 @@ jobs:
 
           for path in (settings_path, desktop_path):
               current = path.read_text()
-              if 'settingsPageDocs' in current or 'settingsPageSponsor' in current or 'SponsorPage' in current:
+              if any(value in current for value in ('settingsPageDocs', 'settingsPageSponsor', 'SponsorPage')):
                   raise SystemExit(f'Removal validation failed for {path}')
+          PY
+
       - name: Commit feature removal
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add lib/features/settings/pages/settings_page.dart lib/desktop/setting/about_pane.dart lib/features/settings/pages/sponsor_page.dart
-          git commit -m "feat: remove sponsor and documentation from settings"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/settings/pages/settings_page.dart
+          git add lib/desktop/setting/about_pane.dart
+          git add lib/features/settings/pages/sponsor_page.dart
+          git commit -m 'feat: remove sponsor and documentation from settings'
+
       - name: Bump version and update progress
-        shell: python {0}
+        shell: bash
         run: |
+          set -euo pipefail
+          python3 <<'PY'
           from pathlib import Path
           import re
+
           pubspec = Path('pubspec.yaml')
           text = pubspec.read_text()
           match = re.search(r'^version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)\s*$', text, re.M)
@@ -105,19 +116,20 @@ jobs:
               raise SystemExit('Version not found')
           major, minor, patch, build = map(int, match.groups())
           version = f'{major}.{minor}.{patch + 1}+{build + 1}'
-          text = text[:match.start()] + f'version: {version}' + text[match.end():]
-          pubspec.write_text(text)
+          pubspec.write_text(text[:match.start()] + f'version: {version}' + text[match.end():])
           Path('PROGRESS.md').write_text(
               'TASK: 删除设置中的赞助与使用文档功能\n'
               'STEP: 完成\n'
               'DONE: 已删除移动端使用文档入口、移动端与桌面端赞助入口、赞助页面，并更新版本。\n'
               f'NEXT: 发布 v{version.split("+")[0]} 并检查 Android APK 构建。\n'
           )
+          PY
+
       - name: Commit version and remove migration workflow
         shell: bash
         run: |
           set -euo pipefail
           git add pubspec.yaml PROGRESS.md
           git rm .github/workflows/remove-settings-sponsor-docs.yml
-          git commit -m "chore: bump version for settings cleanup release"
+          git commit -m 'chore: bump version for settings cleanup release'
           git push origin HEAD:main
