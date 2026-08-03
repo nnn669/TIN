@@ -1,0 +1,71 @@
+name: Finalize World Book Removal
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: worldbook-removal-wip
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: true
+      - name: Repair and finish cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          def remove_function(s,name):
+            while True:
+              m=re.search(r'(?m)^\s*(?:Future<[^\n]+>|Future<void>|void|String|bool|WorldBook|WorldBookEntry|Map<[^\n]+>)\s+'+re.escape(name)+r'\s*\(',s)
+              if not m:return s
+              start=s.rfind('\n',0,m.start())+1; brace=s.find('{',m.end()); depth=0; q=None; esc=False
+              for i in range(brace,len(s)):
+                c=s[i]
+                if q:
+                  if esc:esc=False
+                  elif c=='\\':esc=True
+                  elif c==q:q=None
+                  continue
+                if c in "'\"":q=c
+                elif c=='{':depth+=1
+                elif c=='}':
+                  depth-=1
+                  if depth==0:
+                    end=i+1
+                    if end<len(s) and s[end]=='\r':end+=1
+                    if end<len(s) and s[end]=='\n':end+=1
+                    s=s[:start]+s[end:];break
+          p=Path('lib/core/services/app_control/app_control_service.dart');s=p.read_text()
+          s=s.replace("        'description':\n        'parameters': {","        'description': 'Plan, inspect, execute, or undo safe Kelivo app data actions.',\n        'parameters': {")
+          s=s.replace("        assistant,\n        args,\n        operation,\n        content,\n      ),\n      AppControlTargets.mcpServer", "      AppControlTargets.mcpServer")
+          s=s.replace("    }\n      await _restoreWorldBooks(\n      );\n    }\n    if (bundle['mcp_servers'] is List)","    }\n    if (bundle['mcp_servers'] is List)")
+          for name in ['_bookIdArg','_patchWorldBook','_worldBookEntryFromArgs','_patchWorldBookEntry','_worldBookSnapshot','_restoreWorldBooks']:
+            s=remove_function(s,name)
+          s='\n'.join(line for line in s.split('\n') if not re.search(r'world.?book|世界书',line,re.I))+'\n'
+          p.write_text(s)
+          p=Path('lib/features/home/pages/home_page.dart');s=p.read_text();s=remove_function(s,'_openWorldBookPopover');p.write_text(s)
+          p=Path('lib/features/home/services/message_builder_service.dart');s=p.read_text();s='\n'.join(x for x in s.split('\n') if not re.search(r'world.?book|世界书',x,re.I))+'\n';p.write_text(s)
+          # remove temporary workflows from resulting product branch
+          for p in Path('.github/workflows').glob('*world-book*'):
+            p.unlink()
+      - name: Generate, format, verify and analyze
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/core/services/app_control/app_control_service.dart lib/features/home/pages/home_page.dart lib/features/home/services/message_builder_service.dart lib/main.dart lib/features/settings/pages/settings_page.dart lib/desktop/desktop_settings_page.dart lib/features/chat/widgets/bottom_tools_sheet.dart lib/features/home/widgets/chat_input_section.dart lib/features/home/widgets/chat_input_bar.dart lib/core/models/app_control_policy.dart lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart test/core/services/app_control_service_test.dart
+          if git grep -inE 'world.?book|世界书' -- ':!PROGRESS.md'; then exit 1; fi
+          flutter analyze
+      - name: Push main
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "feat: remove world book feature completely"
+          git push origin HEAD:main
