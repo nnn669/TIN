@@ -23,7 +23,7 @@ jobs:
           git fetch origin "$TARGET_SHA"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git read-tree -u "$TARGET_SHA"
+          git read-tree --reset -u "$TARGET_SHA"
           git add -A
           git commit -m "revert: restore version before temperature and backup removal" -m "Restore main source tree to $TARGET_SHA at the user's request. Preserve repository history without force-pushing."
           git push origin HEAD:main
