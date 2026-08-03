@@ -1865,6 +1865,24 @@ abstract class AppLocalizations {
   /// **'Solid Color'**
   String get displaySettingsPageChatMessageBackgroundSolid;
 
+  /// No description provided for @displaySettingsPageChatMessageBackgroundLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Image'**
+  String get displaySettingsPageChatMessageBackgroundLocal;
+
+  /// No description provided for @displaySettingsPageChatMessageBackgroundImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Local Image'**
+  String get displaySettingsPageChatMessageBackgroundImport;
+
+  /// No description provided for @displaySettingsPageChatMessageBackgroundClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Local Image'**
+  String get displaySettingsPageChatMessageBackgroundClear;
+
   /// No description provided for @displaySettingsPageAndroidBackgroundChatTitle.
   ///
   /// In en, this message translates to:

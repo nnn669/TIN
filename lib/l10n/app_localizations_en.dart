@@ -953,6 +953,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => 'Solid Color';
 
   @override
+  String get displaySettingsPageChatMessageBackgroundLocal => 'Local Image';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundImport =>
+      'Import Local Image';
+
+  @override
+  String get displaySettingsPageChatMessageBackgroundClear =>
+      'Remove Local Image';
+
+  @override
   String get displaySettingsPageAndroidBackgroundChatTitle =>
       'Background Generation (Android)';
 
