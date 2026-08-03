@@ -25,6 +25,21 @@ jobs:
           git config user.email "actions@github.com"
           curl -fsSL "https://raw.githubusercontent.com/nnn669/TIN/main/tools/fix_v3_compile_residue.py?run=${GITHUB_RUN_ID}" -o /tmp/fix.py
           python3 /tmp/fix.py
+          fixture="test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart"
+          needle="Assistant(id: _assistantId, name: 'Test Assistant', temperature: 0.6)"
+          replacement="Assistant(id: _assistantId, name: 'Test Assistant')"
+          count=$(grep -Foc "$needle" "$fixture" || true)
+          test "$count" -eq 1
+          python3 - "$fixture" "$needle" "$replacement" <<'PY'
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          old, new = sys.argv[2:]
+          text = path.read_text()
+          if text.count(old) != 1:
+              raise SystemExit('assistant fixture replacement count changed')
+          path.write_text(text.replace(old, new, 1))
+          PY
           if grep -RIn --exclude='*.g.dart' -E 'temperature:|clearTemperature|a\.temperature|assistant\?\.temperature' lib/core/models/assistant.dart lib/core/providers/assistant_provider.dart lib/core/services/app_control lib/core/services/backup lib/features/assistant lib/features/home/controllers test/core/services test/features/assistant; then exit 1; fi
           rm -f tools/fix_v3_compile_residue.py
           git add -A
@@ -40,3 +55,15 @@ jobs:
         run: flutter analyze
       - name: Run focused tests
         run: flutter test test/core/services/app_control_service_test.dart test/core/services/backup/data_sync_backup_file_test.dart test/features/assistant/pages/assistant_settings_edit_page_mcp_test.dart
+      - name: Remove validation workflow
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "TIN automation"
+          git config user.email "actions@github.com"
+          git fetch origin main
+          git checkout main
+          git rm -f .github/workflows/fix-v3-compile-residue.yml tools/fix_v3_compile_residue.py
+          git commit -m "chore: remove one-shot v3 validation workflow"
+          git push origin main
