@@ -280,7 +280,6 @@ void main() {
                   'name': 'Configured Assistant',
                   'search_enabled': true,
                   'memory_enabled': true,
-                  'temperature': 0.7,
                   'context_message_size': 12,
                 }),
               }, assistant),

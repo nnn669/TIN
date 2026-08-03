@@ -1989,47 +1989,6 @@ class _DesktopAssistantBasicPaneState
           children: [
             header(),
             sectionDivider(),
-            // Temperature
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  headerWithSwitch(
-                    title: labelWithHelp(
-                      l10n.assistantEditTemperatureTitle,
-                      l10n.assistantEditTemperatureDescription,
-                    ),
-                    onChanged: (v) async {
-                      if (v) {
-                        await context.read<AssistantProvider>().updateAssistant(
-                        );
-                      } else {
-                        await context.read<AssistantProvider>().updateAssistant(
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  IgnorePointer(
-                    child: Opacity(
-                      child: _SliderTileNew(
-                        min: 0.0,
-                        max: 2.0,
-                        divisions: 40,
-                          0.0,
-                          2.0,
-                        )).toStringAsFixed(2),
-                        onChanged: (v) => context
-                            .read<AssistantProvider>()
-                            .updateAssistant(a.copyWith(temperature: v)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            sectionDivider(),
             // Top-P
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
