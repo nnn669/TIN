@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter_background/flutter_background.dart';
 
@@ -5,21 +6,40 @@ import 'package:flutter_background/flutter_background.dart';
 /// All calls are no-ops on non-Android platforms.
 class AndroidBackgroundManager {
   static bool _initialized = false;
+  static Future<bool>? _initializing;
 
   /// Initialize the plugin once and request needed permissions.
+  /// Concurrent callers share the same initialization to avoid duplicate
+  /// plugin calls and repeated permission/system prompts.
   static Future<bool> ensureInitialized({
     String? notificationTitle,
     String? notificationText,
+  }) {
+    if (!Platform.isAndroid) return Future<bool>.value(false);
+    if (_initialized) return Future<bool>.value(true);
+    final pending = _initializing;
+    if (pending != null) return pending;
+
+    final future = _initialize(
+      notificationTitle: notificationTitle,
+      notificationText: notificationText,
+    );
+    _initializing = future;
+    return future.whenComplete(() {
+      if (identical(_initializing, future)) _initializing = null;
+    });
+  }
+
+  static Future<bool> _initialize({
+    String? notificationTitle,
+    String? notificationText,
   }) async {
-    if (!Platform.isAndroid) return false;
-    if (_initialized) return true;
     try {
       final androidConfig = FlutterBackgroundAndroidConfig(
         notificationTitle: notificationTitle ?? 'Kelivo is running',
         notificationText:
             notificationText ?? 'Keeping chat generation alive in background',
         notificationImportance: AndroidNotificationImportance.normal,
-        // Explicitly use app launcher icon from mipmap to avoid resource resolution issues
         notificationIcon: const AndroidResource(
           name: 'ic_launcher',
           defType: 'mipmap',
@@ -39,7 +59,6 @@ class AndroidBackgroundManager {
   static Future<void> setEnabled(bool enable) async {
     if (!Platform.isAndroid) return;
     try {
-      // Short-circuit if state already matches
       try {
         final current = FlutterBackground.isBackgroundExecutionEnabled;
         if (current == enable) return;
@@ -47,18 +66,17 @@ class AndroidBackgroundManager {
 
       if (enable) {
         if (!_initialized) {
-          // Initialize only when enabling, since this may trigger permission dialogs
-          await ensureInitialized();
+          final ready = await ensureInitialized();
+          if (!ready) return;
         }
         await FlutterBackground.enableBackgroundExecution();
       } else {
-        // Try to disable without forcing initialization to avoid permission prompts
         try {
           await FlutterBackground.disableBackgroundExecution();
         } catch (_) {}
       }
     } catch (_) {
-      // ignore runtime errors; best effort only
+      // Best effort only.
     }
   }
 
