@@ -15,7 +15,6 @@ import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/native_file_save.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/animations/widgets.dart';
 import '../../../shared/widgets/loading_dialog_card.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../theme/app_font_weights.dart';
@@ -36,9 +35,7 @@ class BackupPage extends StatelessWidget {
       builder: (ctx) => Dialog(
         backgroundColor: cs.surface,
         insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(38),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 840),
           child: Padding(
@@ -63,8 +60,7 @@ class BackupPage extends StatelessWidget {
                         title: l10n.backupPageMergeMode,
                         filled: false,
                         color: cardColor,
-                        onTap: () =>
-                            Navigator.of(ctx).pop(RestoreMode.merge),
+                        onTap: () => Navigator.of(ctx).pop(RestoreMode.merge),
                       ),
                     ),
                     const SizedBox(width: 18),
@@ -87,7 +83,7 @@ class BackupPage extends StatelessWidget {
     );
   }
 
-  Future<T> _loading<T>(
+  Future<T> _loading(
     BuildContext context,
     Future<T> Function() task, {
     String? label,
@@ -174,9 +170,7 @@ class BackupPage extends StatelessWidget {
               mode: mode,
             ),
       );
-      if (context.mounted) {
-        PlatformUtils.restartApp();
-      }
+      if (context.mounted) PlatformUtils.restartApp();
     } catch (e) {
       if (context.mounted) {
         showAppSnackBar(
@@ -201,7 +195,7 @@ class BackupPage extends StatelessWidget {
     if (mode == null || !context.mounted) return;
 
     try {
-      await _loading(
+      final res = await _loading(
         context,
         () => CherryImporter.importFromCherryStudio(
           file: File(path),
@@ -211,7 +205,13 @@ class BackupPage extends StatelessWidget {
         ),
       );
       if (context.mounted) {
-        PlatformUtils.restartApp();
+        showAppSnackBar(
+          context,
+          message:
+              '${l10nForBackup(context).backupPageImportFromCherryStudio}: '
+              '${res.assistants}',
+          type: NotificationType.success,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -237,7 +237,7 @@ class BackupPage extends StatelessWidget {
     if (mode == null || !context.mounted) return;
 
     try {
-      await _loading(
+      final res = await _loading(
         context,
         () => ChatboxImporter.importFromChatbox(
           file: File(path),
@@ -247,7 +247,13 @@ class BackupPage extends StatelessWidget {
         ),
       );
       if (context.mounted) {
-        PlatformUtils.restartApp();
+        showAppSnackBar(
+          context,
+          message:
+              '${l10nForBackup(context).backupPageImportFromChatbox}: '
+              '${res.assistants}',
+          type: NotificationType.success,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -316,6 +322,9 @@ class BackupPage extends StatelessWidget {
     );
   }
 }
+
+AppLocalizations l10nForBackup(BuildContext context) =>
+    AppLocalizations.of(context)!;
 
 class _BackupActionRow extends StatelessWidget {
   const _BackupActionRow({
