@@ -1,0 +1,70 @@
+name: Apply navigation cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Remove obsolete translation and settings statistics entries
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def patch(path, replacements):
+              p = Path(path)
+              text = p.read_text()
+              for old, new in replacements:
+                  if old not in text:
+                      raise SystemExit(f'Expected block not found in {path}: {old[:80]!r}')
+                  text = text.replace(old, new, 1)
+              p.write_text(text)
+
+          patch('lib/features/home/widgets/side_drawer.dart', [
+              ("import '../../translate/pages/translate_page.dart';\n", ''),
+          ])
+
+          patch('lib/features/settings/pages/settings_page.dart', [
+              ("import '../../stats/pages/stats_page.dart';\n", ''),
+              ("""              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.ChartColumnBig,
+                label: l10n.settingsPageStatistics,
+                onTap: () {
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const StatsPage()));
+                },
+              ),
+""", ''),
+          ])
+
+          patch('lib/desktop/desktop_settings_page.dart', [
+              ("import 'setting/stats_pane.dart';\n", ''),
+              ("  stats,\n", ''),
+              ("""                        case _SettingsMenuItem.stats:
+                          return const DesktopStatsPane(key: ValueKey('stats'));
+""", ''),
+              ("""      (
+        _SettingsMenuItem.stats,
+        lucide.Lucide.ChartColumnBig,
+        l10n.settingsPageStatistics,
+      ),
+""", ''),
+          ])
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/home/widgets/side_drawer.dart lib/features/settings/pages/settings_page.dart lib/desktop/desktop_settings_page.dart
+          git commit -m "feat: move statistics out of settings"
+          git push origin main
