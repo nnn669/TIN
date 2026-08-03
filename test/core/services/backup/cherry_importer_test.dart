@@ -284,7 +284,6 @@ String _persistStateJson({bool includeAdditionalTopics = false}) {
           'prompt': 'System prompt',
           'topics': topics,
           'settings': <String, dynamic>{
-            'temperature': 1,
             'contextCount': 5,
             'enableMaxTokens': false,
             'streamOutput': true,

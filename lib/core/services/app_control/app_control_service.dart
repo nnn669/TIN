@@ -191,7 +191,7 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
         AppControlOperations.exportJson,
       ],
       'description':
-          'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, temperature, max tokens, or 神经权能网关 permission.',
+          'Update current assistant settings from JSON content such as name, model binding, search, memory, context size, max tokens, or 神经权能网关 permission.',
       'requires_confirmation': true,
       'undoable': true,
     },
@@ -1075,12 +1075,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       next = next.copyWith(
         limitContextMessages: _boolFrom(patch['limit_context_messages']),
       );
-    }
-    if (patch.containsKey('temperature')) {
-      final value = patch['temperature'];
-      next = value == null || value.toString().trim().isEmpty
-          ? next.copyWith(clearTemperature: true)
-          : next.copyWith(temperature: _doubleFrom(value).clamp(0.0, 2.0));
     }
     if (patch.containsKey('top_p')) {
       final value = patch['top_p'];

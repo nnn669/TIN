@@ -1002,7 +1002,7 @@ class _HomePageState extends State<HomePage>
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: provider,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     colorFilter: ColorFilter.mode(
                       Colors.black.withValues(alpha: 0.04),
                       BlendMode.srcATop,
@@ -1046,7 +1046,7 @@ class _HomePageState extends State<HomePage>
       if (bgRaw.startsWith('http')) {
         bg = Image.network(
           bgRaw,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       } else {
@@ -1054,7 +1054,7 @@ class _HomePageState extends State<HomePage>
           final fixed = SandboxPathResolver.fix(bgRaw);
           final f = File(fixed);
           if (f.existsSync()) {
-            bg = Image(image: FileImage(f), fit: BoxFit.cover);
+            bg = Image(image: FileImage(f), fit: BoxFit.contain);
           }
         } catch (_) {}
       }

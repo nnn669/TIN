@@ -15,7 +15,6 @@ import '../services/tts/tts_text_selection.dart';
 import '../services/network/request_logger.dart';
 import '../services/logging/flutter_logger.dart';
 import '../models/api_keys.dart';
-import '../models/backup.dart';
 import '../models/provider_group.dart';
 import '../services/haptics.dart';
 import '../../utils/app_directories.dart';
@@ -269,8 +268,6 @@ class SettingsProvider extends ChangeNotifier {
   static const String _searchEnabledKey = 'search_enabled_v1';
   static const String _searchAutoTestOnLaunchKey =
       'search_auto_test_on_launch_v1';
-  static const String _webDavConfigKey = 'webdav_config_v1';
-  static const String _s3ConfigKey = 's3_config_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
   static const String _globalProxyTypeKey =
@@ -1240,24 +1237,6 @@ class SettingsProvider extends ChangeNotifier {
     _ttsTextSelectionMode = TtsTextSelectionModeStorage.fromStorageValue(
       prefs.getString(_ttsTextSelectionModeKey),
     );
-    // webdav config
-    final webdavStr = prefs.getString(_webDavConfigKey);
-    if (webdavStr != null && webdavStr.isNotEmpty) {
-      try {
-        _webDavConfig = WebDavConfig.fromJson(
-          jsonDecode(webdavStr) as Map<String, dynamic>,
-        );
-      } catch (_) {}
-    }
-    // s3 config
-    final s3Str = prefs.getString(_s3ConfigKey);
-    if (s3Str != null && s3Str.isNotEmpty) {
-      try {
-        _s3Config = S3Config.fromJson(
-          jsonDecode(s3Str) as Map<String, dynamic>,
-        );
-      } catch (_) {}
-    }
     if (_providerConfigs.isEmpty) {
       // Seed a couple of sensible defaults on first launch, but do not recreate
       // providers implicitly during later reads (e.g., when switching chats).
@@ -1868,25 +1847,6 @@ class SettingsProvider extends ChangeNotifier {
       default:
         return const Locale('en', 'US');
     }
-  }
-
-  // ===== Backup & WebDAV settings =====
-  WebDavConfig _webDavConfig = const WebDavConfig();
-  WebDavConfig get webDavConfig => _webDavConfig;
-  Future<void> setWebDavConfig(WebDavConfig cfg) async {
-    _webDavConfig = cfg;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_webDavConfigKey, jsonEncode(cfg.toJson()));
-  }
-
-  S3Config _s3Config = const S3Config();
-  S3Config get s3Config => _s3Config;
-  Future<void> setS3Config(S3Config cfg) async {
-    _s3Config = cfg;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_s3ConfigKey, jsonEncode(cfg.toJson()));
   }
 
   Future<void> _initSearchConnectivityTests() async {

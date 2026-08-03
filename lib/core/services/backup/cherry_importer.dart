@@ -540,7 +540,6 @@ class CherryImporter {
         (k, v) => MapEntry(k.toString(), v),
       );
 
-      final temperature = (settings?['temperature'] as num?)?.toDouble();
       final topP = (settings?['topP'] as num?)?.toDouble();
       final ctxCount = (settings?['contextCount'] as num?)?.toInt();
       final streamOutput = settings?['streamOutput'] as bool?;
@@ -557,7 +556,6 @@ class CherryImporter {
         'useAssistantName': false,
         'chatModelProvider': model?['provider']?.toString(),
         'chatModelId': model?['id']?.toString(),
-        'temperature': temperature,
         'topP': topP,
         'contextMessageSize': ctxCount ?? 64,
         'limitContextMessages': true,
