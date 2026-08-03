@@ -1,0 +1,28 @@
+name: Temporary repository inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ref to inspect
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Print relevant call sites
+        shell: bash
+        run: |
+          set +e
+          for pattern in 'temperature' 'temperature:' 'background' 'BoxFit.cover' 'BoxFit.contain' 'WebDav' 'S3' 'SponsorPage' 'settingsPageDocs' 'settingsPageSponsor'; do
+            echo "===== $pattern ====="
+            grep -RIn --exclude-dir=.git --exclude-dir=build --exclude='*.g.dart' -- "$pattern" lib test | head -250
+          done
