@@ -1,0 +1,207 @@
+name: Apply Local Chat Background Patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'feat: import local chat background image') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              with open(path, 'r', encoding='utf-8', newline='') as f:
+                  return f.read()
+
+          def write(path, text):
+              with open(path, 'w', encoding='utf-8', newline='') as f:
+                  f.write(text)
+
+          def replace_once(path, old, new):
+              text = read(path)
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected 1 match, got {count}: {old[:120]!r}')
+              write(path, text.replace(old, new, 1))
+
+          settings = 'lib/core/providers/settings_provider.dart'
+          if 'chatBackgroundImagePath' not in read(settings):
+              replace_once(
+                  settings,
+                  "  static const String _displayChatMessageBackgroundStyleKey =\n      'display_chat_message_background_style_v1';\n  static const String _mobileAssistantEditTabOrderKey =",
+                  "  static const String _displayChatMessageBackgroundStyleKey =\n      'display_chat_message_background_style_v1';\n  static const String _displayChatBackgroundImagePathKey =\n      'display_chat_background_image_path_v1';\n  static const String _mobileAssistantEditTabOrderKey =",
+              )
+
+              replace_once(
+                  settings,
+                  '    // Chat message background style (default | frosted | solid)\n',
+                  "    _chatBackgroundImagePath = _nonEmpty(\n      prefs.getString(_displayChatBackgroundImagePathKey),\n    );\n    if (_chatBackgroundImagePath != null &&\n        !File(SandboxPathResolver.fix(_chatBackgroundImagePath!)).existsSync()) {\n      _chatBackgroundImagePath = null;\n      await prefs.remove(_displayChatBackgroundImagePathKey);\n    }\n    // Chat message background style (default | frosted | solid)\n",
+              )
+
+              replace_once(
+                  settings,
+                  '  List _mobileAssistantEditTabOrder = const [];\n',
+                  "  String? _chatBackgroundImagePath;\n  String? get chatBackgroundImagePath => _chatBackgroundImagePath;\n\n  Future setChatBackgroundImage(String sourcePath) async {\n    final source = File(SandboxPathResolver.fix(sourcePath.trim()));\n    if (!await source.exists()) return;\n\n    try {\n      final imagesDir = await AppDirectories.getImagesDirectory();\n      if (!await imagesDir.exists()) {\n        await imagesDir.create(recursive: true);\n      }\n      final ext = p.extension(source.path).toLowerCase();\n      final extension = <String>{'.jpg', '.jpeg', '.png', '.webp', '.gif'}\n              .contains(ext)\n          ? ext\n          : '.jpg';\n      final destination = File(\n        p.join(\n          imagesDir.path,\n          'chat_background_${DateTime.now().microsecondsSinceEpoch}$extension',\n        ),\n      );\n      await destination.writeAsBytes(await source.readAsBytes(), flush: true);\n\n      final previousPath = _chatBackgroundImagePath;\n      _chatBackgroundImagePath = destination.path;\n      notifyListeners();\n      final prefs = await SharedPreferences.getInstance();\n      await prefs.setString(_displayChatBackgroundImagePathKey, destination.path);\n      await _deleteManagedChatBackgroundFile(previousPath);\n    } catch (_) {\n      // Keep the current background if importing the new file fails.\n    }\n  }\n\n  Future clearChatBackgroundImage() async {\n    final previousPath = _chatBackgroundImagePath;\n    if (previousPath == null || previousPath.isEmpty) return;\n    _chatBackgroundImagePath = null;\n    notifyListeners();\n    final prefs = await SharedPreferences.getInstance();\n    await prefs.remove(_displayChatBackgroundImagePathKey);\n    await _deleteManagedChatBackgroundFile(previousPath);\n  }\n\n  Future _deleteManagedChatBackgroundFile(String? path) async {\n    if (path == null || path.isEmpty) return;\n    try {\n      final root = p.normalize(\n        Directory((await AppDirectories.getImagesDirectory()).path).absolute.path,\n      );\n      final target = p.normalize(File(path).absolute.path);\n      if (p.isWithin(root, target) && await File(target).exists()) {\n        await File(target).delete();\n      }\n    } catch (_) {}\n  }\n\n  List _mobileAssistantEditTabOrder = const [];\n",
+              )
+
+              replace_once(
+                  settings,
+                  '    copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;\n    copy._mobileAssistantEditTabOrder = _mobileAssistantEditTabOrder;',
+                  '    copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;\n    copy._chatBackgroundImagePath = _chatBackgroundImagePath;\n    copy._mobileAssistantEditTabOrder = _mobileAssistantEditTabOrder;',
+              )
+
+          display = 'lib/features/settings/pages/display_settings_page.dart'
+          replace_once(
+              display,
+              "                  final sp = ctx.watch<SettingsProvider>();\n                  String labelOf() {\n                    switch (sp.chatMessageBackgroundStyle) {",
+              "                  final sp = ctx.watch<SettingsProvider>();\n                  final localPath = sp.chatBackgroundImagePath?.trim();\n                  if (localPath != null && localPath.isNotEmpty) {\n                    return Text(\n                      l10n.displaySettingsPageChatMessageBackgroundLocal,\n                      maxLines: 1,\n                      overflow: TextOverflow.ellipsis,\n                      style: TextStyle(\n                        color: cs.onSurface.withValues(alpha: 0.6),\n                        fontSize: 13,\n                      ),\n                    );\n                  }\n                  String labelOf() {\n                    switch (sp.chatMessageBackgroundStyle) {",
+          )
+
+          def replace_in_function(path, start_marker, end_marker, old, new):
+              text = read(path)
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+              segment = text[start:end]
+              count = segment.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: function match expected 1, got {count}: {old[:120]!r}')
+              segment = segment.replace(old, new, 1)
+              write(path, text[:start] + segment + text[end:])
+
+          replace_in_function(
+              display,
+              'Future<void> _showChatMessageBackgroundSheet',
+              'Future<void> _showAndroidBackgroundChatSheet',
+              "            children: [\n              _sheetOption(\n                ctx,\n                label: l10n.displaySettingsPageChatMessageBackgroundDefault,",
+              "            children: [\n              _sheetOption(\n                ctx,\n                label: l10n.displaySettingsPageChatMessageBackgroundImport,\n                onTap: () => Navigator.of(ctx).pop('local'),\n              ),\n              _sheetDividerNoIcon(ctx),\n              _sheetOption(\n                ctx,\n                label: l10n.displaySettingsPageChatMessageBackgroundClear,\n                onTap: () => Navigator.of(ctx).pop('clear'),\n              ),\n              _sheetDividerNoIcon(ctx),\n              _sheetOption(\n                ctx,\n                label: l10n.displaySettingsPageChatMessageBackgroundDefault,",
+          )
+
+          replace_in_function(
+              display,
+              'Future<void> _showChatMessageBackgroundSheet',
+              'Future<void> _showAndroidBackgroundChatSheet',
+              "    final sp = context.read<SettingsProvider>();\n    switch (choice) {",
+              "    final sp = context.read<SettingsProvider>();\n    if (choice == 'local') {\n      final result = await FilePicker.platform.pickFiles(\n        type: FileType.image,\n        allowMultiple: false,\n      );\n      final path = result?.files.singleOrNull?.path;\n      if (path != null && context.mounted) {\n        await sp.setChatBackgroundImage(path);\n      }\n      return;\n    }\n    if (choice == 'clear') {\n      await sp.clearChatBackgroundImage();\n      return;\n    }\n    switch (choice) {",
+          )
+
+          home = 'lib/features/home/pages/home_page.dart'
+          replace_in_function(
+              home,
+              '  Widget _buildChatBackground',
+              '  Widget _buildAssistantBackground',
+              "        final bg = context\n            .watch<AssistantProvider>()\n            .currentAssistant\n            ?.background;\n        final maskStrength = context\n            .watch<SettingsProvider>()\n            .chatBackgroundMaskStrength;\n        if (bg == null || bg.trim().isEmpty) return const SizedBox.shrink();",
+              "        final settings = context.watch<SettingsProvider>();\n        final assistant = context.watch<AssistantProvider>().currentAssistant;\n        final importedPath = settings.chatBackgroundImagePath?.trim();\n        final imported = importedPath != null && importedPath.isNotEmpty;\n        final bg = imported ? importedPath : assistant?.background;\n        final maskStrength = settings.chatBackgroundMaskStrength;\n        final fit = imported ? BoxFit.fill : BoxFit.contain;\n        if (bg == null || bg.trim().isEmpty) return const SizedBox.shrink();",
+          )
+          replace_in_function(
+              home,
+              '  Widget _buildChatBackground',
+              '  Widget _buildAssistantBackground',
+              '                    fit: BoxFit.contain,\n                    colorFilter:',
+              '                    fit: fit,\n                    colorFilter:',
+          )
+          replace_in_function(
+              home,
+              '  Widget _buildAssistantBackground',
+              '  bool _assistantBackgroundActive',
+              "    final assistant = context.watch<AssistantProvider>().currentAssistant;\n    final bgRaw = (assistant?.background ?? '').trim();\n    Widget? bg;",
+              "    final settings = context.watch<SettingsProvider>();\n    final assistant = context.watch<AssistantProvider>().currentAssistant;\n    final importedPath = settings.chatBackgroundImagePath?.trim();\n    final imported = importedPath != null && importedPath.isNotEmpty;\n    final bgRaw = (imported ? importedPath : assistant?.background ?? '').trim();\n    final fit = imported ? BoxFit.fill : BoxFit.contain;\n    Widget? bg;",
+          )
+          replace_in_function(
+              home,
+              '  Widget _buildAssistantBackground',
+              '  bool _assistantBackgroundActive',
+              '          fit: BoxFit.contain,\n          errorBuilder:',
+              '          fit: fit,\n          errorBuilder:',
+          )
+          replace_in_function(
+              home,
+              '  Widget _buildAssistantBackground',
+              '  bool _assistantBackgroundActive',
+              '            bg = Image(image: FileImage(f), fit: BoxFit.contain);',
+              '            bg = Image(image: FileImage(f), fit: fit);',
+          )
+          replace_in_function(
+              home,
+              '  bool _assistantBackgroundActive',
+              '  double _chatTopOverlayInset',
+              "    final bgRaw =\n        (context.watch<AssistantProvider>().currentAssistant?.background ?? '')\n            .trim();\n    if (bgRaw.isEmpty) return false;\n    if (bgRaw.startsWith('http')) return true;\n    try {\n      final fixed = SandboxPathResolver.fix(bgRaw);\n      return File(fixed).existsSync();\n    } catch (_) {\n      return false;\n    }",
+              "    final settings = context.watch<SettingsProvider>();\n    final importedPath = settings.chatBackgroundImagePath?.trim();\n    if (importedPath != null && importedPath.isNotEmpty) {\n      try {\n        return File(SandboxPathResolver.fix(importedPath)).existsSync();\n      } catch (_) {\n        return false;\n      }\n    }\n    final bgRaw =\n        (context.watch<AssistantProvider>().currentAssistant?.background ?? '')\n            .trim();\n    if (bgRaw.isEmpty) return false;\n    if (bgRaw.startsWith('http')) return true;\n    try {\n      final fixed = SandboxPathResolver.fix(bgRaw);\n      return File(fixed).existsSync();\n    } catch (_) {\n      return false;\n    }",
+          )
+
+          def add_arb(path, values):
+              text = read(path)
+              import re
+              pattern = r'(?m)^(  "displaySettingsPageChatMessageBackgroundSolid": [^\r\n]*\r?\n)'
+              def repl(match):
+                  line = match.group(1)
+                  nl = '\r\n' if line.endswith('\r\n') else '\n'
+                  return line + ''.join(
+                      f'  "{key}": {value},{nl}'
+                      for key, value in values.items()
+                  )
+              text, count = re.subn(pattern, repl, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'{path}: localization anchor count {count}')
+              write(path, text)
+
+          add_arb('lib/l10n/app_zh.arb', {
+              'displaySettingsPageChatMessageBackgroundLocal': '"本地图片"',
+              'displaySettingsPageChatMessageBackgroundImport': '"导入本地图片"',
+              'displaySettingsPageChatMessageBackgroundClear': '"移除本地图片"',
+          })
+          add_arb('lib/l10n/app_zh_Hans.arb', {
+              'displaySettingsPageChatMessageBackgroundLocal': '"本地图片"',
+              'displaySettingsPageChatMessageBackgroundImport': '"导入本地图片"',
+              'displaySettingsPageChatMessageBackgroundClear': '"移除本地图片"',
+          })
+          add_arb('lib/l10n/app_zh_Hant.arb', {
+              'displaySettingsPageChatMessageBackgroundLocal': '"本機圖片"',
+              'displaySettingsPageChatMessageBackgroundImport': '"匯入本機圖片"',
+              'displaySettingsPageChatMessageBackgroundClear': '"移除本機圖片"',
+          })
+          add_arb('lib/l10n/app_en.arb', {
+              'displaySettingsPageChatMessageBackgroundLocal': '"Local Image"',
+              'displaySettingsPageChatMessageBackgroundImport': '"Import Local Image"',
+              'displaySettingsPageChatMessageBackgroundClear': '"Remove Local Image"',
+          })
+          PY
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Generate localization files
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter gen-l10n
+      - name: Check and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -n "$(git status --short)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/apply-chat-background.yml
+          git add lib/core/providers/settings_provider.dart lib/features/settings/pages/display_settings_page.dart lib/features/home/pages/home_page.dart lib/l10n
+          git commit -m "feat: import local chat background image"
+          git push origin main
