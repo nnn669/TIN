@@ -38,8 +38,8 @@ jobs:
             echo "Configure SIGN_STORE_PASSWORD, SIGN_KEY_ALIAS, and SIGN_KEY_PASSWORD before running this workflow."
             exit 1
           fi
-          if [[ ${#SIGN_STORE_PASSWORD} -lt 8 || ${#SIGN_KEY_PASSWORD} -lt 8 ]]; then
-            echo "Signing passwords must contain at least 8 characters."
+          if [[ ${#SIGN_STORE_PASSWORD} -lt 12 || ${#SIGN_KEY_PASSWORD} -lt 12 ]]; then
+            echo "Signing passwords must contain at least 12 characters."
             exit 1
           fi
           if [[ ! "$SIGN_KEY_ALIAS" =~ ^[A-Za-z0-9._-]+$ ]]; then
@@ -47,9 +47,9 @@ jobs:
             exit 1
           fi
 
-          mkdir -p signing-backup
+          mkdir -p signing-private signing-artifact
           keytool -genkeypair \
-            -keystore signing-backup/tin-release.jks \
+            -keystore signing-private/tin-release.jks \
             -storetype JKS \
             -storepass "$SIGN_STORE_PASSWORD" \
             -alias "$SIGN_KEY_ALIAS" \
@@ -60,19 +60,27 @@ jobs:
             -dname "CN=TIN Android Release, OU=Android, O=TIN, C=CN" \
             -noprompt
           keytool -list \
-            -keystore signing-backup/tin-release.jks \
+            -keystore signing-private/tin-release.jks \
             -storepass "$SIGN_STORE_PASSWORD" \
             -alias "$SIGN_KEY_ALIAS" >/dev/null
-          base64 --wrap=0 signing-backup/tin-release.jks > signing-backup/SIGN_KEYSTORE_BASE64.txt
-          test -s signing-backup/tin-release.jks
-          test -s signing-backup/SIGN_KEYSTORE_BASE64.txt
-          chmod 600 signing-backup/tin-release.jks signing-backup/SIGN_KEYSTORE_BASE64.txt
-          sha256sum signing-backup/tin-release.jks
+          base64 --wrap=0 signing-private/tin-release.jks > signing-private/SIGN_KEYSTORE_BASE64.txt
+          test -s signing-private/tin-release.jks
+          test -s signing-private/SIGN_KEYSTORE_BASE64.txt
+          chmod 600 signing-private/tin-release.jks signing-private/SIGN_KEYSTORE_BASE64.txt
+          sha256sum signing-private/tin-release.jks
+
+          7z a -t7z -mhe=on -p"$SIGN_STORE_PASSWORD" \
+            signing-artifact/TIN-android-signing-backup.7z \
+            ./signing-private/tin-release.jks \
+            ./signing-private/SIGN_KEYSTORE_BASE64.txt >/dev/null
+          7z t -p"$SIGN_STORE_PASSWORD" signing-artifact/TIN-android-signing-backup.7z >/dev/null
+          test -s signing-artifact/TIN-android-signing-backup.7z
+          rm -rf signing-private
       - name: Upload encrypted signing backup
         uses: actions/upload-artifact@v4
         with:
           name: TIN-android-signing-backup-${{ github.run_number }}
-          path: signing-backup/
+          path: signing-artifact/TIN-android-signing-backup.7z
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
