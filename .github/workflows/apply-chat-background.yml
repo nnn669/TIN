@@ -82,9 +82,9 @@ jobs:
             'lib/l10n/app_zh_Hant.arb': ['本機圖片', '匯入本機圖片', '移除本機圖片'],
           };
           for (const [path, text] of Object.entries(values)) {
-            replaceRegexOnce(path, /^  "displaySettingsPageChatMessageBackgroundSolid": [^\r\n]+,$/m, (line) => {
+            replaceRegexOnce(path, /^  "displaySettingsPageChatMessageBackgroundSolid": [^\r\n]+,\r?$/m, (line) => {
               const nl = '\n';
-              return `${line}${nl}  "displaySettingsPageChatMessageBackgroundLocal": "${text[0]}",${nl}  "displaySettingsPageChatMessageBackgroundImport": "${text[1]}",${nl}  "displaySettingsPageChatMessageBackgroundClear": "${text[2]}",`;
+              return `${line.trimEnd()}${nl}  "displaySettingsPageChatMessageBackgroundLocal": "${text[0]}",${nl}  "displaySettingsPageChatMessageBackgroundImport": "${text[1]}",${nl}  "displaySettingsPageChatMessageBackgroundClear": "${text[2]}",`;
             });
           }
           console.log('chat background source patch applied');
@@ -112,6 +112,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/apply-chat-background.yml
           git add lib/core/providers/settings_provider.dart lib/features/settings/pages/display_settings_page.dart lib/features/home/pages/home_page.dart lib/l10n
-
           git commit -m "feat: import local chat background image"
           git push origin main
