@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,9 +33,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,7 +52,10 @@ fun TinApp(
 ) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val draft by viewModel.draft.collectAsStateWithLifecycle()
+    val provider by viewModel.provider.collectAsStateWithLifecycle()
     val settingsOpen by viewModel.settingsOpen.collectAsStateWithLifecycle()
+    val isSending by viewModel.isSending.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     LaunchedEffect(incomingText) {
@@ -63,13 +71,13 @@ fun TinApp(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("TIN", fontWeight = FontWeight.SemiBold) },
+                title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.SemiBold) },
                 actions = {
-                    IconButton(onClick = viewModel::newConversation) {
-                        Icon(Icons.Outlined.Add, contentDescription = "新建对话")
+                    IconButton(onClick = viewModel::newConversation, enabled = !isSending) {
+                        Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.new_conversation))
                     }
                     IconButton(onClick = viewModel::openSettings) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "设置")
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 },
             )
@@ -77,6 +85,7 @@ fun TinApp(
         bottomBar = {
             MessageComposer(
                 value = draft,
+                isSending = isSending,
                 onValueChange = viewModel::setDraft,
                 onSend = viewModel::send,
             )
@@ -91,6 +100,15 @@ fun TinApp(
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (error != null) {
+                item {
+                    Text(
+                        text = error.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
             items(messages, key = { it.id }) { message ->
                 MessageBubble(message)
             }
@@ -99,8 +117,16 @@ fun TinApp(
 
     if (settingsOpen) {
         SettingsDialog(
+            config = provider,
             onDismiss = viewModel::closeSettings,
-            onClear = viewModel::clearConversation,
+            onSave = {
+                viewModel.saveProvider(it)
+                viewModel.closeSettings()
+            },
+            onClear = {
+                viewModel.clearConversation()
+                viewModel.closeSettings()
+            },
         )
     }
 }
@@ -108,6 +134,7 @@ fun TinApp(
 @Composable
 private fun MessageComposer(
     value: String,
+    isSending: Boolean,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
 ) {
@@ -123,16 +150,21 @@ private fun MessageComposer(
                 value = value,
                 onValueChange = onValueChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("输入消息") },
+                placeholder = { Text(stringResource(R.string.message_placeholder)) },
                 maxLines = 5,
+                enabled = !isSending,
             )
             Spacer(Modifier.width(8.dp))
             IconButton(
                 onClick = onSend,
-                enabled = value.isNotBlank(),
+                enabled = value.isNotBlank() && !isSending,
                 modifier = Modifier.size(52.dp),
             ) {
-                Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "发送")
+                if (isSending) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = stringResource(R.string.send))
+                }
             }
         }
     }
@@ -162,26 +194,38 @@ private fun MessageBubble(message: ChatMessage) {
 
 @Composable
 private fun SettingsDialog(
+    config: ProviderConfig,
     onDismiss: () -> Unit,
+    onSave: (ProviderConfig) -> Unit,
     onClear: () -> Unit,
 ) {
+    var name by remember(config) { mutableStateOf(config.name) }
+    var baseUrl by remember(config) { mutableStateOf(config.baseUrl) }
+    var apiKey by remember(config) { mutableStateOf(config.apiKey) }
+    var model by remember(config) { mutableStateOf(config.model) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("设置") },
+        title = { Text(stringResource(R.string.settings)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("原生 Android 迁移已启动。")
-                Text(
-                    "Provider、消息持久化、MCP 和备份将在后续阶段接入；当前界面用于验证原生启动、分享文本和基础交互。",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Text(stringResource(R.string.provider_description), style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.provider_name)) }, singleLine = true)
+                OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text(stringResource(R.string.base_url)) }, singleLine = true)
+                OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text(stringResource(R.string.api_key)) }, singleLine = true)
+                OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text(stringResource(R.string.model)) }, singleLine = true)
             }
         },
         confirmButton = {
-            TextButton(onClick = onClear) { Text("清空对话") }
+            Button(onClick = { onSave(ProviderConfig(name, baseUrl, apiKey, model)) }) {
+                Text(stringResource(R.string.save))
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
+            Row {
+                TextButton(onClick = onClear) { Text(stringResource(R.string.clear_conversation)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            }
         },
     )
 }
