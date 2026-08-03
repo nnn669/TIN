@@ -647,7 +647,7 @@ class DesktopBackgroundLayer extends StatelessWidget {
       if (bgRaw.startsWith('http')) {
         bg = Image.network(
           bgRaw,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       } else {
@@ -655,7 +655,7 @@ class DesktopBackgroundLayer extends StatelessWidget {
           final fixed = SandboxPathResolver.fix(bgRaw);
           final f = File(fixed);
           if (f.existsSync()) {
-            bg = Image(image: FileImage(f), fit: BoxFit.contain);
+            bg = Image(image: FileImage(f), fit: BoxFit.cover);
           }
         } catch (_) {}
       }

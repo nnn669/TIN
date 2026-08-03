@@ -226,18 +226,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 label: l10n.displaySettingsPageChatMessageBackgroundTitle,
                 detailBuilder: (ctx) {
                   final sp = ctx.watch<SettingsProvider>();
-                  final localPath = sp.chatBackgroundImagePath?.trim();
-                  if (localPath != null && localPath.isNotEmpty) {
-                    return Text(
-                      l10n.displaySettingsPageChatMessageBackgroundLocal,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: cs.onSurface.withValues(alpha: 0.6),
-                        fontSize: 13,
-                      ),
-                    );
-                  }
                   String labelOf() {
                     switch (sp.chatMessageBackgroundStyle) {
                       case ChatMessageBackgroundStyle.frosted:
@@ -515,18 +503,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
             children: [
               _sheetOption(
                 ctx,
-                label: l10n.displaySettingsPageChatMessageBackgroundImport,
-                onTap: () => Navigator.of(ctx).pop('local'),
-              ),
-              _sheetDividerNoIcon(ctx),
-              _sheetOption(
-                ctx,
-                label: l10n.displaySettingsPageChatMessageBackgroundClear,
-                onTap: () => Navigator.of(ctx).pop('clear'),
-              ),
-              _sheetDividerNoIcon(ctx),
-              _sheetOption(
-                ctx,
                 label: l10n.displaySettingsPageChatMessageBackgroundDefault,
                 onTap: () => Navigator.of(ctx).pop('default'),
               ),
@@ -551,16 +527,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
     if (!context.mounted) return;
 
     final sp = context.read<SettingsProvider>();
-    if (choice == 'local') {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
-      final path = result?.files.singleOrNull?.path;
-      if (path != null && context.mounted) await sp.setChatBackgroundImage(path);
-      return;
-    }
-    if (choice == 'clear') {
-      await sp.clearChatBackgroundImage();
-      return;
-    }
     switch (choice) {
       case 'frosted':
         await sp.setChatMessageBackgroundStyle(

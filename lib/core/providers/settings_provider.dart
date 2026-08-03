@@ -15,6 +15,7 @@ import '../services/tts/tts_text_selection.dart';
 import '../services/network/request_logger.dart';
 import '../services/logging/flutter_logger.dart';
 import '../models/api_keys.dart';
+import '../models/backup.dart';
 import '../models/provider_group.dart';
 import '../services/haptics.dart';
 import '../../utils/app_directories.dart';
@@ -209,8 +210,6 @@ class SettingsProvider extends ChangeNotifier {
       'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey =
       'display_chat_message_background_style_v1';
-  static const String _displayChatBackgroundImagePathKey =
-      'display_chat_background_image_path_v1';
   static const String _mobileAssistantEditTabOrderKey =
       'mobile_assistant_edit_tab_order_v1';
   static const String _mobileAssistantEditTabHiddenKey =
@@ -270,6 +269,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _searchEnabledKey = 'search_enabled_v1';
   static const String _searchAutoTestOnLaunchKey =
       'search_auto_test_on_launch_v1';
+  static const String _webDavConfigKey = 'webdav_config_v1';
+  static const String _s3ConfigKey = 's3_config_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
   static const String _globalProxyTypeKey =
@@ -1097,14 +1098,6 @@ class SettingsProvider extends ChangeNotifier {
     }
     _desktopRightSidebarOpen =
         prefs.getBool(_desktopRightSidebarOpenKey) ?? true;
-    _chatBackgroundImagePath = _nonEmpty(
-      prefs.getString(_displayChatBackgroundImagePathKey),
-    );
-    if (_chatBackgroundImagePath != null &&
-        !File(SandboxPathResolver.fix(_chatBackgroundImagePath!)).existsSync()) {
-      _chatBackgroundImagePath = null;
-      await prefs.remove(_displayChatBackgroundImagePathKey);
-    }
     // Chat message background style (default | frosted | solid)
     final bgStyleStr =
         prefs.getString(_displayChatMessageBackgroundStyleKey) ?? 'default';
@@ -1247,6 +1240,24 @@ class SettingsProvider extends ChangeNotifier {
     _ttsTextSelectionMode = TtsTextSelectionModeStorage.fromStorageValue(
       prefs.getString(_ttsTextSelectionModeKey),
     );
+    // webdav config
+    final webdavStr = prefs.getString(_webDavConfigKey);
+    if (webdavStr != null && webdavStr.isNotEmpty) {
+      try {
+        _webDavConfig = WebDavConfig.fromJson(
+          jsonDecode(webdavStr) as Map<String, dynamic>,
+        );
+      } catch (_) {}
+    }
+    // s3 config
+    final s3Str = prefs.getString(_s3ConfigKey);
+    if (s3Str != null && s3Str.isNotEmpty) {
+      try {
+        _s3Config = S3Config.fromJson(
+          jsonDecode(s3Str) as Map<String, dynamic>,
+        );
+      } catch (_) {}
+    }
     if (_providerConfigs.isEmpty) {
       // Seed a couple of sensible defaults on first launch, but do not recreate
       // providers implicitly during later reads (e.g., when switching chats).
@@ -1859,6 +1870,25 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  // ===== Backup & WebDAV settings =====
+  WebDavConfig _webDavConfig = const WebDavConfig();
+  WebDavConfig get webDavConfig => _webDavConfig;
+  Future<void> setWebDavConfig(WebDavConfig cfg) async {
+    _webDavConfig = cfg;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_webDavConfigKey, jsonEncode(cfg.toJson()));
+  }
+
+  S3Config _s3Config = const S3Config();
+  S3Config get s3Config => _s3Config;
+  Future<void> setS3Config(S3Config cfg) async {
+    _s3Config = cfg;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_s3ConfigKey, jsonEncode(cfg.toJson()));
+  }
+
   Future<void> _initSearchConnectivityTests() async {
     final services = List<SearchServiceOptions>.from(
       _normalizeSearchServiceState(
@@ -2295,49 +2325,6 @@ class SettingsProvider extends ChangeNotifier {
       ChatMessageBackgroundStyle.defaultStyle => 'default',
     };
     await prefs.setString(_displayChatMessageBackgroundStyleKey, v);
-  }
-
-  String? _chatBackgroundImagePath;
-  String? get chatBackgroundImagePath => _chatBackgroundImagePath;
-
-  Future<void> setChatBackgroundImage(String sourcePath) async {
-    final source = File(SandboxPathResolver.fix(sourcePath.trim()));
-    if (!await source.exists()) return;
-    try {
-      final imagesDir = await AppDirectories.getImagesDirectory();
-      if (!await imagesDir.exists()) await imagesDir.create(recursive: true);
-      final sourceExt = p.extension(source.path).toLowerCase();
-      final extension = <String>{'.jpg', '.jpeg', '.png', '.webp', '.gif'}.contains(sourceExt) ? sourceExt : '.jpg';
-      final destination = File(p.join(imagesDir.path, 'chat_background_${DateTime.now().microsecondsSinceEpoch}$extension'));
-      await source.copy(destination.path);
-      final previousPath = _chatBackgroundImagePath;
-      _chatBackgroundImagePath = destination.path;
-      notifyListeners();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_displayChatBackgroundImagePathKey, destination.path);
-      await _deleteManagedChatBackgroundFile(previousPath);
-    } catch (_) {
-      // Keep the current background if importing the new file fails.
-    }
-  }
-
-  Future<void> clearChatBackgroundImage() async {
-    final previousPath = _chatBackgroundImagePath;
-    if (previousPath == null || previousPath.isEmpty) return;
-    _chatBackgroundImagePath = null;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_displayChatBackgroundImagePathKey);
-    await _deleteManagedChatBackgroundFile(previousPath);
-  }
-
-  Future<void> _deleteManagedChatBackgroundFile(String? path) async {
-    if (path == null || path.isEmpty) return;
-    try {
-      final root = p.normalize(Directory((await AppDirectories.getImagesDirectory()).path).absolute.path);
-      final target = p.normalize(File(path).absolute.path);
-      if (p.isWithin(root, target) && await File(target).exists()) await File(target).delete();
-    } catch (_) {}
   }
 
   List<String> _mobileAssistantEditTabOrder = const <String>[];
@@ -4356,7 +4343,6 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._desktopMinimizeToTrayOnClose = _desktopMinimizeToTrayOnClose;
     copy._usePureBackground = _usePureBackground;
     copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;
-    copy._chatBackgroundImagePath = _chatBackgroundImagePath;
     copy._mobileAssistantEditTabOrder = _mobileAssistantEditTabOrder;
     copy._hiddenMobileAssistantEditTabs = _hiddenMobileAssistantEditTabs;
     copy._mobileAssistantDetailOutlineEnabled =

@@ -978,13 +978,13 @@ class _HomePageState extends State<HomePage>
   Widget _buildChatBackground(BuildContext context, ColorScheme cs) {
     return Builder(
       builder: (context) {
-        final settings = context.watch<SettingsProvider>();
-        final assistant = context.watch<AssistantProvider>().currentAssistant;
-        final importedPath = settings.chatBackgroundImagePath?.trim();
-        final imported = importedPath != null && importedPath.isNotEmpty;
-        final bg = imported ? importedPath : assistant?.background;
-        final maskStrength = settings.chatBackgroundMaskStrength;
-        final fit = imported ? BoxFit.fill : BoxFit.contain;
+        final bg = context
+            .watch<AssistantProvider>()
+            .currentAssistant
+            ?.background;
+        final maskStrength = context
+            .watch<SettingsProvider>()
+            .chatBackgroundMaskStrength;
         if (bg == null || bg.trim().isEmpty) return const SizedBox.shrink();
         ImageProvider provider;
         if (bg.startsWith('http')) {
@@ -1002,7 +1002,7 @@ class _HomePageState extends State<HomePage>
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: provider,
-                    fit: fit,
+                    fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
                       Colors.black.withValues(alpha: 0.04),
                       BlendMode.srcATop,
@@ -1039,18 +1039,14 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildAssistantBackground(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final settings = context.watch<SettingsProvider>();
     final assistant = context.watch<AssistantProvider>().currentAssistant;
-    final importedPath = settings.chatBackgroundImagePath?.trim();
-    final imported = importedPath != null && importedPath.isNotEmpty;
-    final bgRaw = (imported ? importedPath : assistant?.background ?? '').trim();
-    final fit = imported ? BoxFit.fill : BoxFit.contain;
+    final bgRaw = (assistant?.background ?? '').trim();
     Widget? bg;
     if (bgRaw.isNotEmpty) {
       if (bgRaw.startsWith('http')) {
         bg = Image.network(
           bgRaw,
-          fit: fit,
+          fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       } else {
@@ -1058,7 +1054,7 @@ class _HomePageState extends State<HomePage>
           final fixed = SandboxPathResolver.fix(bgRaw);
           final f = File(fixed);
           if (f.existsSync()) {
-            bg = Image(image: FileImage(f), fit: fit);
+            bg = Image(image: FileImage(f), fit: BoxFit.cover);
           }
         } catch (_) {}
       }
@@ -1087,15 +1083,6 @@ class _HomePageState extends State<HomePage>
   }
 
   bool _assistantBackgroundActive(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final importedPath = settings.chatBackgroundImagePath?.trim();
-    if (importedPath != null && importedPath.isNotEmpty) {
-      try {
-        return File(SandboxPathResolver.fix(importedPath)).existsSync();
-      } catch (_) {
-        return false;
-      }
-    }
     final bgRaw =
         (context.watch<AssistantProvider>().currentAssistant?.background ?? '')
             .trim();

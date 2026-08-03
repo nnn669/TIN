@@ -358,7 +358,7 @@ class MobileBackgroundLayer extends StatelessWidget {
               decoration: BoxDecoration(
                 image: DecorationImage(
                   image: provider,
-                  fit: BoxFit.contain,
+                  fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Colors.black.withValues(alpha: 0.04),
                     BlendMode.srcATop,

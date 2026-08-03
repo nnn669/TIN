@@ -136,6 +136,7 @@ class AssistantProvider extends ChangeNotifier {
     name: l10n.assistantProviderDefaultAssistantName,
     systemPrompt: '',
     thinkingBudget: null,
+    temperature: 0.6,
     topP: null,
   );
 
@@ -158,7 +159,8 @@ class AssistantProvider extends ChangeNotifier {
           '{device_info}',
           '{system_version}',
         ),
-            topP: null,
+        temperature: 0.6,
+        topP: null,
       ),
     );
     await _persist();
@@ -267,7 +269,8 @@ class AssistantProvider extends ChangeNotifier {
           (context != null
               ? AppLocalizations.of(context)!.assistantProviderNewAssistantName
               : 'New Assistant')),
-        topP: null,
+      temperature: 0.6,
+      topP: null,
     );
     _assistants.add(a);
     await _persist();

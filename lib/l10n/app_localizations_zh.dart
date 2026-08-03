@@ -927,15 +927,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
-  String get displaySettingsPageChatMessageBackgroundLocal => '本地图片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundImport => '导入本地图片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundClear => '移除本地图片';
-
-  @override
   String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
 
   @override
@@ -6340,15 +6331,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
-  String get displaySettingsPageChatMessageBackgroundLocal => '本地图片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundImport => '导入本地图片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundClear => '移除本地图片';
-
-  @override
   String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
 
   @override
@@ -11751,15 +11733,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageChatMessageBackgroundSolid => '純色';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundLocal => '本機圖片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundImport => '匯入本機圖片';
-
-  @override
-  String get displaySettingsPageChatMessageBackgroundClear => '移除本機圖片';
 
   @override
   String get displaySettingsPageAndroidBackgroundChatTitle => '後台聊天生成';

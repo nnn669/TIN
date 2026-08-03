@@ -280,6 +280,7 @@ void main() {
                   'name': 'Configured Assistant',
                   'search_enabled': true,
                   'memory_enabled': true,
+                  'temperature': 0.7,
                   'context_message_size': 12,
                 }),
               }, assistant),
@@ -291,6 +292,7 @@ void main() {
     expect(updated.name, 'Configured Assistant');
     expect(updated.searchEnabled, isTrue);
     expect(updated.enableMemory, isTrue);
+    expect(updated.temperature, 0.7);
     expect(updated.contextMessageSize, 12);
 
     await service.handleToolCall({

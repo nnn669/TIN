@@ -17,7 +17,7 @@ const _assistantId = 'assistant-mcp-test';
 void _seedPreferences() {
   SharedPreferences.setMockInitialValues({
     'assistants_v1': Assistant.encodeList(const [
-      Assistant(id: _assistantId, name: 'Test Assistant'),
+      Assistant(id: _assistantId, name: 'Test Assistant', temperature: 0.6),
     ]),
   });
 }

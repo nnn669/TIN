@@ -1022,6 +1022,7 @@ class ChatActions {
         userImagePaths: ctx.userImagePaths,
         thinkingBudget:
             assistant?.thinkingBudget ?? ctx.settings.thinkingBudget,
+        temperature: assistant?.temperature,
         topP: assistant?.topP,
         maxTokens: assistant?.maxTokens,
         tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
