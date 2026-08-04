@@ -13,6 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Grep remaining references
+      - name: Grep remaining references outside l10n
         run: |
-          grep -RIn -E 'world_book|WorldBook|worldBook' lib test || echo "NO_MATCH"
+          grep -RIn -E 'world_book|WorldBook|worldBook' lib test --exclude-dir=l10n || echo "NO_MATCH_OUTSIDE_L10N"
