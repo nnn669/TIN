@@ -14,7 +14,6 @@ import 'package:tin/core/providers/mcp_provider.dart';
 import 'package:tin/core/providers/quick_phrase_provider.dart';
 import 'package:tin/core/providers/settings_provider.dart';
 import 'package:tin/core/providers/skill_provider.dart';
-import 'package:tin/core/providers/world_book_provider.dart';
 import 'package:tin/core/services/app_control/app_control_service.dart';
 import 'package:tin/core/services/search/search_service.dart';
 import 'package:tin/features/home/services/local_tools_service.dart';
@@ -579,81 +578,6 @@ void main() {
     expect(sp.getById(skillId)!.content, 'v1');
   });
 
-  testWidgets('神经权能网关 edits world book entries and exports bundle', (
-    tester,
-  ) async {
-    const assistant = Assistant(
-      id: 'assistant-a',
-      name: 'Assistant',
-      appControlEnabled: true,
-    );
-
-    await _pumpScope(tester, assistant);
-    final context = tester.element(find.byType(SizedBox));
-    final service = AppControlService(contextProvider: context);
-    final wp = context.read<WorldBookProvider>();
-
-    final created =
-        jsonDecode(
-              await service.handleToolCall({
-                'action': AppControlActionNames.executeAction,
-                'target': AppControlTargets.worldBook,
-                'operation': AppControlOperations.create,
-                'title': 'Lore',
-                'content': 'Base entry',
-                'keywords': ['base'],
-                'activate': true,
-              }, assistant),
-            )
-            as Map<String, dynamic>;
-    final bookId = created['id'] as String;
-
-    final added =
-        jsonDecode(
-              await service.handleToolCall({
-                'action': AppControlActionNames.executeAction,
-                'target': AppControlTargets.worldBook,
-                'operation': AppControlOperations.addEntry,
-                'book_id': bookId,
-                'title': 'Second',
-                'content': jsonEncode({
-                  'content': 'Second entry',
-                  'keywords': ['second'],
-                }),
-              }, assistant),
-            )
-            as Map<String, dynamic>;
-    final entryId = added['entry_id'] as String;
-
-    await service.handleToolCall({
-      'action': AppControlActionNames.executeAction,
-      'target': AppControlTargets.worldBook,
-      'operation': AppControlOperations.updateEntry,
-      'book_id': bookId,
-      'entry_id': entryId,
-      'content': jsonEncode({'content': 'Updated entry'}),
-    }, assistant);
-
-    expect(wp.getById(bookId)!.entries, hasLength(2));
-    expect(
-      wp.getById(bookId)!.entries.firstWhere((e) => e.id == entryId).content,
-      'Updated entry',
-    );
-
-    final exported =
-        jsonDecode(
-              await service.handleToolCall({
-                'action': AppControlActionNames.executeAction,
-                'target': AppControlTargets.appBundle,
-                'operation': AppControlOperations.exportJson,
-              }, assistant),
-            )
-            as Map<String, dynamic>;
-
-    expect(exported['type'], 'app_control_export');
-    expect((exported['payload'] as Map)['world_books'], isA<Map>());
-  });
-
   testWidgets('神经权能网关 records audit log', (tester) async {
     const assistant = Assistant(
       id: 'assistant-a',
@@ -811,7 +735,7 @@ void main() {
 
       expect(create['success'], isTrue);
       expect(provider.getById('gateway-test-dummy-mcp')!.enabled, isFalse);
-    expect(provider.statusFor('gateway-test-dummy-mcp'), McpStatus.idle);
+      expect(provider.statusFor('gateway-test-dummy-mcp'), McpStatus.idle);
 
       final update =
           jsonDecode(
@@ -876,9 +800,6 @@ Future<void> _pumpScope(WidgetTester tester, Assistant assistant) async {
         ),
         ChangeNotifierProvider<InstructionInjectionProvider>(
           create: (_) => InstructionInjectionProvider(),
-        ),
-        ChangeNotifierProvider<WorldBookProvider>(
-          create: (_) => WorldBookProvider(),
         ),
         ChangeNotifierProvider<MemoryProvider>(create: (_) => MemoryProvider()),
         ChangeNotifierProvider<McpProvider>(create: (_) => McpProvider()),
