@@ -1,5 +1,10 @@
 name: Verify world book removal
 on:
+  push:
+    branches:
+      - remove-world-book
+    paths:
+      - '.github/workflows/wb-verify.yml'
   workflow_dispatch:
 permissions:
   contents: read
