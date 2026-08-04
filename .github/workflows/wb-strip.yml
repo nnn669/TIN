@@ -1,0 +1,30 @@
+name: Strip world book references
+on:
+  push:
+    branches:
+      - remove-world-book
+    paths:
+      - 'tools/strip_world_book.py'
+      - '.github/workflows/wb-strip.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  strip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run cleanup script
+        run: python3 tools/strip_world_book.py
+      - name: Show diff
+        run: git --no-pager diff --stat
+      - name: Verify no references remain outside l10n
+        run: |
+          ! grep -RIn -E 'world_book|WorldBook|worldBook' lib test --exclude-dir=l10n
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --quiet || git commit -m "refactor: strip remaining world book references"
+          git push
