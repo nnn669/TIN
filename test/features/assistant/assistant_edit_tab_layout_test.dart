@@ -10,6 +10,7 @@ void main() {
         'prompts',
         'memory',
         'quickPhrase',
+        'skills',
         'custom',
         'regex',
         'localTools',

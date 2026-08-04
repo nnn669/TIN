@@ -332,8 +332,15 @@ bool _toolPartNeedsStandaloneStep(
   if (_pendingApprovalForToolPart(approvalService, part) != null) {
     return true;
   }
-  if (part.toolName == LocalToolNames.askUser) {
-    return part.loading || part.content?.trim().isNotEmpty != true;
+  // Interactive local tools and ask-user cards must remain visible so their
+  // controls and results are immediately available instead of being hidden in
+  // a collapsed generic tool group.
+  if (part.toolName == LocalToolNames.askUser ||
+      part.toolName == LocalToolNames.timeInfo ||
+      part.toolName == LocalToolNames.clipboard ||
+      part.toolName == LocalToolNames.textToSpeech ||
+      part.toolName == LocalToolNames.calculate) {
+    return true;
   }
   return false;
 }
@@ -2046,6 +2053,18 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
     void flushGroupedTools() {
       if (groupedTools.isEmpty) return;
+      if (groupedTools.length == 1) {
+        final tool = groupedTools.single;
+        groupedTools.clear();
+        steps.add(
+          _TimelineStepData.tool(
+            tool: tool,
+            reasoningCountAfter: reasoningCount,
+            toolCountAfter: ++toolCount,
+          ),
+        );
+        return;
+      }
       toolCount += groupedTools.length;
       steps.add(
         _TimelineStepData.toolGroup(
