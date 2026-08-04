@@ -4,13 +4,10 @@ import 'package:provider/provider.dart';
 import '../../../core/services/haptics.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/providers/world_book_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../home/widgets/instruction_injection_sheet.dart';
-import '../../home/widgets/world_book_sheet.dart';
 import '../../instruction_injection/pages/instruction_injection_page.dart';
-import '../../world_book/pages/world_book_page.dart';
 import '../../model/widgets/ocr_prompt_sheet.dart';
 import 'package:tin/theme/app_font_weights.dart';
 
@@ -169,15 +166,6 @@ class _LearningAndClearSection extends StatefulWidget {
 }
 
 class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await context.read<WorldBookProvider>().initialize();
-    });
-  }
-
   Widget _row({
     required IconData icon,
     required String label,
@@ -226,11 +214,9 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
-    final worldBookProvider = context.watch<WorldBookProvider>();
     final cs = Theme.of(context).colorScheme;
     final hasOcrModel =
         settings.ocrModelProvider != null && settings.ocrModelId != null;
-    final hasWorldBooks = worldBookProvider.books.isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -263,36 +249,6 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
             color: cs.onSurface.withValues(alpha: 0.55),
           ),
         ),
-        if (hasWorldBooks) ...[
-          const SizedBox(height: 8),
-          _row(
-            icon: Lucide.BookOpen,
-            label: l10n.worldBookTitle,
-            selected: false,
-            onTap: () async {
-              Haptics.light();
-              await showWorldBookSheet(
-                context,
-                assistantId: widget.assistantId,
-              );
-            },
-            onLongPress: () {
-              Haptics.light();
-              final rootNav = Navigator.of(context, rootNavigator: true);
-              Navigator.of(context).maybePop();
-              Future.microtask(() {
-                rootNav.push(
-                  MaterialPageRoute(builder: (_) => const WorldBookPage()),
-                );
-              });
-            },
-            trailing: Icon(
-              Lucide.ChevronRight,
-              size: 18,
-              color: cs.onSurface.withValues(alpha: 0.55),
-            ),
-          ),
-        ],
         if (hasOcrModel) ...[
           const SizedBox(height: 8),
           _row(
