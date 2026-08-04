@@ -3,10 +3,24 @@ name: Android Test Release
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
+      - main
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: Optional version name override
+        required: false
+        type: string
+      release_type:
+        description: Release channel
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - formal
 
 permissions:
   contents: write
@@ -98,9 +112,12 @@ jobs:
           printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
           chmod 600 android/release-keystore.jks android/key.properties
       - name: Build signed split APKs
+        env:
+          BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
           args=(--release --split-per-abi --target-platform android-arm64,android-x64 --build-number "$VERSION_CODE")
+          if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
           flutter build apk "${args[@]}"
       - name: Verify APK signatures and versions
         shell: bash
@@ -141,11 +158,15 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TYPE: formal
+          BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
+          RELEASE_TYPE: ${{ inputs.release_type || 'test' }}
         shell: bash
         run: |
           set -euo pipefail
-          version_name=$(awk -F: '/^version:/ {gsub(/[[:space:]]/, "", $2); split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml)
+          version_name="$BUILD_NAME_OVERRIDE"
+          if [[ -z "$version_name" ]]; then
+            version_name=$(awk -F: '/^version:/ {gsub(/[[:space:]]/, "", $2); split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml)
+          fi
           test -n "$version_name"
           if [[ "$RELEASE_TYPE" == "formal" ]]; then
             tag="v${version_name}"
@@ -163,10 +184,4 @@ jobs:
             notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionName: %s\nversionCode: %s\nCommit: %s' "$signing_note" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
             release_options=(--prerelease)
           fi
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $tag already exists; updating notes and replacing APK assets"
-            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
-            gh release upload "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" "${release_options[@]}" --title "$title" --notes "$notes"
-          fi
+          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" "${release_options[@]}" --title "$title" --notes "$notes"
