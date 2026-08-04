@@ -1,112 +1,113 @@
 name: Repair world book removal
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - repair/world-book-local-sync
 permissions:
   contents: write
 jobs:
   repair:
+    if: "!contains(github.event.head_commit.message, 'repair: remove world book references')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Transform sources
+      - name: Remove world book code
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          def remove_function(src, marker):
-              start = src.index(marker)
-              brace = src.index('{', start)
-              depth = 0
-              i = brace
-              quote = None
-              escape = False
-              while i < len(src):
-                  c = src[i]
-                  if quote:
-                      if escape:
-                          escape = False
-                      elif c == '\\':
-                          escape = True
-                      elif c == quote:
+          def remove_function(source, marker):
+              start = source.index(marker)
+              brace = source.index('{', start)
+              depth, index, quote, escaped = 0, brace, None, False
+              while index < len(source):
+                  char = source[index]
+                  if quote is not None:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
                           quote = None
-                  elif c in "'\"":
-                      quote = c
-                  elif c == '{':
+                  elif char in "'\"":
+                      quote = char
+                  elif char == '{':
                       depth += 1
-                  elif c == '}':
+                  elif char == '}':
                       depth -= 1
                       if depth == 0:
-                          end = i + 1
-                          while end < len(src) and src[end] in ' \t': end += 1
-                          if end < len(src) and src[end] == '\n': end += 1
-                          return src[:start] + src[end:]
-                  i += 1
-              raise RuntimeError(marker)
+                          end = index + 1
+                          while end < len(source) and source[end] in ' \t':
+                              end += 1
+                          if end < len(source) and source[end] == '\n':
+                              end += 1
+                          return source[:start] + source[end:]
+                  index += 1
+              raise RuntimeError(f'Unclosed function: {marker}')
 
-          p = Path('lib/core/services/app_control/app_control_service.dart')
-          s = p.read_text()
-          for line in [
+          service = Path('lib/core/services/app_control/app_control_service.dart')
+          source = service.read_text()
+          for line in (
               "import '../../models/world_book.dart';\n",
               "import '../../providers/world_book_provider.dart';\n",
               "  static const String worldBook = 'world_book';\n",
               "  static const String addEntry = 'add_entry';\n",
               "  static const String updateEntry = 'update_entry';\n",
               "  static const String deleteEntry = 'delete_entry';\n",
-              "- `world_book`: create, update, delete, activate/deactivate, import/export books, and add/update/delete entries.\n",
-          ]:
-              s = s.replace(line, '')
-          s = s.replace('skills, world books, quick phrases', 'skills, quick phrases')
-          s = s.replace(', instruction injection, or world book.', ', or instruction injection.')
-          s = s.replace('Whether to activate the created instruction injection or world book for the current assistant.', 'Whether to activate the created instruction injection for the current assistant.')
-          s = s.replace('Trigger keywords for skills or world book entries.', 'Trigger keywords for skills.')
-          s = s.replace('Optional enabled flag for updated skills, books, entries, or servers.', 'Optional enabled flag for updated skills or servers.')
-          for prop in ['entry_id', 'book_id']:
-              s = re.sub(r"            '"+prop+r"': \{.*?            \},\n", '', s, flags=re.S)
-          s = re.sub(r"    \{\n      'target': AppControlTargets\.worldBook,.*?    \},\n(?=    \{\n      'target': AppControlTargets\.mcpServer)", '', s, flags=re.S)
-          s = re.sub(r"      AppControlTargets\.worldBook => await _executeWorldBook\(.*?      \),\n", '', s, flags=re.S)
-          s = re.sub(r"      case AppControlTargets\.worldBook:.*?(?=      case AppControlTargets\.mcpServer:)", '', s, flags=re.S)
-          s = re.sub(r"      AppControlTargets\.worldBook => await _worldBookSnapshot\(assistant\),\n", '', s)
-          s = re.sub(r"        operation == AppControlOperations\.deleteEntry \|\|\n", '', s)
-          s = re.sub(r"      AppControlTargets\.worldBook => 'AI Imported World Book',\n", '', s)
-          s = re.sub(r"      'world_books': await _worldBookSnapshot\(assistant\),\n", '', s)
-          s = re.sub(r"    if \(bundle\['world_books'\] is Map\) \{.*?    \}\n(?=    if \(bundle\['mcp_servers'\])", '', s, flags=re.S)
-          for marker in [
+          ):
+              source = source.replace(line, '')
+          source = source.replace('- `world_book`: create, update, delete, activate/deactivate, import/export books, and add/update/delete entries.\n', '')
+          source = source.replace('skills, world books, quick phrases', 'skills, quick phrases')
+          source = source.replace(', instruction injection, or world book.', ', or instruction injection.')
+          source = source.replace('Whether to activate the created instruction injection or world book for the current assistant.', 'Whether to activate the created instruction injection for the current assistant.')
+          source = source.replace('Trigger keywords for skills or world book entries.', 'Trigger keywords for skills.')
+          source = source.replace('Optional enabled flag for updated skills, books, entries, or servers.', 'Optional enabled flag for updated skills or servers.')
+          for key in ('entry_id', 'book_id'):
+              source = re.sub(r"            '" + key + r"': \{.*?            \},\n", '', source, flags=re.S)
+          source = re.sub(r"    \{\n      'target': AppControlTargets\.worldBook,.*?    \},\n(?=    \{\n      'target': AppControlTargets\.mcpServer)", '', source, flags=re.S)
+          source = re.sub(r"      AppControlTargets\.worldBook => await _executeWorldBook\(.*?      \),\n", '', source, flags=re.S)
+          source = re.sub(r"      case AppControlTargets\.worldBook:.*?(?=      case AppControlTargets\.mcpServer:)", '', source, flags=re.S)
+          source = source.replace("      AppControlTargets.worldBook => await _worldBookSnapshot(assistant),\n", '')
+          source = source.replace("        operation == AppControlOperations.deleteEntry ||\n", '')
+          source = source.replace("      AppControlTargets.worldBook => 'AI Imported World Book',\n", '')
+          source = source.replace("      'world_books': await _worldBookSnapshot(assistant),\n", '')
+          source = re.sub(r"    if \(bundle\['world_books'\] is Map\) \{.*?    \}\n(?=    if \(bundle\['mcp_servers'\])", '', source, flags=re.S)
+          for marker in (
               '  Future<String> _executeWorldBook(',
               '  WorldBook _patchWorldBook(',
               '  WorldBookEntry _worldBookEntryFromArgs(',
               '  WorldBookEntry _patchWorldBookEntry(',
               '  Future<Map<String, dynamic>> _worldBookSnapshot(',
               '  Future<void> _restoreWorldBooks(',
-          ]:
-              if marker in s: s = remove_function(s, marker)
-          s = re.sub(r"  String _bookIdArg\(Map<String, dynamic> args\) \{.*?  \}\n\n", '', s, flags=re.S)
-          p.write_text(s)
+          ):
+              if marker in source:
+                  source = remove_function(source, marker)
+          source = re.sub(r"  String _bookIdArg\(Map<String, dynamic> args\) \{.*?  \}\n\n", '', source, flags=re.S)
+          source = source.replace('context size, temperature, max tokens', 'context size, max tokens')
+          service.write_text(source)
 
-          p = Path('lib/features/home/widgets/chat_input_bar.dart')
-          s = p.read_text()
-          for line in [
+          input_bar = Path('lib/features/home/widgets/chat_input_bar.dart')
+          source = input_bar.read_text()
+          for line in (
               '    this.onOpenWorldBook,\n',
               '    this.worldBookActive = false,\n',
               '  final VoidCallback? onOpenWorldBook;\n',
               '  final bool worldBookActive;\n',
-          ]:
-              s = s.replace(line, '')
-          s = re.sub(r"        if \(widget\.onOpenWorldBook != null\) \{.*?(?=        if \(widget\.onClearContext != null\) \{)", '', s, flags=re.S)
-          p.write_text(s)
-
-          import zipfile, base64
-          with zipfile.ZipFile('repair-output.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-              z.write('lib/core/services/app_control/app_control_service.dart', 'app_control_service.dart')
-              z.write('lib/features/home/widgets/chat_input_bar.dart', 'chat_input_bar.dart')
-          Path('repair-output.b64').write_text(base64.b64encode(Path('repair-output.zip').read_bytes()).decode())
-      - name: Commit transformed output
+          ):
+              source = source.replace(line, '')
+          source = re.sub(r"        if \(widget\.onOpenWorldBook != null\) \{.*?(?=        if \(widget\.onClearContext != null\) \{)", '', source, flags=re.S)
+          input_bar.write_text(source)
+      - name: Validate removed symbols
+        run: |
+          ! grep -RInE 'world_book|WorldBook|worldBook|temperature|top_p' lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart
+      - name: Commit result
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart repair-output.b64
-          git commit -m "repair: remove world book references" || exit 0
+          git add lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart
+          git commit -m "repair: remove world book references"
           git push
