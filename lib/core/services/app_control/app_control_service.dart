@@ -388,9 +388,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
                 AppControlOperations.reorder,
                 AppControlOperations.importJson,
                 AppControlOperations.exportJson,
-                AppControlOperations.addEntry,
-                AppControlOperations.updateEntry,
-                AppControlOperations.deleteEntry,
                 AppControlOperations.createVersion,
                 AppControlOperations.rollbackVersion,
                 AppControlOperations.setApproval,
@@ -2724,13 +2721,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     final parsed = int.tryParse(raw?.toString().trim() ?? '');
     if (parsed != null) return parsed;
     throw ArgumentError('Expected integer value, got $raw');
-  }
-
-  double _doubleFrom(dynamic raw) {
-    if (raw is num) return raw.toDouble();
-    final parsed = double.tryParse(raw?.toString().trim() ?? '');
-    if (parsed != null) return parsed;
-    throw ArgumentError('Expected numeric value, got $raw');
   }
 
   List<String> _idsArg(Map<String, dynamic> args) {
