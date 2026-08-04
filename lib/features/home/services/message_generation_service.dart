@@ -188,10 +188,6 @@ class MessageGenerationService {
       apiMessages,
       assistantId,
     );
-    await messageBuilderService.injectWorldBookPrompts(
-      apiMessages,
-      assistantId,
-    );
 
     // Apply context limit and inline images
     messageBuilderService.applyContextLimit(apiMessages, assistant);

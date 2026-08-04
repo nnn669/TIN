@@ -32,7 +32,13 @@ class _McpLifecycleReconnectState extends State<McpLifecycleReconnect>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _provider = context.read<McpProvider>();
+    try {
+      _provider = context.read<McpProvider>();
+    } on ProviderNotFoundException {
+      // App-level overlays are also used by lightweight surfaces and tests
+      // that do not provide MCP. Reconnect is simply disabled for those trees.
+      _provider = null;
+    }
   }
 
   @override

@@ -50,7 +50,6 @@ import 'setting/mcp_pane.dart';
 import 'setting/tts_services_pane.dart';
 import 'setting/quick_phrases_pane.dart';
 import 'setting/instruction_injection_pane.dart';
-import 'setting/world_book_pane.dart';
 import 'setting/backup_pane.dart';
 import 'setting/hotkeys_pane.dart';
 import 'setting/network_proxy_pane.dart';
@@ -93,7 +92,6 @@ enum _SettingsMenuItem {
   mcp,
   quickPhrases,
   instructionInjection,
-  worldBook,
   tts,
   networkProxy,
   backup,
@@ -213,6 +211,7 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                           return const DesktopBackupPane(
                             key: ValueKey('backup'),
                           );
+
                         case _SettingsMenuItem.hotkeys:
                           return const DesktopHotkeysPane(
                             key: ValueKey('hotkeys'),
@@ -224,10 +223,6 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                         case _SettingsMenuItem.instructionInjection:
                           return const DesktopInstructionInjectionPane(
                             key: ValueKey('instructionInjection'),
-                          );
-                        case _SettingsMenuItem.worldBook:
-                          return const DesktopWorldBookPane(
-                            key: ValueKey('worldBook'),
                           );
                         case _SettingsMenuItem.tts:
                           return const DesktopTtsServicesPane(
@@ -295,11 +290,6 @@ class _SettingsMenu extends StatelessWidget {
         _SettingsMenuItem.instructionInjection,
         lucide.Lucide.Layers,
         l10n.settingsPageInstructionInjection,
-      ),
-      (
-        _SettingsMenuItem.worldBook,
-        lucide.Lucide.BookOpen,
-        l10n.settingsPageWorldBook,
       ),
       (_SettingsMenuItem.tts, lucide.Lucide.Volume2, l10n.settingsPageTts),
       (
