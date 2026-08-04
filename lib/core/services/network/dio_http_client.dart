@@ -7,6 +7,7 @@ import 'package:dio/io.dart';
 import 'package:http/http.dart' as http;
 import 'package:socks5_proxy/socks_client.dart' as socks;
 
+import '../api_key_manager.dart';
 import 'request_logger.dart';
 
 Future<InternetAddress?> _resolveProxyAddress(String host) async {
@@ -214,6 +215,15 @@ class DioHttpClient extends http.BaseClient {
       );
 
       final statusCode = resp.statusCode ?? 0;
+
+      // Attribute the outcome to the multi-key entry that signed this request.
+      // Requests without a managed key are ignored inside the manager, and a
+      // received status code means the transport itself succeeded, so transient
+      // network faults never get blamed on a key.
+      try {
+        ApiKeyManager().reportHttpOutcome(reqHeaders, statusCode);
+      } catch (_) {}
+
       final headers = <String, String>{};
       resp.headers.forEach((name, values) {
         if (values.isEmpty) return;
