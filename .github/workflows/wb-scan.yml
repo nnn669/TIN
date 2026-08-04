@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Print context for remaining references
         run: |
-          for f in lib/desktop/desktop_settings_page.dart lib/features/settings/pages/settings_page.dart lib/features/chat/widgets/bottom_tools_sheet.dart lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart; do
+          for f in lib/features/home/pages/home_page.dart lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart; do
             echo "===== $f ====="
-            grep -n -C 8 -E 'world_book|WorldBook|worldBook' "$f" || echo "clean"
+            grep -n -C 14 -E 'world_book|WorldBook|worldBook' "$f" || echo "clean"
           done
