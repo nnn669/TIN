@@ -18,7 +18,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
-import '../../../core/providers/world_book_provider.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
@@ -31,7 +30,6 @@ import '../../../desktop/mcp_servers_popover.dart';
 import '../../../desktop/mini_map_popover.dart';
 import '../../../desktop/quick_phrase_popover.dart';
 import '../../../desktop/instruction_injection_popover.dart';
-import '../../../desktop/world_book_popover.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../chat/widgets/bottom_tools_sheet.dart';
 import '../../chat/widgets/context_management_sheet.dart';
@@ -47,7 +45,6 @@ import '../../skills/pages/skills_page.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/mini_map_sheet.dart';
 import '../widgets/instruction_injection_sheet.dart';
-import '../widgets/world_book_sheet.dart';
 import '../widgets/learning_prompt_sheet.dart';
 import '../widgets/scroll_nav_buttons.dart';
 import '../widgets/message_list_view.dart';
@@ -473,7 +470,6 @@ class _HomePageState extends State<HomePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.measureInputBar();
       if (!mounted) return;
-      context.read<WorldBookProvider>().initialize();
     });
   }
 
@@ -1298,7 +1294,6 @@ class _HomePageState extends State<HomePage>
       onPickPhotos: _controller.onPickPhotos,
       onUploadFiles: _controller.onPickFiles,
       onToggleLearningMode: _openInstructionInjectionPopover,
-      onOpenWorldBook: _openWorldBookPopover,
       onLongPressLearning: _showLearningPromptSheet,
       onClearContext: _controller.clearContext,
       onCompressContext: _handleDesktopCompressContext,
@@ -1504,27 +1499,6 @@ class _HomePageState extends State<HomePage>
       );
     } else {
       await showInstructionInjectionSheet(context, assistantId: assistantId);
-    }
-  }
-
-  Future<void> _openWorldBookPopover() async {
-    final isDesktop = PlatformUtils.isDesktop;
-    final assistantId = context.read<AssistantProvider>().currentAssistantId;
-    final provider = context.read<WorldBookProvider>();
-    await provider.initialize();
-    if (!mounted) return;
-    final books = provider.books;
-    if (books.isEmpty) return;
-
-    if (isDesktop) {
-      await showDesktopWorldBookPopover(
-        context,
-        anchorKey: _inputBarKey,
-        books: books,
-        assistantId: assistantId,
-      );
-    } else {
-      await showWorldBookSheet(context, assistantId: assistantId);
     }
   }
 

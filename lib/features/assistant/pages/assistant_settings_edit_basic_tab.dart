@@ -1016,13 +1016,6 @@ const List<_AppControlCapabilityMeta> _appControlCapabilityMetas = [
     highRisk: false,
   ),
   _AppControlCapabilityMeta(
-    target: AppControlPolicy.worldBook,
-    title: '世界书',
-    subtitle: '管理书本、条目和助手激活状态',
-    icon: Lucide.BookOpen,
-    highRisk: false,
-  ),
-  _AppControlCapabilityMeta(
     target: AppControlPolicy.instructionInjection,
     title: '指令注入',
     subtitle: '创建、启停、更新或删除指令卡片',
