@@ -43,7 +43,6 @@ class AppControlPolicy {
   static const String currentAssistantMcp = 'current_assistant.mcp';
   static const String quickPhrase = 'quick_phrase';
   static const String instructionInjection = 'instruction_injection';
-  static const String worldBook = 'world_book';
   static const String mcpServer = 'mcp_server';
   static const String searchSettings = 'search_settings';
   static const String appBundle = 'app_bundle';
@@ -58,7 +57,6 @@ class AppControlPolicy {
     currentAssistantMcp,
     quickPhrase,
     instructionInjection,
-    worldBook,
     mcpServer,
     searchSettings,
     appBundle,
