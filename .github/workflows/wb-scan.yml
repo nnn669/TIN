@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Grep remaining references outside l10n
+      - name: Print context for remaining references
         run: |
-          grep -RIn -E 'world_book|WorldBook|worldBook' lib test --exclude-dir=l10n || echo "NO_MATCH_OUTSIDE_L10N"
+          for f in lib/desktop/desktop_settings_page.dart lib/features/settings/pages/settings_page.dart lib/features/chat/widgets/bottom_tools_sheet.dart lib/features/assistant/pages/assistant_settings_edit_basic_tab.dart; do
+            echo "===== $f ====="
+            grep -n -C 8 -E 'world_book|WorldBook|worldBook' "$f" || echo "clean"
+          done
