@@ -1,0 +1,241 @@
+name: Apply sidebar layout change
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply requested files and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          widgets = Path('lib/features/home/widgets')
+          source = widgets / 'side_drawer.dart'
+          legacy = widgets / 'side_drawer_legacy.dart'
+          actions = widgets / 'chat_sidebar_actions.dart'
+
+          legacy.write_text(source.read_text(), encoding='utf-8')
+          source.write_text('''import 'dart:async';
+
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/material.dart';
+
+import 'chat_sidebar_actions.dart';
+import 'side_drawer_legacy.dart' as legacy;
+
+/// Chat sidebar facade with a compact action footer.
+///
+/// The existing conversation and assistant logic remains in the legacy
+/// implementation; this layer only replaces the old profile footer.
+class SideDrawer extends StatelessWidget {
+  const SideDrawer({
+    super.key,
+    required this.userName,
+    required this.assistantName,
+    this.onSelectConversation,
+    this.onNewConversation,
+    this.closePickerTicker,
+    this.loadingConversationIds = const <String>{},
+    this.embedded = false,
+    this.embeddedWidth,
+    this.showBottomBar = true,
+    this.useDesktopTabs = false,
+    this.desktopAssistantsOnly = false,
+    this.desktopTopicsOnly = false,
+    this.globalSearchMode = false,
+    this.globalSearchQuery = '',
+    this.onGlobalSearchQueryChanged,
+    this.onEnterGlobalSearch,
+    this.onExitGlobalSearch,
+    this.onOpenGlobalSearchResult,
+  });
+
+  final String userName;
+  final String assistantName;
+  final FutureOr<void> Function(String id, {bool closeDrawer})?
+      onSelectConversation;
+  final FutureOr<void> Function({bool closeDrawer})? onNewConversation;
+  final ValueNotifier<int>? closePickerTicker;
+  final Set<String> loadingConversationIds;
+  final bool embedded;
+  final double? embeddedWidth;
+  final bool showBottomBar;
+  final bool useDesktopTabs;
+  final bool desktopAssistantsOnly;
+  final bool desktopTopicsOnly;
+  final bool globalSearchMode;
+  final String globalSearchQuery;
+  final ValueChanged<String>? onGlobalSearchQueryChanged;
+  final VoidCallback? onEnterGlobalSearch;
+  final VoidCallback? onExitGlobalSearch;
+  final Future<void> Function(String conversationId, String messageId)?
+      onOpenGlobalSearchResult;
+
+  @override
+  Widget build(BuildContext context) {
+    final showActions =
+        showBottomBar && (!embedded || !_isDesktopPlatform);
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: legacy.SideDrawer(
+            userName: userName,
+            assistantName: assistantName,
+            onSelectConversation: onSelectConversation,
+            onNewConversation: onNewConversation,
+            closePickerTicker: closePickerTicker,
+            loadingConversationIds: loadingConversationIds,
+            embedded: embedded,
+            embeddedWidth: embeddedWidth,
+            showBottomBar: false,
+            useDesktopTabs: useDesktopTabs,
+            desktopAssistantsOnly: desktopAssistantsOnly,
+            desktopTopicsOnly: desktopTopicsOnly,
+            globalSearchMode: globalSearchMode,
+            globalSearchQuery: globalSearchQuery,
+            onGlobalSearchQueryChanged: onGlobalSearchQueryChanged,
+            onEnterGlobalSearch: onEnterGlobalSearch,
+            onExitGlobalSearch: onExitGlobalSearch,
+            onOpenGlobalSearchResult: onOpenGlobalSearchResult,
+          ),
+        ),
+        if (showActions)
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: ChatSidebarActions(),
+          ),
+      ],
+    );
+  }
+
+  static bool get _isDesktopPlatform =>
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux;
+}
+''', encoding='utf-8')
+          actions.write_text('''import 'package:flutter/material.dart';
+
+import '../../../icons/lucide_adapter.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/ios_tactile.dart';
+import '../../settings/pages/settings_page.dart';
+import '../../stats/pages/stats_page.dart';
+import '../../translate/pages/translate_page.dart';
+
+/// Bottom actions for the chat sidebar. The user profile controls intentionally
+/// live outside this bar so the conversation list keeps a compact footer.
+class ChatSidebarActions extends StatelessWidget {
+  const ChatSidebarActions({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: BoxDecoration(color: cs.surface),
+        child: Row(
+          children: [
+            const Spacer(),
+            _ActionButton(
+              icon: Lucide.ChartColumnBig,
+              label: l10n.settingsPageStatistics,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StatsPage()),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            _ActionButton(
+              icon: Lucide.Languages,
+              label: l10n.desktopNavTranslateTooltip,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TranslatePage()),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            _ActionButton(
+              icon: Lucide.Settings,
+              label: l10n.settingsPageTitle,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return SizedBox(
+      width: 45,
+      height: 45,
+      child: Center(
+        child: Tooltip(
+          message: label,
+          child: IosIconButton(
+            icon: icon,
+            size: 22,
+            color: color,
+            padding: const EdgeInsets.all(10),
+            semanticLabel: label,
+            onTap: onTap,
+          ),
+        ),
+      ),
+    );
+  }
+}
+''', encoding='utf-8')
+
+          Path('PROGRESS.md').write_text('''TASK: 将设置里的统计功能转移到聊天侧面的对话页面，放在翻译左边，并删除左边的用户和头像入口
+STEP: 阶段二
+DONE: 统计入口已从设置页移出；聊天侧栏底部新增统计、翻译、设置操作栏，统计位于翻译左侧且间距保持一致；手机聊天侧栏底部已移除用户头像和用户名入口；原会话列表逻辑保留
+NEXT: 已提交并推送代码，等待版本号更新
+''', encoding='utf-8')
+          PY
+
+          rm -f .github/workflows/apply-sidebar-layout.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: move stats to chat sidebar actions'
+          git push origin HEAD:main
