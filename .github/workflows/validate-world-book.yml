@@ -1,0 +1,29 @@
+name: Validate world book removal
+on:
+  push:
+    branches:
+      - repair/world-book-local-sync
+    paths:
+      - 'lib/core/services/app_control/app_control_service.dart'
+      - 'lib/features/home/widgets/chat_input_bar.dart'
+      - '.github/workflows/validate-world-book.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Verify no removed feature references remain
+        run: |
+          ! git grep -nE 'world_book|WorldBook|worldBook' -- lib test
+      - name: Verify Dart formatting
+        run: |
+          dart format --output=none --set-exit-if-changed lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart
+      - name: Analyze changed sources
+        run: |
+          flutter pub get
+          flutter analyze lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart

@@ -1,0 +1,25 @@
+name: Package repaired sources
+on:
+  push:
+    branches:
+      - repair/world-book-local-sync
+permissions:
+  contents: write
+jobs:
+  package:
+    if: "!contains(github.event.head_commit.message, 'repair: package local sync output')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and package
+        run: |
+          ! grep -RInE 'world_book|WorldBook|worldBook|temperature|top_p' lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart
+          zip -j repair-output.zip lib/core/services/app_control/app_control_service.dart lib/features/home/widgets/chat_input_bar.dart
+          base64 -w 0 repair-output.zip > repair-output.b64
+      - name: Commit package
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add repair-output.b64
+          git commit -m "repair: package local sync output"
+          git push

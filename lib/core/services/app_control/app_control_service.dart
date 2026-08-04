@@ -8,7 +8,6 @@ import '../../models/assistant.dart';
 import '../../models/instruction_injection.dart';
 import '../../models/quick_phrase.dart';
 import '../../models/skill.dart';
-import '../../models/world_book.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/instruction_injection_provider.dart';
 import '../../providers/memory_provider.dart';
@@ -16,7 +15,6 @@ import '../../providers/mcp_provider.dart';
 import '../../providers/quick_phrase_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/skill_provider.dart';
-import '../../providers/world_book_provider.dart';
 import '../search/search_service.dart';
 import '../../../features/home/services/local_tools_service.dart';
 
@@ -49,7 +47,6 @@ class AppControlTargets {
   static const String currentAssistantMcp = 'current_assistant.mcp';
   static const String quickPhrase = 'quick_phrase';
   static const String instructionInjection = 'instruction_injection';
-  static const String worldBook = 'world_book';
   static const String mcpServer = 'mcp_server';
   static const String searchSettings = 'search_settings';
   static const String appBundle = 'app_bundle';
@@ -71,9 +68,6 @@ class AppControlOperations {
   static const String reorder = 'reorder';
   static const String importJson = 'import_json';
   static const String exportJson = 'export_json';
-  static const String addEntry = 'add_entry';
-  static const String updateEntry = 'update_entry';
-  static const String deleteEntry = 'delete_entry';
   static const String createVersion = 'create_version';
   static const String rollbackVersion = 'rollback_version';
   static const String setApproval = 'set_approval';
@@ -144,10 +138,9 @@ Supported targets:
 - `current_assistant.mcp`: bind/unbind MCP servers for the current assistant.
 - `quick_phrase`: create, update, reorder, delete, import, or export global/assistant quick phrases.
 - `instruction_injection`: create, update, delete, activate/deactivate, import, or export instruction injections.
-- `world_book`: create, update, delete, activate/deactivate, import/export books, and add/update/delete entries.
 - `mcp_server`: create/update/delete MCP servers and enable/disable MCP servers/tools or approval for MCP tools.
 - `search_settings`: enable/disable, update, import, or export built-in search globally or for the current assistant.
-- `app_bundle`: import or export a migration bundle containing assistant settings, skills, world books, quick phrases, instruction injections, MCP, and search settings.
+- `app_bundle`: import or export a migration bundle containing assistant settings, skills, quick phrases, instruction injections, MCP, and search settings.
 - `audit_log`: inspect recent 神经权能网关 operations and whether they can be undone.
 
 Prefer `plan_action` when the user's wording is ambiguous or the change is large. Use `execute_action` only when the user clearly asks to apply/import/save the content. Include concise `title` and `reason` fields so Kelivo can show a useful confirmation. Use `undo_last` when the user asks to undo the last 神经权能网关 operation.
@@ -286,25 +279,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       'undoable': true,
     },
     {
-      'target': AppControlTargets.worldBook,
-      'operations': [
-        AppControlOperations.create,
-        AppControlOperations.update,
-        AppControlOperations.delete,
-        AppControlOperations.enable,
-        AppControlOperations.disable,
-        AppControlOperations.addEntry,
-        AppControlOperations.updateEntry,
-        AppControlOperations.deleteEntry,
-        AppControlOperations.importJson,
-        AppControlOperations.exportJson,
-      ],
-      'description':
-          'Create a world book containing one generated entry; can be activated.',
-      'requires_confirmation': true,
-      'undoable': true,
-    },
-    {
       'target': AppControlTargets.mcpServer,
       'operations': [
         AppControlOperations.create,
@@ -379,7 +353,7 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       'function': {
         'name': AppControlToolNames.appControl,
         'description':
-            'Plan, inspect, execute, or undo safe Kelivo 神经权能网关 actions such as importing generated content into the current assistant prompt, memory, instruction injection, or world book. Execution requires the assistant 神经权能网关 permission and user confirmation.',
+            'Plan, inspect, execute, or undo safe Kelivo 神经权能网关 actions such as importing generated content into the current assistant prompt, memory, or instruction injection. Execution requires the assistant 神经权能网关 permission and user confirmation.',
         'parameters': {
           'type': 'object',
           'properties': {
@@ -433,15 +407,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
               'description':
                   'Primary id to update, delete, enable, disable, or inspect in the selected target.',
             },
-            'entry_id': {
-              'type': 'string',
-              'description':
-                  'World book entry id for update_entry or delete_entry.',
-            },
-            'book_id': {
-              'type': 'string',
-              'description': 'World book id for entry-level operations.',
-            },
             'title': {
               'type': 'string',
               'description':
@@ -454,7 +419,7 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
             'activate': {
               'type': 'boolean',
               'description':
-                  'Whether to activate the created instruction injection or world book for the current assistant.',
+                  'Whether to activate the created instruction injection for the current assistant.',
             },
             'ids': {
               'type': 'array',
@@ -504,12 +469,12 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
               'type': 'array',
               'items': {'type': 'string'},
               'description':
-                  'Trigger keywords for skills or world book entries.',
+                  'Trigger keywords for skills.',
             },
             'enabled': {
               'type': 'boolean',
               'description':
-                  'Optional enabled flag for updated skills, books, entries, or servers.',
+                  'Optional enabled flag for updated skills or servers.',
             },
             'mode': {
               'type': 'string',
@@ -652,12 +617,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       ),
       AppControlTargets.instructionInjection =>
         await _executeInstructionInjection(assistant, args, operation, content),
-      AppControlTargets.worldBook => await _executeWorldBook(
-        assistant,
-        args,
-        operation,
-        content,
-      ),
       AppControlTargets.mcpServer => await _executeMcpServer(args, operation),
       AppControlTargets.searchSettings => await _executeSearchSettings(
         assistant,
@@ -873,37 +832,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
                 .map((item) => item.toJson())
                 .cast<Map<String, dynamic>?>()
                 .firstOrNull,
-        });
-      case AppControlTargets.worldBook:
-        final provider = contextProvider.read<WorldBookProvider>();
-        await provider.initialize();
-        return _json({
-          'type': 'app_control_inspection',
-          'target': target,
-          'count': provider.books.length,
-          'active_ids': provider.activeBookIdsFor(assistant.id),
-          'items': provider.books
-              .take(20)
-              .map(
-                (book) => {
-                  'id': book.id,
-                  'name': book.name,
-                  'enabled': book.enabled,
-                  'active': provider
-                      .activeBookIdsFor(assistant.id)
-                      .contains(book.id),
-                  'entries': book.entries.length,
-                  'entry_items': book.entries
-                      .map((entry) => entry.toJson())
-                      .toList(growable: false),
-                  'description_preview': _preview(book.description),
-                },
-              )
-              .toList(growable: false),
-          if ((args['id'] ?? '').toString().trim().isNotEmpty)
-            'item': provider
-                .getById((args['id'] ?? '').toString().trim())
-                ?.toJson(),
         });
       case AppControlTargets.mcpServer:
         final provider = contextProvider.read<McpProvider>();
@@ -1622,198 +1550,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     });
   }
 
-  Future<String> _executeWorldBook(
-    Assistant assistant,
-    Map<String, dynamic> args,
-    String operation,
-    String content,
-  ) async {
-    final provider = contextProvider.read<WorldBookProvider>();
-    await provider.initialize();
-    final before = provider.books.map((book) => book.toJson()).toList();
-    final beforeActive = provider.activeBookIdsFor(assistant.id);
-    String? changedId;
-    String? changedEntryId;
-
-    if (operation == AppControlOperations.create) {
-      final title = _title(args, AppControlTargets.worldBook);
-      final entry = WorldBookEntry(
-        id: _uuid.v4(),
-        name: (args['entry_title'] ?? title).toString().trim(),
-        content: content.trim(),
-        constantActive: args.containsKey('constant_active')
-            ? _boolFrom(args['constant_active'])
-            : true,
-        keywords: _stringListArg(args, 'keywords'),
-      );
-      final book = WorldBook(
-        id: _uuid.v4(),
-        name: title,
-        description: _reason(args, AppControlTargets.worldBook, operation),
-        enabled: args.containsKey('enabled')
-            ? _boolFrom(args['enabled'])
-            : true,
-        entries: <WorldBookEntry>[entry],
-      );
-      await provider.addBook(book);
-      changedId = book.id;
-      changedEntryId = entry.id;
-      if (args['activate'] == true) {
-        final activeIds = provider
-            .activeBookIdsFor(assistant.id)
-            .toList(growable: true);
-        if (!activeIds.contains(book.id)) activeIds.add(book.id);
-        await provider.setActiveBookIds(activeIds, assistantId: assistant.id);
-      }
-    } else if (operation == AppControlOperations.update) {
-      final id = _stringIdArg(args);
-      final book = provider.getById(id);
-      if (book == null) {
-        return _jsonError('world_book_not_found', 'World book not found: $id');
-      }
-      final patch = content.trim().startsWith('{')
-          ? _jsonObjectContent(content)
-          : <String, dynamic>{'description': content};
-      await provider.updateBook(_patchWorldBook(book, patch, args));
-      changedId = id;
-    } else if (operation == AppControlOperations.delete) {
-      for (final id in _idsArgOrSingle(args)) {
-        await provider.deleteBook(id);
-        changedId = id;
-      }
-    } else if (operation == AppControlOperations.enable ||
-        operation == AppControlOperations.disable) {
-      final id = _stringIdArg(args);
-      final book = provider.getById(id);
-      if (book == null) {
-        return _jsonError('world_book_not_found', 'World book not found: $id');
-      }
-      if (args['activate'] == true || args['scope'] == 'assistant') {
-        final activeIds = provider
-            .activeBookIdsFor(assistant.id)
-            .toList(growable: true);
-        if (operation == AppControlOperations.enable) {
-          if (!activeIds.contains(id)) activeIds.add(id);
-        } else {
-          activeIds.remove(id);
-        }
-        await provider.setActiveBookIds(activeIds, assistantId: assistant.id);
-      } else {
-        await provider.updateBook(
-          book.copyWith(enabled: operation == AppControlOperations.enable),
-        );
-      }
-      changedId = id;
-    } else if (operation == AppControlOperations.addEntry) {
-      final bookId = _bookIdArg(args);
-      final book = provider.getById(bookId);
-      if (book == null) {
-        return _jsonError(
-          'world_book_not_found',
-          'World book not found: $bookId',
-        );
-      }
-      final entry = _worldBookEntryFromArgs(args, content);
-      await provider.updateBook(
-        book.copyWith(entries: [...book.entries, entry]),
-      );
-      changedId = bookId;
-      changedEntryId = entry.id;
-    } else if (operation == AppControlOperations.updateEntry) {
-      final bookId = _bookIdArg(args);
-      final entryId = (args['entry_id'] ?? '').toString().trim();
-      if (entryId.isEmpty) {
-        return _jsonError('invalid_entry_id', 'entry_id is required');
-      }
-      final book = provider.getById(bookId);
-      if (book == null) {
-        return _jsonError(
-          'world_book_not_found',
-          'World book not found: $bookId',
-        );
-      }
-      final index = book.entries.indexWhere((entry) => entry.id == entryId);
-      if (index < 0) {
-        return _jsonError(
-          'entry_not_found',
-          'World book entry not found: $entryId',
-        );
-      }
-      final patch = content.trim().startsWith('{')
-          ? _jsonObjectContent(content)
-          : <String, dynamic>{'content': content};
-      final entries = List<WorldBookEntry>.from(book.entries);
-      entries[index] = _patchWorldBookEntry(entries[index], patch, args);
-      await provider.updateBook(book.copyWith(entries: entries));
-      changedId = bookId;
-      changedEntryId = entryId;
-    } else if (operation == AppControlOperations.deleteEntry) {
-      final bookId = _bookIdArg(args);
-      final entryId = (args['entry_id'] ?? '').toString().trim();
-      if (entryId.isEmpty) {
-        return _jsonError('invalid_entry_id', 'entry_id is required');
-      }
-      final book = provider.getById(bookId);
-      if (book == null) {
-        return _jsonError(
-          'world_book_not_found',
-          'World book not found: $bookId',
-        );
-      }
-      await provider.updateBook(
-        book.copyWith(
-          entries: book.entries
-              .where((entry) => entry.id != entryId)
-              .toList(growable: false),
-        ),
-      );
-      changedId = bookId;
-      changedEntryId = entryId;
-    } else if (operation == AppControlOperations.importJson) {
-      final items = _jsonListFromContent(content, rootKey: 'world_books');
-      for (final raw in items) {
-        final book = WorldBook.fromJson(_withGeneratedId(raw));
-        final normalized = book.copyWith(
-          id: book.id.isEmpty ? _uuid.v4() : book.id,
-          entries: book.entries
-              .map(
-                (entry) =>
-                    entry.id.isEmpty ? entry.copyWith(id: _uuid.v4()) : entry,
-              )
-              .toList(growable: false),
-        );
-        if (provider.getById(normalized.id) == null) {
-          await provider.addBook(normalized);
-        } else {
-          await provider.updateBook(normalized);
-        }
-      }
-    } else {
-      return _jsonError(
-        'unsupported_operation',
-        'world book supports create, update, delete, enable, disable, add_entry, update_entry, delete_entry, import_json, or export_json',
-      );
-    }
-    _pushUndo(
-      target: AppControlTargets.worldBook,
-      payload: {
-        'assistant_id': assistant.id,
-        'books': before,
-        'active_ids': beforeActive,
-      },
-    );
-    return _json({
-      'type': 'app_control_result',
-      'success': true,
-      'target': AppControlTargets.worldBook,
-      'operation': operation,
-      if (changedId != null) 'id': changedId,
-      if (changedEntryId != null) 'entry_id': changedEntryId,
-      'active_ids': provider.activeBookIdsFor(assistant.id),
-      'count': provider.books.length,
-      'undo_available': true,
-    });
-  }
 
   Future<String> _executeMcpServer(
     Map<String, dynamic> args,
@@ -2199,7 +1935,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       AppControlTargets.quickPhrase => await _quickPhraseSnapshot(assistant),
       AppControlTargets.instructionInjection =>
         await _instructionInjectionSnapshot(assistant),
-      AppControlTargets.worldBook => await _worldBookSnapshot(assistant),
       AppControlTargets.mcpServer => {
         'servers': mcpProvider.servers
             .map((server) => server.toJson())
@@ -2346,13 +2081,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
         });
       case AppControlTargets.instructionInjection:
         await _restoreInstructionInjections(entry.payload);
-        return _json({
-          'type': 'app_control_undo',
-          'success': true,
-          'target': entry.target,
-        });
-      case AppControlTargets.worldBook:
-        await _restoreWorldBooks(entry.payload);
         return _json({
           'type': 'app_control_undo',
           'success': true,
@@ -2554,7 +2282,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
         operation == AppControlOperations.exportJson ||
         operation == AppControlOperations.createVersion ||
         operation == AppControlOperations.rollbackVersion ||
-        operation == AppControlOperations.deleteEntry ||
         operation == AppControlOperations.enable ||
         operation == AppControlOperations.disable ||
         operation == AppControlOperations.setApproval) {
@@ -2632,12 +2359,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
   String _stringIdArg(Map<String, dynamic> args) {
     final id = (args['id'] ?? '').toString().trim();
     if (id.isEmpty) throw ArgumentError('id is required');
-    return id;
-  }
-
-  String _bookIdArg(Map<String, dynamic> args) {
-    final id = (args['book_id'] ?? args['id'] ?? '').toString().trim();
-    if (id.isEmpty) throw ArgumentError('book_id is required');
     return id;
   }
 
@@ -2760,108 +2481,8 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     );
   }
 
-  WorldBook _patchWorldBook(
-    WorldBook book,
-    Map<String, dynamic> patch,
-    Map<String, dynamic> args,
-  ) {
-    return book.copyWith(
-      name:
-          (patch['name'] ?? args['title'])?.toString().trim().isNotEmpty == true
-          ? (patch['name'] ?? args['title']).toString().trim()
-          : null,
-      description:
-          patch.containsKey('description') || args.containsKey('reason')
-          ? (patch['description'] ?? args['reason'] ?? '').toString()
-          : null,
-      enabled: patch.containsKey('enabled') || args.containsKey('enabled')
-          ? _boolFrom(patch['enabled'] ?? args['enabled'])
-          : null,
-      entries: patch['entries'] is List
-          ? (patch['entries'] as List)
-                .whereType<Map>()
-                .map(
-                  (entry) => WorldBookEntry.fromJson(
-                    _withGeneratedId(entry.cast<String, dynamic>()),
-                  ),
-                )
-                .toList(growable: false)
-          : null,
-    );
-  }
 
-  WorldBookEntry _worldBookEntryFromArgs(
-    Map<String, dynamic> args,
-    String content,
-  ) {
-    final patch = content.trim().startsWith('{')
-        ? _jsonObjectContent(content)
-        : <String, dynamic>{'content': content};
-    return _patchWorldBookEntry(
-      WorldBookEntry(
-        id: _uuid.v4(),
-        name: _title(args, AppControlTargets.worldBook),
-      ),
-      patch,
-      args,
-    );
-  }
 
-  WorldBookEntry _patchWorldBookEntry(
-    WorldBookEntry entry,
-    Map<String, dynamic> patch,
-    Map<String, dynamic> args,
-  ) {
-    return entry.copyWith(
-      name:
-          (patch['name'] ?? patch['title'] ?? args['title'])
-                  ?.toString()
-                  .trim()
-                  .isNotEmpty ==
-              true
-          ? (patch['name'] ?? patch['title'] ?? args['title']).toString().trim()
-          : null,
-      content: patch.containsKey('content')
-          ? patch['content']?.toString() ?? ''
-          : null,
-      enabled: patch.containsKey('enabled') || args.containsKey('enabled')
-          ? _boolFrom(patch['enabled'] ?? args['enabled'])
-          : null,
-      priority: patch.containsKey('priority') || args.containsKey('priority')
-          ? _intFrom(patch['priority'] ?? args['priority'])
-          : null,
-      keywords: patch.containsKey('keywords') || args.containsKey('keywords')
-          ? _stringListFromDynamic(patch['keywords'] ?? args['keywords'])
-          : null,
-      useRegex: patch.containsKey('useRegex') || patch.containsKey('use_regex')
-          ? _boolFrom(patch['useRegex'] ?? patch['use_regex'])
-          : null,
-      caseSensitive:
-          patch.containsKey('caseSensitive') ||
-              patch.containsKey('case_sensitive')
-          ? _boolFrom(patch['caseSensitive'] ?? patch['case_sensitive'])
-          : null,
-      constantActive:
-          patch.containsKey('constantActive') ||
-              patch.containsKey('constant_active')
-          ? _boolFrom(patch['constantActive'] ?? patch['constant_active'])
-          : null,
-      scanDepth:
-          patch.containsKey('scanDepth') || patch.containsKey('scan_depth')
-          ? _intFrom(patch['scanDepth'] ?? patch['scan_depth'])
-          : null,
-      injectDepth:
-          patch.containsKey('injectDepth') || patch.containsKey('inject_depth')
-          ? _intFrom(patch['injectDepth'] ?? patch['inject_depth'])
-          : null,
-      position: patch.containsKey('position')
-          ? WorldBookInjectionPositionJson.fromJson(patch['position'])
-          : null,
-      role: patch.containsKey('role')
-          ? WorldBookInjectionRoleJson.fromJson(patch['role'])
-          : null,
-    );
-  }
 
   String _title(Map<String, dynamic> args, String target) {
     final explicit = (args['title'] ?? '').toString().trim();
@@ -2873,7 +2494,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       AppControlTargets.currentAssistantSkills => 'AI Imported Skill',
       AppControlTargets.quickPhrase => 'AI Imported Quick Phrase',
       AppControlTargets.instructionInjection => 'AI Imported Instruction',
-      AppControlTargets.worldBook => 'AI Imported World Book',
       _ => '神经权能网关操作',
     };
   }
@@ -2923,15 +2543,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     };
   }
 
-  Future<Map<String, dynamic>> _worldBookSnapshot(Assistant assistant) async {
-    final provider = contextProvider.read<WorldBookProvider>();
-    await provider.initialize();
-    return {
-      'books': provider.books.map((book) => book.toJson()).toList(),
-      'active_ids': provider.activeBookIdsFor(assistant.id),
-      'assistant_id': assistant.id,
-    };
-  }
 
   Map<String, dynamic> _searchSettingsSnapshot(Assistant assistant) {
     final settings = contextProvider.read<SettingsProvider>();
@@ -2955,7 +2566,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       'skills': await _skillSnapshot(assistant),
       'quick_phrases': await _quickPhraseSnapshot(assistant),
       'instruction_injections': await _instructionInjectionSnapshot(assistant),
-      'world_books': await _worldBookSnapshot(assistant),
       'mcp_servers': mcpProvider.servers
           .map((server) => server.toJson())
           .toList(growable: false),
@@ -2999,11 +2609,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     if (bundle['instruction_injections'] is Map) {
       await _restoreInstructionInjections(
         (bundle['instruction_injections'] as Map).cast<String, dynamic>(),
-      );
-    }
-    if (bundle['world_books'] is Map) {
-      await _restoreWorldBooks(
-        (bundle['world_books'] as Map).cast<String, dynamic>(),
       );
     }
     if (bundle['mcp_servers'] is List) {
@@ -3087,20 +2692,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     );
   }
 
-  Future<void> _restoreWorldBooks(Map<String, dynamic> payload) async {
-    final books = payload['books'];
-    if (books is! List) return;
-    final provider = contextProvider.read<WorldBookProvider>();
-    await provider.initialize();
-    await provider.clear();
-    for (final raw in books.whereType<Map>()) {
-      await provider.addBook(WorldBook.fromJson(raw.cast<String, dynamic>()));
-    }
-    await provider.setActiveBookIds(
-      _stringListFromDynamic(payload['active_ids']),
-      assistantId: payload['assistant_id']?.toString(),
-    );
-  }
 
   String _preview(String text, [int max = 500]) {
     final trimmed = text.trim();
