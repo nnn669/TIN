@@ -42,34 +42,17 @@ class GenerationController {
   final stream_ctrl.StreamController streamController;
   final MessageBuilderService messageBuilderService;
 
-  /// Service for handling tool definitions and tool call execution
   final ToolHandlerService toolHandlerService;
-
-  /// Build context (used for accessing providers)
   final BuildContext contextProvider;
-
-  /// Callback when state changes (trigger setState in the widget)
   final VoidCallback onStateChanged;
-
-  /// Function to get localized title
   final String Function(BuildContext context) getTitleForLocale;
 
-  // ============================================================================
-  // Tool Schema Sanitization (delegated to ToolHandlerService)
-  // ============================================================================
-
-  /// Sanitize/translate JSON Schema to each provider's accepted subset.
-  /// Delegates to ToolHandlerService.sanitizeToolParametersForProvider.
   static Map<String, dynamic> sanitizeToolParametersForProvider(
     Map<String, dynamic> schema,
     ProviderKind kind,
   ) {
     return ToolHandlerService.sanitizeToolParametersForProvider(schema, kind);
   }
-
-  // ============================================================================
-  // Model Capability Checks
-  // ============================================================================
 
   bool isReasoningModel(String providerKey, String modelId) {
     final settings = contextProvider.read<SettingsProvider>();
@@ -110,17 +93,11 @@ class GenerationController {
   }
 
   bool isReasoningEnabled(int? budget) {
-    if (budget == null) return true; // treat null as default/auto -> enabled
-    if (budget == -1) return true; // auto
+    if (budget == null) return true;
+    if (budget == -1) return true;
     return budget >= 1024;
   }
 
-  // ============================================================================
-  // Tool Definitions Builder (delegated to ToolHandlerService)
-  // ============================================================================
-
-  /// Prepare tool definitions for API call.
-  /// Delegates to ToolHandlerService.buildToolDefinitions.
   List<Map<String, dynamic>> buildToolDefinitions(
     SettingsProvider settings,
     Assistant? assistant,
@@ -138,26 +115,10 @@ class GenerationController {
     );
   }
 
-  // ============================================================================
-  // Tool Call Handler Builder
-  // ============================================================================
-
-  /// Build tool call handler function.
+  /// Build the guarded tool handler used by every provider path.
   ///
-  /// Delegates execution to ToolHandlerService.buildToolCallHandler, then wraps
-  /// it in a [ToolLoopGuard] so a single assistant turn cannot spin forever.
-  /// Identical successful calls are reused by their complete tool signature;
-  /// different arguments, split subtasks, and failed calls remain independent.
-  ///
-  /// Providers drive tool calls with unbounded `while (true)` loops and re-send
-  /// the entire conversation plus every prior tool result on each round, so an
-  /// unguarded loop bills the user until they hit stop. Executing a tool is the
-  /// only way a provider can build its next round, which makes this wrapper the
-  /// single choke point covering every provider and both the streaming and
-  /// non-streaming paths.
-  ///
-  /// A fresh guard and result cache are created per call, and this method is
-  /// invoked once per generation, so budgets are scoped to one assistant turn.
+  /// Successful calls are reused by their complete tool signature. Different
+  /// arguments, split subtasks, and failed calls remain independent.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
@@ -184,19 +145,23 @@ class GenerationController {
       if (refusal != null) return refusal;
       if (cached != null) return cached;
 
-      return resultCache.run(
-        name,
-        args,
-        () => inner(name, args, toolCallId: toolCallId),
-      );
+      try {
+        final result = await resultCache.run(
+          name,
+          args,
+          () => inner(name, args, toolCallId: toolCallId),
+        );
+        if (!ToolLoopGuard.isCacheableResult(result)) {
+          guard.resetDuplicateStreak(name, args);
+        }
+        return result;
+      } catch (_) {
+        guard.resetDuplicateStreak(name, args);
+        rethrow;
+      }
     };
   }
 
-  // ============================================================================
-  // Custom Headers/Body Builders
-  // ============================================================================
-
-  /// Build custom headers from assistant settings.
   Map<String, String>? buildCustomHeaders(Assistant? assistant) {
     if ((assistant?.customHeaders.isNotEmpty ?? false)) {
       final headers = <String, String>{
@@ -209,7 +174,6 @@ class GenerationController {
     return null;
   }
 
-  /// Build custom body from assistant settings.
   Map<String, dynamic>? buildCustomBody(Assistant? assistant) {
     if ((assistant?.customBody.isNotEmpty ?? false)) {
       final body = <String, dynamic>{
@@ -222,11 +186,6 @@ class GenerationController {
     return null;
   }
 
-  // ============================================================================
-  // Assistant Content Transform
-  // ============================================================================
-
-  /// Transform raw content using assistant regexes.
   String transformAssistantContent(String raw, Assistant? assistant) {
     return applyAssistantRegexes(
       raw,
@@ -236,11 +195,6 @@ class GenerationController {
     );
   }
 
-  // ============================================================================
-  // Generation Context Builder
-  // ============================================================================
-
-  /// Build generation context with all necessary data for streaming.
   stream_ctrl.GenerationContext buildGenerationContext({
     required ChatMessage assistantMessage,
     required List<Map<String, dynamic>> apiMessages,
