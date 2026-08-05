@@ -115,9 +115,9 @@ class _BezierHeatmapPainter extends CustomPainter {
     _drawText(
       canvas,
       'Token',
-      const Offset(0, 0),
+      const Offset(0, -2),
       TextStyle(
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: FontWeight.w700,
         color: colorScheme.onSurface.withValues(alpha: .9),
       ),
@@ -251,8 +251,8 @@ class _BezierHeatmapPainter extends CustomPainter {
   void _drawDots(Canvas canvas, Path area, Rect chart, bool dark) {
     final dotPaint = Paint()
       ..color = colorScheme.primary.withValues(alpha: dark ? .42 : .27);
-    for (var x = chart.left + 4; x <= chart.right; x += 9) {
-      for (var y = chart.top + 4; y <= chart.bottom; y += 9) {
+    for (var x = chart.left + 4; x <= chart.right; x += 4.5) {
+      for (var y = chart.top + 4; y <= chart.bottom; y += 4.5) {
         final point = Offset(x, y);
         if (area.contains(point)) canvas.drawCircle(point, 1.25, dotPaint);
       }
