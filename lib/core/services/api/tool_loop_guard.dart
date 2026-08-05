@@ -73,40 +73,15 @@ class ToolCallResultCache {
 }
 
 /// Bounds the multi-round tool-call loops that every provider runs.
-///
-/// All provider paths (`claude_official`, `google_common`, `google_vertex`,
-/// `openai_common` chat-completions) drive tool calls with `while (true)` loops
-/// that only exit when the model stops asking for tools. Each follow-up round
-/// re-sends the whole conversation plus every prior tool result, so an
-/// unbounded loop grows cost roughly quadratically and previously could only be
-/// stopped by the user hitting stop.
-///
-/// The guard sits on the shared [ToolCallHandler]: executing a tool is the only
-/// way a provider can obtain the payload for its next round, so a single
-/// wrapper covers every provider and both the streaming and non-streaming
-/// paths. One instance is created per assistant turn.
-///
-/// Budgets are sized against real usage: plain chat needs 0 calls, a single
-/// web search 1-2, and even multi-step MCP file work normally finishes inside
-/// 8-12. Crossing [softCallBudget] therefore means the model is almost
-/// certainly looping.
-///
-/// Two counters are tracked on purpose. [softCallBudget] limits tools actually
-/// executed, while [hardCallBudget] limits total requests including refused
-/// ones -- otherwise a model that ignores every refusal would never trip the
-/// hard limit, since refusals do not consume execution budget.
 class ToolLoopGuard {
   /// Past this many executed calls the guard stops running tools and instead
   /// tells the model to finish with what it already gathered.
   static const int softCallBudget = 50;
 
-  /// Absolute stop, counted over every request including refusals. Only
-  /// reachable when the model keeps requesting tools after being refused.
+  /// Absolute stop, counted over every request including refusals.
   static const int hardCallBudget = 88;
 
-  /// Identical consecutive calls that count as a stuck loop. This fires much
-  /// earlier than the budgets in the common "model re-issues the exact same
-  /// call forever" failure.
+  /// Identical consecutive calls that count as a stuck loop.
   static const int maxConsecutiveDupes = 3;
 
   int _calls = 0;
@@ -120,20 +95,12 @@ class ToolLoopGuard {
   /// Tool requests seen so far, including refused ones.
   int get attemptCount => _attempts;
 
-  /// Builds a stable signature for one tool call so repeats can be detected.
-  ///
-  /// Map keys are sorted recursively because providers do not guarantee a
-  /// stable key order across rounds, and an unstable signature would silently
-  /// disable duplicate detection.
+  /// Builds a stable signature for one tool call.
   static String signatureOf(String name, Map<String, dynamic> args) {
     return '$name\u0000${jsonEncode(_stableValue(args))}';
   }
 
   /// Returns whether a result is safe to reuse for an identical later call.
-  ///
-  /// Tool handlers encode their structured failures as JSON. Plain-text
-  /// results remain cacheable because they are the normal form for search and
-  /// MCP tool output.
   static bool isCacheableResult(String raw) {
     try {
       final decoded = jsonDecode(raw);
@@ -149,16 +116,20 @@ class ToolLoopGuard {
     return true;
   }
 
+  /// Clears the duplicate streak after a failed execution so a retry is not
+  /// mistaken for a model loop. The request budget remains counted.
+  void resetDuplicateStreak(String name, Map<String, dynamic> args) {
+    if (signatureOf(name, args) != _lastSignature) return;
+    _lastSignature = null;
+    _consecutiveDupes = 0;
+  }
+
   /// Decides whether a tool call may run.
   ///
-  /// [cached] is used for an already successful result. It counts the model's
-  /// request toward the hard attempt budget, but does not consume execution
-  /// budget or participate in consecutive duplicate detection.
-  ///
-  /// Returns null when the call is allowed (and counts it). Returns a
-  /// tool-result payload describing the refusal when the model should wrap up;
-  /// feeding this back lets it still answer with what it has. Throws
-  /// [ToolLoopBudgetExceeded] once [hardCallBudget] requests have been seen.
+  /// [cached] counts the request toward the hard budget, but does not consume
+  /// execution budget or participate in consecutive duplicate detection.
+  /// Returns null when allowed, a refusal payload when the model should stop,
+  /// and throws once [hardCallBudget] requests have been seen.
   String? evaluate(
     String name,
     Map<String, dynamic> args, {
@@ -205,9 +176,7 @@ class ToolLoopGuard {
       final keys = value.keys.map((k) => k.toString()).toList()..sort();
       return <String, Object?>{for (final k in keys) k: _stableValue(value[k])};
     }
-    if (value is Iterable) {
-      return value.map(_stableValue).toList();
-    }
+    if (value is Iterable) return value.map(_stableValue).toList();
     if (value is num || value is bool || value == null) return value;
     return value.toString();
   }
