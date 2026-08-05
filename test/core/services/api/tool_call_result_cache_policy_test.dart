@@ -16,6 +16,7 @@ void main() {
         'tool_kelivo_fetch_markdown',
         'tool_kelivo_fetch_txt',
         'tool_kelivo_fetch_json',
+        'tool_kelivo-fetch_html',
       ];
 
       for (final name in readOnlyNames) {
