@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -341,7 +342,7 @@ class _BezierHeatmapPainter extends CustomPainter {
   }) {
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
+      textDirection: ui.TextDirection.ltr,
       textAlign: align,
     )..layout(maxWidth: width);
     painter.paint(canvas, offset);
