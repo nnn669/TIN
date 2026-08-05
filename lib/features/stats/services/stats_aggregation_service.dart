@@ -17,6 +17,7 @@ class StatsAggregationService {
   }) {
     final rangeMessages = <ChatMessage>[];
     final heatmapCounts = <DateTime, int>{};
+    final heatmapTokens = <DateTime, int>{};
     final modelCounts = <String, int>{};
     final modelProviders = <String, String>{};
     final assistantCounts = <String, int>{};
@@ -46,6 +47,9 @@ class StatsAggregationService {
       for (final message in messages) {
         final messageDate = StatsDateRange.normalizeDate(message.timestamp);
         heatmapCounts[messageDate] = (heatmapCounts[messageDate] ?? 0) + 1;
+        final messageTokens = _messageTokenTotal(message);
+        heatmapTokens[messageDate] =
+            (heatmapTokens[messageDate] ?? 0) + messageTokens;
 
         if (!range.contains(message.timestamp)) continue;
 
@@ -94,7 +98,7 @@ class StatsAggregationService {
         cachedTokens: cachedTokens,
         launchCount: launchCount,
       ),
-      heatmap: _buildHeatmap(now, heatmapCounts),
+      heatmap: _buildHeatmap(now, heatmapCounts, heatmapTokens),
       trend: trend,
       modelRank: _rank(
         modelCounts,
@@ -104,6 +108,13 @@ class StatsAggregationService {
       assistantRank: _rank(assistantCounts, (id) => assistantNames[id] ?? id),
       topicRank: _rank(topicCounts, (id) => topicLabels[id] ?? id),
     );
+  }
+
+  static int _messageTokenTotal(ChatMessage message) {
+    final categorized = (message.promptTokens ?? 0) +
+        (message.completionTokens ?? 0);
+    if (categorized > 0) return categorized;
+    return message.totalTokens ?? 0;
   }
 
   static ({DateTime start, DateTime end}) _trendRange(
@@ -123,16 +134,23 @@ class StatsAggregationService {
   static List<StatsHeatmapDay> _buildHeatmap(
     DateTime now,
     Map<DateTime, int> counts,
+    Map<DateTime, int> tokens,
   ) {
     final today = StatsDateRange.normalizeDate(now);
-    final start = StatsDateRange.addCalendarDays(today, -364);
+    final start = StatsDateRange.addCalendarDays(today, -29);
     final days = <StatsHeatmapDay>[];
     for (
       var date = start;
       !date.isAfter(today);
       date = StatsDateRange.addCalendarDays(date, 1)
     ) {
-      days.add(StatsHeatmapDay(date: date, count: counts[date] ?? 0));
+      days.add(
+        StatsHeatmapDay(
+          date: date,
+          count: counts[date] ?? 0,
+          tokenCount: tokens[date] ?? 0,
+        ),
+      );
     }
     return days;
   }

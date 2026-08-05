@@ -135,10 +135,22 @@ class StatsRankItem {
 }
 
 class StatsHeatmapDay {
-  const StatsHeatmapDay({required this.date, required this.count});
+  const StatsHeatmapDay({
+    required this.date,
+    required this.count,
+    this.tokenCount,
+  });
 
   final DateTime date;
   final int count;
+
+  /// Total billable input/output tokens for this date.
+  ///
+  /// `count` remains available for message-count consumers and backwards
+  /// compatible fixtures. New token charts should use [tokens].
+  final int? tokenCount;
+
+  int get tokens => tokenCount ?? count;
 }
 
 class StatsTokenBucket {
