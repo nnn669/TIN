@@ -137,7 +137,7 @@ class StatsAggregationService {
     Map<DateTime, int> tokens,
   ) {
     final today = StatsDateRange.normalizeDate(now);
-    final start = StatsDateRange.addCalendarDays(today, -364);
+    final start = StatsDateRange.addCalendarDays(today, -29);
     final days = <StatsHeatmapDay>[];
     for (
       var date = start;
