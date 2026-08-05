@@ -16,6 +16,49 @@ class ToolLoopBudgetExceeded implements Exception {
       'ToolLoopBudgetExceeded: tool loop aborted after $attemptCount requests';
 }
 
+/// Reuses an in-flight or completed successful result for an identical call.
+///
+/// The key includes the tool name and the complete recursively normalized
+/// argument map. Different URLs, pages, headers, or split subtasks therefore
+/// remain independent. Results that represent tool errors, and thrown
+/// exceptions, are removed so a later request can retry them.
+class ToolCallResultCache {
+  final Map<String, Future<String>> _results = <String, Future<String>>{};
+
+  /// Executes [run] once for one signature while it is in flight, then reuses
+  /// its successful result for the rest of the assistant turn.
+  Future<String> run(
+    String name,
+    Map<String, dynamic> args,
+    Future<String> Function() execute,
+  ) {
+    final signature = ToolLoopGuard.signatureOf(name, args);
+    final cached = _results[signature];
+    if (cached != null) return cached;
+
+    late final Future<String> pending;
+    pending = _runAndKeepSuccessfulResult(signature, execute);
+    _results[signature] = pending;
+    return pending;
+  }
+
+  Future<String> _runAndKeepSuccessfulResult(
+    String signature,
+    Future<String> Function() execute,
+  ) async {
+    try {
+      final result = await execute();
+      if (!ToolLoopGuard.isCacheableResult(result)) {
+        _results.remove(signature);
+      }
+      return result;
+    } catch (_) {
+      _results.remove(signature);
+      rethrow;
+    }
+  }
+}
+
 /// Bounds the multi-round tool-call loops that every provider runs.
 ///
 /// All provider paths (`claude_official`, `google_common`, `google_vertex`,
@@ -71,6 +114,26 @@ class ToolLoopGuard {
   /// disable duplicate detection.
   static String signatureOf(String name, Map<String, dynamic> args) {
     return '$name\u0000${jsonEncode(_stableValue(args))}';
+  }
+
+  /// Returns whether a result is safe to reuse for an identical later call.
+  ///
+  /// Tool handlers encode their structured failures as JSON. Plain-text
+  /// results remain cacheable because they are the normal form for search and
+  /// MCP tool output.
+  static bool isCacheableResult(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return true;
+      if (decoded['type'] == 'tool_error' ||
+          decoded['tool_error'] != null ||
+          decoded['isError'] == true) {
+        return false;
+      }
+    } catch (_) {
+      // Plain text is a valid successful tool result.
+    }
+    return true;
   }
 
   static Object? _stableValue(Object? value) {
