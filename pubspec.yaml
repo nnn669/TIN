@@ -2,7 +2,7 @@ name: tin
 description: "An Android LLM chat client."
 publish_to: 'none'
 
-version: 1.1.36+9030
+version: 1.1.37+9031
 
 environment:
   sdk: ^3.12.1
