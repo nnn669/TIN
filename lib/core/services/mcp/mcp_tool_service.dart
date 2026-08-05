@@ -160,7 +160,7 @@ class McpToolService extends ChangeNotifier {
         // ignore single content parse errors and continue
       }
     }
-    return buf.toString().trim();
+    return _appendMcpErrorMarker(buf.toString().trim(), res.isError == true);
   }
 
   Future<String> callToolTextForAssistant(
@@ -256,10 +256,20 @@ class McpToolService extends ChangeNotifier {
             // ignore single content parse errors and continue
           }
         }
-        return buf.toString().trim();
+        return _appendMcpErrorMarker(buf.toString().trim(), res.isError == true);
       }
     }
     return '';
+  }
+
+  String _appendMcpErrorMarker(String text, bool isError) {
+    if (!isError) return text;
+    final payload = <String, dynamic>{
+      'type': 'tool_error',
+      'error': 'mcp_tool_error',
+      'message': text.isEmpty ? 'MCP tool returned an error.' : text,
+    };
+    return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
   String _renderToolErrorForModel({
