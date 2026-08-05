@@ -42,7 +42,11 @@ class ToolCallResultCache {
     if (cached != null) return cached;
 
     late final Future<String> pending;
-    pending = _runAndKeepSuccessfulResult(signature, execute);
+    pending = _runAndKeepSuccessfulResult(
+      signature,
+      execute,
+      () => pending,
+    );
     _results[signature] = pending;
     return pending;
   }
@@ -50,15 +54,19 @@ class ToolCallResultCache {
   Future<String> _runAndKeepSuccessfulResult(
     String signature,
     Future<String> Function() execute,
+    Future<String> Function() current,
   ) async {
     try {
       final result = await execute();
-      if (!ToolLoopGuard.isCacheableResult(result)) {
+      if (!ToolLoopGuard.isCacheableResult(result) &&
+          identical(_results[signature], current())) {
         _results.remove(signature);
       }
       return result;
     } catch (_) {
-      _results.remove(signature);
+      if (identical(_results[signature], current())) {
+        _results.remove(signature);
+      }
       rethrow;
     }
   }
