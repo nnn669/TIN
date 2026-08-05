@@ -25,6 +25,11 @@ class ToolLoopBudgetExceeded implements Exception {
 class ToolCallResultCache {
   final Map<String, Future<String>> _results = <String, Future<String>>{};
 
+  /// Returns an in-flight or completed result for [name] and [args].
+  Future<String>? lookup(String name, Map<String, dynamic> args) {
+    return _results[ToolLoopGuard.signatureOf(name, args)];
+  }
+
   /// Executes [run] once for one signature while it is in flight, then reuses
   /// its successful result for the rest of the assistant turn.
   Future<String> run(
@@ -136,29 +141,26 @@ class ToolLoopGuard {
     return true;
   }
 
-  static Object? _stableValue(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.map((k) => k.toString()).toList()..sort();
-      return <String, Object?>{for (final k in keys) k: _stableValue(value[k])};
-    }
-    if (value is Iterable) {
-      return value.map(_stableValue).toList();
-    }
-    if (value is num || value is bool || value == null) return value;
-    return value.toString();
-  }
-
   /// Decides whether a tool call may run.
+  ///
+  /// [cached] is used for an already successful result. It counts the model's
+  /// request toward the hard attempt budget, but does not consume execution
+  /// budget or participate in consecutive duplicate detection.
   ///
   /// Returns null when the call is allowed (and counts it). Returns a
   /// tool-result payload describing the refusal when the model should wrap up;
   /// feeding this back lets it still answer with what it has. Throws
   /// [ToolLoopBudgetExceeded] once [hardCallBudget] requests have been seen.
-  String? evaluate(String name, Map<String, dynamic> args) {
+  String? evaluate(
+    String name,
+    Map<String, dynamic> args, {
+    bool cached = false,
+  }) {
     if (_attempts >= hardCallBudget) {
       throw ToolLoopBudgetExceeded(_attempts);
     }
     _attempts += 1;
+    if (cached) return null;
 
     final signature = signatureOf(name, args);
     if (signature == _lastSignature) {
@@ -188,6 +190,18 @@ class ToolLoopGuard {
 
     _calls += 1;
     return null;
+  }
+
+  static Object? _stableValue(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.map((k) => k.toString()).toList()..sort();
+      return <String, Object?>{for (final k in keys) k: _stableValue(value[k])};
+    }
+    if (value is Iterable) {
+      return value.map(_stableValue).toList();
+    }
+    if (value is num || value is bool || value == null) return value;
+    return value.toString();
   }
 
   static String _refusal(String reason, String message) {
