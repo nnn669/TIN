@@ -186,6 +186,90 @@ void main() {
     });
   });
 
+  group('ToolCallResultCache', () {
+    test('reuses an in-flight and completed successful result', () async {
+      final cache = ToolCallResultCache();
+      var executions = 0;
+
+      final first = cache.run('fetch_txt', {'url': 'https://example.com/a'}, () async {
+        executions++;
+        await Future<void>.delayed(Duration.zero);
+        return 'page A';
+      });
+      final second = cache.run('fetch_txt', {'url': 'https://example.com/a'}, () async {
+        executions++;
+        return 'unexpected duplicate';
+      });
+
+      expect(identical(first, second), isTrue);
+      expect(await first, 'page A');
+      expect(
+        await cache.run('fetch_txt', {'url': 'https://example.com/a'}, () async {
+          executions++;
+          return 'unexpected second duplicate';
+        }),
+        'page A',
+      );
+      expect(executions, 1);
+    });
+
+    test('keeps different parameters independent for split calls', () async {
+      final cache = ToolCallResultCache();
+      var executions = 0;
+
+      final a = cache.run('fetch_txt', {'url': 'https://example.com/a'}, () async {
+        executions++;
+        return 'page A';
+      });
+      final b = cache.run('fetch_txt', {'url': 'https://example.com/b'}, () async {
+        executions++;
+        return 'page B';
+      });
+
+      expect(await a, 'page A');
+      expect(await b, 'page B');
+      expect(executions, 2);
+    });
+
+    test('does not cache structured tool errors and allows retry', () async {
+      final cache = ToolCallResultCache();
+      var executions = 0;
+      final args = {'url': 'https://example.com/retry'};
+
+      final failed = await cache.run('fetch_txt', args, () async {
+        executions++;
+        return jsonEncode({'type': 'tool_error', 'error': 'network'});
+      });
+      final retried = await cache.run('fetch_txt', args, () async {
+        executions++;
+        return 'recovered';
+      });
+
+      expect(jsonDecode(failed), isA<Map>());
+      expect(retried, 'recovered');
+      expect(executions, 2);
+    });
+
+    test('cached split calls do not trigger duplicate refusal', () async {
+      final cache = ToolCallResultCache();
+      final guard = ToolLoopGuard();
+      final argsA = {'url': 'https://example.com/a'};
+      final argsB = {'url': 'https://example.com/b'};
+
+      Future<String> call(String name, Map<String, dynamic> args) async {
+        final cached = cache.lookup(name, args);
+        expect(guard.evaluate(name, args, cached: cached != null), isNull);
+        if (cached != null) return cached;
+        return cache.run(name, args, () async => 'ok:$name:${args['url']}');
+      }
+
+      expect(await call('fetch_txt', argsA), 'ok:fetch_txt:https://example.com/a');
+      expect(await call('fetch_txt', argsB), 'ok:fetch_txt:https://example.com/b');
+      expect(await call('fetch_txt', argsA), 'ok:fetch_txt:https://example.com/a');
+      expect(await call('fetch_txt', argsA), 'ok:fetch_txt:https://example.com/a');
+    });
+  });
+
   group('ToolLoopBudgetExceeded', () {
     test('reports the attempt count', () {
       const err = ToolLoopBudgetExceeded(ToolLoopGuard.hardCallBudget);
