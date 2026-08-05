@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_font_weights.dart';
-import 'stats_heatmap.dart';
 
 class StatsSectionCard extends StatelessWidget {
   const StatsSectionCard({
@@ -8,18 +7,19 @@ class StatsSectionCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.trailing,
+    this.showTitle = true,
   });
 
   final String title;
   final Widget child;
   final Widget? trailing;
+  final bool showTitle;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final showHeader = child is! StatsHeatmap;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? Colors.white10 : Colors.white.withValues(alpha: 0.96),
@@ -34,7 +34,7 @@ class StatsSectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (showHeader) ...[
+            if (showTitle) ...[
               Row(
                 children: [
                   Expanded(
