@@ -26,7 +26,12 @@ class ToolCallResultCache {
   final Map<String, Future<String>> _results = <String, Future<String>>{};
 
   /// Returns an in-flight or completed result for [name] and [args].
+  ///
+  /// Only explicitly read-only web/search tools are eligible. This prevents
+  /// memory, app-control, local, and arbitrary MCP mutations from being
+  /// replayed from a previous result.
   Future<String>? lookup(String name, Map<String, dynamic> args) {
+    if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return null;
     return _results[ToolLoopGuard.signatureOf(name, args)];
   }
 
@@ -37,6 +42,8 @@ class ToolCallResultCache {
     Map<String, dynamic> args,
     Future<String> Function() execute,
   ) {
+    if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return execute();
+
     final signature = ToolLoopGuard.signatureOf(name, args);
     final cached = _results[signature];
     if (cached != null) return cached;
@@ -84,6 +91,14 @@ class ToolLoopGuard {
   /// Identical consecutive calls that count as a stuck loop.
   static const int maxConsecutiveDupes = 3;
 
+  static const Set<String> _readOnlyCacheTools = <String>{
+    'search_web',
+    'fetch_html',
+    'fetch_markdown',
+    'fetch_txt',
+    'fetch_json',
+  };
+
   int _calls = 0;
   int _attempts = 0;
   String? _lastSignature;
@@ -98,6 +113,28 @@ class ToolLoopGuard {
   /// Builds a stable signature for one tool call.
   static String signatureOf(String name, Map<String, dynamic> args) {
     return '$name\u0000${jsonEncode(_stableValue(args))}';
+  }
+
+  /// Returns whether [name] is an explicitly read-only web/search tool.
+  ///
+  /// Kelivo Fetch MCP tools may be exposed with a sanitized server prefix,
+  /// such as `tool-_kelivo-fetch_html`, so the generated prefix is accepted
+  /// only for the four known fetch operations.
+  static bool isReadOnlyCacheTool(String name) {
+    final normalized = name.trim().toLowerCase().replaceAll('-', '_');
+    if (_readOnlyCacheTools.contains(normalized)) return true;
+    return normalized.startsWith('tool__kelivo_fetch_') &&
+        normalized.endsWith(
+          const <String>[
+            'html',
+            'markdown',
+            'txt',
+            'json',
+          ].firstWhere(
+            (suffix) => normalized.endsWith(suffix),
+            orElse: () => '',
+          ),
+        );
   }
 
   /// Returns whether a result is safe to reuse for an identical later call.
