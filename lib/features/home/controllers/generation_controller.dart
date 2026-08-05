@@ -5,9 +5,7 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/providers/model_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
-import '../../../core/services/api/tool_loop_guard.dart';
 import '../../../core/services/chat/chat_service.dart';
-import '../../../core/services/logging/flutter_logger.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../services/message_builder_service.dart';
@@ -140,58 +138,19 @@ class GenerationController {
   }
 
   /// Build tool call handler function.
-  ///
-  /// Delegates execution to ToolHandlerService, then wraps the result in a
-  /// [ToolLoopGuard] so a single assistant turn cannot spin the provider-side
-  /// tool loop forever.
-  ///
-  /// Every provider drives tool calls with an unbounded `while` loop that only
-  /// exits when the model stops requesting tools, and each follow-up request
-  /// re-sends the whole conversation plus all prior tool results. Guarding here
-  /// covers every provider and both the streaming and non-streaming paths at
-  /// once, because `onToolCall` is the only way a provider can reach its next
-  /// round.
-  ///
-  /// A fresh guard is created per call, and this is called once per generation,
-  /// so the budget is per assistant turn.
+  /// Delegates to ToolHandlerService.buildToolCallHandler.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
     ToolApprovalService? approvalService,
     AskUserInteractionService? askUserService,
   }) {
-    final inner = toolHandlerService.buildToolCallHandler(
+    return toolHandlerService.buildToolCallHandler(
       settings,
       assistant,
       approvalService: approvalService,
       askUserService: askUserService,
     );
-    if (inner == null) return null;
-    return guardToolCallHandler(inner);
-  }
-
-  /// Wrap [inner] so tool calls in one turn are bounded by a [ToolLoopGuard].
-  ///
-  /// Refusals are returned to the model as a normal tool result, which lets it
-  /// finish the turn with what it already has instead of losing the response.
-  @visibleForTesting
-  static ToolCallHandler guardToolCallHandler(
-    ToolCallHandler inner, {
-    ToolLoopGuard? guard,
-  }) {
-    final activeGuard = guard ?? ToolLoopGuard();
-    return (name, args, {toolCallId}) async {
-      final decision = activeGuard.register(name, args);
-      if (!decision.allowed) {
-        FlutterLogger.log(
-          '[ToolLoopGuard] refused "$name" after '
-          '${activeGuard.callCount} calls: ${decision.reason}',
-          tag: 'ToolLoopGuard',
-        );
-        return decision.toToolErrorJson(name);
-      }
-      return inner(name, args, toolCallId: toolCallId);
-    };
   }
 
   // ============================================================================
