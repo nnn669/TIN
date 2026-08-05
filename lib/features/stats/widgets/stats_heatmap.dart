@@ -111,6 +111,18 @@ class _BezierHeatmapPainter extends CustomPainter {
       color: colorScheme.onSurface.withValues(alpha: .58),
     );
 
+    _drawText(
+      canvas,
+      'Token',
+      const Offset(0, 0),
+      TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: colorScheme.onSurface.withValues(alpha: .9),
+      ),
+      width: 80,
+      align: TextAlign.left,
+    );
     _drawGrid(canvas, chart, axisMax, gridColor, labelStyle);
     _drawAxis(canvas, chart, axisColor);
 
@@ -279,15 +291,17 @@ class _BezierHeatmapPainter extends CustomPainter {
 
   double _niceAxisMax(int maximum) {
     if (maximum <= 0) return 1;
-    final magnitude = math.pow(10, (math.log(maximum) / math.ln10).floor());
+    final magnitude = math
+        .pow(10, (math.log(maximum) / math.ln10).floor())
+        .toDouble();
     final normalized = maximum / magnitude;
     final step = normalized <= 1
-        ? 1
+        ? 1.0
         : normalized <= 2
-            ? 2
+            ? 2.0
             : normalized <= 5
-                ? 5
-                : 10;
+                ? 5.0
+                : 10.0;
     return step * magnitude;
   }
 
@@ -307,6 +321,7 @@ class _BezierHeatmapPainter extends CustomPainter {
     const dash = 6.0;
     const gap = 5.0;
     final distance = (end - start).distance;
+    if (distance == 0) return;
     final direction = (end - start) / distance;
     var drawn = 0.0;
     while (drawn < distance) {
