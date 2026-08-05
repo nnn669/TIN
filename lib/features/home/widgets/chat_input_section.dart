@@ -11,6 +11,7 @@ import '../../../core/providers/skill_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
 import '../utils/model_display_helper.dart';
 import 'chat_input_bar.dart';
+import 'model_icon.dart';
 
 defaultShouldStopBeforeSubmit({required bool isLoading, required ChatInputData input}) {
   return isLoading && input.text.trim().isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty;
