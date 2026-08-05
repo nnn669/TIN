@@ -138,10 +138,16 @@ class GenerationController {
     );
   }
 
+  // ============================================================================
+  // Tool Call Handler Builder
+  // ============================================================================
+
   /// Build tool call handler function.
   ///
   /// Delegates execution to ToolHandlerService.buildToolCallHandler, then wraps
   /// it in a [ToolLoopGuard] so a single assistant turn cannot spin forever.
+  /// Identical successful calls are reused by their complete tool signature;
+  /// different arguments, split subtasks, and failed calls remain independent.
   ///
   /// Providers drive tool calls with unbounded `while (true)` loops and re-send
   /// the entire conversation plus every prior tool result on each round, so an
@@ -150,8 +156,8 @@ class GenerationController {
   /// single choke point covering every provider and both the streaming and
   /// non-streaming paths.
   ///
-  /// A fresh guard is created per call, and this method is invoked once per
-  /// generation, so budgets are scoped to one assistant turn.
+  /// A fresh guard and result cache are created per call, and this method is
+  /// invoked once per generation, so budgets are scoped to one assistant turn.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
@@ -167,16 +173,22 @@ class GenerationController {
     if (inner == null) return null;
 
     final guard = ToolLoopGuard();
+    final resultCache = ToolCallResultCache();
     return (
       String name,
       Map<String, dynamic> args, {
       String? toolCallId,
     }) async {
-      // Throws ToolLoopBudgetExceeded at the hard budget, which aborts the turn
-      // instead of paying for another round.
-      final refusal = guard.evaluate(name, args);
+      final cached = resultCache.lookup(name, args);
+      final refusal = guard.evaluate(name, args, cached: cached != null);
       if (refusal != null) return refusal;
-      return inner(name, args, toolCallId: toolCallId);
+      if (cached != null) return cached;
+
+      return resultCache.run(
+        name,
+        args,
+        () => inner(name, args, toolCallId: toolCallId),
+      );
     };
   }
 
