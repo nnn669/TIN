@@ -42,11 +42,11 @@ class ToolLoopBudgetExceeded implements Exception {
 class ToolLoopGuard {
   /// Past this many executed calls the guard stops running tools and instead
   /// tells the model to finish with what it already gathered.
-  static const int softCallBudget = 16;
+  static const int softCallBudget = 50;
 
   /// Absolute stop, counted over every request including refusals. Only
   /// reachable when the model keeps requesting tools after being refused.
-  static const int hardCallBudget = 20;
+  static const int hardCallBudget = 88;
 
   /// Identical consecutive calls that count as a stuck loop. This fires much
   /// earlier than the budgets in the common "model re-issues the exact same
