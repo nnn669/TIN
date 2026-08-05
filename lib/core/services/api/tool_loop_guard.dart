@@ -97,6 +97,10 @@ class ToolLoopGuard {
     'fetch_markdown',
     'fetch_txt',
     'fetch_json',
+    'tool_kelivo_fetch_html',
+    'tool_kelivo_fetch_markdown',
+    'tool_kelivo_fetch_txt',
+    'tool_kelivo_fetch_json',
   };
 
   int _calls = 0;
@@ -116,25 +120,9 @@ class ToolLoopGuard {
   }
 
   /// Returns whether [name] is an explicitly read-only web/search tool.
-  ///
-  /// Kelivo Fetch MCP tools may be exposed with a sanitized server prefix,
-  /// such as `tool-_kelivo-fetch_html`, so the generated prefix is accepted
-  /// only for the four known fetch operations.
   static bool isReadOnlyCacheTool(String name) {
     final normalized = name.trim().toLowerCase().replaceAll('-', '_');
-    if (_readOnlyCacheTools.contains(normalized)) return true;
-    return normalized.startsWith('tool__kelivo_fetch_') &&
-        normalized.endsWith(
-          const <String>[
-            'html',
-            'markdown',
-            'txt',
-            'json',
-          ].firstWhere(
-            (suffix) => normalized.endsWith(suffix),
-            orElse: () => '',
-          ),
-        );
+    return _readOnlyCacheTools.contains(normalized);
   }
 
   /// Returns whether a result is safe to reuse for an identical later call.
@@ -144,7 +132,8 @@ class ToolLoopGuard {
       if (decoded is! Map) return true;
       if (decoded['type'] == 'tool_error' ||
           decoded['tool_error'] != null ||
-          decoded['isError'] == true) {
+          decoded['isError'] == true ||
+          decoded['error'] != null) {
         return false;
       }
     } catch (_) {
