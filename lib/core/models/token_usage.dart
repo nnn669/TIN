@@ -44,12 +44,16 @@ class TokenUsage {
   }) : promptTokens = basePromptTokens + snapshotPromptTokens,
        completionTokens = baseCompletionTokens + snapshotCompletionTokens,
        cachedTokens = baseCachedTokens + snapshotCachedTokens,
-       totalTokens = _total(
-         promptTokens: basePromptTokens + snapshotPromptTokens,
-         completionTokens: baseCompletionTokens + snapshotCompletionTokens,
-         baseTotalTokens: baseTotalTokens,
-         snapshotTotalTokens: snapshotTotalTokens,
-       ),
+       totalTokens = (basePromptTokens +
+                   snapshotPromptTokens +
+                   baseCompletionTokens +
+                   snapshotCompletionTokens) >
+               0
+           ? basePromptTokens +
+               snapshotPromptTokens +
+               baseCompletionTokens +
+               snapshotCompletionTokens
+           : baseTotalTokens + snapshotTotalTokens,
        _isCumulative = true,
        _basePromptTokens = basePromptTokens,
        _baseCompletionTokens = baseCompletionTokens,
@@ -59,18 +63,6 @@ class TokenUsage {
        _snapshotCompletionTokens = snapshotCompletionTokens,
        _snapshotCachedTokens = snapshotCachedTokens,
        _snapshotTotalTokens = snapshotTotalTokens;
-
-  static int _total({
-    required int promptTokens,
-    required int completionTokens,
-    required int baseTotalTokens,
-    required int snapshotTotalTokens,
-  }) {
-    final splitTotal = promptTokens + completionTokens;
-    return splitTotal > 0
-        ? splitTotal
-        : baseTotalTokens + snapshotTotalTokens;
-  }
 
   /// Merge snapshots from one API request.
   ///
