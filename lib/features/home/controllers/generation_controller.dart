@@ -5,6 +5,7 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/providers/model_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
+import '../../../core/services/api/tool_loop_guard.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
@@ -138,19 +139,45 @@ class GenerationController {
   }
 
   /// Build tool call handler function.
-  /// Delegates to ToolHandlerService.buildToolCallHandler.
+  ///
+  /// Delegates execution to ToolHandlerService.buildToolCallHandler, then wraps
+  /// it in a [ToolLoopGuard] so a single assistant turn cannot spin forever.
+  ///
+  /// Providers drive tool calls with unbounded `while (true)` loops and re-send
+  /// the entire conversation plus every prior tool result on each round, so an
+  /// unguarded loop bills the user until they hit stop. Executing a tool is the
+  /// only way a provider can build its next round, which makes this wrapper the
+  /// single choke point covering every provider and both the streaming and
+  /// non-streaming paths.
+  ///
+  /// A fresh guard is created per call, and this method is invoked once per
+  /// generation, so budgets are scoped to one assistant turn.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
     ToolApprovalService? approvalService,
     AskUserInteractionService? askUserService,
   }) {
-    return toolHandlerService.buildToolCallHandler(
+    final inner = toolHandlerService.buildToolCallHandler(
       settings,
       assistant,
       approvalService: approvalService,
       askUserService: askUserService,
     );
+    if (inner == null) return null;
+
+    final guard = ToolLoopGuard();
+    return (
+      String name,
+      Map<String, dynamic> args, {
+      String? toolCallId,
+    }) async {
+      // Throws ToolLoopBudgetExceeded at the hard budget, which aborts the turn
+      // instead of paying for another round.
+      final refusal = guard.evaluate(name, args);
+      if (refusal != null) return refusal;
+      return inner(name, args, toolCallId: toolCallId);
+    };
   }
 
   // ============================================================================
