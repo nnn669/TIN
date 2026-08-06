@@ -9,8 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:system_fonts/system_fonts.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'core/providers/assistant_provider.dart';
 import 'core/providers/backup_provider.dart';
@@ -34,9 +32,6 @@ import 'core/services/chat/chat_service.dart';
 import 'core/services/logging/flutter_logger.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
 import 'core/services/notification_service.dart';
-import 'desktop/desktop_home_page.dart';
-import 'desktop/desktop_tray_controller.dart';
-import 'desktop/desktop_window_controller.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/home/services/ask_user_interaction_service.dart';
 import 'features/home/services/tool_approval_service.dart';
@@ -56,7 +51,6 @@ Future<void> main() async {
       FlutterLogger.installGlobalHandlers();
       await _restoreFlutterLogState();
       _trimImageCache();
-      await _initDesktopWindow();
       await SandboxPathResolver.init();
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       runApp(const MyApp());
@@ -82,17 +76,6 @@ void _trimImageCache() {
     final cache = PaintingBinding.instance.imageCache;
     cache.maximumSize = 200;
     cache.maximumSizeBytes = 48 << 20;
-  } catch (_) {}
-}
-
-Future<void> _initDesktopWindow() async {
-  if (!isDesktopPlatform) return;
-  try {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windowManager.ensureInitialized();
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-    }
-    await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
   } catch (_) {}
 }
 
@@ -165,21 +148,17 @@ class _AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<_AppRoot> {
-  final SystemFonts _systemFonts = SystemFonts();
-  final Set<String> _loadedSystemFonts = <String>{};
 
   bool _didCheckUpdates = false;
   bool _didEnsureLocalizedDefaults = false;
   bool _didInitDesktopHotkeys = false;
   bool _didSyncAndroidBackground = false;
   bool? _lastDynamicColorSupported;
-  String? _lastTraySyncKey;
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     settings.applyGlobalProxyOverridesIfNeeded();
-    _scheduleDesktopFontLoads(settings);
 
     if (settings.showAppUpdates && !_didCheckUpdates) {
       _didCheckUpdates = true;
@@ -232,7 +211,6 @@ class _AppRootState extends State<_AppRoot> {
           home: _selectHome(),
           builder: (ctx, child) {
             _scheduleLocalizedDefaults(ctx);
-            _scheduleDesktopTraySync(ctx);
             final appWithOverlays = AppOverlays(
               child: child ?? const SizedBox.shrink(),
             );
@@ -249,23 +227,6 @@ class _AppRootState extends State<_AppRoot> {
         );
       },
     );
-  }
-
-  void _scheduleDesktopFontLoads(SettingsProvider settings) {
-    if (!isDesktopPlatform) return;
-    final families = <String>{
-      if (_wantsSystemAppFont(settings)) settings.appFontFamily!,
-      if (_wantsSystemCodeFont(settings)) settings.codeFontFamily!,
-    }..removeWhere((font) => font.isEmpty || _loadedSystemFonts.contains(font));
-    if (families.isEmpty) return;
-    _loadedSystemFonts.addAll(families);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      for (final family in families) {
-        try {
-          await _systemFonts.loadFont(family);
-        } catch (_) {}
-      }
-    });
   }
 
   bool _wantsSystemAppFont(SettingsProvider settings) {
@@ -342,33 +303,13 @@ class _AppRootState extends State<_AppRoot> {
       } catch (_) {}
       try {
         ctx.read<ChatService>().setDefaultConversationTitle(
-              l10n.chatServiceDefault.conversationTitle,
+              l10n.chatServiceDefaultConversationTitle,
             );
       } catch (_) {}
       try {
         ctx.read<UserProvider>().setDefaultNameIfUnset(
-              l10n.userProviderDefault.userName,
+              l10n.userProviderDefaultUserName,
             );
-      } catch (_) {}
-    });
-  }
-
-  void _scheduleDesktopTraySync(BuildContext ctx) {
-    if (!isDesktopPlatform) return;
-    final l10n = AppLocalizations.of(ctx);
-    if (l10n == null) return;
-    final settings = ctx.read<SettingsProvider>();
-    final syncKey = '${settings.desktopShowTray}:${settings.desktopMinimizeToTrayOnClose}:${Localizations.localeOf(ctx)}';
-    if (_lastTraySyncKey == syncKey) return;
-    _lastTraySyncKey = syncKey;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      try {
-        await DesktopTrayController.instance.syncFromSettings(
-          l10n,
-          showTray: settings.desktopShowTray,
-          minimizeToTrayOnClose: settings.desktopMinimizeToTrayOnClose,
-        );
       } catch (_) {}
     });
   }
@@ -444,7 +385,4 @@ class _AppRootState extends State<_AppRoot> {
   }
 }
 
-Widget _selectHome() {
-  if (kIsWeb) return const HomePage();
-  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();
-}
+Widget _selectHome() => const HomePage();

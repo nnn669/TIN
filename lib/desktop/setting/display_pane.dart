@@ -403,7 +403,7 @@ class _ThemeDots extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        for (final p in ThemePalettes.all)
+        for (final p in [ThemePalettes.defaultPalette])
           _ThemeDot(
             color: p.light.primary,
             selected: selected == p.id,
