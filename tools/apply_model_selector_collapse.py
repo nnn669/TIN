@@ -443,3 +443,4 @@ class _HeaderRow extends _ListRow {
 
 path.write_text(source, encoding='utf-8')
 print('model selector source patched')
+# trigger lightweight source-patch workflow
