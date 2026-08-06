@@ -1,12 +1,6 @@
 name: Apply provider group display patch
 
-on:
-  workflow_dispatch:
-    inputs:
-      target_branch:
-        description: Branch to patch
-        required: true
-        type: string
+on: [workflow_dispatch]
 
 permissions:
   contents: write
@@ -18,7 +12,7 @@ jobs:
       - name: Checkout target branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_branch }}
+          ref: feat/model-selector-provider-group-display
           fetch-depth: 0
 
       - name: Apply provider grouping display patch
@@ -66,9 +60,7 @@ jobs:
               """      if (widget.limitProviderKey == null) {
         final groupKey = providerGroupKey(pk);
         if (groupKey != lastProviderGroupKey) {
-          _rows.add(
-            _ProviderGroupHeaderRow(providerGroupTitle(pk)),
-          );
+          _rows.add(_ProviderGroupHeaderRow(providerGroupTitle(pk)));
           lastProviderGroupKey = groupKey;
         }
       }
@@ -240,6 +232,7 @@ class _HeaderRow extends _ListRow {
           assert s.count('providerGroupKey(String providerKey)') == 2
           assert s.count('_ProviderGroupHeaderRow(providerGroupTitle(pk))') == 2
           assert s.count('Widget _providerGroupHeader(BuildContext context, String title)') == 2
+          assert 'ProviderDetailPage' in s
           print('provider grouping source checks passed')
           PY
           git diff --check
@@ -252,4 +245,4 @@ class _HeaderRow extends _ListRow {
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add lib/features/model/widgets/model_select_sheet.dart
           git commit -m 'feat: show provider groups in model selector'
-          git push origin HEAD:${{ inputs.target_branch }}
+          git push origin HEAD:feat/model-selector-provider-group-display
