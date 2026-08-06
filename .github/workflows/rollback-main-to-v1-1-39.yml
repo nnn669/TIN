@@ -1,0 +1,59 @@
+name: Rollback main to v1.1.39
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restore latest formal release tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin --tags --force
+          expected="90e7a1de26b4d12d0ded043da478f5bd170f6d1b"
+          actual="$(git rev-list -n 1 v1.1.39)"
+          if [ "$actual" != "$expected" ]; then
+            echo "v1.1.39 points to $actual, expected $expected" >&2
+            exit 1
+          fi
+
+          git checkout v1.1.39 -- lib/features/model/widgets/model_select_sheet.dart
+          rm -f .github/workflows/apply-model-collapse-final.yml
+          rm -f .github/workflows/apply-model-selector-collapse.yml
+          rm -f .github/workflows/apply-provider-group-display.yml
+          rm -f .github/workflows/one-shot-provider-group-display.yml
+          rm -f .github/workflows/patch-model-selector-collapse.yml
+          rm -f .github/workflows/remove-model-selector-bottom-tabs.yml
+          rm -f .github/workflows/rollback-main-to-v1-1-39.yml
+          rm -f tools/.provider-group-patch-trigger
+
+          git diff --check
+          if grep -q "class _ProviderGroupHeaderRow" lib/features/model/widgets/model_select_sheet.dart; then
+            echo "collapse/grouping code still present after rollback" >&2
+            exit 1
+          fi
+          if ! grep -q "child: _buildBottomTabs(context)" lib/features/model/widgets/model_select_sheet.dart; then
+            echo "bottom provider tabs were not restored" >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo "main already matches v1.1.39 target tree for rollback scope"
+            exit 0
+          fi
+          git commit -m 'revert: restore latest formal release v1.1.39 [skip ci]'
+          git push origin HEAD:main
