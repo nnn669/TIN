@@ -8,75 +8,62 @@ Map<String, dynamic> _decodeRefusal(String raw) {
 }
 
 void main() {
-  group('ToolLoopGuard budgets', () {
-    test('allows calls up to the soft budget', () {
+  group('ToolLoopGuard budget', () {
+    test('allows exactly 100 tool calls in one assistant response', () {
       final guard = ToolLoopGuard();
       // Vary arguments so duplicate detection never fires.
-      for (var i = 0; i < ToolLoopGuard.softCallBudget; i++) {
+      for (var i = 0; i < ToolLoopGuard.maxCallBudget; i++) {
         expect(
           guard.evaluate('search_web', {'q': 'query $i'}),
           isNull,
           reason: 'call ${i + 1} should be allowed',
         );
       }
-      expect(guard.callCount, ToolLoopGuard.softCallBudget);
+      expect(guard.callCount, ToolLoopGuard.maxCallBudget);
     });
 
-    test('refuses past the soft budget without throwing', () {
+    test('throws on the 101st tool call', () {
       final guard = ToolLoopGuard();
-      for (var i = 0; i < ToolLoopGuard.softCallBudget; i++) {
+      for (var i = 0; i < ToolLoopGuard.maxCallBudget; i++) {
         guard.evaluate('search_web', {'q': 'query $i'});
       }
-
-      final refusal = guard.evaluate('search_web', {'q': 'one more'});
-      expect(refusal, isNotNull);
-
-      final payload = _decodeRefusal(refusal!);
-      expect(payload['reason'], 'tool_budget_exhausted');
-      expect(payload['retry'], isFalse);
-      expect(payload['tool_error'], contains('limit'));
-
-      // Refused calls must not consume execution budget, but they are still
-      // counted as attempts so the hard budget stays reachable.
-      expect(guard.callCount, ToolLoopGuard.softCallBudget);
-      expect(guard.attemptCount, ToolLoopGuard.softCallBudget + 1);
-    });
-
-    test('throws once the hard budget is reached', () {
-      final guard = ToolLoopGuard();
-      // Keep issuing distinct calls; soft refusals are ignored on purpose to
-      // simulate a model that will not stop.
-      for (var i = 0; i < ToolLoopGuard.hardCallBudget; i++) {
-        guard.evaluate('search_web', {'q': 'query $i'});
-      }
-      expect(guard.attemptCount, ToolLoopGuard.hardCallBudget);
 
       expect(
-        () => guard.evaluate('search_web', {'q': 'final'}),
+        () => guard.evaluate('search_web', {'q': 'call 101'}),
+        throwsA(isA<ToolLoopBudgetExceeded>()),
+      );
+      expect(guard.callCount, ToolLoopGuard.maxCallBudget);
+    });
+
+    test('cache hits count toward the 100-call response limit', () {
+      final guard = ToolLoopGuard();
+      for (var i = 0; i < ToolLoopGuard.maxCallBudget; i++) {
+        expect(
+          guard.evaluate('fetch_txt', const {'url': 'https://example.com'}, cached: true),
+          isNull,
+        );
+      }
+
+      expect(
+        () => guard.evaluate(
+          'fetch_txt',
+          const {'url': 'https://example.com'},
+          cached: true,
+        ),
         throwsA(isA<ToolLoopBudgetExceeded>()),
       );
     });
 
-    test('hard budget counts refusals so it is always reachable', () {
-      final guard = ToolLoopGuard();
-      var thrown = false;
-      // A model that ignores every refusal must still be cut off.
-      for (var i = 0; i < ToolLoopGuard.hardCallBudget * 2; i++) {
-        try {
-          guard.evaluate('search_web', {'q': 'query $i'});
-        } on ToolLoopBudgetExceeded {
-          thrown = true;
-          break;
-        }
+    test('a new guard starts a fresh 100-call response budget', () {
+      final firstResponse = ToolLoopGuard();
+      for (var i = 0; i < ToolLoopGuard.maxCallBudget; i++) {
+        firstResponse.evaluate('search_web', {'q': 'first $i'});
       }
-      expect(thrown, isTrue);
-    });
 
-    test('hard budget is never reached before the soft budget refuses', () {
-      expect(
-        ToolLoopGuard.softCallBudget,
-        lessThan(ToolLoopGuard.hardCallBudget),
-      );
+      final nextResponse = ToolLoopGuard();
+      expect(nextResponse.callCount, 0);
+      expect(nextResponse.evaluate('search_web', const {'q': 'next'}), isNull);
+      expect(nextResponse.callCount, 1);
     });
   });
 
@@ -92,19 +79,6 @@ void main() {
       final refusal = guard.evaluate('read_file', args);
       expect(refusal, isNotNull);
       expect(_decodeRefusal(refusal!)['reason'], 'repeated_tool_calls');
-    });
-
-    test('fires well before the soft budget', () {
-      final guard = ToolLoopGuard();
-      final args = {'path': 'notes.txt'};
-      String? refusal;
-      var attempts = 0;
-      while (refusal == null && attempts < ToolLoopGuard.softCallBudget) {
-        refusal = guard.evaluate('read_file', args);
-        attempts++;
-      }
-      expect(refusal, isNotNull);
-      expect(attempts, lessThan(ToolLoopGuard.softCallBudget));
     });
 
     test('a different call resets the duplicate streak', () {
@@ -271,10 +245,10 @@ void main() {
   });
 
   group('ToolLoopBudgetExceeded', () {
-    test('reports the attempt count', () {
-      const err = ToolLoopBudgetExceeded(ToolLoopGuard.hardCallBudget);
-      expect(err.attemptCount, ToolLoopGuard.hardCallBudget);
-      expect(err.toString(), contains('${ToolLoopGuard.hardCallBudget}'));
+    test('reports the call count', () {
+      const err = ToolLoopBudgetExceeded(ToolLoopGuard.maxCallBudget);
+      expect(err.callCount, ToolLoopGuard.maxCallBudget);
+      expect(err.toString(), contains('${ToolLoopGuard.maxCallBudget}'));
     });
   });
 }
