@@ -1,19 +1,15 @@
 import 'dart:convert';
 
-/// Thrown when an assistant turn blows past the hard tool-call budget.
-///
-/// Reaching this point means the model kept requesting tools even after the
-/// soft refusals below told it to stop, so the turn is aborted outright rather
-/// than billed for another round.
+/// Thrown when an assistant response reaches its tool-call limit.
 class ToolLoopBudgetExceeded implements Exception {
-  const ToolLoopBudgetExceeded(this.attemptCount);
+  const ToolLoopBudgetExceeded(this.callCount);
 
-  /// Total tool requests seen this turn, including refused ones.
-  final int attemptCount;
+  /// Total tool calls requested in the current assistant response.
+  final int callCount;
 
   @override
   String toString() =>
-      'ToolLoopBudgetExceeded: tool loop aborted after $attemptCount requests';
+      'ToolLoopBudgetExceeded: tool loop aborted after $callCount calls';
 }
 
 /// Reuses an in-flight or completed successful result for an identical call.
@@ -36,7 +32,7 @@ class ToolCallResultCache {
   }
 
   /// Executes [run] once for one signature while it is in flight, then reuses
-  /// its successful result for the rest of the assistant turn.
+  /// its successful result for the rest of the assistant response.
   Future<String> run(
     String name,
     Map<String, dynamic> args,
@@ -79,14 +75,10 @@ class ToolCallResultCache {
   }
 }
 
-/// Bounds the multi-round tool-call loops that every provider runs.
+/// Bounds the multi-round tool-call loops within one assistant response.
 class ToolLoopGuard {
-  /// Past this many executed calls the guard stops running tools and instead
-  /// tells the model to finish with what it already gathered.
-  static const int softCallBudget = 50;
-
-  /// Absolute stop, counted over every request including refusals.
-  static const int hardCallBudget = 88;
+  /// Every assistant response may request at most this many tool calls.
+  static const int maxCallBudget = 100;
 
   /// Identical consecutive calls that count as a stuck loop.
   static const int maxConsecutiveDupes = 3;
@@ -110,15 +102,11 @@ class ToolLoopGuard {
   };
 
   int _calls = 0;
-  int _attempts = 0;
   String? _lastSignature;
   int _consecutiveDupes = 0;
 
-  /// Tools actually executed so far in this turn.
+  /// Tool calls requested so far in the current assistant response.
   int get callCount => _calls;
-
-  /// Tool requests seen so far, including refused ones.
-  int get attemptCount => _attempts;
 
   /// Builds a stable signature for one tool call.
   static String signatureOf(String name, Map<String, dynamic> args) {
@@ -149,7 +137,7 @@ class ToolLoopGuard {
   }
 
   /// Clears the duplicate streak after a failed execution so a retry is not
-  /// mistaken for a model loop. The request budget remains counted.
+  /// mistaken for a model loop. The call budget remains counted.
   void resetDuplicateStreak(String name, Map<String, dynamic> args) {
     if (signatureOf(name, args) != _lastSignature) return;
     _lastSignature = null;
@@ -158,19 +146,18 @@ class ToolLoopGuard {
 
   /// Decides whether a tool call may run.
   ///
-  /// [cached] counts the request toward the hard budget, but does not consume
-  /// execution budget or participate in consecutive duplicate detection.
-  /// Returns null when allowed, a refusal payload when the model should stop,
-  /// and throws once [hardCallBudget] requests have been seen.
+  /// Every requested call counts toward the per-response limit, including a
+  /// cache hit. Returns null when allowed, a refusal payload for a detected
+  /// duplicate loop, and throws after [maxCallBudget] calls.
   String? evaluate(
     String name,
     Map<String, dynamic> args, {
     bool cached = false,
   }) {
-    if (_attempts >= hardCallBudget) {
-      throw ToolLoopBudgetExceeded(_attempts);
+    if (_calls >= maxCallBudget) {
+      throw ToolLoopBudgetExceeded(_calls);
     }
-    _attempts += 1;
+    _calls += 1;
     if (cached) return null;
 
     final signature = signatureOf(name, args);
@@ -190,16 +177,6 @@ class ToolLoopGuard {
       );
     }
 
-    if (_calls >= softCallBudget) {
-      return _refusal(
-        'tool_budget_exhausted',
-        'This turn has already run $softCallBudget tool calls, which is the '
-            'limit. No further tools will be executed. Answer now using the '
-            'results already collected.',
-      );
-    }
-
-    _calls += 1;
     return null;
   }
 
