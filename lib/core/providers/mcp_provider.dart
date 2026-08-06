@@ -536,11 +536,17 @@ class McpProvider extends ChangeNotifier {
         (server.id == _builtinGithubId || server.name == _builtinGithubName);
   }
 
+  bool _isBuiltinCopilotServer(McpServerConfig server) {
+    return server.transport == McpTransportType.inmemory &&
+        (server.id == _builtinCopilotId || server.name == _builtinCopilotName);
+  }
+
   bool isBuiltinServer(McpServerConfig server) {
     return _isBuiltinFetchServer(server) ||
         _isBuiltinFilesServer(server) ||
         _isBuiltinGithubServer(server) ||
-        _isBuiltinImagesServer(server);
+        _isBuiltinImagesServer(server) ||
+        _isBuiltinCopilotServer(server);
   }
 
   bool isBuiltinGithubServer(McpServerConfig server) {
@@ -553,6 +559,10 @@ class McpProvider extends ChangeNotifier {
 
   bool isBuiltinImagesServer(McpServerConfig server) {
     return _isBuiltinImagesServer(server);
+  }
+
+  bool isBuiltinCopilotServer(McpServerConfig server) {
+    return _isBuiltinCopilotServer(server);
   }
 
   bool _isBuiltinFetchServer(McpServerConfig server) {
