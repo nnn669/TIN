@@ -1,0 +1,116 @@
+name: remote-android-cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Apply focused cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"pattern not found in {path}: {old[:80]}")
+              p.write_text(text.replace(old, new, 1))
+
+          def remove_regex(path, pattern):
+              p = Path(path)
+              text = p.read_text()
+              updated, count = re.subn(pattern, "\n", text, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"expected one match in {path}, got {count}")
+              p.write_text(updated)
+
+          home = Path("lib/features/home/pages/home_page.dart")
+          text = home.read_text()
+          for line in [
+              "import 'package:desktop_drop/desktop_drop.dart';\n",
+              "import '../../../desktop/search_provider_popover.dart';\n",
+              "import '../../../desktop/reasoning_budget_popover.dart';\n",
+              "import '../../../desktop/mcp_servers_popover.dart';\n",
+              "import '../../../desktop/mini_map_popover.dart';\n",
+              "import '../../../desktop/quick_phrase_popover.dart';\n",
+              "import '../../../desktop/instruction_injection_popover.dart';\n",
+              "import 'home_desktop_layout.dart';\n",
+          ]:
+              text = text.replace(line, "")
+          text = re.sub(r"\n    if \(width >= AppBreakpoints\.tablet\) \{.*?\n    \}\n\n    return _buildMobileLayout", "\n    return _buildMobileLayout", text, flags=re.S)
+          text = text.replace("    final width = MediaQuery.sizeOf(context).width;\n", "")
+          text = text.replace("import '../../../shared/responsive/breakpoints.dart';\n", "")
+          text = text.replace("      body: _wrapWithDropTarget(_buildMobileBody(context, cs)),", "      body: _buildMobileBody(context, cs),")
+          remove_start = r"\n  Widget _buildTabletLayout\(.*?\n  // ============================================================================\n  // UI Component Builders"
+          text, count = re.subn(remove_start, "\n  // ============================================================================\n  // UI Component Builders", text, flags=re.S)
+          if count != 1:
+              raise SystemExit(f"tablet layout block count: {count}")
+          text, count = re.subn(r"\n  Future<void> _openSelectionMiniMap\(.*?\n  Widget _buildSelectionActionBar", "\n  Widget _buildSelectionActionBar", text, flags=re.S)
+          if count != 1:
+              raise SystemExit(f"selection desktop helper count: {count}")
+          text, count = re.subn(r"\n  Widget _buildTabletBody\(.*?\n  // ============================================================================\n  // UI Component Builders", "\n  // ============================================================================\n  // UI Component Builders", text, flags=re.S)
+          if count != 1:
+              raise SystemExit(f"tablet body block count: {count}")
+          text, count = re.subn(r"\n  Widget _buildAssistantBackground\(.*?\n  bool _assistantBackgroundActive", "\n  bool _assistantBackgroundActive", text, flags=re.S)
+          if count != 1:
+              raise SystemExit(f"desktop background block count: {count}")
+          text, count = re.subn(r"\n  Widget _wrapWithDropTarget\(.*?\n  // ============================================================================\n  // Action Handlers", "\n  // ============================================================================\n  // Action Handlers", text, flags=re.S)
+          if count != 1:
+              raise SystemExit(f"drop target block count: {count}")
+          text = re.sub(r"\n    String\? selectedId;\n    if \(PlatformUtils\.isDesktop\) \{.*?\n    \} else \{", "\n    String? selectedId;\n    {", text, flags=re.S)
+          text = re.sub(r"\n    if \(PlatformUtils\.isDesktop\) \{\n      showDesktopMcpServersPopover\(.*?\n      \} else \{", "\n    if (a != null) {", text, flags=re.S)
+          text = re.sub(r"\n    if \(PlatformUtils\.isDesktop\) \{\n      showDesktopSearchProviderPopover\(.*?\n      \} else \{", "\n    {", text, flags=re.S)
+          text = re.sub(r"\n    if \(PlatformUtils\.isDesktop\) \{\n      await showDesktopReasoningBudgetPopover\(.*?\n      \} else \{", "\n    {", text, flags=re.S)
+          text = re.sub(r"\n    final isDesktop = PlatformUtils\.isDesktop;\n", "", text)
+          text = re.sub(r"\n    if \(isDesktop\) \{\n      await showDesktopInstructionInjectionPopover\(.*?\n      \} else \{", "\n    {", text, flags=re.S)
+          text = re.sub(r"\n    QuickPhrase\? selected;\n    if \(PlatformUtils\.isDesktop\) \{\n      selected = await showDesktopQuickPhrasePopover\(.*?\n      \} else \{", "\n    QuickPhrase? selected;\n    {", text, flags=re.S)
+          text = re.sub(r"\n        if \(_controller\.isDesktopPlatform\) \{.*?\n        \} else \{", "\n        {", text, flags=re.S)
+          text = re.sub(r"\n    final width = MediaQuery\.sizeOf\(context\)\.width;\n", "\n", text)
+          home.write_text(text)
+
+          actions = Path("lib/features/home/widgets/assistant_entry_actions.dart")
+          text = actions.read_text()
+          text = re.sub(r"import 'package:flutter/foundation.dart'.*?;\n", "", text, flags=re.S)
+          text = text.replace("import '../../../desktop/desktop_context_menu.dart';\n", "")
+          text = re.sub(r"\n  static bool get _isDesktopPlatform =>.*?\n\n", "\n", text, flags=re.S)
+          text = re.sub(r"\n    if \(_isDesktopPlatform\) \{.*?\n    \}\n    Navigator", "\n    Navigator", text, flags=re.S)
+          text = re.sub(r"\n    if \(_isDesktopPlatform\) \{.*?\n    \}\n    await _showAssistantItemMenuMobile", "\n    await _showAssistantItemMenuMobile", text, flags=re.S)
+          text = re.sub(r"\n  static Future<void> _showAssistantItemMenuDesktop\(.*?\n  static Future<void> _showAssistantItemMenuMobile", "\n  static Future<void> _showAssistantItemMenuMobile", text, flags=re.S)
+          actions.write_text(text)
+
+          drawer = Path("lib/features/home/widgets/side_drawer.dart")
+          text = drawer.read_text()
+          text = text.replace("import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;\n", "")
+          text = text.replace("final showActions = showBottomBar && (!embedded || !_isDesktopPlatform);", "final showActions = showBottomBar && !embedded;")
+          text = re.sub(r"\n  static bool get _isDesktopPlatform =>.*?;\n", "\n", text)
+          drawer.write_text(text)
+
+          input_bar = Path("lib/features/home/widgets/chat_input_bar.dart")
+          text = input_bar.read_text()
+          text = re.sub(r"import '../../../desktop/desktop_context_menu.dart';\n", "", text)
+          text = re.sub(r"\n  // Internal data model for responsive overflow actions on desktop.*?\n// New compact button", "\n// New compact button", text, flags=re.S)
+          text = text.replace("    final bool isDesktop =\n        Platform.isWindows || Platform.isLinux || Platform.isMacOS;\n", "")
+          text = text.replace("      // Disable long press on desktop platforms\n      onLongPress: isDesktop ? null : onLongPress,", "      onLongPress: onLongPress,")
+          text = text.replace("        // Keep focus on desktop so user can continue typing\n        try {\n          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {\n            widget.focusNode?.requestFocus();\n          }\n        } catch (_) {}", "")
+          input_bar.write_text(text)
+      - name: Commit and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/remote-android-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/features/home/pages/home_page.dart lib/features/home/widgets/assistant_entry_actions.dart lib/features/home/widgets/side_drawer.dart lib/features/home/widgets/chat_input_bar.dart .github/workflows/remote-android-cleanup.yml
+          git commit -m "chore: remove remaining desktop home branches"
+          git push origin HEAD:main
