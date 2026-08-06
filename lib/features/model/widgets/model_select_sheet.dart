@@ -593,7 +593,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     var extent = _listBottomPadding;
     for (var i = targetIndex; i < _rows.length; i++) {
       final row = _rows[i];
-      extent += row is _HeaderRow
+      extent += row is _HeaderRow || row is _ProviderGroupHeaderRow
           ? _estimatedHeaderExtent
           : _estimatedModelExtent;
     }
@@ -681,7 +681,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     if (index < 0 || index >= _rows.length) return null;
     final row = _rows[index];
     if (row is _HeaderRow) return row.providerKey;
-    if (row is _ModelRow && !row.showProviderLabel) return row.item.providerKey;
+    if (row is _ModelRow) return row.item.providerKey;
     return null;
   }
 
@@ -953,7 +953,27 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
 
   Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
+    final providerGroupById = {
+      for (final group in settings.providerGroups) group.id: group,
+    };
     final query = _search.text.trim();
+
+    String groupKeyFor(String providerKey) {
+      final groupId = settings.groupIdForProvider(providerKey);
+      if (groupId != null && providerGroupById.containsKey(groupId)) {
+        return groupId;
+      }
+      return SettingsProvider.providerUngroupedGroupKey;
+    }
+
+    String groupTitleFor(String groupKey) {
+      if (groupKey == SettingsProvider.providerUngroupedGroupKey) {
+        return l10n.providerGroupsOther;
+      }
+      return providerGroupById[groupKey]?.name ?? l10n.providerGroupsOther;
+    }
+
     // Build flattened rows and index maps for precise positioning
     _rows.clear();
     _headerIndexMap.clear();
@@ -963,7 +983,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
     final Set<String> favMatchedKeys = <String>{};
 
     if (widget.limitProviderKey == null) {
-      final pinned = context.watch<SettingsProvider>().pinnedModels;
+      final pinned = settings.pinnedModels;
       if (pinned.isNotEmpty) {
         final favs = <_ModelItem>[];
         for (final k in pinned) {
@@ -1005,6 +1025,14 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
       }
     }
 
+    final groupProviderCounts = <String, int>{};
+    for (final providerKey in _orderedKeys) {
+      if (!_groups.containsKey(providerKey)) continue;
+      final groupKey = groupKeyFor(providerKey);
+      groupProviderCounts[groupKey] = (groupProviderCounts[groupKey] ?? 0) + 1;
+    }
+
+    String? lastGroupKey;
     for (final pk in _orderedKeys) {
       final g = _groups[pk]!;
       List<_ModelItem> items;
@@ -1024,6 +1052,26 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
         }
       }
       if (items.isEmpty) continue;
+      final groupKey = groupKeyFor(pk);
+      if (widget.limitProviderKey == null && groupKey != lastGroupKey) {
+        final collapsed = query.isEmpty && settings.isGroupCollapsed(groupKey);
+        _headerIndexMap[groupKey] = _rows.length;
+        _rows.add(
+          _ProviderGroupHeaderRow(
+            groupKey: groupKey,
+            title: groupTitleFor(groupKey),
+            count: groupProviderCounts[groupKey] ?? 0,
+            collapsed: collapsed,
+            canToggleCollapse: query.isEmpty,
+          ),
+        );
+        lastGroupKey = groupKey;
+        if (collapsed) continue;
+      } else if (widget.limitProviderKey == null &&
+          query.isEmpty &&
+          settings.isGroupCollapsed(groupKey)) {
+        continue;
+      }
       _headerIndexMap[pk] = _rows.length;
       _rows.add(_HeaderRow(g.name, providerKey: pk));
       for (final m in items) {
@@ -1048,7 +1096,9 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
               padding: const EdgeInsets.only(bottom: 12),
               itemBuilder: (context, index) {
                 final row = _rows[index];
-                if (row is _HeaderRow) {
+                if (row is _ProviderGroupHeaderRow) {
+                  return _providerGroupHeader(context, row);
+                } else if (row is _HeaderRow) {
                   return _sectionHeader(
                     context,
                     row.title,
@@ -1202,6 +1252,70 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _providerGroupHeader(
+    BuildContext context,
+    _ProviderGroupHeaderRow row,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final base = cs.onSurface.withValues(alpha: 0.78);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: row.canToggleCollapse
+          ? () => unawaited(
+                context
+                    .read<SettingsProvider>()
+                    .toggleGroupCollapsed(row.groupKey),
+              )
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: row.collapsed ? 0.0 : 0.25,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Lucide.ChevronRight,
+                size: 17,
+                color: base.withValues(alpha: row.canToggleCollapse ? 0.9 : 0.45),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                row.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: AppFontWeights.emphasis,
+                  color: base,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${row.count}',
+                style: TextStyle(
+                  color: cs.primary,
+                  fontSize: 11,
+                  fontWeight: AppFontWeights.emphasis,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1567,6 +1681,22 @@ class _ModelItem {
 // Rows for flattened list
 abstract class _ListRow {}
 
+class _ProviderGroupHeaderRow extends _ListRow {
+  final String groupKey;
+  final String title;
+  final int count;
+  final bool collapsed;
+  final bool canToggleCollapse;
+
+  _ProviderGroupHeaderRow({
+    required this.groupKey,
+    required this.title,
+    required this.count,
+    required this.collapsed,
+    required this.canToggleCollapse,
+  });
+}
+
 class _HeaderRow extends _ListRow {
   final String title;
   final String? providerKey;
@@ -1844,6 +1974,25 @@ class _DesktopModelSelectDialogBodyState
     final l10n = AppLocalizations.of(context)!;
     final settings = context.read<SettingsProvider>();
     final query = _searchCtrl.text.trim();
+    final providerGroupById = {
+      for (final group in settings.providerGroups) group.id: group,
+    };
+
+    String groupKeyFor(String providerKey) {
+      final groupId = settings.groupIdForProvider(providerKey);
+      if (groupId != null && providerGroupById.containsKey(groupId)) {
+        return groupId;
+      }
+      return SettingsProvider.providerUngroupedGroupKey;
+    }
+
+    String groupTitleFor(String groupKey) {
+      if (groupKey == SettingsProvider.providerUngroupedGroupKey) {
+        return l10n.providerGroupsOther;
+      }
+      return providerGroupById[groupKey]?.name ?? l10n.providerGroupsOther;
+    }
+
     _rows.clear();
     _headerIndexMap.clear();
     _modelIndexMap.clear();
@@ -1894,6 +2043,14 @@ class _DesktopModelSelectDialogBodyState
       }
     }
 
+    final groupProviderCounts = <String, int>{};
+    for (final providerKey in _orderedKeys) {
+      if (!_groups.containsKey(providerKey)) continue;
+      final groupKey = groupKeyFor(providerKey);
+      groupProviderCounts[groupKey] = (groupProviderCounts[groupKey] ?? 0) + 1;
+    }
+
+    String? lastGroupKey;
     for (final pk in _orderedKeys) {
       final g = _groups[pk];
       if (g == null) continue;
@@ -1914,6 +2071,26 @@ class _DesktopModelSelectDialogBodyState
         }
       }
       if (items.isEmpty) continue;
+      final groupKey = groupKeyFor(pk);
+      if (widget.limitProviderKey == null && groupKey != lastGroupKey) {
+        final collapsed = query.isEmpty && settings.isGroupCollapsed(groupKey);
+        _headerIndexMap[groupKey] = _rows.length;
+        _rows.add(
+          _ProviderGroupHeaderRow(
+            groupKey: groupKey,
+            title: groupTitleFor(groupKey),
+            count: groupProviderCounts[groupKey] ?? 0,
+            collapsed: collapsed,
+            canToggleCollapse: query.isEmpty,
+          ),
+        );
+        lastGroupKey = groupKey;
+        if (collapsed) continue;
+      } else if (widget.limitProviderKey == null &&
+          query.isEmpty &&
+          settings.isGroupCollapsed(groupKey)) {
+        continue;
+      }
       // When limiting to a single provider, hide the provider header (and its settings button)
       if (widget.limitProviderKey == null) {
         _headerIndexMap[pk] = _rows.length;
@@ -2068,7 +2245,9 @@ class _DesktopModelSelectDialogBodyState
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
       itemBuilder: (context, index) {
         final row = _rows[index];
-        if (row is _HeaderRow) {
+        if (row is _ProviderGroupHeaderRow) {
+          return _providerGroupHeader(context, row);
+        } else if (row is _HeaderRow) {
           if (row.isFavorites) {
             return _favoritesHeader(context, row.title);
           }
@@ -2119,7 +2298,11 @@ class _DesktopModelSelectDialogBodyState
       final pk = separator == -1
           ? currentKey
           : currentKey.substring(0, separator);
-      targetIndex ??= _headerIndexMap[pk];
+      final rawGroupKey = settings.groupIdForProvider(pk);
+      final groupKey = rawGroupKey != null && settings.groupById(rawGroupKey) != null
+          ? rawGroupKey
+          : SettingsProvider.providerUngroupedGroupKey;
+      targetIndex ??= _headerIndexMap[pk] ?? _headerIndexMap[groupKey];
     }
 
     if (targetIndex == null) return;
@@ -2229,6 +2412,70 @@ class _DesktopModelSelectDialogBodyState
                   ),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _providerGroupHeader(
+    BuildContext context,
+    _ProviderGroupHeaderRow row,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final base = cs.onSurface.withValues(alpha: 0.76);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: row.canToggleCollapse
+          ? () => unawaited(
+                context
+                    .read<SettingsProvider>()
+                    .toggleGroupCollapsed(row.groupKey),
+              )
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 9, 14, 4),
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: row.collapsed ? 0.0 : 0.25,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Lucide.ChevronRight,
+                size: 14,
+                color: base.withValues(alpha: row.canToggleCollapse ? 0.9 : 0.45),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                row.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: AppFontWeights.emphasis,
+                  color: base,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${row.count}',
+                style: TextStyle(
+                  color: cs.primary,
+                  fontSize: 10.5,
+                  fontWeight: AppFontWeights.emphasis,
+                ),
+              ),
             ),
           ],
         ),
