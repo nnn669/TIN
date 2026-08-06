@@ -943,11 +943,6 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
                         : _buildContent(context),
                   ),
                 ),
-                // Fixed bottom tabs
-                Container(
-                  color: cs.surface, // Ensure background color continuity
-                  child: _buildBottomTabs(context),
-                ),
               ],
             );
           },
