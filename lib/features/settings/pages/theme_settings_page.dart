@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../icons/lucide_adapter.dart';
-import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/haptics.dart';
@@ -78,23 +77,6 @@ class ThemeSettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // header(l10n.themeSettingsPageColorPalettesSection),
-          _iosSectionCard(
-            children: [
-              for (int i = 0; i < ThemePalettes.all.length; i++) ...[
-                _paletteRow(
-                  context,
-                  palette: ThemePalettes.all[i],
-                  selected: settings.themePaletteId == ThemePalettes.all[i].id,
-                  onTap: () => context.read<SettingsProvider>().setThemePalette(
-                    ThemePalettes.all[i].id,
-                  ),
-                ),
-                if (i != ThemePalettes.all.length - 1) _iosDivider(context),
-              ],
-            ],
-          ),
         ],
       ),
     );
@@ -129,17 +111,6 @@ Widget _iosSectionCard({required List<Widget> children}) {
         ),
       );
     },
-  );
-}
-
-Widget _iosDivider(BuildContext context) {
-  final cs = Theme.of(context).colorScheme;
-  return Divider(
-    height: 6,
-    thickness: 0.6,
-    indent: 12,
-    endIndent: 12,
-    color: cs.outlineVariant.withValues(alpha: 0.18),
   );
 }
 
@@ -287,62 +258,6 @@ Widget _iosSwitchRow(
                 ),
               ),
               IosSwitch(value: value, onChanged: onChanged),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Widget _paletteRow(
-  BuildContext context, {
-  required ThemePalette palette,
-  required bool selected,
-  required VoidCallback onTap,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  final title = Localizations.localeOf(context).languageCode == 'zh'
-      ? palette.displayNameZh
-      : palette.displayNameEn;
-  final color = palette.light.primary;
-  return _TactileRow(
-    onTap: onTap,
-    builder: (pressed) {
-      final baseColor = cs.onSurface.withValues(alpha: 0.9);
-      return _AnimatedPressColor(
-        pressed: pressed,
-        base: baseColor,
-        builder: (c) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(
-            children: [
-              // color dot (slightly smaller)
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  boxShadow: Theme.of(context).brightness == Brightness.dark
-                      ? []
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(title, style: TextStyle(fontSize: 15, color: c)),
-              ),
-              if (selected)
-                Icon(Lucide.Check, size: 18, color: cs.primary)
-              else
-                const SizedBox(width: 18, height: 18),
             ],
           ),
         ),
