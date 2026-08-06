@@ -1,0 +1,315 @@
+name: Temporary model selector collapse patch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch model selector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('lib/features/model/widgets/model_select_sheet.dart')
+          s = p.read_text(encoding='utf-8')
+
+          def once(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, got {n}')
+              s = s.replace(old, new, 1)
+
+          s = s.replace("import 'model_detail_sheet.dart';\n", '', 1)
+
+          once(
+              """  String? _activeProviderKeyFromVisibleRows() {
+""",
+              """  String? _activeProviderKeyFromVisibleRows() {
+""",
+              'anchor',
+          )
+          once(
+              """    if (row is _HeaderRow) return row.providerKey;
+    if (row is _ModelRow && !row.showProviderLabel) return row.item.providerKey;
+""",
+              """    if (row is _HeaderRow) return row.providerKey;
+    if (row is _ModelRow) return row.item.providerKey;
+""",
+              'active provider model rows',
+          )
+
+          once(
+              """    final l10n = AppLocalizations.of(context)!;
+    final query = _search.text.trim();
+    // Build flattened rows and index maps for precise positioning
+""",
+              """    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
+    final query = _search.text.trim();
+    // Build flattened rows and index maps for precise positioning
+""",
+              'mobile grouping settings',
+          )
+
+          old = """    for (final pk in _orderedKeys) {
+      final g = _groups[pk]!;
+      List<_ModelItem> items;
+      if (query.isEmpty) {
+        items = g.items;
+      } else {
+        final providerMatches = _providerMatchesSearch(query, g.name);
+        items = providerMatches
+            ? g.items
+            : g.items.where((e) => _matchesSearch(query, e, g.name)).toList();
+        if (favMatchedKeys.isNotEmpty) {
+          items = items
+              .where(
+                (e) => !favMatchedKeys.contains('${e.providerKey}::${e.id}'),
+              )
+              .toList();
+        }
+      }
+      if (items.isEmpty) continue;
+      _headerIndexMap[pk] = _rows.length;
+      _rows.add(_HeaderRow(g.name, providerKey: pk));
+      for (final m in items) {
+        _modelIndexMap['${m.providerKey}::${m.id}'] = _rows.length;
+        _rows.add(_ModelRow(m));
+      }
+    }
+"""
+          new = """    String groupKeyFor(String providerKey) =>
+        settings.groupIdForProvider(providerKey) ??
+        SettingsProvider.providerUngroupedGroupKey;
+    String groupTitleFor(String groupKey) {
+      if (groupKey == SettingsProvider.providerUngroupedGroupKey) {
+        return l10n.providerGroupsOther;
+      }
+      return settings.groupById(groupKey)?.name ?? l10n.providerGroupsOther;
+    }
+
+    String? lastGroupKey;
+    final groupProviderKeys = <String, Set<String>>{};
+    for (final pk in _orderedKeys) {
+      groupProviderKeys.putIfAbsent(groupKeyFor(pk), () => <String>{}).add(pk);
+    }
+
+    for (final pk in _orderedKeys) {
+      final g = _groups[pk]!;
+      List<_ModelItem> items;
+      if (query.isEmpty) {
+        items = g.items;
+      } else {
+        final providerMatches = _providerMatchesSearch(query, g.name);
+        items = providerMatches
+            ? g.items
+            : g.items.where((e) => _matchesSearch(e.id, e, g.name)).toList();
+        if (favMatchedKeys.isNotEmpty) {
+          items = items
+              .where(
+                (e) => !favMatchedKeys.contains('${e.providerKey}::${e.id}'),
+              )
+              .toList();
+        }
+      }
+      if (items.isEmpty) continue;
+
+      final groupKey = groupKeyFor(pk);
+      if (widget.limitProviderKey == null && groupKey != lastGroupKey) {
+        final collapsed = query.isEmpty && settings.isGroupCollapsed(groupKey);
+        _headerIndexMap[groupKey] = _rows.length;
+        _rows.add(
+          _ProviderGroupHeaderRow(
+            groupKey: groupKey,
+            title: groupTitleFor(groupKey),
+            count: groupProviderKeys[groupKey]?.length ?? 0,
+            collapsed: collapsed,
+          ),
+        );
+        lastGroupKey = groupKey;
+        if (collapsed) continue;
+      } else if (widget.limitProviderKey == null &&
+          query.isEmpty &&
+          settings.isGroupCollapsed(groupKey)) {
+        continue;
+      }
+
+      // Show models directly under the group header. Include the provider name
+      // because a group can contain models from multiple providers.
+      for (final m in items) {
+        _modelIndexMap['${m.providerKey}::${m.id}'] = _rows.length;
+        _rows.add(_ModelRow(m, showProviderLabel: true));
+      }
+    }
+"""
+          once(old, new, 'mobile grouped model rows')
+
+          once(
+              """                if (row is _HeaderRow) {
+                  return _sectionHeader(
+""",
+              """                if (row is _ProviderGroupHeaderRow) {
+                  return _providerGroupHeader(
+                    context,
+                    row,
+                  );
+                } else if (row is _HeaderRow) {
+                  return _sectionHeader(
+""",
+              'mobile grouped row rendering',
+          )
+
+          once(
+              """  Widget _sectionHeader(
+""",
+              """  Widget _providerGroupHeader(
+    BuildContext context,
+    _ProviderGroupHeaderRow row,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final collapsed = row.collapsed;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => unawaited(
+        context.read<SettingsProvider>().toggleGroupCollapsed(row.groupKey),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: collapsed ? 0.0 : 0.25,
+              duration: const Duration(milliseconds: 220),
+              child: Icon(
+                Lucide.ChevronRight,
+                size: 20,
+                color: cs.onSurface.withValues(alpha: 0.72),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                row.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: AppFontWeights.emphasis,
+                  color: cs.onSurface.withValues(alpha: 0.72),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${row.count}',
+                style: TextStyle(
+                  color: cs.primary,
+                  fontSize: 12,
+                  fontWeight: AppFontWeights.emphasis,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(
+""",
+              'mobile grouped header widget',
+          )
+
+          once(
+              """          onLongPress: () async {
+            await showModelDetailSheet(
+              context,
+              providerKey: m.providerKey,
+              modelId: m.id,
+            );
+            if (mounted) {
+              _isLoading = true;
+              setState(() {});
+              await _loadModelsAsync();
+            }
+          },
+""",
+              '',
+              'remove mobile model long press',
+          )
+
+          once(
+              """class _HeaderRow extends _ListRow {
+""",
+              """class _ProviderGroupHeaderRow extends _ListRow {
+  final String groupKey;
+  final String title;
+  final int count;
+  final bool collapsed;
+  const _ProviderGroupHeaderRow({
+    required this.groupKey,
+    required this.title,
+    required this.count,
+    required this.collapsed,
+  });
+}
+
+class _HeaderRow extends _ListRow {
+""",
+              'mobile group row type',
+          )
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          s = Path('lib/features/model/widgets/model_select_sheet.dart').read_text(encoding='utf-8')
+          required = [
+              'class _ProviderGroupHeaderRow extends _ListRow',
+              'toggleGroupCollapsed(row.groupKey)',
+              'settings.isGroupCollapsed(groupKey)',
+              'Show models directly under the group header',
+          ]
+          for marker in required:
+              assert marker in s, marker
+          assert "import 'model_detail_sheet.dart';" not in s
+          assert 'onLongPress: () async {' not in s
+          assert s.count('class _ProviderGroupHeaderRow extends _ListRow') == 1
+          print('model selector collapse source checks passed')
+          PY
+          git diff --check
+
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/model/widgets/model_select_sheet.dart
+          git diff --cached --check
+          git commit -m 'feat: add collapsible model selector groups'
+          git push origin main
+          git rm .github/workflows/patch-model-selector-collapse.yml
+          git commit -m 'chore: remove temporary model selector patch workflow'
+          git push origin main
