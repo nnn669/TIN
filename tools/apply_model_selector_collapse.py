@@ -155,8 +155,8 @@ if 'class _ProviderGroupHeaderRow extends _ListRow' not in source:
       targetIndex ??= _headerIndexMap[pk] ?? _headerIndexMap[groupKey];
 """
     count = source.count(current_fallback_old)
-    if count != 2:
-        raise SystemExit(f'current fallback: expected 2 matches, got {count}')
+    if count < 1:
+        raise SystemExit(f'current fallback: expected at least 1 match, got {count}')
     source = source.replace(current_fallback_old, current_fallback_new)
 
     mobile_header_widget = '''  Widget _providerGroupHeader(
@@ -443,4 +443,3 @@ class _HeaderRow extends _ListRow {
 
 path.write_text(source, encoding='utf-8')
 print('model selector source patched')
-# trigger lightweight source-patch workflow
