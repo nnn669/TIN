@@ -8,7 +8,6 @@ import '../services/mcp/kelivo_files/kelivo_files_server.dart';
 import '../services/mcp/kelivo_github/github_api_client.dart';
 import '../services/mcp/kelivo_github/kelivo_github_server.dart';
 import '../services/mcp/kelivo_images/kelivo_images_server.dart';
-import '../services/mcp/kelivo_copilot/kelivo_copilot_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -328,8 +327,8 @@ class McpProvider extends ChangeNotifier {
   static const String _builtinGithubName = '@kelivo/github';
   static const String _builtinImagesId = 'kelivo_images';
   static const String _builtinImagesName = '@kelivo/images';
-  static const String _builtinCopilotId = 'kelivo_copilot';
-  static const String _builtinCopilotName = '@kelivo/copilot';
+  static const String _removedCopilotId = 'kelivo_copilot';
+  static const String _removedCopilotName = '@kelivo/copilot';
   static const Set<String> _builtinFileWriteToolNames = {
     'kelivo_create_directory',
     'kelivo_create_text_file',
@@ -451,6 +450,9 @@ class McpProvider extends ChangeNotifier {
         _servers = list;
       } catch (_) {}
     }
+    _servers = _servers
+        .where((s) => !_isRemovedCopilotPlaceholder(s))
+        .toList(growable: false);
     _ensureBuiltinServersPresent();
     // initialize statuses
     for (final s in _servers) {
@@ -485,11 +487,6 @@ class McpProvider extends ChangeNotifier {
     if (!_hasBuiltinServer(_builtinImagesId, _builtinImagesName)) {
       next.add(
         _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
-      );
-    }
-    if (!_hasBuiltinServer(_builtinCopilotId, _builtinCopilotName)) {
-      next.add(
-        _builtinServer(_builtinCopilotId, _builtinCopilotName, enabled: false),
       );
     }
     _servers = next;
@@ -536,17 +533,17 @@ class McpProvider extends ChangeNotifier {
         (server.id == _builtinGithubId || server.name == _builtinGithubName);
   }
 
-  bool _isBuiltinCopilotServer(McpServerConfig server) {
+  bool _isRemovedCopilotPlaceholder(McpServerConfig server) {
     return server.transport == McpTransportType.inmemory &&
-        (server.id == _builtinCopilotId || server.name == _builtinCopilotName);
+        (server.id == _removedCopilotId ||
+            server.name == _removedCopilotName);
   }
 
   bool isBuiltinServer(McpServerConfig server) {
     return _isBuiltinFetchServer(server) ||
         _isBuiltinFilesServer(server) ||
         _isBuiltinGithubServer(server) ||
-        _isBuiltinImagesServer(server) ||
-        _isBuiltinCopilotServer(server);
+        _isBuiltinImagesServer(server);
   }
 
   bool isBuiltinGithubServer(McpServerConfig server) {
@@ -559,10 +556,6 @@ class McpProvider extends ChangeNotifier {
 
   bool isBuiltinImagesServer(McpServerConfig server) {
     return _isBuiltinImagesServer(server);
-  }
-
-  bool isBuiltinCopilotServer(McpServerConfig server) {
-    return _isBuiltinCopilotServer(server);
   }
 
   bool _isBuiltinFetchServer(McpServerConfig server) {
@@ -582,9 +575,6 @@ class McpProvider extends ChangeNotifier {
       return KelivoGithubMcpServerEngine(
         client: GitHubApiClient(accessTokenProvider: () async => _githubToken),
       );
-    }
-    if (_isBuiltinCopilotServer(server)) {
-      return KelivoCopilotMcpServerEngine();
     }
     return KelivoFetchMcpServerEngine();
   }
@@ -953,7 +943,14 @@ class McpProvider extends ChangeNotifier {
     }
 
     // Replace and reset statuses
-    _servers = List<McpServerConfig>.of(nextServers);
+    final filteredServers = nextServers
+        .where((s) => !_isRemovedCopilotPlaceholder(s))
+        .toList(growable: false);
+    if (filteredServers.isEmpty) {
+      throw const FormatException('No valid MCP servers found in JSON');
+    }
+
+    _servers = List<McpServerConfig>.of(filteredServers);
     _status.clear();
     _errors.clear();
     for (final s in _servers) {
