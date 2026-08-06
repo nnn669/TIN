@@ -1,58 +1,10 @@
-name: Remove model selector bottom tabs
+name: Disabled temporary model selector tabs patch
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  patch:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout grouping branch
-        uses: actions/checkout@v4
-        with:
-          ref: feat/model-selector-provider-group-display
-          fetch-depth: 0
-
-      - name: Remove bottom provider tabs
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path('lib/features/model/widgets/model_select_sheet.dart')
-          source = path.read_text(encoding='utf-8')
-
-          pattern = re.compile(
-              r"\n                // Fixed bottom tabs\n"
-              r"                Container\(\n"
-              r"                  color: cs\.surface, // Ensure background color continuity\n"
-              r"                  child: _buildBottomTabs\(context\),\n"
-              r"                \),"
-          )
-          source, count = pattern.subn('', source, count=1)
-          if count != 1:
-              raise SystemExit(f'expected one bottom tabs container, got {count}')
-
-          marker = 'child: _buildBottomTabs(context)'
-          if marker in source:
-              raise SystemExit('bottom tabs container still present')
-
-          path.write_text(source, encoding='utf-8')
-          print('removed model selector bottom provider tabs')
-          PY
-          git diff --check
-
-      - name: Commit grouping branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add lib/features/model/widgets/model_select_sheet.dart
-          git commit -m 'feat: remove model selector bottom provider tabs'
-          git push origin HEAD:feat/model-selector-provider-group-display
+      - run: echo "Temporary patch workflow disabled."
