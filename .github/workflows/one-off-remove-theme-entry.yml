@@ -1,0 +1,86 @@
+name: One-off theme entry cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Remove duplicate theme entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('lib/features/settings/pages/display_settings_page.dart')
+          text = path.read_text()
+
+          text, imports_removed = re.subn(
+              r"^import 'theme_settings_page.dart';\n",
+              '',
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          text, palette_import_removed = re.subn(
+              r"^import '../../../theme/palettes.dart';\n",
+              '',
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          text, helper_removed = re.subn(
+              r"\n    String paletteName\(\) \{.*?\n    \}\n\n    return Scaffold",
+              '\n    return Scaffold',
+              text,
+              count=1,
+              flags=re.DOTALL,
+          )
+          text, row_removed = re.subn(
+              r"\n              _iosNavRow\(\n"
+              r"                context,\n"
+              r"                icon: Lucide\.Palette,\n"
+              r"                label: l10n\.displaySettingsPageThemeSettingsTitle,\n"
+              r"                detailText: paletteName\(\),\n"
+              r"                onTap: \(\) => Navigator\.of\(context\)\.push\(\n"
+              r"                  MaterialPageRoute\(builder: \(_\) => const ThemeSettingsPage\(\)\),\n"
+              r"                \),\n"
+              r"              \),\n"
+              r"              _iosDivider\(context\),",
+              '',
+              text,
+              count=1,
+          )
+
+          if (imports_removed != 1 or palette_import_removed != 1 or helper_removed != 1 or row_removed != 1):
+              raise SystemExit(
+                  f'unexpected match counts: imports={imports_removed}, '
+                  f'palette_import={palette_import_removed}, helper={helper_removed}, row={row_removed}'
+              )
+          path.write_text(text)
+          PY
+          grep -q "ThemeSettingsPage" lib/features/settings/pages/settings_page.dart
+          ! grep -q "ThemeSettingsPage" lib/features/settings/pages/display_settings_page.dart
+          ! grep -q "ThemePalettes" lib/features/settings/pages/display_settings_page.dart
+      - name: Commit and remove one-off workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/settings/pages/display_settings_page.dart
+          git commit -m 'refactor(settings): keep theme manager under general settings'
+          git rm .github/workflows/one-off-remove-theme-entry.yml
+          git commit -m 'chore: remove one-off theme cleanup workflow'
+          git push origin HEAD:${GITHUB_REF_NAME}
