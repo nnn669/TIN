@@ -1,0 +1,55 @@
+name: Copilot Batch 1 Patch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Apply batch 1 changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('lib/core/providers/mcp_provider.dart')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  "import '../services/mcp/kelivo_images/kelivo_images_server.dart';\n",
+                  "import '../services/mcp/kelivo_images/kelivo_images_server.dart';\nimport '../services/mcp/kelivo_copilot/kelivo_copilot_server.dart';\n",
+              ),
+              (
+                  "  static const String _builtinImagesName = '@kelivo/images';\n",
+                  "  static const String _builtinImagesName = '@kelivo/images';\n"
+                  "  static const String _builtinCopilotId = 'kelivo_copilot';\n"
+                  "  static const String _builtinCopilotName = '@kelivo/copilot';\n",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one match, got {count}: {old!r}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8', newline='')
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/copilot-batch-1.yml
+          git add lib/core/providers/mcp_provider.dart .github/workflows/copilot-batch-1.yml
+          git commit -m "feat: add copilot provider identifiers"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
