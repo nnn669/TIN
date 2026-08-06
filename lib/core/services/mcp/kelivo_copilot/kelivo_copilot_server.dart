@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:mcp_client/mcp_client.dart' as mcp;
@@ -93,11 +94,13 @@ class KelivoCopilotMcpServerEngine implements KelivoInMemoryMcpServerEngine {
 
   Map<String, dynamic> _noop() => {'jsonrpc': '2.0'};
 
-  Map<String, dynamic> _okText(String text) => {
-    'content': [{'type': 'text', 'text': text}],
-    'isStreaming': false,
-    'isError': false,
-  };
+  Map<String, dynamic> _okText(String text) {
+    return {
+      'content': [{'type': 'text', 'text': text}],
+      'isStreaming': false,
+      'isError': false,
+    };
+  }
 
   List<Map<String, dynamic>> _toolDefinitions() {
     return [
