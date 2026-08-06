@@ -1,12 +1,16 @@
 name: remove-legacy-desktop
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
+    if: "!contains(github.event.head_commit.message, '[skip desktop cleanup]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,60 +36,81 @@ jobs:
                       i += 1
                       continue
                   if state == 'block':
-                      if c == '*' and n == '/': state = None; i += 2; continue
+                      if c == '*' and n == '/':
+                          state = None
+                          i += 2
+                          continue
                       i += 1
                       continue
                   if state in ("'", '"'):
                       if triple:
                           if text.startswith(state * 3, i):
-                              state = None; triple = False; i += 3; continue
-                          i += 1; continue
-                      if c == '\\': i += 2; continue
-                      if c == state: state = None
+                              state = None
+                              triple = False
+                              i += 3
+                              continue
+                          i += 1
+                          continue
+                      if c == '\\':
+                          i += 2
+                          continue
+                      if c == state:
+                          state = None
                       i += 1
                       continue
-                  if c == '/' and n == '/': state = 'line'; i += 2; continue
-                  if c == '/' and n == '*': state = 'block'; i += 2; continue
+                  if c == '/' and n == '/':
+                      state = 'line'
+                      i += 2
+                      continue
+                  if c == '/' and n == '*':
+                      state = 'block'
+                      i += 2
+                      continue
                   if c in ("'", '"'):
                       state = c
                       triple = text.startswith(c * 3, i)
                       i += 3 if triple else 1
                       continue
-                  if c == '{': depth += 1
+                  if c == '{':
+                      depth += 1
                   elif c == '}':
                       depth -= 1
-                      if depth == 0: return i + 1
+                      if depth == 0:
+                          return i + 1
                   i += 1
               raise RuntimeError('unbalanced block')
 
           def remove_block(text, marker, start_at=0):
               start = text.find(marker, start_at)
-              if start < 0: return text
+              if start < 0:
+                  return text
               brace = text.find('{', start)
-              if brace < 0: raise RuntimeError(f'opening brace not found: {marker}')
+              if brace < 0:
+                  raise RuntimeError(f'opening brace not found: {marker}')
               end = block_end(text, brace)
               line_start = text.rfind('\n', 0, start) + 1
               return text[:line_start] + text[end:]
 
           def replace_method(text, marker, replacement, start_at=0):
               start = text.find(marker, start_at)
-              if start < 0: raise RuntimeError(f'method not found: {marker}')
+              if start < 0:
+                  raise RuntimeError(f'method not found: {marker}')
               brace = text.find('{', start)
               end = block_end(text, brace)
               line_start = text.rfind('\n', 0, start) + 1
               return text[:line_start] + replacement.rstrip() + text[end:]
 
-          # main.dart: Android is the only native target now.
+          # main.dart: keep the Android/mobile startup path only.
           p = Path('lib/main.dart')
           text = p.read_text()
           for needle in [
               "import 'dart:io' show Platform;\n",
               "import 'package:system_fonts/system_fonts.dart';\n",
               "import 'package:window_manager/window_manager.dart';\n",
+              "import 'core/providers/hotkey_provider.dart';\n",
               "import 'desktop/desktop_home_page.dart';\n",
               "import 'desktop/desktop_tray_controller.dart';\n",
               "import 'desktop/desktop_window_controller.dart';\n",
-              "import 'core/providers/hotkey_provider.dart';\n",
           ]:
               text = text.replace(needle, '')
           text = text.replace('      await _initDesktopWindow();\n', '')
@@ -95,17 +120,26 @@ jobs:
           text = remove_block(text, '  void _scheduleDesktopFontLoads(SettingsProvider settings)')
           text = remove_block(text, '  void _scheduleDesktopHotkeyInit()')
           text = remove_block(text, '  void _scheduleDesktopTraySync(BuildContext ctx)')
-          text = text.replace('  final SystemFonts _systemFonts = SystemFonts();\n  final Set<String> _loadedSystemFonts = <String>{};\n\n', '')
+          text = text.replace(
+              '  final SystemFonts _systemFonts = SystemFonts();\n  final Set<String> _loadedSystemFonts = <String>{};\n\n',
+              '',
+          )
           text = text.replace('  bool _didInitDesktopHotkeys = false;\n', '')
           text = text.replace('  String? _lastTraySyncKey;\n', '')
           text = text.replace('    _scheduleDesktopFontLoads(settings);\n', '')
           text = text.replace('        _scheduleDesktopHotkeyInit();\n', '')
           text = text.replace('            _scheduleDesktopTraySync(ctx);\n', '')
-          text = text.replace('  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();', '  return const HomePage();')
-          text = text.replace('bool get isAndroidPlatform => !kIsWeb && Platform.isAndroid;', 'bool get isAndroidPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;')
+          text = text.replace(
+              '  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();',
+              '  return const HomePage();',
+          )
+          text = text.replace(
+              'bool get isAndroidPlatform => !kIsWeb && Platform.isAndroid;',
+              'bool get isAndroidPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;',
+          )
           p.write_text(text)
 
-          # home_page.dart: retain the mobile UI and mobile sheets only.
+          # home_page.dart: retain the mobile layout and mobile sheets.
           p = Path('lib/features/home/pages/home_page.dart')
           text = p.read_text()
           for needle in [
@@ -117,8 +151,8 @@ jobs:
               "import '../../../desktop/quick_phrase_popover.dart';\n",
               "import '../../../desktop/instruction_injection_popover.dart';\n",
               "import '../../../shared/responsive/breakpoints.dart';\n",
-              "import 'home_desktop_layout.dart';\n",
               "import '../utils/chat_layout_constants.dart';\n",
+              "import 'home_desktop_layout.dart';\n",
           ]:
               text = text.replace(needle, '')
           state_start = text.find('class _HomePageState')
@@ -205,7 +239,6 @@ jobs:
   }
 ''', state_start)
           text = text.replace('body: _wrapWithDropTarget(_buildMobileBody(context, cs)),', 'body: _buildMobileBody(context, cs),')
-          text = text.replace('body: _wrapWithDropTarget(_buildTabletBody(context, cs)),', 'body: _buildMobileBody(context, cs),')
           text = text.replace('onCompressContext: _handleDesktopCompressContext,', 'onCompressContext: _handleCompressContext,')
           text = text.replace('  void _handleDesktopCompressContext() async {', '  void _handleCompressContext() async {')
           text = replace_method(text, '  void _openSearchSettings()', '''  void _openSearchSettings() {
@@ -263,7 +296,7 @@ jobs:
       }''' + text[comma:]
           p.write_text(text)
 
-          # home_page_controller.dart: remove desktop-only state, event buses and branches.
+          # home_page_controller.dart: remove desktop-only wiring and branches.
           p = Path('lib/features/home/controllers/home_page_controller.dart')
           text = p.read_text()
           for needle in [
@@ -392,21 +425,30 @@ jobs:
               '  bitsdojo_window: ^0.1.6\n',
               '  window_manager: ^0.5.1\n',
               '  screen_retriever: ^0.2.0\n',
-              '  tray_manager:\n    path: ./dependencies/tray_manager\n',
+              '  tray_manager:\n    path: ./dependencies/tray_manager/packages/tray_manager\n',
               '  desktop_drop: ^0.7.1\n',
               '  hotkey_manager: ^0.2.3\n',
               '  webview_windows: ^0.4.0\n',
+              '  system_fonts: ^1.0.1\n',
           ]:
               text = text.replace(dep, '')
-          text = re.sub(r'\ndependency_overrides:\n  permission_handler_windows:\n    path: ./dependencies/flutter-permission-handler/permission_handler_windows\n', '\n', text)
-          text = text.replace('    - assets/app_icon.ico\n', '').replace('    - assets/icon_mac.png\n', '')
+          text = re.sub(
+              r'\ndependency_overrides:\n  permission_handler_windows:\n    path: ./dependencies/flutter-permission-handler/permission_handler_windows\n',
+              '\n',
+              text,
+          )
+          text = text.replace('    - assets/app_icon.ico\n', '')
+          text = text.replace('    - assets/icon_mac.png\n', '')
           p.write_text(text)
 
-          # Remove obsolete one-off workflow and desktop-only tests.
-          obsolete = Path('.github/workflows/cleanup-desktop-theme-palette.yml')
-          if obsolete.exists(): obsolete.unlink()
-          for path in Path('test').glob('desktop_*.dart'):
+          # Remove desktop-only source, local packages, tests, and one-off workflows.
+          for path in Path('test').glob('*desktop*.dart'):
               path.unlink()
+          PY
+
+          git rm -r --ignore-unmatch lib/desktop dependencies/tray_manager dependencies/flutter-permission-handler/permission_handler_windows
+          git rm -f --ignore-unmatch .github/workflows/cleanup-desktop-theme-palette.yml
+          git add -A
 
           forbidden = [
               'package:desktop_drop',
@@ -415,30 +457,25 @@ jobs:
               'package:tray_manager',
               'package:bitsdojo_window',
               'package:screen_retriever',
+              'package:system_fonts',
               'DesktopHomePage',
               'HomeDesktopScaffold',
-              'showDesktop',
               'DesktopWindowController',
               'DesktopTrayController',
               'HotkeyProvider',
+              'isDesktopPlatform',
           ]
           source = '\n'.join(str(p.read_text()) for p in Path('lib').rglob('*.dart'))
-          remaining = [needle for needle in forbidden if needle in source]
+          pubspec = Path('pubspec.yaml').read_text()
+          remaining = [needle for needle in forbidden if needle in source or needle in pubspec]
           if remaining:
               raise SystemExit('desktop references remain: ' + ', '.join(remaining))
-          if 'desktop_drop:' in Path('pubspec.yaml').read_text():
-              raise SystemExit('desktop dependency remains in pubspec')
-          PY
 
-          git rm -r --ignore-unmatch lib/desktop dependencies/tray_manager dependencies/flutter-permission-handler/permission_handler_windows
-          git add -A
-          if git diff --cached --quiet; then
-            echo 'No changes to commit'
-            exit 0
-          fi
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git commit -m "chore: remove legacy desktop implementation"
+          git commit -m "chore: remove legacy desktop implementation [skip desktop cleanup]"
           git push
 
       - name: Remove this cleanup workflow
@@ -446,10 +483,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git rm -f --ignore-unmatch .github/workflows/remove-legacy-desktop.yml
-          git add -A
-          if git diff --cached --quiet; then exit 0; fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git commit -m "chore: remove one-off desktop cleanup workflow"
-          git push
+          if [ -f .github/workflows/remove-legacy-desktop.yml ]; then
+            git rm -f .github/workflows/remove-legacy-desktop.yml
+            git add -A
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git commit -m "chore: remove one-off desktop cleanup workflow [skip desktop cleanup]"
+            git push
+          fi
