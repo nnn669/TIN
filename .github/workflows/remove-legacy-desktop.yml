@@ -1,7 +1,6 @@
 name: remove-legacy-desktop
 
-on:
-  workflow_dispatch:
+on: [workflow_dispatch]
 
 permissions:
   contents: write
@@ -19,13 +18,6 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
           import re
-          import subprocess
-
-          def remove_imports(path, needles):
-              p = Path(path)
-              text = p.read_text()
-              lines = text.splitlines(keepends=True)
-              p.write_text(''.join(line for line in lines if not any(needle in line for needle in needles)))
 
           def block_end(text, brace):
               depth = 0
@@ -93,9 +85,9 @@ jobs:
               "import 'desktop/desktop_home_page.dart';\n",
               "import 'desktop/desktop_tray_controller.dart';\n",
               "import 'desktop/desktop_window_controller.dart';\n",
+              "import 'core/providers/hotkey_provider.dart';\n",
           ]:
               text = text.replace(needle, '')
-          text = text.replace("import 'core/providers/hotkey_provider.dart';\n", '')
           text = text.replace('      await _initDesktopWindow();\n', '')
           text = text.replace('        ChangeNotifierProvider(create: (_) => HotkeyProvider()),\n', '')
           text = remove_block(text, 'Future<void> _initDesktopWindow() async')
@@ -109,11 +101,11 @@ jobs:
           text = text.replace('    _scheduleDesktopFontLoads(settings);\n', '')
           text = text.replace('        _scheduleDesktopHotkeyInit();\n', '')
           text = text.replace('            _scheduleDesktopTraySync(ctx);\n', '')
-          text = text.replace("  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();", "  return const HomePage();")
+          text = text.replace('  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();', '  return const HomePage();')
           text = text.replace('bool get isAndroidPlatform => !kIsWeb && Platform.isAndroid;', 'bool get isAndroidPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;')
           p.write_text(text)
 
-          # Home page: retain the mobile UI and mobile sheets only.
+          # home_page.dart: retain the mobile UI and mobile sheets only.
           p = Path('lib/features/home/pages/home_page.dart')
           text = p.read_text()
           for needle in [
@@ -125,7 +117,7 @@ jobs:
               "import '../../../desktop/quick_phrase_popover.dart';\n",
               "import '../../../desktop/instruction_injection_popover.dart';\n",
               "import '../../../shared/responsive/breakpoints.dart';\n",
-              "import '../pages/home_desktop_layout.dart';\n",
+              "import 'home_desktop_layout.dart';\n",
               "import '../utils/chat_layout_constants.dart';\n",
           ]:
               text = text.replace(needle, '')
@@ -257,7 +249,6 @@ jobs:
     }
   }
 ''', state_start)
-          # Replace the MCP callback with its mobile sheet implementation.
           marker = '      onOpenMcp: () {'
           pos = text.find(marker, state_start)
           if pos >= 0:
@@ -272,7 +263,7 @@ jobs:
       }''' + text[comma:]
           p.write_text(text)
 
-          # Home controller: remove desktop-only state, event buses and branches.
+          # home_page_controller.dart: remove desktop-only state, event buses and branches.
           p = Path('lib/features/home/controllers/home_page_controller.dart')
           text = p.read_text()
           for needle in [
@@ -381,8 +372,6 @@ jobs:
           text = remove_block(text, '  void setDragHovering(bool hovering)', text.find('class HomePageController'))
           text = remove_block(text, '  // ============================================================================\n  // Public Methods - Sidebar Management', text.find('class HomePageController'))
           text = remove_block(text, '  Future onFilesDroppedDesktop(', text.find('class HomePageController'))
-          text = text.replace('  Future<void> _speakAssistantMessage(\n', '  Future<void> _speakAssistantMessage(\n')
-          # Remove desktop-only TTS fallback block.
           tts_marker = '    if (PlatformUtils.isDesktopTarget) {'
           tts_pos = text.find(tts_marker, text.find('Future<void> _speakAssistantMessage'))
           if tts_pos >= 0:
@@ -396,7 +385,7 @@ jobs:
           text = text.replace('    try { _chatActionSub?.cancel(); } catch (_) {}\n', '')
           p.write_text(text)
 
-          # Remove desktop-only package dependencies and assets from the Android manifest.
+          # pubspec.yaml: remove desktop-only packages and assets.
           p = Path('pubspec.yaml')
           text = p.read_text()
           for dep in [
@@ -413,15 +402,12 @@ jobs:
           text = text.replace('    - assets/app_icon.ico\n', '').replace('    - assets/icon_mac.png\n', '')
           p.write_text(text)
 
-          # Remove the obsolete one-off workflow and desktop-only tests.
-          for path in [
-              Path('.github/workflows/cleanup-desktop-theme-palette.yml'),
-          ]:
-              if path.exists(): path.unlink()
+          # Remove obsolete one-off workflow and desktop-only tests.
+          obsolete = Path('.github/workflows/cleanup-desktop-theme-palette.yml')
+          if obsolete.exists(): obsolete.unlink()
           for path in Path('test').glob('desktop_*.dart'):
               path.unlink()
 
-          # Basic source-level guardrails before committing.
           forbidden = [
               'package:desktop_drop',
               'package:window_manager',
