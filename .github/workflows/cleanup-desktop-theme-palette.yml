@@ -1,0 +1,50 @@
+name: cleanup-desktop-theme-palette
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove desktop built-in palette controls
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('lib/desktop/setting/display_pane.dart')
+          text = path.read_text()
+          old = """                  _ColorModeRow(),
+                  _RowDivider(),
+                  _ThemeColorRow(),
+                  _RowDivider(),
+                  _ToggleRowPureBackground(),"""
+          new = """                  _ColorModeRow(),
+                  _RowDivider(),
+                  _ToggleRowPureBackground(),"""
+          if old not in text:
+              raise SystemExit('desktop theme row pattern not found')
+          text = text.replace(old, new, 1)
+          start = text.find('// --- Theme Color ---')
+          end = text.find('class _ToggleRowPureBackground', start)
+          if start < 0 or end < 0:
+              raise SystemExit('desktop theme helper block not found')
+          text = text[:start] + text[end:]
+          path.write_text(text)
+      - name: Commit desktop palette cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/desktop/setting/display_pane.dart
+          git diff --cached --quiet || git commit -m "fix(theme): remove desktop built-in palette controls"
+          git push
+      - name: Remove temporary workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/cleanup-desktop-theme-palette.yml
+          git add .github/workflows/cleanup-desktop-theme-palette.yml
+          git diff --cached --quiet || git commit -m "chore: remove temporary theme cleanup workflow"
+          git push
