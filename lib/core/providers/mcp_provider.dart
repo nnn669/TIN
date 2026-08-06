@@ -8,6 +8,7 @@ import '../services/mcp/kelivo_files/kelivo_files_server.dart';
 import '../services/mcp/kelivo_github/github_api_client.dart';
 import '../services/mcp/kelivo_github/kelivo_github_server.dart';
 import '../services/mcp/kelivo_images/kelivo_images_server.dart';
+import '../services/mcp/kelivo_copilot/kelivo_copilot_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -327,6 +328,8 @@ class McpProvider extends ChangeNotifier {
   static const String _builtinGithubName = '@kelivo/github';
   static const String _builtinImagesId = 'kelivo_images';
   static const String _builtinImagesName = '@kelivo/images';
+  static const String _builtinCopilotId = 'kelivo_copilot';
+  static const String _builtinCopilotName = '@kelivo/copilot';
   static const Set<String> _builtinFileWriteToolNames = {
     'kelivo_create_directory',
     'kelivo_create_text_file',
