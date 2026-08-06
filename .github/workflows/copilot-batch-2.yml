@@ -1,0 +1,59 @@
+name: Copilot Batch 2 Patch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Apply batch 2 changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('lib/core/providers/mcp_provider.dart')
+          text = path.read_text(encoding='utf-8')
+          old = (
+              "    if (!_hasBuiltinServer(_builtinImagesId, _builtinImagesName)) {\n"
+              "      next.add(\n"
+              "        _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),\n"
+              "      );\n"
+              "    }\n"
+              "    _servers = next;\n"
+          )
+          new = (
+              "    if (!_hasBuiltinServer(_builtinImagesId, _builtinImagesName)) {\n"
+              "      next.add(\n"
+              "        _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),\n"
+              "      );\n"
+              "    }\n"
+              "    if (!_hasBuiltinServer(_builtinCopilotId, _builtinCopilotName)) {\n"
+              "      next.add(\n"
+              "        _builtinServer(_builtinCopilotId, _builtinCopilotName, enabled: false),\n"
+              "      );\n"
+              "    }\n"
+              "    _servers = next;\n"
+          )
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one match, got {count}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='')
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/copilot-batch-2.yml
+          git add lib/core/providers/mcp_provider.dart .github/workflows/copilot-batch-2.yml
+          git commit -m "feat: register copilot built-in server"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
