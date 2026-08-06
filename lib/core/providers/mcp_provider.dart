@@ -747,8 +747,6 @@ class McpProvider extends ChangeNotifier {
               builtinEnabledById[_builtinGithubId] = enabled;
             } else if (id == _builtinImagesId || name == _builtinImagesName) {
               builtinEnabledById[_builtinImagesId] = enabled;
-            } else if (id == _builtinCopilotId || name == _builtinCopilotName) {
-              builtinEnabledById[_builtinCopilotId] = enabled;
             } else if (id == _builtinFetchId || name == _builtinFetchName) {
               builtinEnabledById[_builtinFetchId] = enabled;
             } else {
@@ -861,13 +859,6 @@ class McpProvider extends ChangeNotifier {
               _builtinImagesName,
               enabled: false,
             ).copyWith(enabled: builtinEnabledById[_builtinImagesId] ?? false),
-          );
-          next.add(
-            _builtinServer(
-              _builtinCopilotId,
-              _builtinCopilotName,
-              enabled: false,
-            ).copyWith(enabled: builtinEnabledById[_builtinCopilotId] ?? false),
           );
         }
       } else if (data is List) {
