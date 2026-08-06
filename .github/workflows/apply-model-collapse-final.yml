@@ -1,7 +1,6 @@
 name: Apply model selector collapse
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
@@ -11,7 +10,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: add collapsible model selector groups')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +17,9 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Apply source patch
+        shell: bash
         run: |
+          set -e
           python3 - <<'PY'
           from pathlib import Path
           p = Path('lib/features/model/widgets/model_select_sheet.dart')
@@ -30,13 +30,13 @@ jobs:
           s = s.replace("import 'model_detail_sheet.dart';\n", '', 1)
           s = s.replace('if (row is _ModelRow && !row.showProviderLabel) return row.item.providerKey;', 'if (row is _ModelRow) return row.item.providerKey;', 1)
           s = s.replace('    final query = _search.text.trim();\n    // Build flattened rows and index maps for precise positioning', '    final settings = context.watch<SettingsProvider>();\n    final query = _search.text.trim();\n    // Build flattened rows and index maps for precise positioning', 1)
-          old = '''      _headerIndexMap[pk] = _rows.length;
+          old = """      _headerIndexMap[pk] = _rows.length;
       _rows.add(_HeaderRow(g.name, providerKey: pk));
       for (final m in items) {
         _modelIndexMap['${m.providerKey}::${m.id}'] = _rows.length;
         _rows.add(_ModelRow(m));
-      }'''
-          new = '''      final groupKey = settings.groupIdForProvider(pk) ?? SettingsProvider.providerUngroupedGroupKey;
+      }"""
+          new = """      final groupKey = settings.groupIdForProvider(pk) ?? SettingsProvider.providerUngroupedGroupKey;
       if (widget.limitProviderKey == null && _headerIndexMap[groupKey] == null) {
         _headerIndexMap[groupKey] = _rows.length;
         _rows.add(_ProviderGroupHeaderRow(groupKey: groupKey, title: groupKey == SettingsProvider.providerUngroupedGroupKey ? l10n.providerGroupsOther : (settings.groupById(groupKey)?.name ?? l10n.providerGroupsOther), count: 1, collapsed: query.isEmpty && settings.isGroupCollapsed(groupKey)));
@@ -45,7 +45,7 @@ jobs:
       for (final m in items) {
         _modelIndexMap['${m.providerKey}::${m.id}'] = _rows.length;
         _rows.add(_ModelRow(m, showProviderLabel: true));
-      }'''
+      }"""
           if old not in s:
               raise SystemExit('target block not found')
           s = s.replace(old, new, 1)
