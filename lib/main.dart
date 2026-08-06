@@ -200,7 +200,7 @@ class _AppRootState extends State<_AppRoot> {
         _scheduleAndroidBackgroundSync(settings);
 
         final useDynamicColor = isAndroid && settings.useDynamicColor;
-        final palette = ThemePalettes.byId(settings.themePaletteId);
+        final palette = ThemePalettes.defaultPalette;
         final themedLight = _applyAppFont(
           buildLightThemeForScheme(
             palette.light,
@@ -342,12 +342,12 @@ class _AppRootState extends State<_AppRoot> {
       } catch (_) {}
       try {
         ctx.read<ChatService>().setDefaultConversationTitle(
-              l10n.chatServiceDefaultConversationTitle,
+              l10n.chatServiceDefault.conversationTitle,
             );
       } catch (_) {}
       try {
         ctx.read<UserProvider>().setDefaultNameIfUnset(
-              l10n.userProviderDefaultUserName,
+              l10n.userProviderDefault.userName,
             );
       } catch (_) {}
     });
