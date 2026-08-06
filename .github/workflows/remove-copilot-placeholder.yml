@@ -10,13 +10,13 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout target branch
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Remove placeholder registration and migrate persisted configs
+      - name: Remove all placeholder remnants
         shell: python
         run: |
           from pathlib import Path
@@ -24,93 +24,40 @@ jobs:
           path = Path('lib/core/providers/mcp_provider.dart')
           text = path.read_text(encoding='utf-8')
 
-          replacements = [
-              (
-                  "import '../services/mcp/kelivo_copilot/kelivo_copilot_server.dart';\n",
-                  '',
-              ),
-              (
-                  "  static const String _builtinCopilotId = 'kelivo_copilot';\n"
-                  "  static const String _builtinCopilotName = '@kelivo/copilot';\n",
-                  "  static const String _removedCopilotId = 'kelivo_copilot';\n"
-                  "  static const String _removedCopilotName = '@kelivo/copilot';\n",
-              ),
-              (
-                  "    if (!_hasBuiltinServer(_builtinCopilotId, _builtinCopilotName)) {\n"
-                  "      next.add(\n"
-                  "        _builtinServer(_builtinCopilotId, _builtinCopilotName, enabled: false),\n"
-                  "      );\n"
-                  "    }\n",
-                  '',
-              ),
-              (
-                  "  bool _isBuiltinCopilotServer(McpServerConfig server) {\n"
-                  "    return server.transport == McpTransportType.inmemory &&\n"
-                  "        (server.id == _builtinCopilotId || server.name == _builtinCopilotName);\n"
-                  "  }\n\n",
-                  "  bool _isRemovedCopilotPlaceholder(McpServerConfig server) {\n"
-                  "    return server.transport == McpTransportType.inmemory &&\n"
-                  "        (server.id == _removedCopilotId ||\n"
-                  "            server.name == _removedCopilotName);\n"
-                  "  }\n\n",
-              ),
-              (
-                  "        _isBuiltinGithubServer(server) ||\n"
-                  "        _isBuiltinImagesServer(server) ||\n"
-                  "        _isBuiltinCopilotServer(server);\n",
-                  "        _isBuiltinGithubServer(server) ||\n"
-                  "        _isBuiltinImagesServer(server);\n",
-              ),
-              (
-                  "\n  bool isBuiltinCopilotServer(McpServerConfig server) {\n"
-                  "    return _isBuiltinCopilotServer(server);\n"
-                  "  }\n",
-                  '',
-              ),
-              (
-                  "    if (_isBuiltinCopilotServer(server)) {\n"
-                  "      return KelivoCopilotMcpServerEngine();\n"
-                  "    }\n",
-                  '',
-              ),
-              (
-                  "    _ensureBuiltinServersPresent();\n",
-                  "    _servers = _servers\n"
-                  "        .where((s) => !_isRemovedCopilotPlaceholder(s))\n"
-                  "        .toList(growable: false);\n"
-                  "    _ensureBuiltinServersPresent();\n",
-              ),
-          ]
-
-          for old, new in replacements:
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'replacement expected once, got {count}: {old[:80]!r}')
-              text = text.replace(old, new, 1)
-
-          old = "    _servers = List<McpServerConfig>.of(nextServers);\n"
-          new = (
-              "    final filteredServers = nextServers\n"
-              "        .where((s) => !_isRemovedCopilotPlaceholder(s))\n"
-              "        .toList(growable: false);\n"
-              "    if (filteredServers.isEmpty) {\n"
-              "      throw const FormatException('No valid MCP servers found in JSON');\n"
-              "    }\n\n"
-              "    _servers = List<McpServerConfig>.of(filteredServers);\n"
+          stale_branch = (
+              "            } else if (id == _builtinCopilotId || name == _builtinCopilotName) {\n"
+              "              builtinEnabledById[_builtinCopilotId] = enabled;\n"
           )
-          if text.count(old) != 1:
-              raise SystemExit('replaceAllFromConfigs assignment not found exactly once')
-          text = text.replace(old, new, 1)
+          if text.count(stale_branch) != 1:
+              raise SystemExit(f'stale import branch expected once, got {text.count(stale_branch)}')
+          text = text.replace(stale_branch, '', 1)
+
+          stale_fallback = (
+              "          next.add(\n"
+              "            _builtinServer(\n"
+              "              _builtinCopilotId,\n"
+              "              _builtinCopilotName,\n"
+              "              enabled: false,\n"
+              "            ).copyWith(enabled: builtinEnabledById[_builtinCopilotId] ?? false),\n"
+              "          );\n"
+          )
+          if text.count(stale_fallback) != 1:
+              raise SystemExit(f'stale fallback expected once, got {text.count(stale_fallback)}')
+          text = text.replace(stale_fallback, '', 1)
+
+          if '_builtinCopilot' in text or 'KelivoCopilot' in text:
+              raise SystemExit('stale copilot implementation references remain')
 
           path.write_text(text, encoding='utf-8')
 
-      - name: Delete placeholder implementation and cleanup workflow
+      - name: Remove temporary cleanup workflows
         shell: bash
         run: |
           set -euo pipefail
-          rm -f lib/core/services/mcp/kelivo_copilot/kelivo_copilot_server.dart
+          rm -f .github/workflows/remove-copilot-placeholder.yml
+          rm -f .github/workflows/finalize-copilot-removal.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/core/providers/mcp_provider.dart lib/core/services/mcp/kelivo_copilot/kelivo_copilot_server.dart .github/workflows/remove-copilot-placeholder.yml
-          git commit -m "fix(mcp): remove empty copilot placeholder server"
+          git add lib/core/providers/mcp_provider.dart .github/workflows/remove-copilot-placeholder.yml .github/workflows/finalize-copilot-removal.yml
+          git commit -m "fix(mcp): finalize copilot placeholder cleanup"
           git push origin HEAD:main
