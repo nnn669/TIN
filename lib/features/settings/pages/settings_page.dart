@@ -6,6 +6,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../model/pages/default_model_page.dart';
 import '../../provider/pages/providers_page.dart';
 import 'display_settings_page.dart';
+import 'theme_settings_page.dart';
 import '../../mcp/pages/mcp_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
 import 'about_page.dart';
@@ -151,6 +152,19 @@ class SettingsPage extends StatelessWidget {
                 label: l10n.settingsPageColorMode,
                 detailText: modeLabel(settings.themeMode),
                 onTap: pickThemeMode,
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Palette,
+                label: l10n.displaySettingsPageThemeSettingsTitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ThemeSettingsPage(),
+                    ),
+                  );
+                },
               ),
               _iosDivider(context),
               _iosNavRow(
