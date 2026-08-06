@@ -573,6 +573,9 @@ class McpProvider extends ChangeNotifier {
         client: GitHubApiClient(accessTokenProvider: () async => _githubToken),
       );
     }
+    if (_isBuiltinCopilotServer(server)) {
+      return KelivoCopilotMcpServerEngine();
+    }
     return KelivoFetchMcpServerEngine();
   }
 
