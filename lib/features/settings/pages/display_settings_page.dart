@@ -9,8 +9,6 @@ import '../../../icons/lucide_adapter.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import '../../../core/providers/settings_provider.dart';
-import 'theme_settings_page.dart';
-import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/haptics.dart';
@@ -34,14 +32,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
     final l10n = AppLocalizations.of(context)!;
     context.watch<SettingsProvider>();
 
-    String paletteName() {
-      final settings = context.read<SettingsProvider>();
-      final palette = ThemePalettes.byId(settings.themePaletteId);
-      return Localizations.localeOf(context).languageCode == 'zh'
-          ? palette.displayNameZh
-          : palette.displayNameEn;
-    }
-
     return Scaffold(
       appBar: AppBar(
         leading: Tooltip(
@@ -61,16 +51,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
           // header(l10n.displaySettingsPageThemeSettingsTitle),
           _iosSectionCard(
             children: [
-              _iosNavRow(
-                context,
-                icon: Lucide.Palette,
-                label: l10n.displaySettingsPageThemeSettingsTitle,
-                detailText: paletteName(),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ThemeSettingsPage()),
-                ),
-              ),
-              _iosDivider(context),
               _iosNavRow(
                 context,
                 icon: Lucide.Languages,
