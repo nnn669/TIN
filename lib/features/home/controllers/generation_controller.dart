@@ -47,12 +47,6 @@ class GenerationController {
   final VoidCallback onStateChanged;
   final String Function(BuildContext context) getTitleForLocale;
 
-  /// Session-level tool loop guard to track tool call budgets across messages
-  final _toolLoopGuard = ToolLoopGuard();
-  
-  /// Session-level tool call result cache to avoid duplicate execution
-  final _toolCallResultCache = ToolCallResultCache();
-
   static Map<String, dynamic> sanitizeToolParametersForProvider(
     Map<String, dynamic> schema,
     ProviderKind kind,
@@ -123,11 +117,11 @@ class GenerationController {
 
   /// Build the guarded tool handler used by every provider path.
   ///
-  /// Successful calls are reused by their complete tool signature. Different
-  /// arguments, split subtasks, and failed calls remain independent.
-  /// 
-  /// Uses session-level guard and cache to prevent duplicate executions
-  /// and track cumulative tool call budgets across messages in automation mode.
+  /// The guard and read-only result cache live for exactly one assistant turn.
+  /// This keeps multi-round tool loops bounded within the current response,
+  /// while letting the next user message start with a fresh call budget.
+  /// Successful read-only calls are reused by their complete tool signature.
+  /// Different arguments, split subtasks, and failed calls remain independent.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
@@ -142,29 +136,31 @@ class GenerationController {
     );
     if (inner == null) return null;
 
-    // Use session-level instances instead of creating new ones each time
+    final toolLoopGuard = ToolLoopGuard();
+    final toolCallResultCache = ToolCallResultCache();
+
     return (
       String name,
       Map<String, dynamic> args, {
       String? toolCallId,
     }) async {
-      final cached = _toolCallResultCache.lookup(name, args);
-      final refusal = _toolLoopGuard.evaluate(name, args, cached: cached != null);
+      final cached = toolCallResultCache.lookup(name, args);
+      final refusal = toolLoopGuard.evaluate(name, args, cached: cached != null);
       if (refusal != null) return refusal;
       if (cached != null) return cached;
 
       try {
-        final result = await _toolCallResultCache.run(
+        final result = await toolCallResultCache.run(
           name,
           args,
           () => inner(name, args, toolCallId: toolCallId),
         );
         if (!ToolLoopGuard.isCacheableResult(result)) {
-          _toolLoopGuard.resetDuplicateStreak(name, args);
+          toolLoopGuard.resetDuplicateStreak(name, args);
         }
         return result;
       } catch (_) {
-        _toolLoopGuard.resetDuplicateStreak(name, args);
+        toolLoopGuard.resetDuplicateStreak(name, args);
         rethrow;
       }
     };
