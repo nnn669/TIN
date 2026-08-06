@@ -47,6 +47,12 @@ class GenerationController {
   final VoidCallback onStateChanged;
   final String Function(BuildContext context) getTitleForLocale;
 
+  /// Session-level tool loop guard to track tool call budgets across messages
+  final _toolLoopGuard = ToolLoopGuard();
+  
+  /// Session-level tool call result cache to avoid duplicate execution
+  final _toolCallResultCache = ToolCallResultCache();
+
   static Map<String, dynamic> sanitizeToolParametersForProvider(
     Map<String, dynamic> schema,
     ProviderKind kind,
@@ -119,6 +125,9 @@ class GenerationController {
   ///
   /// Successful calls are reused by their complete tool signature. Different
   /// arguments, split subtasks, and failed calls remain independent.
+  /// 
+  /// Uses session-level guard and cache to prevent duplicate executions
+  /// and track cumulative tool call budgets across messages in automation mode.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
@@ -133,30 +142,29 @@ class GenerationController {
     );
     if (inner == null) return null;
 
-    final guard = ToolLoopGuard();
-    final resultCache = ToolCallResultCache();
+    // Use session-level instances instead of creating new ones each time
     return (
       String name,
       Map<String, dynamic> args, {
       String? toolCallId,
     }) async {
-      final cached = resultCache.lookup(name, args);
-      final refusal = guard.evaluate(name, args, cached: cached != null);
+      final cached = _toolCallResultCache.lookup(name, args);
+      final refusal = _toolLoopGuard.evaluate(name, args, cached: cached != null);
       if (refusal != null) return refusal;
       if (cached != null) return cached;
 
       try {
-        final result = await resultCache.run(
+        final result = await _toolCallResultCache.run(
           name,
           args,
           () => inner(name, args, toolCallId: toolCallId),
         );
         if (!ToolLoopGuard.isCacheableResult(result)) {
-          guard.resetDuplicateStreak(name, args);
+          _toolLoopGuard.resetDuplicateStreak(name, args);
         }
         return result;
       } catch (_) {
-        guard.resetDuplicateStreak(name, args);
+        _toolLoopGuard.resetDuplicateStreak(name, args);
         rethrow;
       }
     };
