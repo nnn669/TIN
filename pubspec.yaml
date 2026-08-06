@@ -2,7 +2,7 @@ name: tin
 description: "An Android LLM chat client."
 publish_to: 'none'
 
-version: 1.1.37+9031
+version: 1.1.40+9031
 
 environment:
   sdk: ^3.12.1
@@ -76,7 +76,7 @@ dependencies:
   scrollview_observer: ^1.26.0
   image_gallery_saver_plus: ^4.0.1
   haptic_feedback: ^0.6.4+3
-  system_fonts: ^1.0.1
+  system_fonts: ^1.0.0
   google_fonts: ^6.3.2
   super_clipboard: ^0.9.1
   permission_handler: ^12.0.3
