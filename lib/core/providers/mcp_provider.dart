@@ -487,6 +487,11 @@ class McpProvider extends ChangeNotifier {
         _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
       );
     }
+    if (!_hasBuiltinServer(_builtinCopilotId, _builtinCopilotName)) {
+      next.add(
+        _builtinServer(_builtinCopilotId, _builtinCopilotName, enabled: false),
+      );
+    }
     _servers = next;
   }
 
