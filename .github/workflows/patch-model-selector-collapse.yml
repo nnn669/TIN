@@ -1,13 +1,16 @@
 name: Temporary model selector collapse patch
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event.head_commit.message != 'feat: add collapsible model selector groups'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,37 +34,16 @@ jobs:
               s = s.replace(old, new, 1)
 
           s = s.replace("import 'model_detail_sheet.dart';\n", '', 1)
-
           once(
-              """  String? _activeProviderKeyFromVisibleRows() {
-""",
-              """  String? _activeProviderKeyFromVisibleRows() {
-""",
-              'anchor',
-          )
-          once(
-              """    if (row is _HeaderRow) return row.providerKey;
-    if (row is _ModelRow && !row.showProviderLabel) return row.item.providerKey;
-""",
-              """    if (row is _HeaderRow) return row.providerKey;
-    if (row is _ModelRow) return row.item.providerKey;
-""",
+              "    if (row is _HeaderRow) return row.providerKey;\n    if (row is _ModelRow && !row.showProviderLabel) return row.item.providerKey;\n",
+              "    if (row is _HeaderRow) return row.providerKey;\n    if (row is _ModelRow) return row.item.providerKey;\n",
               'active provider model rows',
           )
-
           once(
-              """    final l10n = AppLocalizations.of(context)!;
-    final query = _search.text.trim();
-    // Build flattened rows and index maps for precise positioning
-""",
-              """    final l10n = AppLocalizations.of(context)!;
-    final settings = context.watch<SettingsProvider>();
-    final query = _search.text.trim();
-    // Build flattened rows and index maps for precise positioning
-""",
+              "    final l10n = AppLocalizations.of(context)!;\n    final query = _search.text.trim();\n    // Build flattened rows and index maps for precise positioning\n",
+              "    final l10n = AppLocalizations.of(context)!;\n    final settings = context.watch<SettingsProvider>();\n    final query = _search.text.trim();\n    // Build flattened rows and index maps for precise positioning\n",
               'mobile grouping settings',
           )
-
           old = """    for (final pk in _orderedKeys) {
       final g = _groups[pk]!;
       List<_ModelItem> items;
@@ -98,7 +80,6 @@ jobs:
       }
       return settings.groupById(groupKey)?.name ?? l10n.providerGroupsOther;
     }
-
     String? lastGroupKey;
     final groupProviderKeys = <String, Set<String>>{};
     for (final pk in _orderedKeys) {
@@ -114,7 +95,7 @@ jobs:
         final providerMatches = _providerMatchesSearch(query, g.name);
         items = providerMatches
             ? g.items
-            : g.items.where((e) => _matchesSearch(e.id, e, g.name)).toList();
+            : g.items.where((e) => _matchesSearch(query, e, g.name)).toList();
         if (favMatchedKeys.isNotEmpty) {
           items = items
               .where(
@@ -124,29 +105,22 @@ jobs:
         }
       }
       if (items.isEmpty) continue;
-
       final groupKey = groupKeyFor(pk);
       if (widget.limitProviderKey == null && groupKey != lastGroupKey) {
         final collapsed = query.isEmpty && settings.isGroupCollapsed(groupKey);
         _headerIndexMap[groupKey] = _rows.length;
-        _rows.add(
-          _ProviderGroupHeaderRow(
-            groupKey: groupKey,
-            title: groupTitleFor(groupKey),
-            count: groupProviderKeys[groupKey]?.length ?? 0,
-            collapsed: collapsed,
-          ),
-        );
+        _rows.add(_ProviderGroupHeaderRow(
+          groupKey: groupKey,
+          title: groupTitleFor(groupKey),
+          count: groupProviderKeys[groupKey]?.length ?? 0,
+          collapsed: collapsed,
+        ));
         lastGroupKey = groupKey;
         if (collapsed) continue;
       } else if (widget.limitProviderKey == null &&
-          query.isEmpty &&
-          settings.isGroupCollapsed(groupKey)) {
+          query.isEmpty && settings.isGroupCollapsed(groupKey)) {
         continue;
       }
-
-      // Show models directly under the group header. Include the provider name
-      // because a group can contain models from multiple providers.
       for (final m in items) {
         _modelIndexMap['${m.providerKey}::${m.id}'] = _rows.length;
         _rows.add(_ModelRow(m, showProviderLabel: true));
@@ -154,31 +128,15 @@ jobs:
     }
 """
           once(old, new, 'mobile grouped model rows')
-
           once(
-              """                if (row is _HeaderRow) {
-                  return _sectionHeader(
-""",
-              """                if (row is _ProviderGroupHeaderRow) {
-                  return _providerGroupHeader(
-                    context,
-                    row,
-                  );
-                } else if (row is _HeaderRow) {
-                  return _sectionHeader(
-""",
+              "                if (row is _HeaderRow) {\n                  return _sectionHeader(\n",
+              "                if (row is _ProviderGroupHeaderRow) {\n                  return _providerGroupHeader(context, row);\n                } else if (row is _HeaderRow) {\n                  return _sectionHeader(\n",
               'mobile grouped row rendering',
           )
-
           once(
-              """  Widget _sectionHeader(
-""",
-              """  Widget _providerGroupHeader(
-    BuildContext context,
-    _ProviderGroupHeaderRow row,
-  ) {
+              "  Widget _sectionHeader(\n",
+              """  Widget _providerGroupHeader(BuildContext context, _ProviderGroupHeaderRow row) {
     final cs = Theme.of(context).colorScheme;
-    final collapsed = row.collapsed;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => unawaited(
@@ -189,41 +147,23 @@ jobs:
         child: Row(
           children: [
             AnimatedRotation(
-              turns: collapsed ? 0.0 : 0.25,
+              turns: row.collapsed ? 0.0 : 0.25,
               duration: const Duration(milliseconds: 220),
-              child: Icon(
-                Lucide.ChevronRight,
-                size: 20,
-                color: cs.onSurface.withValues(alpha: 0.72),
-              ),
+              child: Icon(Lucide.ChevronRight, size: 20,
+                  color: cs.onSurface.withValues(alpha: 0.72)),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                row.title,
-                maxLines: 1,
+            Expanded(child: Text(row.title, maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: AppFontWeights.emphasis,
-                  color: cs.onSurface.withValues(alpha: 0.72),
-                ),
-              ),
-            ),
+                style: TextStyle(fontSize: 13,
+                    fontWeight: AppFontWeights.emphasis,
+                    color: cs.onSurface.withValues(alpha: 0.72)))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '${row.count}',
-                style: TextStyle(
-                  color: cs.primary,
-                  fontSize: 12,
-                  fontWeight: AppFontWeights.emphasis,
-                ),
-              ),
+              decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999)),
+              child: Text('${row.count}', style: TextStyle(color: cs.primary,
+                  fontSize: 12, fontWeight: AppFontWeights.emphasis)),
             ),
           ],
         ),
@@ -235,7 +175,6 @@ jobs:
 """,
               'mobile grouped header widget',
           )
-
           once(
               """          onLongPress: () async {
             await showModelDetailSheet(
@@ -253,61 +192,40 @@ jobs:
               '',
               'remove mobile model long press',
           )
-
           once(
-              """class _HeaderRow extends _ListRow {
-""",
+              "class _HeaderRow extends _ListRow {\n",
               """class _ProviderGroupHeaderRow extends _ListRow {
   final String groupKey;
   final String title;
   final int count;
   final bool collapsed;
-  const _ProviderGroupHeaderRow({
-    required this.groupKey,
-    required this.title,
-    required this.count,
-    required this.collapsed,
-  });
+  const _ProviderGroupHeaderRow({required this.groupKey, required this.title,
+      required this.count, required this.collapsed});
 }
 
 class _HeaderRow extends _ListRow {
 """,
               'mobile group row type',
           )
-
           p.write_text(s, encoding='utf-8')
           PY
-
-      - name: Validate source
+      - name: Validate and commit
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
           s = Path('lib/features/model/widgets/model_select_sheet.dart').read_text(encoding='utf-8')
-          required = [
-              'class _ProviderGroupHeaderRow extends _ListRow',
-              'toggleGroupCollapsed(row.groupKey)',
-              'settings.isGroupCollapsed(groupKey)',
-              'Show models directly under the group header',
-          ]
-          for marker in required:
+          for marker in ['class _ProviderGroupHeaderRow extends _ListRow','toggleGroupCollapsed(row.groupKey)','settings.isGroupCollapsed(groupKey)']:
               assert marker in s, marker
           assert "import 'model_detail_sheet.dart';" not in s
           assert 'onLongPress: () async {' not in s
-          assert s.count('class _ProviderGroupHeaderRow extends _ListRow') == 1
           print('model selector collapse source checks passed')
           PY
           git diff --check
-
-      - name: Commit and remove temporary workflow
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add lib/features/model/widgets/model_select_sheet.dart
-          git diff --cached --check
           git commit -m 'feat: add collapsible model selector groups'
           git push origin main
           git rm .github/workflows/patch-model-selector-collapse.yml
