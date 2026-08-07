@@ -1,0 +1,77 @@
+name: Apply chat fluid background integration
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/chat-fluid-background
+      - name: Patch chat page
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/features/home/pages/home_page.dart')
+          s = p.read_text()
+          s = s.replace("import '../widgets/chat_input_overlay_layout.dart';", "import '../widgets/chat_input_overlay_layout.dart';\nimport '../widgets/chat_fluid_background.dart';")
+          start = s.index('  Widget _buildChatBackground(BuildContext context, ColorScheme cs) {')
+          end = s.index('\n  Widget _buildAssistantBackground(BuildContext context) {', start)
+          mobile = '''  Widget _buildChatBackground(BuildContext context, ColorScheme cs) {
+    return Builder(
+      builder: (context) {
+        final bg = context.watch<AssistantProvider>().currentAssistant?.background;
+        final maskStrength = context.watch<SettingsProvider>().chatBackgroundMaskStrength;
+        Widget? image;
+        if (bg != null && bg.trim().isNotEmpty) {
+          if (bg.startsWith('http')) {
+            image = Image.network(bg, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink());
+          } else {
+            final file = File(SandboxPathResolver.fix(bg));
+            if (file.existsSync()) image = Image(image: FileImage(file), fit: BoxFit.cover);
+          }
+        }
+        return ChatFluidBackground(background: image, maskStrength: maskStrength);
+      },
+    );
+  }
+'''
+          s = s[:start] + mobile + s[end:]
+          start = s.index('  Widget _buildAssistantBackground(BuildContext context) {')
+          end = s.index('\n  bool _assistantBackgroundActive(BuildContext context) {', start)
+          desktop = '''  Widget _buildAssistantBackground(BuildContext context) {
+    final assistant = context.watch<AssistantProvider>().currentAssistant;
+    final bgRaw = (assistant?.background ?? '').trim();
+    Widget? image;
+    if (bgRaw.isNotEmpty) {
+      if (bgRaw.startsWith('http')) {
+        image = Image.network(bgRaw, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink());
+      } else {
+        try {
+          final file = File(SandboxPathResolver.fix(bgRaw));
+          if (file.existsSync()) image = Image(image: FileImage(file), fit: BoxFit.cover);
+        } catch (_) {}
+      }
+    }
+    final maskStrength = context.watch<SettingsProvider>().chatBackgroundMaskStrength;
+    return ChatFluidBackground(background: image, maskStrength: maskStrength);
+  }
+'''
+          s = s[:start] + desktop + s[end:]
+          s = s.replace('if (bgRaw.isEmpty) return false;', 'if (bgRaw.isEmpty) return true;')
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/features/home/pages/home_page.dart
+          git commit -m "feat(chat): integrate fluid glass background"
+          git push origin feat/chat-fluid-background
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/apply-fluid-background.yml
+          git commit -m "chore: remove temporary patch workflow"
+          git push origin feat/chat-fluid-background
