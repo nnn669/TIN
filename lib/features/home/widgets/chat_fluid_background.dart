@@ -68,7 +68,7 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 28),
+    duration: const Duration(seconds: 30),
   )..repeat();
 
   @override
@@ -100,8 +100,9 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
                   primary: cs.primary,
                   secondary: cs.secondary,
                   tertiary: Color.lerp(cs.primary, cs.tertiary, 0.62)!,
+                  accent: cs.tertiary,
                   warm: isDark ? Colors.orangeAccent : Colors.deepOrange,
-                  opacity: isDark ? 0.24 : 0.34,
+                  opacity: isDark ? 0.36 : 0.51,
                 ),
               ),
             ),
@@ -138,6 +139,7 @@ class _FluidBlobPainter extends CustomPainter {
     required this.primary,
     required this.secondary,
     required this.tertiary,
+    required this.accent,
     required this.warm,
     required this.opacity,
   });
@@ -146,6 +148,7 @@ class _FluidBlobPainter extends CustomPainter {
   final Color primary;
   final Color secondary;
   final Color tertiary;
+  final Color accent;
   final Color warm;
   final double opacity;
 
@@ -156,34 +159,42 @@ class _FluidBlobPainter extends CustomPainter {
       _Blob(
         Offset(
           size.width * (0.16 + 0.18 * math.sin(t)),
-          size.height * (0.18 + 0.14 * math.cos(t * 0.78)),
+          size.height * (0.18 + 0.14 * math.cos(t)),
         ),
         size.width * 0.70,
         primary,
       ),
       _Blob(
         Offset(
-          size.width * (0.82 + 0.17 * math.cos(t * 0.68)),
-          size.height * (0.38 + 0.17 * math.sin(t * 0.61)),
+          size.width * (0.82 + 0.17 * math.cos(t + 0.60)),
+          size.height * (0.38 + 0.17 * math.sin(t + 0.60)),
         ),
         size.width * 0.64,
         secondary,
       ),
       _Blob(
         Offset(
-          size.width * (0.43 + 0.22 * math.sin(t * 0.46)),
-          size.height * (0.83 + 0.13 * math.cos(t * 0.53)),
+          size.width * (0.43 + 0.22 * math.sin(t * 2 + 1.20)),
+          size.height * (0.83 + 0.13 * math.cos(t * 2 + 1.20)),
         ),
         size.width * 0.62,
         warm,
       ),
       _Blob(
         Offset(
-          size.width * (0.56 + 0.14 * math.cos(t * 0.38)),
-          size.height * (0.55 + 0.18 * math.sin(t * 0.43)),
+          size.width * (0.56 + 0.14 * math.cos(t * 2 + 2.10)),
+          size.height * (0.55 + 0.18 * math.sin(t * 2 + 2.10)),
         ),
         size.width * 0.48,
         tertiary,
+      ),
+      _Blob(
+        Offset(
+          size.width * (0.72 + 0.16 * math.sin(t * 3 + 0.35)),
+          size.height * (0.16 + 0.12 * math.cos(t * 3 + 0.35)),
+        ),
+        size.width * 0.44,
+        accent,
       ),
     ];
     for (final blob in blobs) {
@@ -208,6 +219,7 @@ class _FluidBlobPainter extends CustomPainter {
       oldDelegate.primary != primary ||
       oldDelegate.secondary != secondary ||
       oldDelegate.tertiary != tertiary ||
+      oldDelegate.accent != accent ||
       oldDelegate.warm != warm;
 }
 
