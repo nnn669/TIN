@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io' show File;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../main.dart';
@@ -24,12 +23,6 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/services/android_process_text.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/platform_utils.dart';
-import '../../../desktop/search_provider_popover.dart';
-import '../../../desktop/reasoning_budget_popover.dart';
-import '../../../desktop/mcp_servers_popover.dart';
-import '../../../desktop/mini_map_popover.dart';
-import '../../../desktop/quick_phrase_popover.dart';
-import '../../../desktop/instruction_injection_popover.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../chat/widgets/bottom_tools_sheet.dart';
 import '../../chat/widgets/context_management_sheet.dart';
@@ -685,7 +678,7 @@ class _HomePageState extends State<HomePage>
               onInvertSelection: _controller.invertSelection,
             )
           : null,
-      body: _wrapWithDropTarget(_buildMobileBody(context, cs)),
+      body: _buildMobileBody(context, cs),
     );
   }
 
@@ -828,30 +821,13 @@ class _HomePageState extends State<HomePage>
               onInvertSelection: _controller.invertSelection,
             )
           : null,
-      body: _wrapWithDropTarget(_buildTabletBody(context, cs)),
+      body: _buildTabletBody(context, cs),
     );
   }
 
   Future<void> _openSelectionMiniMap() async {
     final collapsed = _controller.allCollapsedMessagesForCurrentConversation();
     if (collapsed.isEmpty) return;
-
-    if (PlatformUtils.isDesktop &&
-        _selectionActionBarKey.currentContext != null) {
-      await showDesktopMiniMapPopover(
-        context,
-        anchorKey: _selectionActionBarKey,
-        messages: collapsed,
-        selecting: true,
-        selectedMessageIds: _controller.selectedItems,
-        selectionListenable: _controller,
-        onToggleSelection: (id) => _controller.toggleSelection(
-          id,
-          !_controller.selectedItems.contains(id),
-        ),
-      );
-      return;
-    }
 
     await showMiniMapSheet(
       context,
@@ -1232,15 +1208,7 @@ class _HomePageState extends State<HomePage>
       onOpenMcp: () {
         final a = context.read<AssistantProvider>().currentAssistant;
         if (a != null) {
-          if (PlatformUtils.isDesktop) {
-            showDesktopMcpServersPopover(
-              context,
-              anchorKey: _inputBarKey,
-              assistantId: a.id,
-            );
-          } else {
-            showAssistantMcpSheet(context, assistantId: a.id);
-          }
+          showAssistantMcpSheet(context, assistantId: a.id);
         }
       },
       onLongPressMcp: () {
@@ -1387,102 +1355,28 @@ class _HomePageState extends State<HomePage>
     final collapsed = _controller.allCollapsedMessagesForCurrentConversation();
     if (collapsed.isEmpty) return;
 
-    String? selectedId;
-    if (PlatformUtils.isDesktop) {
-      selectedId = await showDesktopMiniMapPopover(
-        context,
-        anchorKey: _inputBarKey,
-        messages: collapsed,
-      );
-    } else {
-      selectedId = await showMiniMapSheet(context, collapsed);
-    }
+    final selectedId = await showMiniMapSheet(context, collapsed);
     if (!mounted) return;
     if (selectedId != null && selectedId.isNotEmpty) {
       await _controller.scrollToMessageId(selectedId);
     }
   }
 
-  Widget _wrapWithDropTarget(Widget child) {
-    if (!_controller.isDesktopPlatform) return child;
-    return DropTarget(
-      onDragEntered: (_) {
-        _controller.setDragHovering(true);
-      },
-      onDragExited: (_) {
-        _controller.setDragHovering(false);
-      },
-      onDragDone: (details) async {
-        _controller.setDragHovering(false);
-        try {
-          final files = details.files;
-          await _controller.onFilesDroppedDesktop(files);
-        } catch (_) {}
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          child,
-          if (_controller.isDragHovering)
-            IgnorePointer(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.12),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surface.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.4),
-                        width: 2,
-                      ),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)!.homePageDropToUpload,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: AppFontWeights.semibold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget _wrapWithDropTarget(Widget child) => child;
 
   // ============================================================================
   // Action Handlers (UI-specific, not in controller)
   // ============================================================================
 
   void _openSearchSettings() {
-    if (PlatformUtils.isDesktop) {
-      showDesktopSearchProviderPopover(context, anchorKey: _inputBarKey);
-    } else {
-      showSearchSettingsSheet(context);
-    }
+    showSearchSettingsSheet(context);
   }
 
   Future<void> _openReasoningSettings() async {
-    if (PlatformUtils.isDesktop) {
-      await showDesktopReasoningBudgetPopover(context, anchorKey: _inputBarKey);
-    } else {
-      await showReasoningBudgetSheet(context);
-    }
+    await showReasoningBudgetSheet(context);
   }
 
   Future<void> _openInstructionInjectionPopover() async {
-    final isDesktop = PlatformUtils.isDesktop;
     final assistantId = context.read<AssistantProvider>().currentAssistantId;
     final provider = context.read<InstructionInjectionProvider>();
     await provider.initialize();
@@ -1490,16 +1384,7 @@ class _HomePageState extends State<HomePage>
     final items = provider.items;
     if (items.isEmpty) return;
 
-    if (isDesktop) {
-      await showDesktopInstructionInjectionPopover(
-        context,
-        anchorKey: _inputBarKey,
-        items: items,
-        assistantId: assistantId,
-      );
-    } else {
-      await showInstructionInjectionSheet(context, assistantId: assistantId);
-    }
+    await showInstructionInjectionSheet(context, assistantId: assistantId);
   }
 
   void _openSkills() {
@@ -1642,19 +1527,11 @@ class _HomePageState extends State<HomePage>
     _controller.dismissKeyboard();
 
     QuickPhrase? selected;
-    if (PlatformUtils.isDesktop) {
-      selected = await showDesktopQuickPhrasePopover(
-        context,
-        anchorKey: _inputBarKey,
-        phrases: allAvailable,
-      );
-    } else {
-      selected = await showQuickPhraseMenu(
-        context: context,
-        phrases: allAvailable,
-        position: position,
-      );
-    }
+    selected = await showQuickPhraseMenu(
+      context: context,
+      phrases: allAvailable,
+      position: position,
+    );
 
     if (selected != null && mounted) {
       await _controller.handleQuickPhraseSelection(selected);
