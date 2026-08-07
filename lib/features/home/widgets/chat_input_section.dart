@@ -71,6 +71,7 @@ class ChatInputSection extends StatelessWidget {
     final mid = modelIds.modelId;
     _enforceModelCapabilities(context, settings, ap, a, pk, mid);
     final isDesktop = _isDesktopPlatform(context);
+    final skillsActive = _isSkillsActive(context, a);
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: inputController,
       builder: (context, inputValue, _) {
@@ -89,7 +90,7 @@ class ChatInputSection extends StatelessWidget {
           onLongPressSelectModel: onLongPressSelectModel,
           conversationId: conversationId,
           onOpenMcp: onOpenMcp,
-          onOpenSkills: onOpenSkills,
+          onOpenSkills: skillsActive ? onOpenSkills : null,
           onLongPressMcp: onLongPressMcp,
           onStop: onStop,
           modelIcon: (pk != null && mid != null) ? CurrentModelIcon(providerKey: pk, modelId: mid, size: 40, withBackground: true, backgroundColor: Colors.transparent) : null,
@@ -109,7 +110,7 @@ class ChatInputSection extends StatelessWidget {
           onCancelQueuedInput: onCancelQueuedInput,
           showMcpButton: _shouldShowMcpButton(context, settings, a, pk, mid),
           mcpActive: _isMcpActive(context, a),
-          skillsActive: _isSkillsActive(context, a),
+          skillsActive: skillsActive,
           showQuickPhraseButton: _hasQuickPhrases(context, a),
           onQuickPhrase: onQuickPhrase,
           onLongPressQuickPhrase: onLongPressQuickPhrase,
