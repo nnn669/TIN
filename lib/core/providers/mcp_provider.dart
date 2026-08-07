@@ -756,7 +756,7 @@ class McpProvider extends ChangeNotifier {
             } else if (id == _builtinImagesId || name == _builtinImagesName) {
               builtinEnabledById[_builtinImagesId] = enabled;
             } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
-              continue;
+              return;
             } else if (id == _builtinFetchId || name == _builtinFetchName) {
               builtinEnabledById[_builtinFetchId] = enabled;
             } else {
@@ -1220,7 +1220,7 @@ class McpProvider extends ChangeNotifier {
       } catch (_) {}
     }
     final text = buf.toString().trim();
-    if (text.isEmpty) return '(empty result)';
+    if (text.isEmpty) return '(empty result)'';
     return text.length <= 1600 ? text : '${text.substring(0, 1600)}…';
   }
 
