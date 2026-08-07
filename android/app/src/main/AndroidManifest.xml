@@ -12,7 +12,6 @@
         android:label="${appLabel}"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
