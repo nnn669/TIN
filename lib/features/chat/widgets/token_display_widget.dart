@@ -54,12 +54,6 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
       (widget.promptTokens != null && widget.promptTokens! > 0) ||
       (widget.completionTokens != null && widget.completionTokens! > 0);
 
-  bool get _hasCacheHitRateData =>
-      widget.promptTokens != null &&
-      widget.promptTokens! > 0 &&
-      widget.cachedTokens != null &&
-      widget.cachedTokens! >= 0;
-
   static const double _estimatedPopupHeight = 120;
 
   /// Lazily create animation controller on first use (when popup actually opens).
@@ -255,27 +249,13 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
     }
   }
 
-  String? _cacheHitRateLabel(BuildContext context) {
-    if (!_hasCacheHitRateData) return null;
-    final promptTokens = widget.promptTokens!;
-    final cachedTokens = widget.cachedTokens!;
-    final rate = cachedTokens / promptTokens * 100;
-    final formattedRate = rate.toStringAsFixed(1);
-    final isZh = Localizations.localeOf(context).languageCode == 'zh';
-    return isZh ? '缓存率$formattedRate%' : 'cache hit $formattedRate%';
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final cacheHitRateLabel = _cacheHitRateLabel(context);
-    final tokenLabel = l10n.tokenDetailTotalTokens(widget.totalTokens);
 
     final label = Text(
-      cacheHitRateLabel == null
-          ? tokenLabel
-          : '$tokenLabel · $cacheHitRateLabel',
+      l10n.tokenDetailTotalTokens(widget.totalTokens),
       style: TextStyle(
         fontSize: 11,
         color: cs.onSurface.withValues(alpha: 0.5),
