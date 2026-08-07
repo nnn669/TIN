@@ -20,6 +20,9 @@ import 'storage_space_page.dart';
 import '../../../core/services/storage/storage_usage_service.dart';
 import '../../../core/services/haptics.dart';
 import 'package:tin/theme/app_font_weights.dart';
+import '../../home/widgets/chat_fluid_motion_controller.dart';
+
+enum _ThemeModeChoice { system, light, dark, fluid }
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -41,9 +44,14 @@ class SettingsPage extends StatelessWidget {
       }
     }
 
+    String fluidModeLabel() =>
+        Localizations.localeOf(context).languageCode == 'zh'
+        ? '流体动效'
+        : 'Fluid motion';
+
     Future<void> pickThemeMode() async {
       final settingsProvider = context.read<SettingsProvider>();
-      final selected = await showModalBottomSheet<ThemeMode>(
+      final selected = await showModalBottomSheet<_ThemeModeChoice>(
         context: context,
         backgroundColor: cs.surface,
         shape: const RoundedRectangleBorder(
@@ -60,21 +68,28 @@ class SettingsPage extends StatelessWidget {
                     ctx,
                     icon: Lucide.Monitor,
                     label: modeLabel(ThemeMode.system),
-                    onTap: () => Navigator.of(ctx).pop(ThemeMode.system),
+                    onTap: () => Navigator.of(ctx).pop(_ThemeModeChoice.system),
                   ),
                   _sheetDivider(ctx),
                   _sheetOption(
                     ctx,
                     icon: Lucide.Sun,
                     label: modeLabel(ThemeMode.light),
-                    onTap: () => Navigator.of(ctx).pop(ThemeMode.light),
+                    onTap: () => Navigator.of(ctx).pop(_ThemeModeChoice.light),
                   ),
                   _sheetDivider(ctx),
                   _sheetOption(
                     ctx,
                     icon: Lucide.Moon,
                     label: modeLabel(ThemeMode.dark),
-                    onTap: () => Navigator.of(ctx).pop(ThemeMode.dark),
+                    onTap: () => Navigator.of(ctx).pop(_ThemeModeChoice.dark),
+                  ),
+                  _sheetDivider(ctx),
+                  _sheetOption(
+                    ctx,
+                    icon: Lucide.Waves,
+                    label: fluidModeLabel(),
+                    onTap: () => Navigator.of(ctx).pop(_ThemeModeChoice.fluid),
                   ),
                 ],
               ),
@@ -82,8 +97,17 @@ class SettingsPage extends StatelessWidget {
           );
         },
       );
-      if (selected != null) {
-        await settingsProvider.setThemeMode(selected);
+      if (selected == null) return;
+      final fluidEnabled = selected == _ThemeModeChoice.fluid;
+      await ChatFluidMotionController.instance.setEnabled(fluidEnabled);
+      if (!fluidEnabled) {
+        final mode = switch (selected) {
+          _ThemeModeChoice.system => ThemeMode.system,
+          _ThemeModeChoice.light => ThemeMode.light,
+          _ThemeModeChoice.dark => ThemeMode.dark,
+          _ThemeModeChoice.fluid => settingsProvider.themeMode,
+        };
+        await settingsProvider.setThemeMode(mode);
       }
     }
 
@@ -149,7 +173,9 @@ class SettingsPage extends StatelessWidget {
                 context,
                 icon: Lucide.SunMoon,
                 label: l10n.settingsPageColorMode,
-                detailText: modeLabel(settings.themeMode),
+                detailText: ChatFluidMotionController.instance.enabled
+                    ? fluidModeLabel()
+                    : modeLabel(settings.themeMode),
                 onTap: pickThemeMode,
               ),
               _iosDivider(context),
