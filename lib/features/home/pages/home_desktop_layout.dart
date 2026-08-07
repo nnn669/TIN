@@ -18,8 +18,6 @@ import '../../../shared/animations/widgets.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../utils/brand_assets.dart';
 import '../../../utils/sandbox_path_resolver.dart';
-import '../../../desktop/hotkeys/chat_action_bus.dart';
-import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import '../widgets/assistant_avatar.dart';
 import '../widgets/assistant_entry_actions.dart';
 import 'package:tin/theme/app_font_weights.dart';
@@ -185,12 +183,8 @@ class HomeDesktopScaffold extends StatelessWidget {
       globalSearchMode: globalSearchMode,
       globalSearchQuery: globalSearchQuery,
       onGlobalSearchQueryChanged: onGlobalSearchQueryChanged,
-      onEnterGlobalSearch: () {
-        ChatActionBus.instance.fire(ChatAction.enterGlobalSearch);
-      },
-      onExitGlobalSearch: () {
-        ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
-      },
+      onEnterGlobalSearch: onEnterGlobalSearch,
+      onExitGlobalSearch: onExitGlobalSearch,
       onOpenGlobalSearchResult: onOpenGlobalSearchResult,
       onNewConversation: ({closeDrawer = true}) => onNewConversation(),
       onSelectConversation: (id, {closeDrawer = true}) =>
@@ -536,7 +530,6 @@ class HomeDesktopScaffold extends StatelessWidget {
     if (!tabletSidebarOpen) {
       onToggleSidebar();
     }
-    DesktopSidebarTabBus.instance.switchToTopics();
   }
 
   List<Widget> _buildActions(BuildContext context, bool topicsOnRight) {

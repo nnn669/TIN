@@ -2,21 +2,17 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:system_fonts/system_fonts.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'core/providers/assistant_provider.dart';
 import 'core/providers/backup_provider.dart';
 import 'core/providers/backup_reminder_provider.dart';
 import 'core/providers/chat_provider.dart';
-import 'core/providers/hotkey_provider.dart';
 import 'core/providers/instruction_injection_group_provider.dart';
 import 'core/providers/instruction_injection_provider.dart';
 import 'core/providers/mcp_provider.dart';
@@ -34,9 +30,6 @@ import 'core/services/chat/chat_service.dart';
 import 'core/services/logging/flutter_logger.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
 import 'core/services/notification_service.dart';
-import 'desktop/desktop_home_page.dart';
-import 'desktop/desktop_tray_controller.dart';
-import 'desktop/desktop_window_controller.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/home/services/ask_user_interaction_service.dart';
 import 'features/home/services/tool_approval_service.dart';
@@ -56,7 +49,6 @@ Future<void> main() async {
       FlutterLogger.installGlobalHandlers();
       await _restoreFlutterLogState();
       _trimImageCache();
-      await _initDesktopWindow();
       await SandboxPathResolver.init();
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       runApp(const MyApp());
@@ -73,7 +65,9 @@ Future<void> main() async {
 Future<void> _restoreFlutterLogState() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    await FlutterLogger.setEnabled(prefs.getBool('flutter_log_enabled_v1') ?? false);
+    await FlutterLogger.setEnabled(
+      prefs.getBool('flutter_log_enabled_v1') ?? false,
+    );
   } catch (_) {}
 }
 
@@ -85,25 +79,7 @@ void _trimImageCache() {
   } catch (_) {}
 }
 
-Future<void> _initDesktopWindow() async {
-  if (!isDesktopPlatform) return;
-  try {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windowManager.ensureInitialized();
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-    }
-    await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
-  } catch (_) {}
-}
-
-bool get isDesktopPlatform {
-  if (kIsWeb) return false;
-  return defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux;
-}
-
-bool get isAndroidPlatform => !kIsWeb && Platform.isAndroid;
+bool get isAndroidPlatform => Platform.isAndroid;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -127,7 +103,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ToolApprovalService()),
         ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
         ChangeNotifierProvider(
-          create: (ctx) => AssistantProvider(chatService: ctx.read<ChatService>()),
+          create: (ctx) => AssistantProvider(
+            chatService: ctx.read<ChatService>(),
+          ),
         ),
         ChangeNotifierProvider(create: (_) => TagProvider()),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
@@ -138,7 +116,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => InstructionInjectionGroupProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => BackupReminderProvider()),
-        ChangeNotifierProvider(create: (_) => HotkeyProvider()),
         ChangeNotifierProvider(
           create: (ctx) => BackupProvider(
             chatService: ctx.read<ChatService>(),
@@ -165,21 +142,15 @@ class _AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<_AppRoot> {
-  final SystemFonts _systemFonts = SystemFonts();
-  final Set<String> _loadedSystemFonts = <String>{};
-
   bool _didCheckUpdates = false;
   bool _didEnsureLocalizedDefaults = false;
-  bool _didInitDesktopHotkeys = false;
   bool _didSyncAndroidBackground = false;
   bool? _lastDynamicColorSupported;
-  String? _lastTraySyncKey;
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     settings.applyGlobalProxyOverridesIfNeeded();
-    _scheduleDesktopFontLoads(settings);
 
     if (settings.showAppUpdates && !_didCheckUpdates) {
       _didCheckUpdates = true;
@@ -194,9 +165,9 @@ class _AppRootState extends State<_AppRoot> {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-        final dynSupported = isAndroid && (lightDynamic != null || darkDynamic != null);
+        final dynSupported =
+            isAndroid && (lightDynamic != null || darkDynamic != null);
         _scheduleDynamicColorCapabilityUpdate(settings, dynSupported);
-        _scheduleDesktopHotkeyInit();
         _scheduleAndroidBackgroundSync(settings);
 
         final useDynamicColor = isAndroid && settings.useDynamicColor;
@@ -229,10 +200,9 @@ class _AppRootState extends State<_AppRoot> {
           darkTheme: themedDark,
           themeMode: settings.themeMode,
           navigatorObservers: <NavigatorObserver>[routeObserver],
-          home: _selectHome(),
+          home: const HomePage(),
           builder: (ctx, child) {
             _scheduleLocalizedDefaults(ctx);
-            _scheduleDesktopTraySync(ctx);
             final appWithOverlays = AppOverlays(
               child: child ?? const SizedBox.shrink(),
             );
@@ -251,35 +221,6 @@ class _AppRootState extends State<_AppRoot> {
     );
   }
 
-  void _scheduleDesktopFontLoads(SettingsProvider settings) {
-    if (!isDesktopPlatform) return;
-    final families = <String>{
-      if (_wantsSystemAppFont(settings)) settings.appFontFamily!,
-      if (_wantsSystemCodeFont(settings)) settings.codeFontFamily!,
-    }..removeWhere((font) => font.isEmpty || _loadedSystemFonts.contains(font));
-    if (families.isEmpty) return;
-    _loadedSystemFonts.addAll(families);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      for (final family in families) {
-        try {
-          await _systemFonts.loadFont(family);
-        } catch (_) {}
-      }
-    });
-  }
-
-  bool _wantsSystemAppFont(SettingsProvider settings) {
-    return settings.appFontFamily?.isNotEmpty == true &&
-        !settings.appFontIsGoogle &&
-        (settings.appFontLocalAlias == null || settings.appFontLocalAlias!.isEmpty);
-  }
-
-  bool _wantsSystemCodeFont(SettingsProvider settings) {
-    return settings.codeFontFamily?.isNotEmpty == true &&
-        !settings.codeFontIsGoogle &&
-        (settings.codeFontLocalAlias == null || settings.codeFontLocalAlias!.isEmpty);
-  }
-
   void _scheduleDynamicColorCapabilityUpdate(
     SettingsProvider settings,
     bool supported,
@@ -289,17 +230,6 @@ class _AppRootState extends State<_AppRoot> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         settings.setDynamicColorSupported(supported);
-      } catch (_) {}
-    });
-  }
-
-  void _scheduleDesktopHotkeyInit() {
-    if (_didInitDesktopHotkeys || !isDesktopPlatform) return;
-    _didInitDesktopHotkeys = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      try {
-        await context.read<HotkeyProvider>().initialize();
       } catch (_) {}
     });
   }
@@ -349,26 +279,6 @@ class _AppRootState extends State<_AppRoot> {
         ctx.read<UserProvider>().setDefaultNameIfUnset(
               l10n.userProviderDefaultUserName,
             );
-      } catch (_) {}
-    });
-  }
-
-  void _scheduleDesktopTraySync(BuildContext ctx) {
-    if (!isDesktopPlatform) return;
-    final l10n = AppLocalizations.of(ctx);
-    if (l10n == null) return;
-    final settings = ctx.read<SettingsProvider>();
-    final syncKey = '${settings.desktopShowTray}:${settings.desktopMinimizeToTrayOnClose}:${Localizations.localeOf(ctx)}';
-    if (_lastTraySyncKey == syncKey) return;
-    _lastTraySyncKey = syncKey;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      try {
-        await DesktopTrayController.instance.syncFromSettings(
-          l10n,
-          showTray: settings.desktopShowTray,
-          minimizeToTrayOnClose: settings.desktopMinimizeToTrayOnClose,
-        );
       } catch (_) {}
     });
   }
@@ -442,9 +352,4 @@ class _AppRootState extends State<_AppRoot> {
             systemNavigationBarContrastEnforced: false,
           );
   }
-}
-
-Widget _selectHome() {
-  if (kIsWeb) return const HomePage();
-  return isDesktopPlatform ? const DesktopHomePage() : const HomePage();
 }
