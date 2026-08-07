@@ -22,33 +22,18 @@ Future<InternetAddress?> _resolveProxyAddress(String host) async {
 
 ConnectionTask<Socket> _directConnection(Uri uri, SecurityContext? context) {
   if (uri.scheme == 'https') {
-    final Future<SecureSocket> socket = SecureSocket.connect(
-      uri.host,
-      uri.port,
-      context: context,
-    );
-    return ConnectionTask.fromSocket(
-      socket,
-      () async => (await socket).close(),
-    );
+    final Future<SecureSocket> socket = SecureSocket.connect(uri.host, uri.port, context: context);
+    return ConnectionTask.fromSocket(socket, () async => (await socket).close());
   }
   final Future<Socket> socket = Socket.connect(uri.host, uri.port);
   return ConnectionTask.fromSocket(socket, () async => (await socket).close());
 }
 
-Stream<List<int>> _normalizeStreamingResponse(
-  Stream<List<int>> source, {
-  required bool requestedEventStream,
-  required bool responseIsJson,
-}) async* {
+Stream<List<int>> _normalizeStreamingResponse(Stream<List<int>> source, {required bool requestedEventStream, required bool responseIsJson}) async* {
   if (!requestedEventStream || !responseIsJson) {
     yield* source;
     return;
   }
-
-  // Some OpenAI-compatible providers ignore stream=true and return one normal
-  // JSON response. Wrap it as one SSE event so the existing provider parser can
-  // consume it without duplicating JSON parsing at another layer.
   var started = false;
   await for (final chunk in source) {
     if (!started) {
@@ -68,34 +53,24 @@ class NetworkProxyConfig {
   final String? username;
   final String? password;
 
-  const NetworkProxyConfig({
-    required this.enabled,
-    this.type = 'http',
-    required this.host,
-    required this.port,
-    this.username,
-    this.password,
-  });
-
+  const NetworkProxyConfig({required this.enabled, this.type = 'http', required this.host, required this.port, this.username, this.password});
   bool get isValid => enabled && host.trim().isNotEmpty && port > 0;
 }
 
 class DioHttpClient extends http.BaseClient {
+  static const Duration _connectTimeout = Duration(seconds: 10);
+  static const Duration _sendTimeout = Duration(seconds: 20);
+  static const Duration _receiveTimeout = Duration(seconds: 45);
+  static const Duration _socketIdleTimeout = Duration(seconds: 45);
+
   DioHttpClient({this._proxy, CancelToken? cancelToken})
     : _cancelToken = cancelToken ?? CancelToken(),
-      _dio = Dio(
-        BaseOptions(
-          connectTimeout: null,
-          sendTimeout: null,
-          receiveTimeout: null,
-          validateStatus: (_) => true,
-        ),
-      ) {
+      _dio = Dio(BaseOptions(connectTimeout: _connectTimeout, sendTimeout: _sendTimeout, receiveTimeout: _receiveTimeout, validateStatus: (_) => true)) {
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
-        client.connectionTimeout = null;
-        client.idleTimeout = const Duration(days: 3650);
+        client.connectionTimeout = _connectTimeout;
+        client.idleTimeout = _socketIdleTimeout;
         if (_proxy?.isValid == true) {
           final p = _proxy!;
           if (p.type == 'socks5') {
@@ -103,47 +78,19 @@ class DioHttpClient extends http.BaseClient {
             client.connectionFactory = (uri, proxyHost, proxyPort) async {
               proxyAddrFuture ??= _resolveProxyAddress(p.host);
               final proxyAddr = await proxyAddrFuture;
-              if (proxyAddr == null) {
-                return _directConnection(uri, null);
-              }
-
-              final proxies = <socks.ProxySettings>[
-                socks.ProxySettings(
-                  proxyAddr,
-                  p.port,
-                  username: p.username,
-                  password: p.password,
-                ),
-              ];
-
-              final socket = socks.SocksTCPClient.connect(
-                proxies,
-                InternetAddress(uri.host, type: InternetAddressType.unix),
-                uri.port,
-              );
-
+              if (proxyAddr == null) return _directConnection(uri, null);
+              final proxies = <socks.ProxySettings>[socks.ProxySettings(proxyAddr, p.port, username: p.username, password: p.password)];
+              final socket = socks.SocksTCPClient.connect(proxies, InternetAddress(uri.host, type: InternetAddressType.unix), uri.port);
               if (uri.scheme == 'https') {
                 final Future<SecureSocket> secureSocket;
-                return ConnectionTask.fromSocket(
-                  secureSocket = (await socket).secure(uri.host),
-                  () async => (await secureSocket).close(),
-                );
+                return ConnectionTask.fromSocket(secureSocket = (await socket).secure(uri.host), () async => (await secureSocket).close());
               }
-
-              return ConnectionTask.fromSocket(
-                socket,
-                () async => (await socket).close(),
-              );
+              return ConnectionTask.fromSocket(socket, () async => (await socket).close());
             };
           } else {
             client.findProxy = (_) => 'PROXY ${p.host}:${p.port}';
             if (p.username != null && p.username!.trim().isNotEmpty) {
-              client.addProxyCredentials(
-                p.host,
-                p.port,
-                '',
-                HttpClientBasicCredentials(p.username!, p.password ?? ''),
-              );
+              client.addProxyCredentials(p.host, p.port, '', HttpClientBasicCredentials(p.username!, p.password ?? ''));
             }
           }
         }
@@ -158,11 +105,7 @@ class DioHttpClient extends http.BaseClient {
 
   @override
   void close() {
-    // Do not cancel the shared token here: tool-call follow-up requests reuse
-    // this client after an earlier response stream naturally stops.
-    try {
-      _dio.close();
-    } catch (_) {}
+    try { _dio.close(); } catch (_) {}
   }
 
   @override
@@ -171,161 +114,79 @@ class DioHttpClient extends http.BaseClient {
     final uri = request.url;
     final method = request.method.toUpperCase();
     final requestStarted = Stopwatch()..start();
-
     List<int> bodyBytes = const <int>[];
-    try {
-      bodyBytes = await request.finalize().toBytes();
-    } catch (_) {}
-
+    try { bodyBytes = await request.finalize().toBytes(); } catch (_) {}
     final reqHeaders = Map<String, String>.from(request.headers);
     reqHeaders.putIfAbsent('User-Agent', () => 'TIN');
-
     if (RequestLogger.enabled) {
       RequestLogger.logLine('[REQ $reqId] $method $uri');
-      if (reqHeaders.isNotEmpty) {
-        RequestLogger.logLine(
-          '[REQ $reqId] headers=${RequestLogger.encodeObject(reqHeaders)}',
-        );
-      }
+      if (reqHeaders.isNotEmpty) RequestLogger.logLine('[REQ $reqId] headers=${RequestLogger.encodeObject(reqHeaders)}');
       if (bodyBytes.isNotEmpty) {
         final decoded = RequestLogger.safeDecodeUtf8(bodyBytes);
-        final bodyText = decoded.isNotEmpty
-            ? decoded
-            : 'base64:${base64Encode(bodyBytes)}';
-        RequestLogger.logLine(
-          '[REQ $reqId] body=${RequestLogger.escape(bodyText)}',
-        );
+        RequestLogger.logLine('[REQ $reqId] body=${RequestLogger.escape(decoded.isNotEmpty ? decoded : 'base64:${base64Encode(bodyBytes)}')}');
       }
     }
-
     try {
-      final resp = await _dio.request<ResponseBody>(
-        uri.toString(),
-        data: bodyBytes.isEmpty ? null : bodyBytes,
-        options: Options(
-          method: method,
-          headers: reqHeaders,
-          responseType: ResponseType.stream,
-          followRedirects: request.followRedirects,
-          maxRedirects: request.maxRedirects,
-          receiveDataWhenStatusError: true,
-        ),
-        cancelToken: _cancelToken,
-      );
-
+      final resp = await _dio.request<ResponseBody>(uri.toString(), data: bodyBytes.isEmpty ? null : bodyBytes, options: Options(method: method, headers: reqHeaders, responseType: ResponseType.stream, followRedirects: request.followRedirects, maxRedirects: request.maxRedirects, receiveDataWhenStatusError: true), cancelToken: _cancelToken);
       final statusCode = resp.statusCode ?? 0;
       final headers = <String, String>{};
-      resp.headers.forEach((name, values) {
-        if (values.isEmpty) return;
-        headers[name] = values.join(',');
-      });
-
+      resp.headers.forEach((name, values) { if (values.isNotEmpty) headers[name] = values.join(','); });
       final contentType = (headers['content-type'] ?? '').toLowerCase();
-      final requestedEventStream =
-          (reqHeaders['Accept'] ?? reqHeaders['accept'] ?? '')
-              .toLowerCase()
-              .contains('text/event-stream');
-      final responseIsJson =
-          contentType.contains('application/json') ||
-          contentType.contains('+json');
-
+      final requestedEventStream = (reqHeaders['Accept'] ?? reqHeaders['accept'] ?? '').toLowerCase().contains('text/event-stream');
+      final responseIsJson = contentType.contains('application/json') || contentType.contains('+json');
       if (RequestLogger.enabled) {
-        RequestLogger.logLine(
-          '[RES $reqId] status=$statusCode headers_ms=${requestStarted.elapsedMilliseconds}',
-        );
-        if (headers.isNotEmpty) {
-          RequestLogger.logLine(
-            '[RES $reqId] headers=${RequestLogger.encodeObject(headers)}',
-          );
-        }
-        if (requestedEventStream && responseIsJson) {
-          RequestLogger.logLine('[RES $reqId] normalized_json_as_sse=true');
-        }
+        RequestLogger.logLine('[RES $reqId] status=$statusCode headers_ms=${requestStarted.elapsedMilliseconds}');
+        if (headers.isNotEmpty) RequestLogger.logLine('[RES $reqId] headers=${RequestLogger.encodeObject(headers)}');
+        if (requestedEventStream && responseIsJson) RequestLogger.logLine('[RES $reqId] normalized_json_as_sse=true');
       }
-
       final body = resp.data!;
-      final int? contentLength = body.contentLength >= 0
-          ? body.contentLength
-          : null;
-      final normalizedStream = _normalizeStreamingResponse(
-        body.stream,
-        requestedEventStream: requestedEventStream,
-        responseIsJson: responseIsJson,
-      );
+      final int? contentLength = body.contentLength >= 0 ? body.contentLength : null;
+      final normalizedStream = _normalizeStreamingResponse(body.stream, requestedEventStream: requestedEventStream, responseIsJson: responseIsJson);
       final controller = StreamController<List<int>>(sync: true);
       StreamSubscription<List<int>>? bodySubscription;
       var sawBodyBytes = false;
+      Timer? idleTimer;
+      void armIdleTimer() {
+        idleTimer?.cancel();
+        idleTimer = Timer(_receiveTimeout, () {
+          bodySubscription?.cancel();
+          controller.addError(TimeoutException('No response data received within ${_receiveTimeout.inSeconds} seconds'));
+          controller.close();
+        });
+      }
       controller.onListen = () {
-        bodySubscription = normalizedStream.listen(
-          (chunk) {
-            if (!sawBodyBytes && chunk.isNotEmpty) {
-              sawBodyBytes = true;
-              if (RequestLogger.enabled) {
-                RequestLogger.logLine(
-                  '[RES $reqId] first_byte_ms=${requestStarted.elapsedMilliseconds}',
-                );
-              }
-            }
-            controller.add(chunk);
-            if (RequestLogger.enabled && RequestLogger.saveOutput) {
-              final s = RequestLogger.safeDecodeUtf8(chunk);
-              if (s.isNotEmpty) {
-                RequestLogger.logLine(
-                  '[RES $reqId] chunk=${RequestLogger.escape(s)}',
-                );
-              }
-            }
-          },
-          onError: (Object e, StackTrace st) {
-            if (RequestLogger.enabled) {
-              RequestLogger.logLine(
-                '[RES $reqId] error=${RequestLogger.escape(e.toString())}',
-              );
-            }
-            controller.addError(e, st);
-            controller.close();
-          },
-          onDone: () {
-            if (RequestLogger.enabled) {
-              RequestLogger.logLine(
-                '[RES $reqId] done_ms=${requestStarted.elapsedMilliseconds}',
-              );
-            }
-            controller.close();
-          },
-          cancelOnError: false,
-        );
+        armIdleTimer();
+        bodySubscription = normalizedStream.listen((chunk) {
+          if (!sawBodyBytes && chunk.isNotEmpty) {
+            sawBodyBytes = true;
+            if (RequestLogger.enabled) RequestLogger.logLine('[RES $reqId] first_byte_ms=${requestStarted.elapsedMilliseconds}');
+          }
+          armIdleTimer();
+          controller.add(chunk);
+          if (RequestLogger.enabled && RequestLogger.saveOutput) {
+            final s = RequestLogger.safeDecodeUtf8(chunk);
+            if (s.isNotEmpty) RequestLogger.logLine('[RES $reqId] chunk=${RequestLogger.escape(s)}');
+          }
+        }, onError: (Object e, StackTrace st) {
+          idleTimer?.cancel();
+          if (RequestLogger.enabled) RequestLogger.logLine('[RES $reqId] error=${RequestLogger.escape(e.toString())}');
+          controller.addError(e, st);
+          controller.close();
+        }, onDone: () {
+          idleTimer?.cancel();
+          if (RequestLogger.enabled) RequestLogger.logLine('[RES $reqId] done_ms=${requestStarted.elapsedMilliseconds}');
+          controller.close();
+        }, cancelOnError: false);
       };
       controller.onPause = () => bodySubscription?.pause();
       controller.onResume = () => bodySubscription?.resume();
-      // Do not cancel the Dio body stream here. Provider parsers may stop one
-      // response round before issuing a tool-call follow-up with this client.
-      controller.onCancel = () {};
-
-      return http.StreamedResponse(
-        http.ByteStream(controller.stream),
-        statusCode,
-        contentLength: responseIsJson && requestedEventStream
-            ? null
-            : contentLength,
-        request: request,
-        headers: headers,
-        isRedirect: resp.isRedirect,
-        reasonPhrase: resp.statusMessage,
-      );
+      controller.onCancel = () { idleTimer?.cancel(); bodySubscription?.cancel(); };
+      return http.StreamedResponse(http.ByteStream(controller.stream), statusCode, contentLength: responseIsJson && requestedEventStream ? null : contentLength, request: request, headers: headers, isRedirect: resp.isRedirect, reasonPhrase: resp.statusMessage);
     } on DioException catch (e) {
-      if (RequestLogger.enabled) {
-        RequestLogger.logLine(
-          '[RES $reqId] dio_error=${RequestLogger.escape(e.toString())}',
-        );
-      }
+      if (RequestLogger.enabled) RequestLogger.logLine('[RES $reqId] dio_error=${RequestLogger.escape(e.toString())}');
       throw http.ClientException(e.toString(), uri);
     } catch (e) {
-      if (RequestLogger.enabled) {
-        RequestLogger.logLine(
-          '[RES $reqId] error=${RequestLogger.escape(e.toString())}',
-        );
-      }
+      if (RequestLogger.enabled) RequestLogger.logLine('[RES $reqId] error=${RequestLogger.escape(e.toString())}');
       throw http.ClientException(e.toString(), uri);
     }
   }
