@@ -54,7 +54,7 @@ class GenerationController {
   }
 
   bool isReasoningModel(String providerKey, String modelId) {
-    final settings = contextProvider.read<SettingsProvider>();
+    final settings = contextProvider.read();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
@@ -72,7 +72,7 @@ class GenerationController {
   }
 
   bool isToolModel(String providerKey, String modelId) {
-    final settings = contextProvider.read<SettingsProvider>();
+    final settings = contextProvider.read();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
