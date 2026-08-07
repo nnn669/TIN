@@ -14,7 +14,7 @@ class ToolCallResultCache {
   /// Only explicitly read-only web/search tools are eligible. This prevents
   /// memory, app-control, local, and arbitrary MCP mutations from being
   /// replayed from a previous result.
-  Future<String>? lookup(String name, Map args) {
+  Future<String>? lookup(String name, Map<String, dynamic> args) {
     if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return null;
     return _results[ToolLoopGuard.signatureOf(name, args)];
   }
@@ -23,13 +23,15 @@ class ToolCallResultCache {
   /// its successful result for the rest of the assistant response.
   Future<String> run(
     String name,
-    Map args,
+    Map<String, dynamic> args,
     Future<String> Function() execute,
   ) {
     if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return execute();
+
     final signature = ToolLoopGuard.signatureOf(name, args);
     final cached = _results[signature];
     if (cached != null) return cached;
+
     late final Future<String> pending;
     pending = _runAndKeepSuccessfulResult(
       signature,
@@ -91,7 +93,7 @@ class ToolLoopGuard {
   int get callCount => _calls;
 
   /// Builds a stable signature for one tool call.
-  static String signatureOf(String name, Map args) {
+  static String signatureOf(String name, Map<String, dynamic> args) {
     return '$name\u0000${jsonEncode(_stableValue(args))}';
   }
 
@@ -125,7 +127,7 @@ class ToolLoopGuard {
   /// cache flow and does not change the outcome.
   String? evaluate(
     String name,
-    Map args, {
+    Map<String, dynamic> args, {
     bool cached = false,
   }) {
     _calls += 1;
@@ -135,7 +137,7 @@ class ToolLoopGuard {
   static Object? _stableValue(Object? value) {
     if (value is Map) {
       final keys = value.keys.map((k) => k.toString()).toList()..sort();
-      return {for (final k in keys) k: _stableValue(value[k])};
+      return <String, Object?>{for (final k in keys) k: _stableValue(value[k])};
     }
     if (value is Iterable) return value.map(_stableValue).toList();
     if (value is num || value is bool || value == null) return value;
