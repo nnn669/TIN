@@ -41,14 +41,13 @@ class GenerationController {
   final ChatController chatController;
   final stream_ctrl.StreamController streamController;
   final MessageBuilderService messageBuilderService;
-
   final ToolHandlerService toolHandlerService;
   final BuildContext contextProvider;
   final VoidCallback onStateChanged;
   final String Function(BuildContext context) getTitleForLocale;
 
-  static Map<String, dynamic> sanitizeToolParametersForProvider(
-    Map<String, dynamic> schema,
+  static Map sanitizeToolParametersForProvider(
+    Map schema,
     ProviderKind kind,
   ) {
     return ToolHandlerService.sanitizeToolParametersForProvider(schema, kind);
@@ -59,11 +58,10 @@ class GenerationController {
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities =
-          (ov['abilities'] as List?)
-              ?.map((e) => e.toString().toLowerCase())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
+      final abilities = (ov['abilities'] as List?)
+          ?.map((e) => e.toString().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toList() ??
           const [];
       return abilities.contains('reasoning');
     }
@@ -78,11 +76,10 @@ class GenerationController {
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities =
-          (ov['abilities'] as List?)
-              ?.map((e) => e.toString().toLowerCase())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
+      final abilities = (ov['abilities'] as List?)
+          ?.map((e) => e.toString().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toList() ??
           const [];
       return abilities.contains('tool');
     }
@@ -117,11 +114,11 @@ class GenerationController {
 
   /// Build the guarded tool handler used by every provider path.
   ///
-  /// The guard and read-only result cache live for exactly one assistant turn.
-  /// This keeps multi-round tool loops bounded within the current response,
-  /// while letting the next user message start with a fresh call budget.
-  /// Successful read-only calls are reused by their complete tool signature.
-  /// Different arguments, split subtasks, and failed calls remain independent.
+  /// Tool calls are unlimited within one assistant turn; the guard keeps a
+  /// fresh per-turn counter so the next user message starts from zero. The
+  /// read-only result cache reuses successful web/search results by their
+  /// complete tool signature. Different arguments, split subtasks, and failed
+  /// calls remain independent.
   ToolCallHandler? buildToolCallHandler(
     SettingsProvider settings,
     Assistant? assistant, {
@@ -135,34 +132,23 @@ class GenerationController {
       askUserService: askUserService,
     );
     if (inner == null) return null;
-
     final toolLoopGuard = ToolLoopGuard();
     final toolCallResultCache = ToolCallResultCache();
-
     return (
       String name,
-      Map<String, dynamic> args, {
+      Map args, {
       String? toolCallId,
     }) async {
+      // Tool calls are unlimited; the guard only tracks the per-response
+      // call count for observability.
+      toolLoopGuard.evaluate(name, args);
       final cached = toolCallResultCache.lookup(name, args);
-      final refusal = toolLoopGuard.evaluate(name, args, cached: cached != null);
-      if (refusal != null) return refusal;
       if (cached != null) return cached;
-
-      try {
-        final result = await toolCallResultCache.run(
-          name,
-          args,
-          () => inner(name, args, toolCallId: toolCallId),
-        );
-        if (!ToolLoopGuard.isCacheableResult(result)) {
-          toolLoopGuard.resetDuplicateStreak(name, args);
-        }
-        return result;
-      } catch (_) {
-        toolLoopGuard.resetDuplicateStreak(name, args);
-        rethrow;
-      }
+      return toolCallResultCache.run(
+        name,
+        args,
+        () => inner(name, args, toolCallId: toolCallId),
+      );
     };
   }
 
@@ -218,11 +204,9 @@ class GenerationController {
     required bool streamOutput,
     bool generateTitleOnFinish = true,
   }) {
-    final bool ocrActive =
-        settings.ocrEnabled &&
+    final bool ocrActive = settings.ocrEnabled &&
         settings.ocrModelProvider != null &&
         settings.ocrModelId != null;
-
     return stream_ctrl.GenerationContext(
       assistantMessage: assistantMessage,
       apiMessages: apiMessages,
