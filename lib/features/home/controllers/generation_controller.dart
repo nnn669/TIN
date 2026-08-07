@@ -41,27 +41,29 @@ class GenerationController {
   final ChatController chatController;
   final stream_ctrl.StreamController streamController;
   final MessageBuilderService messageBuilderService;
+
   final ToolHandlerService toolHandlerService;
   final BuildContext contextProvider;
   final VoidCallback onStateChanged;
   final String Function(BuildContext context) getTitleForLocale;
 
-  static Map sanitizeToolParametersForProvider(
-    Map schema,
+  static Map<String, dynamic> sanitizeToolParametersForProvider(
+    Map<String, dynamic> schema,
     ProviderKind kind,
   ) {
     return ToolHandlerService.sanitizeToolParametersForProvider(schema, kind);
   }
 
   bool isReasoningModel(String providerKey, String modelId) {
-    final settings = contextProvider.read();
+    final settings = contextProvider.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities = (ov['abilities'] as List?)
-          ?.map((e) => e.toString().toLowerCase())
-          .where((e) => e.isNotEmpty)
-          .toList() ??
+      final abilities =
+          (ov['abilities'] as List?)
+              ?.map((e) => e.toString().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
           const [];
       return abilities.contains('reasoning');
     }
@@ -72,14 +74,15 @@ class GenerationController {
   }
 
   bool isToolModel(String providerKey, String modelId) {
-    final settings = contextProvider.read();
+    final settings = contextProvider.read<SettingsProvider>();
     final cfg = settings.getProviderConfig(providerKey);
     final ov = cfg.modelOverrides[modelId] as Map?;
     if (ov != null && ov.containsKey('abilities')) {
-      final abilities = (ov['abilities'] as List?)
-          ?.map((e) => e.toString().toLowerCase())
-          .where((e) => e.isNotEmpty)
-          .toList() ??
+      final abilities =
+          (ov['abilities'] as List?)
+              ?.map((e) => e.toString().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
           const [];
       return abilities.contains('tool');
     }
@@ -132,11 +135,13 @@ class GenerationController {
       askUserService: askUserService,
     );
     if (inner == null) return null;
+
     final toolLoopGuard = ToolLoopGuard();
     final toolCallResultCache = ToolCallResultCache();
+
     return (
       String name,
-      Map args, {
+      Map<String, dynamic> args, {
       String? toolCallId,
     }) async {
       // Tool calls are unlimited; the guard only tracks the per-response
@@ -204,9 +209,11 @@ class GenerationController {
     required bool streamOutput,
     bool generateTitleOnFinish = true,
   }) {
-    final bool ocrActive = settings.ocrEnabled &&
+    final bool ocrActive =
+        settings.ocrEnabled &&
         settings.ocrModelProvider != null &&
         settings.ocrModelId != null;
+
     return stream_ctrl.GenerationContext(
       assistantMessage: assistantMessage,
       apiMessages: apiMessages,
