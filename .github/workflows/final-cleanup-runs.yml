@@ -1,0 +1,25 @@
+name: Final Cleanup One-off Workflow Runs
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete one-off and cancelled workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Delete cleanup workflow runs
+          gh api --method DELETE /repos/${{ github.repository }}/actions/runs/31142771268 || true
+          gh api --method DELETE /repos/${{ github.repository }}/actions/runs/31142766400 || true
+          gh api --method DELETE /repos/${{ github.repository }}/actions/runs/31142836795 || true
+          
+          # Delete one-off MCP cleanup
+          gh api --method DELETE /repos/${{ github.repository }}/actions/runs/31127073642 || true
+          
+          echo "Final cleanup completed"
