@@ -201,7 +201,7 @@ void main() {
       final guard = ToolLoopGuard();
       const argsA = {'url': 'https://example.com/a'};
       const argsB = {'url': 'https://example.com/b'};
-      Future<String> call(String name, Map args) async {
+      Future<String> call(String name, Map<String, dynamic> args) async {
         final cached = cache.lookup(name, args);
         expect(guard.evaluate(name, args, cached: cached != null), isNull);
         if (cached != null) return cached;
