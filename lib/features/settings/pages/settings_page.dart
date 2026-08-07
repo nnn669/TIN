@@ -87,7 +87,7 @@ class SettingsPage extends StatelessWidget {
                   _sheetDivider(ctx),
                   _sheetOption(
                     ctx,
-                    icon: Lucide.Waves,
+                    icon: Lucide.AudioWaveform,
                     label: fluidModeLabel(),
                     onTap: () => Navigator.of(ctx).pop(_ThemeModeChoice.fluid),
                   ),
@@ -544,7 +544,12 @@ Widget _iosNavRow(
                       ),
                     ),
                   ),
-                if (interactive) Icon(Lucide.ChevronRight, size: 16, color: c),
+                if (interactive)
+                  Icon(
+                    Lucide.ChevronRight,
+                    size: 18,
+                    color: cs.onSurface.withValues(alpha: 0.42),
+                  ),
               ],
             ),
           );
@@ -554,44 +559,99 @@ Widget _iosNavRow(
   );
 }
 
+Widget _sheetDivider(BuildContext context) => Divider(
+  height: 1,
+  thickness: 0.6,
+  indent: 56,
+  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
+);
+
+Widget _sheetOption(
+  BuildContext context, {
+  required IconData icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return _TactileRow(
+    onTap: onTap,
+    pressedScale: 0.99,
+    haptics: false,
+    builder: (pressed) {
+      final bg = pressed
+          ? cs.onSurface.withValues(alpha: 0.08)
+          : Colors.transparent;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        color: bg,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            SizedBox(width: 28, child: Icon(icon, size: 21, color: cs.onSurface)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: cs.onSurface,
+                  fontWeight: AppFontWeights.medium,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _TactileRow extends StatefulWidget {
   const _TactileRow({
+    required this.onTap,
+    required this.pressedScale,
+    required this.haptics,
     required this.builder,
-    this.onTap,
-    this.pressedScale = 1.00,
-    this.haptics = true,
   });
-  final Widget Function(bool pressed) builder;
+
   final VoidCallback? onTap;
   final double pressedScale;
   final bool haptics;
+  final Widget Function(bool pressed) builder;
+
   @override
   State<_TactileRow> createState() => _TactileRowState();
 }
 
 class _TactileRowState extends State<_TactileRow> {
   bool _pressed = false;
-  void _setPressed(bool v) {
-    if (_pressed != v) setState(() => _pressed = v);
+
+  void _setPressed(bool value) {
+    if (!mounted || _pressed == value) return;
+    setState(() => _pressed = value);
   }
 
   @override
   Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap == null ? null : (_) => _setPressed(true),
-      onTapUp: widget.onTap == null ? null : (_) => _setPressed(false),
-      onTapCancel: widget.onTap == null ? null : () => _setPressed(false),
-      onTap: widget.onTap == null
-          ? null
-          : () {
-              if (widget.haptics &&
-                  context.read<SettingsProvider>().hapticsOnListItemTap) {
-                Haptics.soft();
-              }
-              widget.onTap!.call();
-            },
-      child: widget.builder(_pressed),
+      onTapDown: enabled ? (_) => _setPressed(true) : null,
+      onTapUp: enabled ? (_) => _setPressed(false) : null,
+      onTapCancel: enabled ? () => _setPressed(false) : null,
+      onTap: enabled
+          ? () {
+              if (widget.haptics) Haptics.light();
+              widget.onTap!();
+            }
+          : null,
+      child: AnimatedScale(
+        scale: _pressed ? widget.pressedScale : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.builder(_pressed),
+      ),
     );
   }
 }
@@ -600,14 +660,14 @@ class _TactileIconButton extends StatefulWidget {
   const _TactileIconButton({
     required this.icon,
     required this.color,
+    required this.size,
     required this.onTap,
-    this.size = 22,
   });
 
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
   final double size;
+  final VoidCallback onTap;
 
   @override
   State<_TactileIconButton> createState() => _TactileIconButtonState();
@@ -618,85 +678,20 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final base = widget.color;
-    final pressColor = base.withValues(alpha: 0.7);
-    final icon = Icon(
-      widget.icon,
-      size: widget.size,
-      color: _pressed ? pressColor : base,
-    );
-
-    return Semantics(
-      button: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTap: () {
-          Haptics.light();
-          widget.onTap();
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          child: icon,
-        ),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: () {
+        Haptics.light();
+        widget.onTap();
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.90 : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: Icon(widget.icon, color: widget.color, size: widget.size),
       ),
     );
   }
-}
-
-Widget _sheetOption(
-  BuildContext context, {
-  required IconData icon,
-  required String label,
-  required VoidCallback onTap,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return _TactileRow(
-    pressedScale: 1.00,
-    haptics: true,
-    onTap: onTap,
-    builder: (pressed) {
-      final base = cs.onSurface;
-      final bgTarget = pressed
-          ? (isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.05))
-          : Colors.transparent;
-      return _AnimatedPressColor(
-        pressed: pressed,
-        base: base,
-        builder: (c) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            color: bgTarget,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                SizedBox(width: 24, child: Icon(icon, size: 20, color: c)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(label, style: TextStyle(fontSize: 15, color: c)),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
-
-Widget _sheetDivider(BuildContext context) {
-  final cs = Theme.of(context).colorScheme;
-  return Divider(
-    height: 1,
-    thickness: 0.6,
-    indent: 52,
-    endIndent: 16,
-    color: cs.outlineVariant.withValues(alpha: 0.18),
-  );
 }
