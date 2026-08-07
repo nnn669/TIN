@@ -7,9 +7,9 @@ import 'chat_fluid_motion_controller.dart';
 
 /// A low-frequency fluid background for the chat surface.
 ///
-/// The optional assistant image remains the lowest layer. Soft animated blobs
-/// are deliberately subtle, while the translucent surface and blur preserve
-/// message readability.
+/// The optional assistant image remains the lowest layer. The fluid layer uses
+/// broad, slow-moving color fields and a light blur so it remains visible in
+/// light mode without competing with chat content.
 class ChatFluidBackground extends StatelessWidget {
   const ChatFluidBackground({super.key, this.background, this.maskStrength = 1});
 
@@ -91,7 +91,7 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
           children: [
             ColoredBox(color: cs.surface),
             if (widget.background != null)
-              Opacity(opacity: 0.9, child: widget.background!),
+              Opacity(opacity: 0.82, child: widget.background!),
             AnimatedBuilder(
               animation: _controller,
               builder: (_, __) => CustomPaint(
@@ -99,16 +99,17 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
                   progress: _controller.value,
                   primary: cs.primary,
                   secondary: cs.secondary,
+                  tertiary: Color.lerp(cs.primary, cs.tertiary, 0.62)!,
                   warm: isDark ? Colors.orangeAccent : Colors.deepOrange,
-                  opacity: isDark ? 0.17 : 0.11,
+                  opacity: isDark ? 0.24 : 0.34,
                 ),
               ),
             ),
             BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              filter: ui.ImageFilter.blur(sigmaX: 34, sigmaY: 34),
               child: ColoredBox(
                 color: cs.surface.withValues(
-                  alpha: (isDark ? 0.62 : 0.70) * strength,
+                  alpha: (isDark ? 0.42 : 0.20) * strength,
                 ),
               ),
             ),
@@ -118,8 +119,8 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    cs.surface.withValues(alpha: 0.14 * strength),
-                    cs.surface.withValues(alpha: 0.42 * strength),
+                    cs.surface.withValues(alpha: 0.04 * strength),
+                    cs.surface.withValues(alpha: 0.16 * strength),
                   ],
                 ),
               ),
@@ -136,6 +137,7 @@ class _FluidBlobPainter extends CustomPainter {
     required this.progress,
     required this.primary,
     required this.secondary,
+    required this.tertiary,
     required this.warm,
     required this.opacity,
   });
@@ -143,6 +145,7 @@ class _FluidBlobPainter extends CustomPainter {
   final double progress;
   final Color primary;
   final Color secondary;
+  final Color tertiary;
   final Color warm;
   final double opacity;
 
@@ -150,17 +153,48 @@ class _FluidBlobPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = progress * 2 * math.pi;
     final blobs = <_Blob>[
-      _Blob(Offset(size.width * (0.18 + 0.10 * math.sin(t)), size.height * (0.20 + 0.11 * math.cos(t * 0.8))), size.width * 0.58, primary),
-      _Blob(Offset(size.width * (0.78 + 0.12 * math.cos(t * 0.72)), size.height * (0.42 + 0.15 * math.sin(t * 0.65))), size.width * 0.54, secondary),
-      _Blob(Offset(size.width * (0.45 + 0.18 * math.sin(t * 0.48)), size.height * (0.86 + 0.08 * math.cos(t * 0.55))), size.width * 0.48, warm),
+      _Blob(
+        Offset(
+          size.width * (0.16 + 0.18 * math.sin(t)),
+          size.height * (0.18 + 0.14 * math.cos(t * 0.78)),
+        ),
+        size.width * 0.70,
+        primary,
+      ),
+      _Blob(
+        Offset(
+          size.width * (0.82 + 0.17 * math.cos(t * 0.68)),
+          size.height * (0.38 + 0.17 * math.sin(t * 0.61)),
+        ),
+        size.width * 0.64,
+        secondary,
+      ),
+      _Blob(
+        Offset(
+          size.width * (0.43 + 0.22 * math.sin(t * 0.46)),
+          size.height * (0.83 + 0.13 * math.cos(t * 0.53)),
+        ),
+        size.width * 0.62,
+        warm,
+      ),
+      _Blob(
+        Offset(
+          size.width * (0.56 + 0.14 * math.cos(t * 0.38)),
+          size.height * (0.55 + 0.18 * math.sin(t * 0.43)),
+        ),
+        size.width * 0.48,
+        tertiary,
+      ),
     ];
     for (final blob in blobs) {
       final paint = Paint()
         ..shader = RadialGradient(
           colors: [
             blob.color.withValues(alpha: opacity),
+            blob.color.withValues(alpha: opacity * 0.42),
             blob.color.withValues(alpha: 0),
           ],
+          stops: const [0, 0.50, 1],
         ).createShader(
           Rect.fromCircle(center: blob.center, radius: blob.radius),
         );
@@ -172,7 +206,9 @@ class _FluidBlobPainter extends CustomPainter {
   bool shouldRepaint(_FluidBlobPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.primary != primary ||
-      oldDelegate.secondary != secondary;
+      oldDelegate.secondary != secondary ||
+      oldDelegate.tertiary != tertiary ||
+      oldDelegate.warm != warm;
 }
 
 class _Blob {
