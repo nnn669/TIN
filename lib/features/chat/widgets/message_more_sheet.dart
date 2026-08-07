@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../core/models/chat_message.dart';
-// import '../pages/select_copy_page.dart';
 import 'select_copy_sheet.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../shared/widgets/ios_tactile.dart';
