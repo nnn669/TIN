@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'chat_fluid_background.dart';
@@ -29,6 +31,44 @@ class ChatInputOverlayLayout extends StatelessWidget {
         Positioned.fill(
           child: ChatFluidBackground(
             background: background ?? topBackground,
+          ),
+        ),
+        // Keep the title area readable without hiding the fluid motion.
+        // The lower gradient edge fades the veil into the background naturally.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: topInset + 36,
+          child: IgnorePointer(
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.30),
+                        Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.22),
+                        Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.0),
+                      ],
+                      stops: const [0.0, 0.56, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         Positioned.fill(
