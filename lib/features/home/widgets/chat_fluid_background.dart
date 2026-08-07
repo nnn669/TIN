@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -101,27 +102,31 @@ class _FluidBlobPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final t = progress * 2 * 3.141592653589793;
+    final t = progress * 2 * math.pi;
     final blobs = <_Blob>[
-      _Blob(Offset(size.width * (0.18 + 0.10 * _sin(t)), size.height * (0.20 + 0.11 * _cos(t * 0.8))), size.width * 0.58, primary),
-      _Blob(Offset(size.width * (0.78 + 0.12 * _cos(t * 0.72)), size.height * (0.42 + 0.15 * _sin(t * 0.65))), size.width * 0.54, secondary),
-      _Blob(Offset(size.width * (0.45 + 0.18 * _sin(t * 0.48)), size.height * (0.86 + 0.08 * _cos(t * 0.55))), size.width * 0.48, warm),
+      _Blob(Offset(size.width * (0.18 + 0.10 * math.sin(t)), size.height * (0.20 + 0.11 * math.cos(t * 0.8))), size.width * 0.58, primary),
+      _Blob(Offset(size.width * (0.78 + 0.12 * math.cos(t * 0.72)), size.height * (0.42 + 0.15 * math.sin(t * 0.65))), size.width * 0.54, secondary),
+      _Blob(Offset(size.width * (0.45 + 0.18 * math.sin(t * 0.48)), size.height * (0.86 + 0.08 * math.cos(t * 0.55))), size.width * 0.48, warm),
     ];
     for (final blob in blobs) {
       final paint = Paint()
         ..shader = RadialGradient(
-          colors: [blob.color.withValues(alpha: opacity), blob.color.withValues(alpha: 0)],
-        ).createShader(Rect.fromCircle(center: blob.center, radius: blob.radius));
+          colors: [
+            blob.color.withValues(alpha: opacity),
+            blob.color.withValues(alpha: 0),
+          ],
+        ).createShader(
+          Rect.fromCircle(center: blob.center, radius: blob.radius),
+        );
       canvas.drawCircle(blob.center, blob.radius, paint);
     }
   }
 
-  double _sin(double value) => (value.sin());
-  double _cos(double value) => (value.cos());
-
   @override
   bool shouldRepaint(_FluidBlobPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.primary != primary;
+      oldDelegate.progress != progress ||
+      oldDelegate.primary != primary ||
+      oldDelegate.secondary != secondary;
 }
 
 class _Blob {
@@ -130,20 +135,3 @@ class _Blob {
   final double radius;
   final Color color;
 }
-
-extension on double {
-  double sin() => _sinValue(this);
-  double cos() => _cosValue(this);
-}
-
-double _sinValue(double value) {
-  var term = value;
-  var sum = value;
-  for (var i = 1; i < 8; i++) {
-    term *= -value * value / ((2 * i) * (2 * i + 1));
-    sum += term;
-  }
-  return sum;
-}
-
-double _cosValue(double value) => _sinValue(value + 1.5707963267948966);
