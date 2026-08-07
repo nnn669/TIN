@@ -3,22 +3,68 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'chat_fluid_motion_controller.dart';
+
 /// A low-frequency fluid background for the chat surface.
 ///
 /// The optional assistant image remains the lowest layer. Soft animated blobs
 /// are deliberately subtle, while the translucent surface and blur preserve
 /// message readability.
-class ChatFluidBackground extends StatefulWidget {
+class ChatFluidBackground extends StatelessWidget {
   const ChatFluidBackground({super.key, this.background, this.maskStrength = 1});
 
   final Widget? background;
   final double maskStrength;
 
   @override
-  State<ChatFluidBackground> createState() => _ChatFluidBackgroundState();
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ChatFluidMotionController.instance,
+      builder: (context, _) {
+        if (!ChatFluidMotionController.instance.enabled) {
+          return _StaticChatBackground(background: background);
+        }
+        return _AnimatedChatFluidBackground(
+          background: background,
+          maskStrength: maskStrength,
+        );
+      },
+    );
+  }
 }
 
-class _ChatFluidBackgroundState extends State<ChatFluidBackground>
+class _StaticChatBackground extends StatelessWidget {
+  const _StaticChatBackground({this.background});
+
+  final Widget? background;
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: surface),
+          if (background != null) background!,
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedChatFluidBackground extends StatefulWidget {
+  const _AnimatedChatFluidBackground({this.background, this.maskStrength = 1});
+
+  final Widget? background;
+  final double maskStrength;
+
+  @override
+  State<_AnimatedChatFluidBackground> createState() =>
+      _AnimatedChatFluidBackgroundState();
+}
+
+class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackground>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
