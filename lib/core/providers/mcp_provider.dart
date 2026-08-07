@@ -492,7 +492,12 @@ class McpProvider extends ChangeNotifier {
   }
 
   Iterable<McpServerConfig> _autoConnectServers() {
-    return _servers.where((s) => s.enabled && !_isBuiltinFilesServer(s));
+    // The built-in files server is opt-in and starts disabled, so only servers
+    // the user enabled (including @kelivo/files) are auto-connected here. The
+    // previous guard skipped the files server even when enabled, leaving it
+    // disconnected after the app process or activity was recreated (background
+    // kill, split-screen switch) while @kelivo/fetch kept reconnecting.
+    return _servers.where((s) => s.enabled);
   }
 
   bool _hasBuiltinServer(String id, String name) {
