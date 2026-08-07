@@ -103,12 +103,10 @@ class _TopOverlayClipper extends CustomClipper<Rect> {
   final double topInset;
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(
-    0,
-    topInset.clamp(0.0, size.height),
-    size.width,
-    (size.height - topInset).clamp(0.0, size.height),
-  );
+  Rect getClip(Size size) {
+    final clipTop = topInset.clamp(0.0, size.height).toDouble();
+    return Rect.fromLTWH(0, clipTop, size.width, size.height - clipTop);
+  }
 
   @override
   bool shouldReclip(_TopOverlayClipper oldClipper) =>
