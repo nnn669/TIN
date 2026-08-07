@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'chat_fluid_background.dart';
+
 class ChatInputOverlayLayout extends StatelessWidget {
   const ChatInputOverlayLayout({
     super.key,
@@ -27,7 +29,11 @@ class ChatInputOverlayLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        if (background != null) Positioned.fill(child: background!),
+        Positioned.fill(
+          child: ChatFluidBackground(
+            background: background ?? topBackground,
+          ),
+        ),
         Positioned.fill(
           child: Stack(
             children: [
