@@ -17,13 +17,11 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           path = Path('lib/features/settings/pages/settings_page.dart')
           text = path.read_text()
-          old = """                detailText: ChatFluidMotionController.instance.enabled
-                    ? fluidModeLabel()
-                    : modeLabel(settings.themeMode),
-                onTap: pickThemeMode,"""
-          new = """                detailBuilder: (_) => ListenableBuilder(
+          pattern = r"                detailText: ChatFluidMotionController\.instance\.enabled\n                    \? fluidModeLabel\(\)\n                    : modeLabel\(settings\.themeMode\),\n"
+          replacement = """                detailBuilder: (_) => ListenableBuilder(
                   listenable: ChatFluidMotionController.instance,
                   builder: (_, __) => Text(
                     ChatFluidMotionController.instance.enabled
@@ -31,10 +29,11 @@ jobs:
                         : modeLabel(settings.themeMode),
                   ),
                 ),
-                onTap: pickThemeMode,"""
-          if old not in text:
+"""
+          text, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
               raise SystemExit('Expected fluid mode detail was not found')
-          path.write_text(text.replace(old, new, 1))
+          path.write_text(text)
           PY
       - name: Commit integration
         run: |
