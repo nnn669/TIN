@@ -54,7 +54,7 @@ jobs:
         run: flutter test test/features/chat/widgets/reasoning_budget_sheet_test.dart test/kelivo_github_mcp_server_test.dart test/sse_buffer_flush_test.dart test/mcp_lifecycle_reconnect_test.dart test/provider_request_headers_test.dart test/core/services/chat/chat_service_temporary_conversation_test.dart test/features/home/controllers/streaming_content_notifier_test.dart
 
   android-release:
-    name: Signed Android prerelease
+    name: Signed Android arm64 release
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -85,7 +85,6 @@ jobs:
           version_code=$((base_version_code + GITHUB_RUN_NUMBER))
           test "$version_code" -gt "$base_version_code"
           echo "VERSION_CODE=$version_code" >> "$GITHUB_ENV"
-          echo "Building versionCode=$version_code from base=$base_version_code and run=$GITHUB_RUN_NUMBER"
       - name: Prepare release keystore
         shell: bash
         env:
@@ -96,11 +95,9 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "$SIGN_KEYSTORE_BASE64" && -n "$SIGN_STORE_PASSWORD" && -n "$SIGN_KEY_ALIAS" && -n "$SIGN_KEY_PASSWORD" ]]; then
-            echo "Using configured repository signing key"
             printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/release-keystore.jks
             echo "SIGNING_MODE=persistent" >> "$GITHUB_ENV"
           else
-            echo "Signing Secrets are not configured; generating an ephemeral test keystore"
             sign_password="test-${GITHUB_RUN_ID}-${RANDOM}"
             keytool -genkeypair -keystore android/release-keystore.jks -storepass "$sign_password" -keypass "$sign_password" -alias tin-test -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=TIN Test, OU=Android, O=nnn669, C=CN" -noprompt
             SIGN_STORE_PASSWORD="$sign_password"
@@ -108,18 +105,16 @@ jobs:
             SIGN_KEY_ALIAS="tin-test"
             echo "SIGNING_MODE=ephemeral-test" >> "$GITHUB_ENV"
           fi
-          test -s android/release-keystore.jks
           printf 'storeFile=../release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SIGN_STORE_PASSWORD" "$SIGN_KEY_ALIAS" "$SIGN_KEY_PASSWORD" > android/key.properties
-          chmod 600 android/release-keystore.jks android/key.properties
-      - name: Build signed split APKs
+      - name: Build signed arm64 APK only
         env:
           BUILD_NAME_OVERRIDE: ${{ inputs.build_name }}
         run: |
           set -euo pipefail
-          args=(--release --split-per-abi --target-platform android-arm64,android-x64 --build-number "$VERSION_CODE")
+          args=(--release --split-per-abi --target-platform android-arm64 --build-number "$VERSION_CODE")
           if [[ -n "$BUILD_NAME_OVERRIDE" ]]; then args+=(--build-name "$BUILD_NAME_OVERRIDE"); fi
           flutter build apk "${args[@]}"
-      - name: Verify APK signatures and versions
+      - name: Verify arm64 APK signature and version
         shell: bash
         run: |
           set -euo pipefail
@@ -128,31 +123,18 @@ jobs:
           test -x "$apksigner"
           test -x "$apkanalyzer"
           test ! -e build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-          found=0
-          max_bytes=$((60 * 1024 * 1024))
-          for apk in build/app/outputs/flutter-apk/app-*.apk; do
-            test -s "$apk"
-            test "$(stat -c '%s' "$apk")" -lt "$max_bytes"
-            "$apksigner" verify --verbose --print-certs "$apk"
-            actual_version_code=$("$apkanalyzer" manifest version-code "$apk" | tr -d '[:space:]')
-            if [[ "$actual_version_code" != "$VERSION_CODE" ]]; then
-              version_code_delta=$((actual_version_code - VERSION_CODE))
-              test "$version_code_delta" -gt 0
-              test "$((version_code_delta % 1000))" -eq 0
-              abi_code=$((version_code_delta / 1000))
-              test "$abi_code" -ge 1
-              test "$abi_code" -le 4
-            fi
-            echo "Verified $(basename "$apk"): versionCode=$actual_version_code"
-            sha256sum "$apk"
-            found=1
-          done
-          test "$found" -eq 1
-      - name: Upload split APK artifacts
+          test ! -e build/app/outputs/flutter-apk/app-x86_64-release.apk
+          apk=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -s "$apk"
+          test "$(stat -c '%s' "$apk")" -lt "$((60 * 1024 * 1024))"
+          "$apksigner" verify --verbose --print-certs "$apk"
+          "$apkanalyzer" manifest version-code "$apk"
+          sha256sum "$apk"
+      - name: Upload single arm64 APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TIN-android-test-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-*.apk
+          name: TIN-android-arm64-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish GitHub release
@@ -164,24 +146,13 @@ jobs:
         run: |
           set -euo pipefail
           version_name="$BUILD_NAME_OVERRIDE"
-          if [[ -z "$version_name" ]]; then
-            version_name=$(awk -F: '/^version:/ {gsub(/[[:space:]]/, "", $2); split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml)
-          fi
+          if [[ -z "$version_name" ]]; then version_name=$(awk -F: '/^version:/ {gsub(/[[:space:]]/, "", $2); split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml); fi
           test -n "$version_name"
           if [[ "$RELEASE_TYPE" == "formal" ]]; then
-            tag="v${version_name}"
-            title="TIN Android ${version_name}"
-            notes=$(printf 'TIN Android 正式版，基于提交 %s 构建。\n\n签名模式：%s\nversionName: %s\nversionCode: %s\nCommit: %s' "$GITHUB_SHA" "$SIGNING_MODE" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
-            release_options=()
+            tag="v${version_name}"; title="TIN Android ${version_name}"; release_options=()
+            notes=$(printf 'TIN Android 正式版，基于提交 %s 构建。\n\n本次仅发布 arm64-v8a 单 APK。\n签名模式：%s\nversionName: %s\nversionCode: %s\nCommit: %s' "$GITHUB_SHA" "$SIGNING_MODE" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
           else
-            tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
-            title="TIN Android 测试包 ${GITHUB_RUN_NUMBER}"
-            if [[ "$SIGNING_MODE" == "persistent" ]]; then
-              signing_note='签名模式：仓库持久签名，可覆盖同证书旧版本。'
-            else
-              signing_note='签名模式：临时测试签名；未配置持久签名 Secrets 时，后续构建不能覆盖本包。'
-            fi
-            notes=$(printf '自动构建的 Android signed split APK，仅用于测试。%s\n\n仅提供 64 位包体：arm64-v8a 适合大多数 Android 手机，优先下载该包。\nversionName: %s\nversionCode: %s\nCommit: %s' "$signing_note" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
-            release_options=(--prerelease)
+            tag="test-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"; title="TIN Android 测试包 ${GITHUB_RUN_NUMBER}"; release_options=(--prerelease)
+            notes=$(printf '自动构建的 Android arm64-v8a signed APK，仅用于测试。\n\n本次仅发布单 APK。\n签名模式：%s\nversionName: %s\nversionCode: %s\nCommit: %s' "$SIGNING_MODE" "$version_name" "$VERSION_CODE" "$GITHUB_SHA")
           fi
-          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk --repo "$GITHUB_REPOSITORY" "${release_options[@]}" --title "$title" --notes "$notes"
+          gh release create "$tag" build/app/outputs/flutter-apk/app-arm64-v8a-release.apk --repo "$GITHUB_REPOSITORY" "${release_options[@]}" --title "$title" --notes "$notes"
