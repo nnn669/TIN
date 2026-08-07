@@ -26,9 +26,6 @@ import '../../chat/models/message_edit_result.dart';
 import '../../chat/widgets/chat_message_widget.dart' show ToolUIPart;
 import '../../chat/widgets/message_edit_sheet.dart';
 import '../../chat/widgets/message_export_sheet.dart';
-import '../../../desktop/message_edit_dialog.dart';
-import '../../../desktop/hotkeys/chat_action_bus.dart';
-import '../../../desktop/hotkeys/sidebar_tab_bus.dart';
 import 'chat_controller.dart';
 import 'stream_controller.dart' as stream_ctrl;
 import 'generation_controller.dart';
@@ -65,7 +62,7 @@ class UserMessageEditState {
 /// This controller extracts the non-UI logic from _HomePageState to:
 /// - Centralize state management
 /// - Make the code more testable
-/// - Allow reuse across different page layouts (mobile/tablet/desktop)
+/// - Allow reuse across different page layouts (mobile/tablet)
 /// - Reduce the complexity of the State class
 ///
 /// The HomePage widget now only manages:
@@ -136,7 +133,6 @@ class HomePageController extends ChangeNotifier {
   late scroll_ctrl.ChatScrollController _scrollCtrl;
 
   McpProvider? _mcpProvider;
-  StreamSubscription<ChatAction>? _chatActionSub;
 
   // ============================================================================
   // Animation Controllers
@@ -163,14 +159,11 @@ class HomePageController extends ChangeNotifier {
   bool _showThinkingTools = false;
   bool _showThinkingContent = false;
 
-  // Desktop drag-and-drop
-  bool _isDragHovering = false;
-
   // App lifecycle (currently unused but kept for future notification logic)
   // ignore: unused_field
   bool _appInForeground = true;
 
-  // Sidebar state (tablet/desktop)
+  // Sidebar state (tablet)
   bool _tabletSidebarOpen = true;
   bool _rightSidebarOpen = true;
   double _embeddedSidebarWidth = 300;
@@ -219,7 +212,6 @@ class HomePageController extends ChangeNotifier {
   int get selectedCount => _selectedItems.length;
   bool get showThinkingTools => _showThinkingTools;
   bool get showThinkingContent => _showThinkingContent;
-  bool get isDragHovering => _isDragHovering;
   bool get tabletSidebarOpen => _tabletSidebarOpen;
   bool get rightSidebarOpen => _rightSidebarOpen;
   double get embeddedSidebarWidth => _embeddedSidebarWidth;
@@ -301,7 +293,6 @@ class HomePageController extends ChangeNotifier {
     _wireViewModelCallbacks();
     _initializeProviders();
     _setupKeyboardListeners();
-    _setupDesktopFeatures();
   }
 
   void _initializeAnimations() {
@@ -476,61 +467,6 @@ class HomePageController extends ChangeNotifier {
   }
 
   void _setupKeyboardListeners() {}
-
-  void _setupDesktopFeatures() {
-    if (isDesktopPlatform) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _inputFocus.requestFocus();
-      });
-    }
-    _chatActionSub = ChatActionBus.instance.stream.listen((action) {
-      final ctx = _context;
-      if (!ctx.mounted) return;
-      final settingsProvider = ctx.read<SettingsProvider>();
-      switch (action) {
-        case ChatAction.newTopic:
-          unawaited(createNewConversationAnimated());
-          break;
-        case ChatAction.toggleLeftPanelTopics:
-        case ChatAction.toggleLeftPanelAssistants:
-          if (settingsProvider.desktopTopicPosition !=
-              DesktopTopicPosition.left) {
-            return;
-          }
-          final wantAssistants =
-              (action == ChatAction.toggleLeftPanelAssistants);
-          if (!_tabletSidebarOpen) {
-            _tabletSidebarOpen = true;
-            notifyListeners();
-            try {
-              settingsProvider.setDesktopSidebarOpen(true);
-            } catch (_) {}
-          }
-          if (wantAssistants) {
-            DesktopSidebarTabBus.instance.switchToAssistants();
-          } else {
-            DesktopSidebarTabBus.instance.switchToTopics();
-          }
-          break;
-        case ChatAction.focusInput:
-          if (isDesktopPlatform) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _inputFocus.requestFocus();
-            });
-          }
-          break;
-        case ChatAction.switchModel:
-          unawaited(showModelSelectSheet(ctx));
-          break;
-        case ChatAction.enterGlobalSearch:
-          enterGlobalSearchMode(preserveQuery: true);
-          break;
-        case ChatAction.exitGlobalSearch:
-          exitGlobalSearchMode(clearQuery: true);
-          break;
-      }
-    });
-  }
 
   void enterGlobalSearchMode({bool preserveQuery = true}) {
     _isGlobalSearchMode = true;
@@ -987,11 +923,7 @@ class HomePageController extends ChangeNotifier {
 
     final ctx = _context;
     if (!ctx.mounted) return;
-    final isDesktop = isDesktopPlatform;
-    final Future<MessageEditResult?> future = isDesktop
-        ? showMessageEditDesktopDialog(ctx, message: message)
-        : showMessageEditSheet(ctx, message: message);
-    final MessageEditResult? result = await future;
+    final result = await showMessageEditSheet(ctx, message: message);
     if (result == null) return;
 
     if (currentConversation != null) {
@@ -1640,11 +1572,6 @@ class HomePageController extends ChangeNotifier {
     }
   }
 
-  void setDragHovering(bool hovering) {
-    _isDragHovering = hovering;
-    notifyListeners();
-  }
-
   // ============================================================================
   // Public Methods - Sidebar Management
   // ============================================================================
@@ -1800,8 +1727,6 @@ class HomePageController extends ChangeNotifier {
   Future<void> onPickPhotos() => _fileUploadService.onPickPhotos();
   Future<void> onPickCamera() => _fileUploadService.onPickCamera(_context);
   Future<void> onPickFiles() => _fileUploadService.onPickFiles();
-  Future<void> onFilesDroppedDesktop(List<XFile> files) =>
-      _fileUploadService.onFilesDroppedDesktop(files);
 
   // ============================================================================
   // Public Methods - Scroll
@@ -2064,9 +1989,6 @@ class HomePageController extends ChangeNotifier {
     _convoFadeController.dispose();
     _mcpProvider?.removeListener(_onMcpChanged);
     _scrollCtrl.dispose();
-    try {
-      _chatActionSub?.cancel();
-    } catch (_) {}
     _chatController.dispose();
     _streamController.dispose();
     super.dispose();
