@@ -22,11 +22,18 @@ jobs:
           from pathlib import Path
           path = Path('lib/core/providers/mcp_provider.dart')
           text = path.read_text()
-          old = "} else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') { continue; }"
-          new = "} else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') { return; }"
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one target, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
+          marker = "} else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {"
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit('target callback branch not found')
+          end = text.find('}', start)
+          if end < 0:
+              raise SystemExit('target callback branch end not found')
+          segment = text[start:end + 1]
+          if 'continue;' not in segment or 'return;' in segment:
+              raise SystemExit(f'unexpected target segment: {segment!r}')
+          replacement = segment.replace('continue;', 'return;')
+          path.write_text(text[:start] + replacement + text[end + 1:])
           PY
           git diff --check
           git diff -- lib/core/providers/mcp_provider.dart
