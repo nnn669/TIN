@@ -20,20 +20,17 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           path = Path('lib/core/providers/mcp_provider.dart')
           text = path.read_text()
-          marker = "} else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {"
-          start = text.find(marker)
-          if start < 0:
-              raise SystemExit('target callback branch not found')
-          end = text.find('}', start)
-          if end < 0:
-              raise SystemExit('target callback branch end not found')
-          segment = text[start:end + 1]
-          if 'continue;' not in segment or 'return;' in segment:
-              raise SystemExit(f'unexpected target segment: {segment!r}')
-          replacement = segment.replace('continue;', 'return;')
-          path.write_text(text[:start] + replacement + text[end + 1:])
+          pattern = r"(@kelivo/copilot'\)\s*\{\s*)continue;"
+          matches = list(re.finditer(pattern, text))
+          if len(matches) != 1:
+              raise SystemExit(f'expected exactly one target, found {len(matches)}')
+          updated = re.sub(pattern, r'\1return;', text)
+          if updated == text:
+              raise SystemExit('source was not changed')
+          path.write_text(updated)
           PY
           git diff --check
           git diff -- lib/core/providers/mcp_provider.dart
