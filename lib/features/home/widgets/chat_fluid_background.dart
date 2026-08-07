@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -8,8 +7,8 @@ import 'chat_fluid_motion_controller.dart';
 /// A low-frequency fluid background for the chat surface.
 ///
 /// The optional assistant image remains the lowest layer. The fluid layer uses
-/// broad, slow-moving color fields and a light blur so it remains visible in
-/// light mode without competing with chat content.
+/// broad, slow-moving color fields and a light overlay so it remains visible
+/// in light mode without competing with chat content.
 class ChatFluidBackground extends StatelessWidget {
   const ChatFluidBackground({super.key, this.background, this.maskStrength = 1});
 
@@ -66,10 +65,20 @@ class _AnimatedChatFluidBackground extends StatefulWidget {
 
 class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackground>
     with SingleTickerProviderStateMixin {
+  static const _paintFramesPerSecond = 18;
+  static const _animationDurationSeconds = 30;
+  static const _paintFrameCount =
+      _paintFramesPerSecond * _animationDurationSeconds;
+
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 30),
+    duration: const Duration(seconds: _animationDurationSeconds),
   )..repeat();
+
+  double _sampleProgress(double progress) {
+    final frame = (progress * _paintFrameCount).floor();
+    return frame / _paintFrameCount;
+  }
 
   @override
   void dispose() {
@@ -85,18 +94,18 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
     final strength = widget.maskStrength.clamp(0.0, 1.0);
 
     return IgnorePointer(
-      child: RepaintBoundary(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ColoredBox(color: cs.surface),
-            if (widget.background != null)
-              Opacity(opacity: 0.82, child: widget.background!),
-            AnimatedBuilder(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: cs.surface),
+          if (widget.background != null)
+            Opacity(opacity: 0.82, child: widget.background!),
+          RepaintBoundary(
+            child: AnimatedBuilder(
               animation: _controller,
               builder: (_, __) => CustomPaint(
                 painter: _FluidBlobPainter(
-                  progress: _controller.value,
+                  progress: _sampleProgress(_controller.value),
                   primary: cs.primary,
                   secondary: cs.secondary,
                   tertiary: Color.lerp(cs.primary, cs.tertiary, 0.62)!,
@@ -106,28 +115,20 @@ class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackgrou
                 ),
               ),
             ),
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-              child: ColoredBox(
-                color: cs.surface.withValues(
-                  alpha: (isDark ? 0.42 : 0.20) * strength,
-                ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  cs.surface.withValues(alpha: 0.04 * strength),
+                  cs.surface.withValues(alpha: 0.16 * strength),
+                ],
               ),
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cs.surface.withValues(alpha: 0.04 * strength),
-                    cs.surface.withValues(alpha: 0.16 * strength),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
