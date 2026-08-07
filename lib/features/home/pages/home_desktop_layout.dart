@@ -183,8 +183,8 @@ class HomeDesktopScaffold extends StatelessWidget {
       globalSearchMode: globalSearchMode,
       globalSearchQuery: globalSearchQuery,
       onGlobalSearchQueryChanged: onGlobalSearchQueryChanged,
-      onEnterGlobalSearch: onEnterGlobalSearch,
-      onExitGlobalSearch: onExitGlobalSearch,
+      onEnterGlobalSearch: () {},
+      onExitGlobalSearch: () {},
       onOpenGlobalSearchResult: onOpenGlobalSearchResult,
       onNewConversation: ({closeDrawer = true}) => onNewConversation(),
       onSelectConversation: (id, {closeDrawer = true}) =>
