@@ -1,17 +1,5 @@
 import 'dart:convert';
 
-/// Thrown when an assistant response reaches its tool-call limit.
-class ToolLoopBudgetExceeded implements Exception {
-  const ToolLoopBudgetExceeded(this.callCount);
-
-  /// Total tool calls requested in the current assistant response.
-  final int callCount;
-
-  @override
-  String toString() =>
-      'ToolLoopBudgetExceeded: tool loop aborted after $callCount calls';
-}
-
 /// Reuses an in-flight or completed successful result for an identical call.
 ///
 /// The key includes the tool name and the complete recursively normalized
@@ -26,7 +14,7 @@ class ToolCallResultCache {
   /// Only explicitly read-only web/search tools are eligible. This prevents
   /// memory, app-control, local, and arbitrary MCP mutations from being
   /// replayed from a previous result.
-  Future<String>? lookup(String name, Map<String, dynamic> args) {
+  Future<String>? lookup(String name, Map args) {
     if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return null;
     return _results[ToolLoopGuard.signatureOf(name, args)];
   }
@@ -35,15 +23,13 @@ class ToolCallResultCache {
   /// its successful result for the rest of the assistant response.
   Future<String> run(
     String name,
-    Map<String, dynamic> args,
+    Map args,
     Future<String> Function() execute,
   ) {
     if (!ToolLoopGuard.isReadOnlyCacheTool(name)) return execute();
-
     final signature = ToolLoopGuard.signatureOf(name, args);
     final cached = _results[signature];
     if (cached != null) return cached;
-
     late final Future<String> pending;
     pending = _runAndKeepSuccessfulResult(
       signature,
@@ -75,14 +61,12 @@ class ToolCallResultCache {
   }
 }
 
-/// Bounds the multi-round tool-call loops within one assistant response.
+/// Per-response tool loop accounting.
+///
+/// Tool call counts are intentionally unbounded: an assistant response may
+/// request tools as many times as the model needs. [evaluate] always allows
+/// the call and only maintains a per-response counter for observability.
 class ToolLoopGuard {
-  /// Every assistant response may request at most this many tool calls.
-  static const int maxCallBudget = 100;
-
-  /// Identical consecutive calls that count as a stuck loop.
-  static const int maxConsecutiveDupes = 3;
-
   static const Set<String> _readOnlyCacheTools = <String>{
     'search_web',
     'fetch_html',
@@ -102,14 +86,12 @@ class ToolLoopGuard {
   };
 
   int _calls = 0;
-  String? _lastSignature;
-  int _consecutiveDupes = 0;
 
   /// Tool calls requested so far in the current assistant response.
   int get callCount => _calls;
 
   /// Builds a stable signature for one tool call.
-  static String signatureOf(String name, Map<String, dynamic> args) {
+  static String signatureOf(String name, Map args) {
     return '$name\u0000${jsonEncode(_stableValue(args))}';
   }
 
@@ -136,65 +118,27 @@ class ToolLoopGuard {
     return true;
   }
 
-  /// Clears the duplicate streak after a failed execution so a retry is not
-  /// mistaken for a model loop. The call budget remains counted.
-  void resetDuplicateStreak(String name, Map<String, dynamic> args) {
-    if (signatureOf(name, args) != _lastSignature) return;
-    _lastSignature = null;
-    _consecutiveDupes = 0;
-  }
-
   /// Decides whether a tool call may run.
   ///
-  /// Every requested call counts toward the per-response limit, including a
-  /// cache hit. Returns null when allowed, a refusal payload for a detected
-  /// duplicate loop, and throws after [maxCallBudget] calls.
+  /// Tool calls are unlimited: every requested call is allowed and recorded
+  /// in [callCount]. [cached] is accepted for compatibility with the result
+  /// cache flow and does not change the outcome.
   String? evaluate(
     String name,
-    Map<String, dynamic> args, {
+    Map args, {
     bool cached = false,
   }) {
-    if (_calls >= maxCallBudget) {
-      throw ToolLoopBudgetExceeded(_calls);
-    }
     _calls += 1;
-    if (cached) return null;
-
-    final signature = signatureOf(name, args);
-    if (signature == _lastSignature) {
-      _consecutiveDupes += 1;
-    } else {
-      _lastSignature = signature;
-      _consecutiveDupes = 1;
-    }
-
-    if (_consecutiveDupes >= maxConsecutiveDupes) {
-      return _refusal(
-        'repeated_tool_calls',
-        'The tool "$name" was requested $maxConsecutiveDupes times in a row '
-            'with identical arguments, which indicates a stuck loop. Stop '
-            'calling tools and answer using the results already collected.',
-      );
-    }
-
     return null;
   }
 
   static Object? _stableValue(Object? value) {
     if (value is Map) {
       final keys = value.keys.map((k) => k.toString()).toList()..sort();
-      return <String, Object?>{for (final k in keys) k: _stableValue(value[k])};
+      return {for (final k in keys) k: _stableValue(value[k])};
     }
     if (value is Iterable) return value.map(_stableValue).toList();
     if (value is num || value is bool || value == null) return value;
     return value.toString();
-  }
-
-  static String _refusal(String reason, String message) {
-    return jsonEncode(<String, Object?>{
-      'tool_error': message,
-      'reason': reason,
-      'retry': false,
-    });
   }
 }
