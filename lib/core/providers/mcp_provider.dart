@@ -756,7 +756,7 @@ class McpProvider extends ChangeNotifier {
             } else if (id == _builtinImagesId || name == _builtinImagesName) {
               builtinEnabledById[_builtinImagesId] = enabled;
             } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
-              continue;
+              return;
             } else if (id == _builtinFetchId || name == _builtinFetchName) {
               builtinEnabledById[_builtinFetchId] = enabled;
             } else {
