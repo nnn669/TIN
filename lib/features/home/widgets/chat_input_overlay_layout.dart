@@ -74,7 +74,12 @@ class ChatInputOverlayLayout extends StatelessWidget {
         Positioned.fill(
           child: Stack(
             children: [
-              Positioned.fill(child: content),
+              Positioned.fill(
+                child: ClipRect(
+                  clipper: _TopOverlayClipper(topInset),
+                  child: content,
+                ),
+              ),
               if (foreground != null) Positioned.fill(child: foreground!),
             ],
           ),
@@ -90,4 +95,22 @@ class ChatInputOverlayLayout extends StatelessWidget {
       ],
     );
   }
+}
+
+class _TopOverlayClipper extends CustomClipper<Rect> {
+  const _TopOverlayClipper(this.topInset);
+
+  final double topInset;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(
+    0,
+    topInset.clamp(0.0, size.height),
+    size.width,
+    (size.height - topInset).clamp(0.0, size.height),
+  );
+
+  @override
+  bool shouldReclip(_TopOverlayClipper oldClipper) =>
+      oldClipper.topInset != topInset;
 }
