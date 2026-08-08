@@ -10,14 +10,12 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:open_filex/open_filex.dart';
-// import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'dart:convert';
 import '../../home/widgets/file_processing_indicator.dart';
 import '../pages/image_viewer_page.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../icons/reasoning_icons.dart';
-// import '../../../theme/design_tokens.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/providers/assistant_provider.dart';
@@ -57,7 +55,6 @@ Uri? _tryNormalizeExternalUri(String raw) {
   var u = raw.trim();
   if (u.isEmpty) return null;
 
-  // Handle JSON-ish values like `"example.com"` defensively.
   if ((u.startsWith('"') && u.endsWith('"')) ||
       (u.startsWith("'") && u.endsWith("'"))) {
     u = u.substring(1, u.length - 1).trim();
@@ -78,8 +75,6 @@ Uri? _tryNormalizeExternalUri(String raw) {
   return uri;
 }
 
-/// Extract image paths from tool result content.
-/// Returns (cleanText, imagePaths). Supports local file paths and HTTP URLs.
 (String, List<String>) _parseMcpImagePaths(String? content) {
   if (content == null || content.isEmpty) return ('', const []);
 
@@ -88,7 +83,6 @@ Uri? _tryNormalizeExternalUri(String raw) {
 
   final cleanText = content.replaceAllMapped(imgRe, (m) {
     final path = m.group(1)!;
-    // Filter invalid values
     if (path.isNotEmpty && path != 'generated') {
       images.add(path);
     }
@@ -333,9 +327,6 @@ bool _toolPartNeedsStandaloneStep(
   if (_pendingApprovalForToolPart(approvalService, part) != null) {
     return true;
   }
-  // Interactive local tools and ask-user cards must remain visible so their
-  // controls and results are immediately available instead of being hidden in
-  // a collapsed generic tool group.
   if (part.toolName == LocalToolNames.askUser ||
       part.toolName == LocalToolNames.timeInfo ||
       part.toolName == LocalToolNames.clipboard ||
@@ -779,11 +770,10 @@ class ChatMessageWidget extends StatefulWidget {
   final ChatMessage message;
   final Widget? modelIcon;
   final bool showModelIcon;
-  // Assistant identity override
   final bool useAssistantAvatar;
   final bool useAssistantName;
   final String? assistantName;
-  final String? assistantAvatar; // path/url/emoji; null => use initial
+  final String? assistantAvatar;
   final bool showUserAvatar;
   final bool showTokenStats;
   final VoidCallback? onRegenerate;
@@ -792,33 +782,26 @@ class ChatMessageWidget extends StatefulWidget {
   final VoidCallback? onTranslate;
   final VoidCallback? onSpeak;
   final VoidCallback? onMore;
-  final VoidCallback? onEdit; // user: edit
-  final VoidCallback? onDelete; // user: delete
-  // Optional version switcher (branch) UI controls
-  final int? versionIndex; // zero-based
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final int? versionIndex;
   final int? versionCount;
   final VoidCallback? onPrevVersion;
   final VoidCallback? onNextVersion;
-  // Optional reasoning UI props (for reasoning-capable models)
   final String? reasoningText;
   final bool reasoningExpanded;
   final bool reasoningLoading;
   final DateTime? reasoningStartAt;
   final DateTime? reasoningFinishedAt;
   final VoidCallback? onToggleReasoning;
-  // For multiple reasoning segments
   final List<ReasoningSegment>? reasoningSegments;
-  // Optional translation UI props
   final bool translationExpanded;
   final VoidCallback? onToggleTranslation;
-  // MCP tool calls/results mixed-in cards
   final List<ToolUIPart>? toolParts;
   final List<int>? contentSplitOffsets;
   final List<int>? reasoningCountAtSplit;
   final List<int>? toolCountAtSplit;
-  // Hide streaming dots when pinned globally
   final bool hideStreamingIndicator;
-  // Whether files are currently being processed
   final bool isProcessingFiles;
   final bool enableStreamingTextMotion;
   final List<String> suggestions;
@@ -878,21 +861,17 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
   final ScrollController _reasoningScroll = ScrollController();
   bool _tickActive = false;
-  // Local expand state for inline <think> card (defaults to expanded)
   bool? _inlineThinkExpanded;
   bool _inlineThinkManuallyToggled = false;
-  // User message context menu state
   final GlobalKey _userBubbleKey = GlobalKey();
   OverlayEntry? _userMenuOverlay;
-  // Desktop anchored menus for bottom action buttons
   final GlobalKey _moreBtnKey1 = GlobalKey();
   final GlobalKey _moreBtnKey2 = GlobalKey();
   final GlobalKey _translateBtnKey2 = GlobalKey();
-  // ValueNotifier for reasoning animation tick - avoids full widget rebuild
   final ValueNotifier<int> _reasoningTick = ValueNotifier<int>(0);
   late final Ticker _ticker = Ticker((_) {
     if (mounted && _tickActive) {
-      _reasoningTick.value++; // Only notify reasoning section, not full rebuild
+      _reasoningTick.value++;
     }
   });
 
@@ -901,8 +880,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     super.initState();
     _syncTicker();
 
-    // Determine initial state for inline <think> card BEFORE first paint to avoid
-    // post-frame size changes that can cause list scroll jitter/snapping.
     try {
       final parsed = _legacyInlineThinkingFor(widget);
       final extracted = parsed.thinkingTexts.join('\n\n');
@@ -915,16 +892,13 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             .autoCollapseThinking;
         _inlineThinkExpanded = !autoCollapse ? true : false;
       }
-    } catch (_) {
-      // If anything fails here, fall back to later update logic.
-    }
+    } catch (_) {}
   }
 
   @override
   void didUpdateWidget(covariant ChatMessageWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncTicker();
-    // Auto-collapse when inline <think> transitions from loading -> finished
     _applyAutoCollapseInlineThinkIfFinished(oldWidget: oldWidget);
   }
 
@@ -950,8 +924,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
     final autoCollapse = context.read<SettingsProvider>().autoCollapseThinking;
 
-    // If finished now (not loading), inline think is used, and auto-collapse is on
-    // Only collapse when user hasn't manually toggled; also if we don't yet have a chosen state.
     final finishedNow = usingInlineThinkNew;
     final justFinished = oldWidget != null
         ? (!usingInlineThinkOld && finishedNow)
@@ -964,7 +936,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       }
     }
 
-    // On first mount where already finished and no user choice yet, honor autoCollapse
     if (oldWidget == null &&
         usingInlineThinkNew &&
         _inlineThinkExpanded == null) {
@@ -1064,7 +1035,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   String _resolveModelDisplayName(SettingsProvider settings) {
     final modelId = widget.message.modelId;
     if (modelId == null || modelId.trim().isEmpty) {
-      // Model metadata can be missing for legacy/preset messages.
       return AppLocalizations.of(context)?.messageExportSheetAssistant ??
           'Assistant';
     }
@@ -1092,9 +1062,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             baseId = apiId;
           }
         }
-      } catch (_) {
-        // ignore lookup failures; fall through to inferred name.
-      }
+      } catch (_) {}
     }
 
     final inferred = ModelRegistry.infer(
@@ -1123,7 +1091,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   void _showUserContextMenu() {
-    // Haptic feedback (optional)
     try {
       Haptics.light();
     } catch (_) {}
@@ -1136,19 +1103,16 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final bubbleTopLeft = box.localToGlobal(Offset.zero, ancestor: overlayBox);
     final bubbleSize = box.size;
     final screenSize = overlayBox.size;
-    final insets = MediaQu
-ery.paddingOf(context); // status bar / gesture insets
+    final insets = MediaQuery.paddingOf(context);
     final safeLeft = insets.left + 12;
     final safeRight = insets.right + 12;
     final safeTop = insets.top + 12;
     final safeBottom = insets.bottom + 12;
 
-    const double menuWidth = 220; // compact width
-    const double estMenuHeight = 140; // ~ 3 rows
-    const double gap = 10; // space between bubble and menu
+    const double menuWidth = 220;
+    const double estMenuHeight = 140;
+    const double gap = 10;
 
-    // Horizontal placement: align menu's right edge to bubble's right edge,
-    // and clamp into safe area for better reachability on long messages.
     final double bubbleRight = bubbleTopLeft.dx + bubbleSize.width;
     double x = bubbleRight - menuWidth;
     final double minX = safeLeft;
@@ -1156,7 +1120,6 @@ ery.paddingOf(context); // status bar / gesture insets
     if (x < minX) x = minX;
     if (x > maxX) x = maxX;
 
-    // Decide above vs below using safe area
     final availableAbove = bubbleTopLeft.dy - gap - safeTop;
     final availableBelow =
         (screenSize.height - safeBottom) -
@@ -1170,7 +1133,6 @@ ery.paddingOf(context); // status bar / gesture insets
     } else if (canPlaceBelow) {
       placeAbove = false;
     } else {
-      // Fallback: choose the side with more space
       placeAbove = availableAbove > availableBelow;
     }
 
@@ -1178,7 +1140,6 @@ ery.paddingOf(context); // status bar / gesture insets
         ? (bubbleTopLeft.dy - estMenuHeight - gap)
         : (bubbleTopLeft.dy + bubbleSize.height + gap);
 
-    // Clamp vertically to remain fully visible within safe area
     final double minY = safeTop;
     final double maxY = screenSize.height - safeBottom - estMenuHeight;
     if (y < minY) y = minY;
@@ -1195,14 +1156,12 @@ ery.paddingOf(context); // status bar / gesture insets
       pageBuilder: (ctx, _, __) {
         return Stack(
           children: [
-            // Positioned popup
             Positioned(
               left: x,
               top: y,
               width: menuWidth,
               child: _AnimatedPopup(
                 child: DecoratedBox(
-                  // Draw border outside the clipped/blurred content to avoid corner clipping
                   decoration: ShapeDecoration(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1362,7 +1321,6 @@ ery.paddingOf(context); // status bar / gesture insets
   }
 
   Widget _buildToolMessage() {
-    // Parse JSON payload embedded in tool message content
     String toolName = 'tool';
     Map<String, dynamic> args = const {};
     String result = '';
@@ -1427,7 +1385,6 @@ ery.paddingOf(context); // status bar / gesture insets
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Header: User info and avatar
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -1458,20 +1415,18 @@ ery.paddingOf(context); // status bar / gesture insets
                 ),
               if (widget.showUserAvatar) ...[
                 const SizedBox(width: 8),
-                // User avatar
                 _buildUserAvatar(userProvider, cs),
               ],
             ],
           ),
           const SizedBox(height: 8),
-          // Message content (context menu: long-press on mobile, right-click on desktop)
           GestureDetector(
             onLongPressStart: (_) {
               final isDesktop =
                   defaultTargetPlatform == TargetPlatform.macOS ||
                   defaultTargetPlatform == TargetPlatform.windows ||
                   defaultTargetPlatform == TargetPlatform.linux;
-              if (isDesktop) return; // Desktop uses right-click menu
+              if (isDesktop) return;
               _showUserContextMenu();
             },
             onSecondaryTapDown: (details) {
@@ -1479,7 +1434,7 @@ ery.paddingOf(context); // status bar / gesture insets
                   defaultTargetPlatform == TargetPlatform.macOS ||
                   defaultTargetPlatform == TargetPlatform.windows ||
                   defaultTargetPlatform == TargetPlatform.linux;
-              if (!isDesktop) return; // Mobile keeps long-press
+              if (!isDesktop) return;
               _showUserContextMenuAt(details.globalPosition);
             },
             behavior: HitTestBehavior.translucent,
@@ -1635,7 +1590,6 @@ ery.paddingOf(context); // status bar / gesture insets
 
   void _showUserContextMenuAt(Offset globalPosition) async {
     final l10n = AppLocalizations.of(context)!;
-    // Haptic feedback
     try {
       Haptics.light();
     } catch (_) {}
@@ -1935,7 +1889,6 @@ ery.paddingOf(context); // status bar / gesture insets
     required BuildContext context,
     required Widget child,
   }) {
-    // Reuse same styles, but flag as non-user for default fallthrough
     return _buildBubbleContainer(context: context, isUser: false, child: child);
   }
 
@@ -2247,7 +2200,6 @@ ery.paddingOf(context); // status bar / gesture insets
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Model info and time
           Row(
             children: [
               if (widget.useAssistantAvatar) ...[
@@ -2308,7 +2260,6 @@ ery.paddingOf(context); // status bar / gesture insets
                             ),
                           );
                         }
-                        // Token stats moved to action toolbar
                         return rowChildren.isNotEmpty
                             ? Row(children: rowChildren)
                             : const SizedBox.shrink();
@@ -2321,7 +2272,6 @@ ery.paddingOf(context); // status bar / gesture insets
           ),
           const SizedBox(height: 8),
 
-          // File Processing Indicator (inserted before content)
           if (widget.isProcessingFiles) ...[
             const FileProcessingIndicator(),
             const SizedBox(height: 8),
@@ -2594,7 +2544,6 @@ ery.paddingOf(context); // status bar / gesture insets
               ),
             ),
           ],
-          // Sources summary card (tap to open full citations)
           if (searchItems.isNotEmpty) ...[
             const SizedBox(height: 8),
             _SourcesSummaryCard(
@@ -2603,7 +2552,6 @@ ery.paddingOf(context); // status bar / gesture insets
               onTap: () => _showCitationsSheet(searchItems),
             ),
           ],
-          // Action buttons (hidden while generating)
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
@@ -2848,7 +2796,6 @@ ery.paddingOf(context); // status bar / gesture insets
     );
   }
 
-  // Try resolve citation id -> url from the latest search_web tool results of this assistant message
   void _handleCitationTap(String id) async {
     final l10n = AppLocalizations.of(context)!;
     final items = _allSearchItems();
@@ -2859,9 +2806,6 @@ ery.paddingOf(context); // status bar / gesture insets
           orElse: () => null,
         );
 
-    // Fallbacks for models that don't strictly follow "index:id":
-    // 1) If id is actually an index number, match by item.index.
-    // 2) If id itself looks like a URL, open it directly.
     String? url = match?['url']?.toString();
     if (url == null || url.isEmpty) {
       final idx = int.tryParse(id.trim());
@@ -2918,8 +2862,6 @@ ery.paddingOf(context); // status bar / gesture insets
     }
   }
 
-  // Extract items from all search_web or builtin_search tool results for this assistant message.
-  // We scan from end to start so "latest" items win when there are duplicates.
   List<Map<String, dynamic>> _allSearchItems() {
     final parts = widget.toolParts ?? const <ToolUIPart>[];
     if (parts.isEmpty) return const <Map<String, dynamic>>[];
@@ -2940,15 +2882,13 @@ ery.paddingOf(context); // status bar / gesture insets
           if (it is! Map) continue;
           final m = it.cast<String, dynamic>();
           final key = (m['id'] ?? m['url'] ?? '')
-              .toString(); // builtin_search no id
+              .toString();
           if (key.isNotEmpty) {
             if (!seen.add(key)) continue;
           }
           out.add(m);
         }
-      } catch (_) {
-        // ignore broken tool payload
-      }
+      } catch (_) {}
     }
     return out;
   }
@@ -3040,7 +2980,6 @@ ery.paddingOf(context); // status bar / gesture insets
         }
         return _assistantInitial(cs);
       }
-      // treat as emoji or single char label
       final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       final double fs = 18;
       final Offset? nudge = isIOS ? Offset(fs * 0.065, fs * -0.05) : null;
@@ -3257,8 +3196,6 @@ class _MenuItem extends StatelessWidget {
     final ic = danger
         ? Colors.red.shade600
         : cs.onSurface.withValues(alpha: 0.9);
-    // iOS-style press effect: no ripple. Use transparent base and a subtle
-    // pressed blend inside the blurred/glass menu container.
     return IosCardPress(
       borderRadius: BorderRadius.zero,
       baseColor: Colors.transparent,
@@ -3300,7 +3237,7 @@ class _BranchSelector extends StatelessWidget {
     this.onPrev,
     this.onNext,
   });
-  final int index; // zero-based
+  final int index;
   final int total;
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
@@ -3363,7 +3300,6 @@ class _BranchSelector extends StatelessWidget {
   }
 }
 
-// Pulsing 3-dot loading indicator for chat thinking states (shared)
 class LoadingIndicator extends StatefulWidget {
   const LoadingIndicator({
     super.key,
@@ -3402,7 +3338,7 @@ class _LoadingIndicatorState extends State<LoadingIndicator>
 
   double _dotValue(int index) {
     final phase = (_controller.value - index * 0.22) * 2 * math.pi;
-    return (math.sin(phase) + 1) / 2; // 0 -> 1 wave
+    return (math.sin(phase) + 1) / 2;
   }
 
   @override
@@ -3419,7 +3355,7 @@ class _LoadingIndicatorState extends State<LoadingIndicator>
             mainAxisSize: MainAxisSize.min,
             children: List.generate(3, (i) {
               final wave = _dotValue(i);
-              final double scale = 0.85 + 0.15 * wave; // subtle breathing
+              final double scale = 0.85 + 0.15 * wave;
               final double opacity = 0.45 + 0.45 * wave;
               return Padding(
                 padding: EdgeInsets.only(right: i == 2 ? 0 : widget.spacing),
@@ -3443,11 +3379,6 @@ class _LoadingIndicatorState extends State<LoadingIndicator>
   }
 }
 
-/// Streaming visual wrapper for assistant message content.
-///
-/// Goals:
-/// - Make streaming output feel less "chunky" by smoothing size growth.
-/// - Respect reduce-motion settings.
 class _StreamingAssistantMessageMotion extends StatelessWidget {
   const _StreamingAssistantMessageMotion({
     required this.enabled,
@@ -3486,12 +3417,11 @@ class _DocRef {
   _DocRef({required this.path, required this.fileName, required this.mime});
 }
 
-// UI data for MCP tool calls/results
 class ToolUIPart {
   final String id;
   final String toolName;
   final Map<String, dynamic> arguments;
-  final String? content; // null means still loading/result not yet available
+  final String? content;
   final bool loading;
   const ToolUIPart({
     required this.id,
@@ -3502,7 +3432,6 @@ class ToolUIPart {
   });
 }
 
-// Data for a reasoning segment (for mixed display)
 class ReasoningSegment {
   final String text;
   final bool expanded;
@@ -3510,7 +3439,6 @@ class ReasoningSegment {
   final DateTime? startAt;
   final DateTime? finishedAt;
   final VoidCallback? onToggle;
-  // Index of the first tool call that occurs after this segment starts.
   final int toolStartIndex;
 
   const ReasoningSegment({
@@ -3642,8 +3570,7 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
         curve: Curves.easeInOutCubicEmphasized,
         alignment: Alignment.topLeft,
         child: Column(
-          mainAxisSize: MainAxisSize
-.llWidth ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: fillWidth ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (canCollapse)
@@ -4459,7 +4386,6 @@ class _ToolCallItem extends StatefulWidget {
 }
 
 class _ToolCallItemState extends State<_ToolCallItem> {
-  // Cache image paths (local file or URL)
   List<String> _imagePaths = const [];
   String? _lastContent;
 
@@ -4472,7 +4398,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     _imagePaths = paths;
   }
 
-  /// Build image widget from path (supports local file and HTTP URL)
   Widget _buildImageFromPath(
     String path, {
     double? height,
@@ -4491,7 +4416,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     );
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      // HTTP URL
       return Image.network(
         path,
         height: height,
@@ -4499,7 +4423,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
         errorBuilder: (_, __, ___) => errorWidget(),
       );
     } else {
-      // Local file path
       return Image.file(
         File(path),
         height: height,
@@ -4536,7 +4459,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     return _toolTitleFor(context, name, args, isResult: isResult);
   }
 
-  /// Build a short argument summary for display in the approval card.
   String _argsSummary(Map<String, dynamic> args) {
     return _toolArgumentsSummary(args);
   }
@@ -4559,14 +4481,12 @@ class _ToolCallItemState extends State<_ToolCallItem> {
       );
     }
 
-    // Check if this tool call is pending approval
     final approvalService = context.watch<ToolApprovalService>();
     final isPendingApproval =
         widget.part.loading &&
         approvalService.pendingRequests.values.any(
           (req) => req.toolName == widget.part.toolName,
         );
-    // Find the matching approval request
     String? pendingToolCallId;
     if (isPendingApproval) {
       try {
@@ -4597,7 +4517,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Icon — approval pending / loading spinner / result icon
                 if (isPendingApproval)
                   SizedBox(
                     width: 18,
@@ -4632,7 +4551,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title: always show tool name; add "waiting" badge when pending
                       Text(
                         _titleFor(
                           context,
@@ -4646,7 +4564,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                           color: isPendingApproval ? fg.accent : fg.strong,
                         ),
                       ),
-                      // "Waiting for approval" subtitle
                       if (isPendingApproval) ...[
                         const SizedBox(height: 2),
                         Text(
@@ -4672,7 +4589,6 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                 buttonColor: fg.accent,
               ),
             ],
-            // Argument summary so users know what the tool is about to do
             if (isPendingApproval && widget.part.arguments.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
@@ -4681,8 +4597,7 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                   horizontal: 10,
                   vertical: 6,
                 ),
-                decoration: Bo
-xDecoration(
+                decoration: BoxDecoration(
                   color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.04),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -4698,7 +4613,6 @@ xDecoration(
                 ),
               ),
             ],
-            // Approval action buttons
             if (isPendingApproval && pendingToolCallId != null) ...[
               const SizedBox(height: 10),
               Row(
@@ -4727,7 +4641,6 @@ xDecoration(
                 ],
               ),
             ],
-            // Show image thumbnails if available
             if (hasImages) ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -4791,8 +4704,6 @@ xDecoration(
     );
   }
 
-  /// Try to pretty-format a string as indented JSON.
-  /// Returns the original string if it is not valid JSON.
   static String _prettyJson(String raw) {
     try {
       final obj = jsonDecode(raw);
@@ -4843,7 +4754,6 @@ xDecoration(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Header
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                         child: Row(
@@ -4888,7 +4798,6 @@ xDecoration(
                         ),
                       ),
                       const SizedBox(height: 4),
-                      // Body
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -4955,7 +4864,6 @@ xDecoration(
                                     style: TextStyle(fontSize: 12),
                                   ),
                                 ),
-                                // Show images if available
                                 if (images.isNotEmpty) ...[
                                   const SizedBox(height: 12),
                                   Text(
@@ -5004,7 +4912,6 @@ xDecoration(
       return;
     }
 
-    // Mobile: bottom sheet remains
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -5099,7 +5006,6 @@ xDecoration(
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
-                    // Show images if available
                     if (images.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Text(
@@ -5134,8 +5040,6 @@ xDecoration(
     );
   }
 
-  /// Show full-size image using ImageViewerPage for save/share/copy support.
-  /// [path] can be a local file path or HTTP URL.
   void _showFullImage(BuildContext context, String path) {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -5920,7 +5824,6 @@ class _AskUserSubmitButton extends StatelessWidget {
   }
 }
 
-/// Tactile button for tool approval actions (approve / deny).
 class _ApprovalButton extends StatelessWidget {
   const _ApprovalButton({
     required this.label,
@@ -5932,8 +5835,6 @@ class _ApprovalButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback? onTap;
-
-  /// When true, uses a solid fill background; when false, outline style.
   final bool filled;
 
   @override
@@ -6139,7 +6040,6 @@ class _ReasoningSection extends StatefulWidget {
     required this.loading,
     required this.startAt,
     required this.finishedAt,
-    // ignore: unused_element_parameter
     this.onToggle,
   });
 
@@ -6156,7 +6056,6 @@ class _ReasoningSection extends StatefulWidget {
 
 class _ReasoningSectionState extends State<_ReasoningSection>
     with SingleTickerProviderStateMixin {
-  // Use ValueNotifier to only update elapsed time display, not rebuild entire widget
   final ValueNotifier<int> _elapsedTick = ValueNotifier<int>(0);
   late final Ticker _ticker = Ticker((_) {
     if (mounted) _elapsedTick.value++;
@@ -6229,10 +6128,8 @@ class _ReasoningSectionState extends State<_ReasoningSection>
     final settings = context.watch<SettingsProvider>();
     final loading = widget.loading;
 
-    // Android-like surface style
     final curve = const Cubic(0.2, 0.8, 0.2, 1);
 
-    // Build a compact header with optional scrolling preview when loading
     Widget header = IosCardPress(
       borderRadius: BorderRadius.circular(12),
       baseColor: Colors.transparent,
@@ -6269,10 +6166,9 @@ class _ReasoningSectionState extends State<_ReasoningSection>
                   ),
                 ),
               ),
-            // No header marquee; content area handles scrolling when loading
             const Spacer(),
             AnimatedRotation(
-              turns: widget.expanded ? 0.25 : 0.0, // right -> down
+              turns: widget.expanded ? 0.25 : 0.0,
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeInOutCubic,
               child: Icon(Lucide.ChevronRight, size: 18, color: fg.strong),
@@ -6282,7 +6178,6 @@ class _ReasoningSectionState extends State<_ReasoningSection>
       ),
     );
 
-    // 抽公共样式，继承当前 DefaultTextStyle（从而继承正确的颜色）
     final TextStyle baseStyle = DefaultTextStyle.of(
       context,
     ).style.copyWith(fontSize: 12.5, height: 1.32);
@@ -6303,7 +6198,6 @@ class _ReasoningSectionState extends State<_ReasoningSection>
     final bool isLoading = loading;
     final display = _sanitize(widget.text);
 
-    // 未加载：不要再指定 color: fg，让它继承和"加载中"相同的颜色
     Widget reasoningContent(String text) {
       if (settings.enableReasoningMarkdown) {
         return RepaintBoundary(
@@ -6376,7 +6270,6 @@ class _ReasoningSectionState extends State<_ReasoningSection>
       );
     }
 
-    // Enable long-press text selection in reasoning body
     body = SelectionArea(child: body);
 
     return AnimatedSize(
@@ -6402,7 +6295,6 @@ class _ReasoningSectionState extends State<_ReasoningSection>
   }
 }
 
-// Lightweight shimmer effect without external dependency
 class _Shimmer extends StatefulWidget {
   final Widget child;
   final bool enabled;
@@ -6444,7 +6336,7 @@ class _ShimmerState extends State<_Shimmer> with TickerProviderStateMixin {
     return AnimatedBuilder(
       animation: _c,
       builder: (context, child) {
-        final t = _c.value; // 0..1
+        final t = _c.value;
         return ShaderMask(
           shaderCallback: (rect) {
             final width = rect.width;
