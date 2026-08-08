@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/settings_provider.dart';
