@@ -185,6 +185,8 @@ void main() {
         modelProvider: 'Claude',
         modelId: modelId,
       );
+      // Flutter 3.44：重建后等旧 overlay/动画完全清理，避免按钮被残留遮罩遮挡。
+      await tester.pumpAndSettle();
       await _openSheet(tester);
       // flush SharedPreferences 异步读取 + 渲染恢复后的选中态。
       await tester.pump();
