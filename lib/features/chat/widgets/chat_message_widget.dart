@@ -1136,7 +1136,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final bubbleTopLeft = box.localToGlobal(Offset.zero, ancestor: overlayBox);
     final bubbleSize = box.size;
     final screenSize = overlayBox.size;
-    final insets = MediaQuery.paddingOf(context); // status bar / gesture insets
+    final insets = MediaQu
+ery.paddingOf(context); // status bar / gesture insets
     final safeLeft = insets.left + 12;
     final safeRight = insets.right + 12;
     final safeTop = insets.top + 12;
@@ -2755,6 +2756,15 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                           answerProviderId: widget.message.providerId,
                           assistant: assistant,
                           settings: settings,
+                          messageId: widget.message.id,
+                          reasoningRequested:
+                              widget.message.reasoningStartAt != null,
+                          reasoningOutput:
+                              (widget.message.reasoningText?.isNotEmpty ??
+                                      false) ||
+                                  (widget.message.reasoningSegmentsJson
+                                          ?.isNotEmpty ??
+                                      false),
                         ),
                         SizedBox(
                           width: 28,
@@ -3632,7 +3642,8 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
         curve: Curves.easeInOutCubicEmphasized,
         alignment: Alignment.topLeft,
         child: Column(
-          mainAxisSize: fillWidth ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: MainAxisSize
+.llWidth ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (canCollapse)
@@ -4670,7 +4681,8 @@ class _ToolCallItemState extends State<_ToolCallItem> {
                   horizontal: 10,
                   vertical: 6,
                 ),
-                decoration: BoxDecoration(
+                decoration: Bo
+xDecoration(
                   color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.04),
                   borderRadius: BorderRadius.circular(8),
                 ),
