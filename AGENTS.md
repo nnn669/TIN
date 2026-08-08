@@ -237,6 +237,14 @@ flutter test
   - Compatibility boundary: Does it affect existing user data, config, persisted fields, import/export formats, or established interactions?
 - Compatibility is not a default-ignore item. When existing data or published behavior is involved, explicitly judge compatibility. If breaking, the delivery notes must state the breakage scope and migration path.
 
+### 3.11 Formal Release Version Must Be Bumped From the Last Published Version
+
+- Every formal release (`release_type=formal`) MUST use a version number strictly greater than the last published formal release tag (`vX.Y.Z`). Never reuse an already-published formal version number.
+- Rule of thumb: before dispatching a formal release, bump `version:` in `pubspec.yaml` to the next version after the latest existing `v*` tag (e.g. last formal `v1.1.50` -> next `v1.1.51`).
+- The formal release workflow derives the tag from the pubspec `version:` field (`v${version_name}`). Reusing an existing tag fails the `Publish GitHub release` step with "a release with the same tag name already exists".
+- When bumping, keep the build number after `+` increasing as well so the Android `versionCode` stays monotonic.
+- After bumping `pubspec.yaml`, run `flutter pub get` and verify `flutter analyze` before pushing.
+
 ## 4. Recommended Execution Order
 
 1. `git status --short` -- confirm workspace baseline.
@@ -302,6 +310,11 @@ flutter test
   - Only record issues that actually occurred in this repo and have reuse value for future development.
   - Do not write "heard this might happen" hearsay entries.
   - When adding entries, prefer "symptom -> root cause -> fix/constraint". Avoid recording conclusions without context.
+
+- 2026-08-08 formal release `v1.1.46` failed at the `Publish GitHub release` step with "a release with the same tag name already exists".
+  - Symptom: `workflow_dispatch` with `release_type=formal` built the APK fine, then failed when creating the GitHub release because tag `v1.1.46` already existed from an earlier formal release.
+  - Root cause: `pubspec.yaml` still said `1.1.46` while that formal tag was already published; the workflow derives the tag from the pubspec version.
+  - Fix/constraint: bumped pubspec to the next free version (`1.1.50`, since `1.1.47`~`1.1.49` were also taken) and re-dispatched. See rule 3.11: always bump past the last published formal tag before a formal release.
 
 ## Appendix: Skills Usage Rules
 
