@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -6,7 +7,7 @@ import '../../../core/providers/settings_provider.dart';
 /// 将模型 ID 归一化为小写 token 列表。
 ///
 /// 忽略大小写以及 `-` `_` `.` `/` 空格等符号差异，只保留字母与数字片段，
-/// 用于"本次回答模型"与"当前对话模型"的宽松一致性判断。
+/// 用于模型一致性/对账判断。
 List<String> normalizeModelTokens(String modelId) {
   return modelId
       .toLowerCase()
@@ -26,6 +27,26 @@ bool isSameModel(String a, String b) {
   if (ta.length != tb.length) return false;
   for (var i = 0; i < ta.length; i++) {
     if (ta[i] != tb[i]) return false;
+  }
+  return true;
+}
+
+/// 判断“底层响应自报模型”是否匹配“请求模型”。
+///
+/// 除了完全一致外，允许一方是另一方的前缀（官方/中转站常给请求模型追加
+/// 日期或版本后缀，如 `gpt-4o` -> `gpt-4o-2024-05-13`）。只要前缀序列
+/// 相同即视为匹配；完全不同的模型（如请求 gpt-4o、响应 gpt-3.5-turbo）
+/// 会被判定为不匹配，从而暴露被偷换/掺水的假模型。
+bool isRespondedModelMatching(String requested, String responded) {
+  final tReq = normalizeModelTokens(requested);
+  final tResp = normalizeModelTokens(responded);
+  if (tReq.isEmpty || tResp.isEmpty) return false;
+  if (isSameModel(requested, responded)) return true;
+
+  final int minLen = tReq.length < tResp.length ? tReq.length : tResp.length;
+  if (minLen == 0) return false;
+  for (var i = 0; i < minLen; i++) {
+    if (tReq[i] != tResp[i]) return false;
   }
   return true;
 }
@@ -76,49 +97,112 @@ String? resolveActiveApiModelId(
   );
 }
 
-/// 消息操作栏的模型一致性指示灯。
+/// 内存级注册表：messageId -> 底层响应自报模型 ID。
 ///
-/// 每次模型回答结束后，将该回答的模型与当前对话配置的模型做宽松比较：
-/// - 一致 → 绿灯
-/// - 不一致 → 橙灯
-/// 点击圆点以气泡显示本次回答使用的模型型号。
+/// 由 chat_actions 在消费流式 chunk 时写入，UI 指示灯据此做“请求模型 vs
+/// 响应模型”对账。仅存内存（不持久化）：应用重启后历史消息不再显示对账
+/// 指示灯，新回答仍会正常记录与展示。
+class RespondedModelRegistry {
+  RespondedModelRegistry._();
+
+  static final Map<String, String> _records = <String, String>{};
+
+  static void record(String messageId, String modelId) {
+    final key = messageId.trim();
+    final value = modelId.trim();
+    if (key.isEmpty || value.isEmpty) return;
+    _records[key] = value;
+  }
+
+  static String? lookup(String messageId) {
+    final key = messageId?.trim() ?? '';
+    if (key.isEmpty) return null;
+    return _records[key];
+  }
+
+  static void remove(String messageId) {
+    final key = messageId?.trim() ?? '';
+    if (key.isEmpty) return;
+    _records.remove(key);
+  }
+
+  @visibleForTesting
+  static void clear() => _records.clear();
+}
+
+/// 消息操作栏的模型对账指示灯。
+///
+/// 语义（基于底层模型发来的数据，而非用户本地选择）：
+/// - 有响应自报模型：与本次请求实际发送的 API 模型匹配 → 绿灯；
+///   不匹配 → 橙灯（疑似被中转站偷换成别的模型）。
+/// - 无响应自报模型（如 Gemini 或历史消息）但本次请求开启了推理、
+///   响应却没有任何推理内容 → 橙灯（疑似降智，用非推理模型冒充）。
+/// - 其余情况不显示，避免误报。
+/// 点击圆点以气泡显示“请求模型 → 响应模型”。
 class ModelMatchIndicator extends StatelessWidget {
   const ModelMatchIndicator({
     super.key,
     required this.answerModelId,
     required this.answerProviderId,
-    required this.assistant,
+    this.assistant,
     required this.settings,
+    this.messageId,
+    this.reasoningRequested = false,
+    this.reasoningOutput = false,
   });
 
-  /// 本次回答消息上记录的模型 ID（可能为 null，如历史/本地消息）。
+  /// 消息上记录的请求模型 ID（逻辑 ID，创建消息时写入）。
   final String? answerModelId;
 
-  /// 本次回答消息上记录的 provider ID。
+  /// 消息上记录的 provider ID。
   final String? answerProviderId;
 
-  /// 当前对话绑定的 assistant（可能为 null，此时用全局默认模型）。
+  /// 当前对话绑定的 assistant（保留兼容，不再用于对账）。
   final Assistant? assistant;
 
   final SettingsProvider settings;
+
+  /// 消息 ID：用于从 RespondedModelRegistry 读取响应自报模型。
+  final String? messageId;
+
+  /// 本次请求是否开启了推理（模型支持且 thinkingBudget 启用）。
+  final bool reasoningRequested;
+
+  /// 本次响应是否实际产生了推理内容。
+  final bool reasoningOutput;
 
   static const Color _matchColor = Color(0xFF34C759);
   static const Color _mismatchColor = Color(0xFFFF9500);
 
   @override
   Widget build(BuildContext context) {
-    final answerApiId = resolveApiModelId(
+    final requestedApiId = resolveApiModelId(
       settings,
       providerKey: answerProviderId,
       modelId: answerModelId,
     );
-    if (answerApiId == null) return const SizedBox.shrink();
+    if (requestedApiId == null || requestedApiId.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    final activeApiId = resolveActiveApiModelId(settings, assistant);
-    if (activeApiId == null) return const SizedBox.shrink();
+    final responded = (messageId != null)
+        ? RespondedModelRegistry.lookup(messageId)
+        : null;
+    final respondedTrimmed = responded?.trim() ?? '';
 
-    final matched = isSameModel(answerApiId, activeApiId);
-    final color = matched ? _matchColor : _mismatchColor;
+    Color color;
+    String tooltip;
+    if (respondedTrimmed.isNotEmpty) {
+      final matched = isRespondedModelMatching(requestedApiId, respondedTrimmed);
+      color = matched ? _matchColor : _mismatchColor;
+      tooltip = '$requestedApiId →\n$respondedTrimmed';
+    } else if (reasoningRequested && !reasoningOutput) {
+      // 请求了推理但没有返回任何推理内容：疑似降智（用非推理模型冒充）。
+      color = _mismatchColor;
+      tooltip = '$requestedApiId → ?';
+    } else {
+      return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.only(left: 6),
@@ -127,7 +211,7 @@ class ModelMatchIndicator extends StatelessWidget {
         height: 28,
         child: Center(
           child: Tooltip(
-            message: answerApiId,
+            message: tooltip,
             triggerMode: TooltipTriggerMode.tap,
             waitDuration: Duration.zero,
             child: Container(
