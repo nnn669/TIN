@@ -115,13 +115,13 @@ class RespondedModelRegistry {
   }
 
   static String? lookup(String messageId) {
-    final key = messageId?.trim() ?? '';
+    final key = messageId.trim();
     if (key.isEmpty) return null;
     return _records[key];
   }
 
   static void remove(String messageId) {
-    final key = messageId?.trim() ?? '';
+    final key = messageId.trim();
     if (key.isEmpty) return;
     _records.remove(key);
   }
@@ -185,15 +185,18 @@ class ModelMatchIndicator extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final responded = (messageId != null)
-        ? RespondedModelRegistry.lookup(messageId)
+    // 公共字段无法做类型 promotion，先收窄到局部变量再查注册表。
+    final messageIdValue = messageId;
+    final responded = (messageIdValue != null)
+        ? RespondedModelRegistry.lookup(messageIdValue)
         : null;
     final respondedTrimmed = responded?.trim() ?? '';
 
     Color color;
     String tooltip;
     if (respondedTrimmed.isNotEmpty) {
-      final matched = isRespondedModelMatching(requestedApiId, respondedTrimmed);
+      final matched =
+          isRespondedModelMatching(requestedApiId, respondedTrimmed);
       color = matched ? _matchColor : _mismatchColor;
       tooltip = '$requestedApiId →\n$respondedTrimmed';
     } else if (reasoningRequested && !reasoningOutput) {
