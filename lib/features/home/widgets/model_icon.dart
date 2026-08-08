@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../utils/brand_assets.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/model_override_payload_parser.dart';
+import '../../../core/utils/openai_model_compat.dart';
 import '../../../theme/app_font_weights.dart';
+import '../../../utils/brand_assets.dart';
 
 /// Widget that displays the current model's icon.
 ///
@@ -20,9 +25,28 @@ class CurrentModelIcon extends StatelessWidget {
 
   final String? providerKey;
   final String? modelId;
-  final double size; // outer diameter
-  final bool withBackground; // whether to draw circular background
-  final Color? backgroundColor; // override background color if provided
+  final double size;
+  final bool withBackground;
+  final Color? backgroundColor;
+
+  String _upstreamModelId(BuildContext context) {
+    final requestedModelId = modelId?.trim() ?? '';
+    if (requestedModelId.isEmpty || providerKey == null) {
+      return requestedModelId;
+    }
+
+    try {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      final config = settings.getProviderConfig(providerKey!);
+      final override = ModelOverridePayloadParser.modelOverride(
+        config.modelOverrides,
+        requestedModelId,
+      );
+      return resolveApiModelIdOverride(override, requestedModelId);
+    } catch (_) {
+      return requestedModelId;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +54,8 @@ class CurrentModelIcon extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (providerKey == null || modelId == null) return const SizedBox.shrink();
 
-    String? asset = BrandAssets.assetForName(modelId!);
+    final upstreamModelId = _upstreamModelId(context);
+    String? asset = BrandAssets.assetForName(upstreamModelId);
     asset ??= BrandAssets.assetForName(providerKey!);
 
     Widget inner;
@@ -57,7 +82,9 @@ class CurrentModelIcon extends StatelessWidget {
       }
     } else {
       inner = Text(
-        modelId!.isNotEmpty ? modelId!.characters.first.toUpperCase() : '?',
+        upstreamModelId.isNotEmpty
+            ? upstreamModelId.characters.first.toUpperCase()
+            : '?',
         style: TextStyle(
           color: cs.primary,
           fontWeight: AppFontWeights.emphasis,
@@ -66,24 +93,31 @@ class CurrentModelIcon extends StatelessWidget {
       );
     }
 
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: withBackground
-            ? (backgroundColor ??
-                  (isDark ? Colors.white10 : cs.primary.withValues(alpha: 0.1)))
-            : Colors.transparent,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: SizedBox(
-        width: size * 0.64,
-        height: size * 0.64,
-        child: Center(
-          child: inner is SvgPicture || inner is Image
-              ? inner
-              : FittedBox(child: inner),
+    return Tooltip(
+      message: upstreamModelId,
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: withBackground
+              ? (backgroundColor ??
+                    (isDark
+                        ? Colors.white10
+                        : cs.primary.withValues(alpha: 0.1)))
+              : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: size * 0.64,
+          height: size * 0.64,
+          child: Center(
+            child: inner is SvgPicture || inner is Image
+                ? inner
+                : FittedBox(child: inner),
+          ),
         ),
       ),
     );
