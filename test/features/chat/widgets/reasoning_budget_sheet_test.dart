@@ -49,7 +49,10 @@ Future<void> _pumpSheetLauncher(
           create: (_) => AssistantProvider(),
         ),
       ],
+      // UniqueKey：每次 pumpWidget 强制重建整棵树（含 Navigator），
+      // 避免复用旧 Navigator state 导致已打开的 bottom sheet route 残留遮挡按钮。
       child: MaterialApp(
+        key: UniqueKey(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -179,13 +182,13 @@ void main() {
       expect(settings.thinkingBudget, 64000);
 
       // 重新构建 launcher（全新的 sheet State），模拟关闭后再次打开面板。
+      // UniqueKey 保证 Navigator 整树重建，旧 sheet route 随旧树销毁。
       await _pumpSheetLauncher(
         tester,
         settings: settings,
         modelProvider: 'Claude',
         modelId: modelId,
       );
-      // Flutter 3.44：重建后等旧 overlay/动画完全清理，避免按钮被残留遮罩遮挡。
       await tester.pumpAndSettle();
       await _openSheet(tester);
       // flush SharedPreferences 异步读取 + 渲染恢复后的选中态。
