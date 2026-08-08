@@ -1289,6 +1289,349 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     });
   }
 
+  Widget _buildUserAvatar(UserProvider userProvider, ColorScheme cs) {
+    Widget avatarContent;
+
+    if (userProvider.avatarType == 'emoji' &&
+        userProvider.avatarValue != null) {
+      final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+      final double fs = 18;
+      final Offset? nudge = isIOS ? Offset(fs * 0.065, fs * -0.05) : null;
+      avatarContent = Center(
+        child: EmojiText(
+          userProvider.avatarValue!,
+          fontSize: fs,
+          optimizeEmojiAlign: true,
+          nudge: nudge,
+        ),
+      );
+    } else if (userProvider.avatarType == 'url' &&
+        userProvider.avatarValue != null) {
+      final url = userProvider.avatarValue!;
+      avatarContent = FutureBuilder<String?>(
+        future: AvatarCache.getPath(url),
+        builder: (ctx, snap) {
+          final p = snap.data;
+          if (p != null && File(p).existsSync()) {
+            return ClipOval(
+              child: Image.file(
+                File(p),
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+              ),
+            );
+          }
+          return ClipOval(
+            child: Image.network(
+              url,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Icon(Lucide.User, size: 18, color: cs.primary),
+            ),
+          );
+        },
+      );
+    } else if (userProvider.avatarType == 'file' &&
+        userProvider.avatarValue != null) {
+      final fixed = SandboxPathResolver.fix(userProvider.avatarValue!);
+      final f = File(fixed);
+      if (f.existsSync()) {
+        avatarContent = ClipOval(
+          child: Image.file(f, width: 32, height: 32, fit: BoxFit.cover),
+        );
+      } else {
+        avatarContent = Icon(Lucide.User, size: 18, color: cs.primary);
+      }
+    } else {
+      avatarContent = Icon(Lucide.User, size: 18, color: cs.primary);
+    }
+
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: avatarContent,
+    );
+  }
+
+  Widget _buildToolMessage() {
+    // Parse JSON payload embedded in tool message content
+    String toolName = 'tool';
+    Map<String, dynamic> args = const {};
+    String result = '';
+    try {
+      final obj = jsonDecode(widget.message.content) as Map<String, dynamic>;
+      toolName = (obj['tool'] ?? 'tool').toString();
+      final a = obj['arguments'];
+      if (a is Map<String, dynamic>) args = a;
+      result = (obj['result'] ?? '').toString();
+    } catch (_) {}
+
+    final part = ToolUIPart(
+      id: widget.message.id,
+      toolName: toolName,
+      arguments: args,
+      content: result,
+      loading: false,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: _ToolCallItem(
+        part: part,
+        onRecoveredAnswer: widget.onRecoveredAskUserAnswer,
+      ),
+    );
+  }
+
+  Widget _buildUserMessage() {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final userProvider = context.watch<UserProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
+    final parsed = _parseUserContent(widget.message.content);
+    final assistant = _assistantForMessage();
+    final visualText = applyAssistantRegexes(
+      parsed.text,
+      assistant: assistant,
+      scope: AssistantRegexScope.user,
+      target: AssistantRegexTransformTarget.visual,
+    );
+    final showUserActions = settings.showUserMessageActions;
+    final showVersionSwitcher = (widget.versionCount ?? 1) > 1;
+    final mediaPreview = _buildUserAttachmentPreview(
+      context,
+      parsed: parsed,
+      isDark: isDark,
+    );
+    final textBubble = visualText.isNotEmpty
+        ? Container(
+            key: ValueKey('user-message-text-bubble:${widget.message.id}'),
+            child: _buildBubbleContainer(
+              context: context,
+              isUser: true,
+              child: _buildUserTextContent(context, visualText, settings, cs),
+            ),
+          )
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Header: User info and avatar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (settings.showUserName || settings.showUserTimestamp)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (settings.showUserName)
+                      Text(
+                        userProvider.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: AppFontWeights.medium,
+                          color: cs.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    if (settings.showUserName && settings.showUserTimestamp)
+                      const SizedBox(height: 2),
+                    if (settings.showUserTimestamp)
+                      Text(
+                        _dateFormat.format(widget.message.timestamp),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              if (widget.showUserAvatar) ...[
+                const SizedBox(width: 8),
+                // User avatar
+                _buildUserAvatar(userProvider, cs),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Message content (context menu: long-press on mobile, right-click on desktop)
+          GestureDetector(
+            onLongPressStart: (_) {
+              final isDesktop =
+                  defaultTargetPlatform == TargetPlatform.macOS ||
+                  defaultTargetPlatform == TargetPlatform.windows ||
+                  defaultTargetPlatform == TargetPlatform.linux;
+              if (isDesktop) return; // Desktop uses right-click menu
+              _showUserContextMenu();
+            },
+            onSecondaryTapDown: (details) {
+              final isDesktop =
+                  defaultTargetPlatform == TargetPlatform.macOS ||
+                  defaultTargetPlatform == TargetPlatform.windows ||
+                  defaultTargetPlatform == TargetPlatform.linux;
+              if (!isDesktop) return; // Mobile keeps long-press
+              _showUserContextMenuAt(details.globalPosition);
+            },
+            behavior: HitTestBehavior.translucent,
+            child: Container(
+              key: _userBubbleKey,
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+              ),
+              child: Column(
+                key: ValueKey('user-message-content:${widget.message.id}'),
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (mediaPreview != null) mediaPreview,
+                  if (mediaPreview != null && textBubble != null)
+                    const SizedBox(height: 8),
+                  if (textBubble != null) textBubble,
+                ],
+              ),
+            ),
+          ),
+          if (showUserActions || showVersionSwitcher) ...[
+            SizedBox(height: showUserActions ? 8 : 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (showUserActions) ...[
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Center(
+                          child: IosIconButton(
+                            size: 16,
+                            padding: EdgeInsets.all(4),
+                            icon: Lucide.Copy,
+                            color: cs.onSurface.withValues(alpha: 0.9),
+                            onTap:
+                                widget.onCopy ??
+                                () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: widget.message.content),
+                                  );
+                                  showAppSnackBar(
+                                    context,
+                                    message:
+                                        l10n.chatMessageWidgetCopiedToClipboard,
+                                    type: NotificationType.success,
+                                  );
+                                },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Center(
+                          child: IosIconButton(
+                            size: 16,
+                            padding: EdgeInsets.all(4),
+                            icon: Lucide.RefreshCw,
+                            color: cs.onSurface.withValues(alpha: 0.9),
+                            onTap: widget.onResend == null
+                                ? null
+                                : () => _confirmRegeneration(widget.onResend!),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (widget.onEdit != null) ...[
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.Pencil,
+                              color: cs.onSurface.withValues(alpha: 0.9),
+                              onTap: widget.onEdit,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Center(
+                          child: GestureDetector(
+                            key: _moreBtnKey1,
+                            onTapDown: (d) {
+                              final isDesktop =
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.macOS ||
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.windows ||
+                                  defaultTargetPlatform == TargetPlatform.linux;
+                              if (isDesktop) {
+                                try {
+                                  DesktopMenuAnchor.setPosition(
+                                    d.globalPosition,
+                                  );
+                                } catch (_) {}
+                              }
+                            },
+                            onTap: () {
+                              final isDesktop =
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.macOS ||
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.windows ||
+                                  defaultTargetPlatform == TargetPlatform.linux;
+                              if (isDesktop) {
+                                _setAnchorFromKey(_moreBtnKey1);
+                              }
+                              widget.onMore?.call();
+                            },
+                            child: IosIconButton(
+                              size: 16,
+                              padding: EdgeInsets.all(4),
+                              icon: Lucide.Ellipsis,
+                              color: cs.onSurface.withValues(alpha: 0.9),
+                              onTap: null,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (showVersionSwitcher) ...[
+                      if (showUserActions) const SizedBox(width: 6),
+                      _BranchSelector(
+                        index: widget.versionIndex ?? 0,
+                        total: widget.versionCount ?? 1,
+                        onPrev: widget.onPrevVersion,
+                        onNext: widget.onNextVersion,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _showUserContextMenuAt(Offset globalPosition) async {
     final l10n = AppLocalizations.of(context)!;
     // Haptic feedback
