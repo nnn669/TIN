@@ -6040,6 +6040,7 @@ class _ReasoningSection extends StatefulWidget {
     required this.loading,
     required this.startAt,
     required this.finishedAt,
+    // ignore: unused_element_parameter
     this.onToggle,
   });
 
