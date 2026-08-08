@@ -1455,7 +1455,8 @@ class _GeminiSignatureMeta {
   final String? textKey;
   final dynamic textValue;
   final List<Map<String, dynamic>> images;
-  const _GeminiSignatureMeta({
+  cons
+t _GeminiSignatureMeta({
     required this.cleanedText,
     this.textKey,
     this.textValue,
@@ -1483,6 +1484,9 @@ class ChatStreamChunk {
   final TokenUsage? usage;
   final List<ToolCallInfo>? toolCalls;
   final List<ToolResultInfo>? toolResults;
+  // Model id reported by the upstream/vendor response (底层模型自报身份),
+  // used to reconcile the requested model against what actually answered.
+  final String? respondedModelId;
 
   ChatStreamChunk({
     required this.content,
@@ -1492,6 +1496,7 @@ class ChatStreamChunk {
     this.usage,
     this.toolCalls,
     this.toolResults,
+    this.respondedModelId,
   });
 }
 
