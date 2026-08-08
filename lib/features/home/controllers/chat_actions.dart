@@ -15,6 +15,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
+import '../../chat/utils/model_match_helper.dart';
 import '../services/ask_user_interaction_service.dart';
 import '../services/message_generation_service.dart';
 import '../services/tool_approval_service.dart';
@@ -1055,6 +1056,13 @@ class ChatActions {
     ChatStreamChunk chunk,
     stream_ctrl.StreamingState state,
   ) async {
+    // 捕获底层响应自报模型（OpenAI 兼容/Claude 响应 model 字段），
+    // 供消息操作栏的模型对账指示灯使用（请求模型 vs 响应模型）。
+    final respondedModelId = chunk.respondedModelId;
+    if (respondedModelId != null && respondedModelId.trim().isNotEmpty) {
+      RespondedModelRegistry.record(state.messageId, respondedModelId);
+    }
+
     final chunkContent = chunk.content.isNotEmpty
         ? streamController.captureGeminiThoughtSignature(
             chunk.content,
