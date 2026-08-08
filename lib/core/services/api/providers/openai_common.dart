@@ -859,7 +859,11 @@ void _applyVendorReasoningKnobs(
     body.remove('reasoning_effort');
   } else if (info.isDeepSeek) {
     if (isReasoning) {
-      body['thinking'] = {'type': off ? 'disabled' : 'enabled'};
+      body['thinking'] = <String, dynamic>{
+        'type': off ? 'disabled' : 'enabled',
+        if (!off && thinkingBudget != null && thinkingBudget > 0)
+          'budget_tokens': thinkingBudget,
+      };
     } else {
       body.remove('thinking');
       body.remove('reasoning_effort');
