@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../icons/lucide_adapter.dart';
@@ -55,12 +57,18 @@ class _ReasoningBudgetSheet extends StatefulWidget {
 }
 
 class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
+  /// 显式档位 id 的持久化 key。
+  ///
+  /// 只用 budget 数值无法区分 Ultracode 与 Max/Xhigh（它们共享同一预算），
+  /// 因此把用户显式点选的档位 id 单独持久化一份，面板重开时恢复选中态。
+  static const String _effortIdKey = 'thinking_effort_id_v1';
+
   late int _selected;
 
   /// 记录用户在本次会话里显式点选的档位 id。
   ///
   /// 只靠 budget 反查会在 Ultracode 与 Max 之间产生歧义（两者 budget 相同），
-  /// 因此显式点选时以这里为准。
+  /// 因此显式点选时以这里为准；面板重开时也会从本地恢复该值。
   String? _selectedId;
 
   @override
@@ -68,6 +76,17 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     super.initState();
     final s = context.read<SettingsProvider>();
     _selected = s.thinkingBudget ?? -1;
+    _loadPersistedEffortId();
+  }
+
+  /// 从本地恢复上次显式选择的档位 id。
+  ///
+  /// 异步读取（SharedPreferences），若本次面板内用户已做过选择则跳过。
+  Future<void> _loadPersistedEffortId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_effortIdKey);
+    if (!mounted || id == null || _selectedId != null) return;
+    setState(() => _selectedId = id);
   }
 
   Future<void> _select(int value, {String? id}) async {
@@ -76,6 +95,13 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
       _selectedId = id;
     });
     await context.read<SettingsProvider>().setThinkingBudget(value);
+    // 持久化显式档位 id，用于区分共享同一 budget 的档位（如 Ultracode 与 Max）。
+    final prefs = await SharedPreferences.getInstance();
+    if (id == null) {
+      await prefs.remove(_effortIdKey);
+    } else {
+      await prefs.setString(_effortIdKey, id);
+    }
   }
 
   bool _isCustomSelected({required bool showXhigh, required bool showMax}) {
@@ -189,12 +215,17 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
 
   /// 解析当前应高亮哪一行。
   ///
-  /// 优先使用本次会话里显式点选的 id；否则按 budget 反查第一个匹配项，
-  /// 这样从设置恢复进来时也能正确高亮。
+  /// 优先使用显式选择的 id，但只有在该 id 对应的档位与当前 budget 匹配时才
+  /// 采用（避免 budget 被覆盖后仍显示旧档位）；否则按 budget 反查第一个匹配
+  /// 项，这样从设置恢复进来时也能正确高亮。
   String? _resolveSelectedId(List<ThinkingEffortOption> options) {
     final explicit = _selectedId;
-    if (explicit != null && options.any((o) => o.id == explicit)) {
-      return explicit;
+    if (explicit != null) {
+      for (final option in options) {
+        if (option.id == explicit && option.budget == _selected) {
+          return explicit;
+        }
+      }
     }
     for (final option in options) {
       if (option.budget == _selected) return option.id;
