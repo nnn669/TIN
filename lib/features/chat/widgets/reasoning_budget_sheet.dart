@@ -32,8 +32,8 @@ Future<void> showReasoningBudgetSheet(
 
 /// 推理强度档位的稳定标识。
 ///
-/// 不直接用 budget 数值当 id：Ultracode 与 Max/Xhigh 会共用同一个 budget，
-/// 靠 id 才能区分选中态。
+/// 档位与 budget 一一对应：off=0、auto=-1、light=1024、medium=16000、
+/// heavy=32000、xhigh=64000。自定义档位使用任意预算并单独记录 id。
 class _EffortIds {
   const _EffortIds._();
 
@@ -43,8 +43,6 @@ class _EffortIds {
   static const String medium = 'medium';
   static const String heavy = 'heavy';
   static const String xhigh = 'xhigh';
-  static const String max = 'max';
-  static const String ultracode = 'ultracode';
   static const String custom = 'custom';
 }
 
@@ -59,16 +57,16 @@ class _ReasoningBudgetSheet extends StatefulWidget {
 class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
   /// 显式档位 id 的持久化 key。
   ///
-  /// 只用 budget 数值无法区分 Ultracode 与 Max/Xhigh（它们共享同一预算），
-  /// 因此把用户显式点选的档位 id 单独持久化一份，面板重开时恢复选中态。
+  /// 自定义档位使用任意预算，无法靠 budget 反查档位，因此把用户显式点选的
+  /// 档位 id 单独持久化一份，面板重开时恢复选中态。
   static const String _effortIdKey = 'thinking_effort_id_v1';
 
   late int _selected;
 
   /// 记录用户在本次会话里显式点选的档位 id。
   ///
-  /// 只靠 budget 反查会在 Ultracode 与 Max 之间产生歧义（两者 budget 相同），
-  /// 因此显式点选时以这里为准；面板重开时也会从本地恢复该值。
+  /// 自定义档位的预算可能是任意值，靠 budget 反查无法识别，因此显式点选时
+  /// 以这里为准；面板重开时也会从本地恢复该值。
   String? _selectedId;
 
   @override
@@ -95,7 +93,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
       _selectedId = id;
     });
     await context.read<SettingsProvider>().setThinkingBudget(value);
-    // 持久化显式档位 id，用于区分共享同一 budget 的档位（如 Ultracode 与 Max）。
+    // 持久化显式档位 id，用于自定义档位重开面板时恢复选中态。
     final prefs = await SharedPreferences.getInstance();
     if (id == null) {
       await prefs.remove(_effortIdKey);
@@ -104,7 +102,7 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     }
   }
 
-  bool _isCustomSelected({required bool showXhigh, required bool showMax}) {
+  bool _isCustomSelected({required bool showXhigh}) {
     final presets = <int>{
       -1, // auto
       0, // off
@@ -112,7 +110,6 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
       16000,
       32000,
       if (showXhigh) 64000,
-      if (showMax) 128000,
     };
     return !presets.contains(_selected);
   }
@@ -122,7 +119,6 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     final settings = context.read<SettingsProvider>();
     final isCurrentCustom = _isCustomSelected(
       showXhigh: _showXhighOption(settings),
-      showMax: _showMaxOption(settings),
     );
     final initialValue = isCurrentCustom ? _selected : 2048;
     final chosen = await ReasoningBudgetCustomDialog.show(
@@ -144,11 +140,10 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
   /// 构建堆叠式档位列表。
   ///
   /// 顺序固定为：关闭 → 自动 → 轻度 → 中度 → 重度，之后按模型能力追加
-  /// 更高档位（Xhigh / Max / Ultracode）。
+  /// 极限推理（Xhigh）档位。
   List<ThinkingEffortOption> _options(
     AppLocalizations l10n, {
     required bool showXhigh,
-    required bool showMax,
   }) {
     return <ThinkingEffortOption>[
       ThinkingEffortOption(
@@ -192,24 +187,6 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
           description: l10n.reasoningBudgetSheetXhighSubtitle,
           leadingBuilder: _budgetIcon(ReasoningIcons.xhighBudget),
         ),
-      if (showMax)
-        ThinkingEffortOption(
-          id: _EffortIds.max,
-          label: l10n.reasoningBudgetSheetMax,
-          budget: 128000,
-          description: l10n.reasoningBudgetSheetMaxSubtitle,
-          leadingBuilder: _budgetIcon(ReasoningIcons.maxBudget),
-        ),
-      if (showXhigh || showMax)
-        ThinkingEffortOption(
-          id: _EffortIds.ultracode,
-          label: l10n.reasoningBudgetSheetUltracode,
-          budget: showMax ? 128000 : 64000,
-          description: l10n.reasoningBudgetSheetUltracodeSubtitle,
-          leadingBuilder: (color) =>
-              Icon(Lucide.Sparkles, size: 17, color: color),
-          accent: true,
-        ),
     ];
   }
 
@@ -243,18 +220,6 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
         widget.modelId ?? assistant?.chatModelId ?? settings.currentModelId;
     if (currentProvider == null || currentModelId == null) return false;
     return settings.supportsXhighReasoning(currentProvider, currentModelId);
-  }
-
-  bool _showMaxOption(SettingsProvider settings) {
-    final assistant = context.read<AssistantProvider>().currentAssistant;
-    final currentProvider =
-        widget.modelProvider ??
-        assistant?.chatModelProvider ??
-        settings.currentModelProvider;
-    final currentModelId =
-        widget.modelId ?? assistant?.chatModelId ?? settings.currentModelId;
-    if (currentProvider == null || currentModelId == null) return false;
-    return settings.supportsMaxReasoning(currentProvider, currentModelId);
   }
 
   Widget _customEntry({required bool active}) {
@@ -312,14 +277,10 @@ class _ReasoningBudgetSheetState extends State<_ReasoningBudgetSheet> {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
     final showXhigh = _showXhighOption(settings);
-    final showMax = _showMaxOption(settings);
-    final customActive = _isCustomSelected(
-      showXhigh: showXhigh,
-      showMax: showMax,
-    );
+    final customActive = _isCustomSelected(showXhigh: showXhigh);
     final cs = Theme.of(context).colorScheme;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
-    final options = _options(l10n, showXhigh: showXhigh, showMax: showMax);
+    final options = _options(l10n, showXhigh: showXhigh);
     final selectedId = customActive ? null : _resolveSelectedId(options);
 
     return SafeArea(
