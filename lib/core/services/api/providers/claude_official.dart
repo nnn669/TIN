@@ -37,6 +37,8 @@ Stream<ChatStreamChunk> _sendClaudeStream(
   bool stream = true,
 }) async* {
   final upstreamModelId = _apiModelId(config, modelId);
+  // 底层响应自报的模型 ID（Anthropic 响应 `model` 字段），用于模型对账。
+  String? respondedModel;
   // Endpoint and headers (constant across rounds)
   final base = config.baseUrl.endsWith('/')
       ? config.baseUrl.substring(0, config.baseUrl.length - 1)
@@ -398,6 +400,10 @@ Stream<ChatStreamChunk> _sendClaudeStream(
     if (!stream) {
       final txt = await response.stream.bytesToString();
       final obj = jsonDecode(txt) as Map;
+      final objModel = obj['model'];
+      if (objModel is String && objModel.isNotEmpty) {
+        respondedModel = objModel;
+      }
       // Usage
       try {
         final u = (obj['usage'] as Map?)?.cast<String, dynamic>();
@@ -514,6 +520,7 @@ Stream<ChatStreamChunk> _sendClaudeStream(
         isDone: true,
         totalTokens: (totalUsage?.totalTokens ?? 0),
         usage: totalUsage,
+        respondedModelId: respondedModel,
       );
       return;
     }
@@ -575,6 +582,11 @@ Stream<ChatStreamChunk> _sendClaudeStream(
         final data = line.substring(5).trimLeft();
         try {
           final obj = jsonDecode(data);
+          // 捕获底层自报模型：message_start 事件的 message.model 或顶层 model
+          final objModel = obj['model'] ?? obj['message']?['model'];
+          if (objModel is String && objModel.isNotEmpty) {
+            respondedModel = objModel;
+          }
           final type = obj['type'];
 
           if (type == 'content_block_start') {
@@ -957,6 +969,7 @@ Stream<ChatStreamChunk> _sendClaudeStream(
           isDone: true,
           totalTokens: (totalUsage?.totalTokens ?? roundTokens),
           usage: totalUsage ?? usage,
+          respondedModelId: respondedModel,
         );
         return;
       }
