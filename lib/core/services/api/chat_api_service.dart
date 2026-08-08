@@ -1455,8 +1455,7 @@ class _GeminiSignatureMeta {
   final String? textKey;
   final dynamic textValue;
   final List<Map<String, dynamic>> images;
-  cons
-t _GeminiSignatureMeta({
+  const _GeminiSignatureMeta({
     required this.cleanedText,
     this.textKey,
     this.textValue,
