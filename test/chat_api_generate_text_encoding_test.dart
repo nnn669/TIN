@@ -209,7 +209,10 @@ void main() {
           thinkingBudget: 0,
         );
 
-        expect(enabledBody['thinking'], {'type': 'enabled'});
+        expect(
+          enabledBody['thinking'],
+          {'type': 'enabled', 'budget_tokens': 64000},
+        );
         expect(enabledBody['reasoning_effort'], 'xhigh');
         expect(disabledBody['thinking'], {'type': 'disabled'});
         expect(disabledBody.containsKey('reasoning_effort'), isFalse);

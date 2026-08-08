@@ -42,7 +42,7 @@ class ModelRegistry {
             r'claude|'
             r'qwen-?3|doubao.+1([-.])(?:6|8)|grok-4|kimi-k2|'
             r'step-3|intern-s1|glm-4([-.])(?:5|6|7)|glm-5|minimax-(?:m2|m3)|'
-            r'deepseek-(?:r1|v3\.1|v3\.2|v4)|'
+            r'deepseek-(?:r1|v3|chat|v3\.1|v3\.2|v4)|'
             r'deepseek-reasoner|'
             r'mimo-v2'
             r')')

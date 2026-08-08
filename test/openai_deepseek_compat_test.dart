@@ -25,7 +25,7 @@ Future<Map<String, dynamic>> _readJsonBody(HttpRequest request) async {
 void main() {
   group('DeepSeek OpenAI compatibility', () {
     test(
-      'xhigh reasoning keeps thinking enabled and passes xhigh effort',
+      'xhigh reasoning keeps thinking enabled with budget and passes xhigh effort',
       () async {
         final requests = <Map<String, dynamic>>[];
 
@@ -73,7 +73,10 @@ void main() {
 
         expect(chunks.last.isDone, isTrue);
         expect(requests, hasLength(1));
-        expect(requests.single['thinking'], {'type': 'enabled'});
+        expect(
+          requests.single['thinking'],
+          {'type': 'enabled', 'budget_tokens': 64000},
+        );
         expect(requests.single['reasoning_effort'], 'xhigh');
       },
     );
