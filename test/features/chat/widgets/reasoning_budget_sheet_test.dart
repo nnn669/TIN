@@ -163,6 +163,50 @@ void main() {
       expect(find.text('Ultracode'), findsOneWidget);
     });
 
+    testWidgets('keeps Ultracode selected after reopening the sheet', (
+      tester,
+    ) async {
+      const modelId = 'claude-fable-5';
+      final settings = await _settingsForClaudeModel(tester, modelId);
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        modelProvider: 'Claude',
+        modelId: modelId,
+      );
+
+      await _openSheet(tester);
+      await _tapOption(tester, 'ultracode');
+      expect(settings.thinkingBudget, 128000);
+
+      // 重新构建 launcher（全新的 sheet State），模拟关闭后再次打开面板。
+      await _pumpSheetLauncher(
+        tester,
+        settings: settings,
+        modelProvider: 'Claude',
+        modelId: modelId,
+      );
+      await _openSheet(tester);
+      // flush SharedPreferences 异步读取 + 渲染恢复后的选中态。
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 240));
+
+      final handle = tester.ensureSemantics();
+      final ultracodeSemantics = tester.getSemantics(
+        find.byKey(ThinkingEffortStack.optionKey('ultracode')),
+      );
+      expect(ultracodeSemantics, isNotNull);
+      expect(ultracodeSemantics.hasFlag(SemanticsFlag.isSelected), isTrue);
+
+      // 与 Ultracode 共享同一 budget 的 Max 不应同时处于选中态。
+      final maxSemantics = tester.getSemantics(
+        find.byKey(ThinkingEffortStack.optionKey('max')),
+      );
+      expect(maxSemantics, isNotNull);
+      expect(maxSemantics.hasFlag(SemanticsFlag.isSelected), isFalse);
+      handle.dispose();
+    });
+
     testWidgets('keeps max reasoning hidden for older Claude models', (
       tester,
     ) async {
