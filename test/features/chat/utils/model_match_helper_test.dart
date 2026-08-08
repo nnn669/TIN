@@ -48,6 +48,47 @@ group('isSameModel', () {
   });
 });
 
+group('isRespondedModelMatching', () {
+  test('matches identical models', () {
+    expect(
+      isRespondedModelMatching('gpt-4o', 'gpt-4o'),
+      isTrue,
+    );
+    expect(
+      isRespondedModelMatching('deepseek-v4-flash', 'deepseek_v4_flash'),
+      isTrue,
+    );
+  });
+
+  test('tolerates official date/version suffixes (request is prefix)', () {
+    expect(
+      isRespondedModelMatching('gpt-4o', 'gpt-4o-2024-05-13'),
+      isTrue,
+    );
+    expect(
+      isRespondedModelMatching('gpt-4o-mini', 'gpt-4o-mini-2024-07-18'),
+      isTrue,
+    );
+  });
+
+  test('rejects swapped / downgraded models', () {
+    expect(
+      isRespondedModelMatching('gpt-4o', 'gpt-3.5-turbo'),
+      isFalse,
+    );
+    expect(
+      isRespondedModelMatching('deepseek-v3', 'gpt-4o'),
+      isFalse,
+    );
+    expect(
+      isRespondedModelMatching('deepseek-v4-flash', 'deepseek-v3'),
+      isFalse,
+    );
+    expect(isRespondedModelMatching('', 'gpt-4o'), isFalse);
+    expect(isRespondedModelMatching('gpt-4o', ''), isFalse);
+  });
+});
+
 group('resolveApiModelId', () {
   test('falls back to raw modelId without provider override', () {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -58,5 +99,35 @@ group('resolveApiModelId', () {
     );
     expect(resolveApiModelId(settings, modelId: null), isNull);
     expect(resolveApiModelId(settings, modelId: '  '), isNull);
+  });
+});
+
+group('RespondedModelRegistry', () {
+  tearDown(RespondedModelRegistry.clear);
+
+  test('records and looks up by message id', () {
+    RespondedModelRegistry.record('msg-1', 'gpt-4o-2024-05-13');
+    expect(RespondedModelRegistry.lookup('msg-1'), 'gpt-4o-2024-05-13');
+    expect(RespondedModelRegistry.lookup('msg-2'), isNull);
+  });
+
+  test('ignores blank inputs', () {
+    RespondedModelRegistry.record('msg-1', '   ');
+    expect(RespondedModelRegistry.lookup('msg-1'), isNull);
+    RespondedModelRegistry.record('', 'gpt-4o');
+    expect(RespondedModelRegistry.lookup(''), isNull);
+  });
+
+  test('overwrites and removes', () {
+    RespondedModelRegistry.record('msg-1', 'gpt-4o');
+    RespondedModelRegistry.record('msg-1', 'gpt-4o-mini');
+    expect(RespondedModelRegistry.lookup('msg-1'), 'gpt-4o-mini');
+
+    RespondedModelRegistry.remove('msg-1');
+    expect(RespondedModelRegistry.lookup('msg-1'), isNull);
+
+    RespondedModelRegistry.record('msg-2', 'claude-sonnet-4-6');
+    RespondedModelRegistry.clear();
+    expect(RespondedModelRegistry.lookup('msg-2'), isNull);
   });
 });
