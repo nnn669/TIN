@@ -138,9 +138,7 @@ void main() {
       expect(settings.thinkingBudget, 32000);
     });
 
-    testWidgets('exposes Ultracode and max reasoning for Claude Fable 5', (
-      tester,
-    ) async {
+    testWidgets('exposes xhigh reasoning for Claude Fable 5', (tester) async {
       const modelId = 'claude-fable-5';
       final settings = await _settingsForClaudeModel(tester, modelId);
       await _pumpSheetLauncher(
@@ -152,18 +150,18 @@ void main() {
 
       await _openSheet(tester);
 
-      expect(find.byKey(ThinkingEffortStack.optionKey('max')), findsOneWidget);
+      expect(find.byKey(ThinkingEffortStack.optionKey('xhigh')), findsOneWidget);
+      expect(find.byKey(ThinkingEffortStack.optionKey('max')), findsNothing);
       expect(
         find.byKey(ThinkingEffortStack.optionKey('ultracode')),
-        findsOneWidget,
+        findsNothing,
       );
 
-      await _tapOption(tester, 'ultracode');
-      expect(settings.thinkingBudget, 128000);
-      expect(find.text('Ultracode'), findsOneWidget);
+      await _tapOption(tester, 'xhigh');
+      expect(settings.thinkingBudget, 64000);
     });
 
-    testWidgets('keeps Ultracode selected after reopening the sheet', (
+    testWidgets('keeps xhigh selected after reopening the sheet', (
       tester,
     ) async {
       const modelId = 'claude-fable-5';
@@ -176,8 +174,8 @@ void main() {
       );
 
       await _openSheet(tester);
-      await _tapOption(tester, 'ultracode');
-      expect(settings.thinkingBudget, 128000);
+      await _tapOption(tester, 'xhigh');
+      expect(settings.thinkingBudget, 64000);
 
       // 重新构建 launcher（全新的 sheet State），模拟关闭后再次打开面板。
       await _pumpSheetLauncher(
@@ -192,24 +190,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 240));
 
       final handle = tester.ensureSemantics();
-      final ultracodeSemantics = tester.getSemantics(
-        find.byKey(ThinkingEffortStack.optionKey('ultracode')),
+      final xhighSemantics = tester.getSemantics(
+        find.byKey(ThinkingEffortStack.optionKey('xhigh')),
       );
-      expect(ultracodeSemantics, isNotNull);
-      expect(ultracodeSemantics.hasFlag(SemanticsFlag.isSelected), isTrue);
-
-      // 与 Ultracode 共享同一 budget 的 Max 不应同时处于选中态。
-      final maxSemantics = tester.getSemantics(
-        find.byKey(ThinkingEffortStack.optionKey('max')),
-      );
-      expect(maxSemantics, isNotNull);
-      expect(maxSemantics.hasFlag(SemanticsFlag.isSelected), isFalse);
+      expect(xhighSemantics, isNotNull);
+      expect(xhighSemantics.hasFlag(SemanticsFlag.isSelected), isTrue);
       handle.dispose();
     });
 
-    testWidgets('keeps max reasoning hidden for older Claude models', (
-      tester,
-    ) async {
+    testWidgets('keeps xhigh hidden for older Claude models', (tester) async {
       final settings = await _settingsForClaudeModel(
         tester,
         'claude-sonnet-4-5',
@@ -229,7 +218,6 @@ void main() {
         find.byKey(ThinkingEffortStack.optionKey('ultracode')),
         findsNothing,
       );
-      expect(find.text('Ultracode'), findsNothing);
     });
 
     testWidgets('off level maps to budget 0 and closes the sheet', (
