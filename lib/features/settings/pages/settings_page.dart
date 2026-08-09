@@ -8,7 +8,6 @@ import '../../provider/pages/providers_page.dart';
 import 'display_settings_page.dart';
 import '../../mcp/pages/mcp_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
-import 'about_page.dart';
 import 'tts_services_page.dart';
 import 'log_viewer_page.dart';
 import '../../search/pages/search_services_page.dart';
@@ -331,22 +330,6 @@ class SettingsPage extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const StorageSpacePage()),
                   );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          header(l10n.settingsPageAboutSection),
-          _iosSectionCard(
-            children: [
-              _iosNavRow(
-                context,
-                icon: Lucide.BadgeInfo,
-                label: l10n.settingsPageAbout,
-                onTap: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => const AboutPage()));
                 },
               ),
               if (settings.requestLogEnabled || settings.flutterLogEnabled) ...[
