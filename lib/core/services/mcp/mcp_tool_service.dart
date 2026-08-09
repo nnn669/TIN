@@ -18,17 +18,153 @@ class McpToolService extends ChangeNotifier {
   static const int maxModelToolResultChars = 12000;
 
   /// Truncates a tool result for model consumption. When [text] exceeds
-  /// [maxModelToolResultChars], only the leading part is kept and a marker is
-  /// appended so the model knows the result was cut and can re-run a narrower
-  /// query if it needs the tail. Returns the input unchanged when it fits.
+  /// [maxModelToolResultChars], the leading structurally-complete content is
+  /// kept (JSON keeps whole top-level entries, plain text keeps head + tail)
+  /// and a marker is appended so the model knows the result was cut and can
+  /// re-run a narrower query if it needs the tail. Returns the input unchanged
+  /// when it fits.
   @visibleForTesting
   static String truncateToolResultForModel(String text) {
     final limit = maxModelToolResultChars;
     if (text.length <= limit) return text;
-    final head = text.substring(0, limit);
-    return '$head\n\n'
+    final kept = _cutPreservingStructure(text, limit);
+    return '$kept\n\n'
         '[mcp_tool_result_truncated: ${text.length} chars total, '
-        'showing first $limit; re-run with narrower arguments if needed.]';
+        'kept ~$limit; re-run with narrower arguments if needed.]';
+  }
+
+  /// One-line summary of a tool result, injected above the full text so the
+  /// model can decide whether the result is still worth reading in depth
+  /// without paying to re-parse everything on every round.
+  @visibleForTesting
+  static String summarizeToolResultForModel(String text) {
+    final lines = const LineSplitter()
+        .convert(text)
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return '[result_summary] empty tool result.';
+    String? preview;
+    for (final l in lines) {
+      if (l.length < 3 ||
+          l.startsWith('{') ||
+          l.startsWith('[') ||
+          l.startsWith('}') ||
+          l.startsWith(']') ||
+          l.startsWith('"')) {
+        continue;
+      }
+      preview = l;
+      break;
+    }
+    preview ??= lines.first;
+    if (preview.length > 160) {
+      preview = '${preview.substring(0, 157)}...';
+    }
+    return '[result_summary] ${lines.length} non-empty line(s), '
+        '${text.length} chars. Head: $preview';
+  }
+
+  /// Compacts a JSON-schema into a tiny field-name map for the model, instead
+  /// of replaying the full (often large) schema on every argument error.
+  @visibleForTesting
+  static Map<String, dynamic> compactSchemaForModel(
+    Map<String, dynamic> schema,
+  ) {
+    final props = schema['properties'];
+    final names = (props is Map)
+        ? props.keys.map((k) => k.toString()).toList()
+        : const <String>[];
+    final required = schema['required'];
+    return <String, dynamic>{
+      'type': schema['type'] ?? 'object',
+      if (names.isNotEmpty) 'propertyNames': names,
+      if (required is List && required.isNotEmpty) 'required': required,
+      'note': 'full parameter schemas compacted to save context; use the '
+          'listed property names for valid arguments.',
+    };
+  }
+
+  static String _cutPreservingStructure(String text, int limit) {
+    final trimmed = text.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      final structured = _cutStructuredJson(trimmed, limit);
+      if (structured != null && structured.length < text.length) {
+        return structured;
+      }
+    }
+    final headChars = (limit * 0.6).round();
+    final tailChars = (limit * 0.2).round();
+    if (text.length <= headChars + tailChars) {
+      return text.substring(0, limit);
+    }
+    final head = text.substring(0, headChars);
+    final tail = text.substring(text.length - tailChars);
+    final omitted = text.length - headChars - tailChars;
+    return '$head\n[... $omitted chars omitted in the middle]\n$tail';
+  }
+
+  /// Keeps only structurally complete leading entries of a JSON document, so
+  /// the model never receives a cut-off, unparseable JSON fragment. Returns
+  /// null when the text is not JSON or nothing was dropped.
+  static String? _cutStructuredJson(String text, int limit) {
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(text);
+    } catch (_) {
+      return null;
+    }
+    if (decoded is List) {
+      final buf = StringBuffer('[');
+      var dropped = 0;
+      for (final item in decoded) {
+        final chunk = jsonEncode(item);
+        final need = chunk.length + (buf.length > 1 ? 1 : 0) + 1;
+        if (buf.length + need > limit) {
+          dropped++;
+          continue;
+        }
+        if (buf.length > 1) buf.write(',');
+        buf.write(chunk);
+      }
+      if (dropped > 0) {
+        final tail = ',"...${dropped} more item(s) omitted"]';
+        if (buf.length + tail.length <= limit) {
+          buf.write(tail);
+        } else {
+          buf.write(']');
+        }
+      } else {
+        buf.write(']');
+      }
+      return buf.toString();
+    }
+    if (decoded is Map) {
+      final buf = StringBuffer('{');
+      var dropped = 0;
+      for (final entry in decoded.entries) {
+        final chunk = '"${entry.key}":${jsonEncode(entry.value)}';
+        final need = chunk.length + (buf.length > 1 ? 1 : 0) + 1;
+        if (buf.length + need > limit) {
+          dropped++;
+          continue;
+        }
+        if (buf.length > 1) buf.write(',');
+        buf.write(chunk);
+      }
+      if (dropped > 0) {
+        final tail = ',"...${dropped} more field(s) omitted"}';
+        if (buf.length + tail.length <= limit) {
+          buf.write(tail);
+        } else {
+          buf.write('}');
+        }
+      } else {
+        buf.write('}');
+      }
+      return buf.toString();
+    }
+    return null;
   }
 
   List<McpToolConfig> listAvailableToolsForConversation(
@@ -60,18 +196,15 @@ class McpToolService extends ChangeNotifier {
     Map<String, dynamic> arguments = const {},
   }) async {
     final selected = chat.getConversationMcpServers(conversationId).toSet();
-    // debugPrint('[MCP/Call/Select] convo=$conversationId tool=$toolName selectedServers=${selected.join(',')}');
     if (selected.isEmpty) return null;
 
     // Find a server that has this tool enabled
     final connected = mcpProvider.connectedServers
         .where((s) => selected.contains(s.id))
         .toList();
-    // debugPrint('[MCP/Call/Select] connectedAndSelected=${connected.map((s)=>s.id).join(',')}');
     for (final s in connected) {
       final has = s.tools.any((t) => t.enabled && t.name == toolName);
       if (has) {
-        // debugPrint('[MCP/Call/Select] using server=${s.id} name=${s.name} transport=${s.transport.name}');
         return await mcpProvider.callTool(s.id, toolName, arguments);
       }
     }
@@ -182,8 +315,13 @@ class McpToolService extends ChangeNotifier {
         // ignore single content parse errors and continue
       }
     }
+    final full = buf.toString().trim();
+    if (full.isEmpty) {
+      return _appendMcpErrorMarker(full, res.isError == true);
+    }
+    final summarized = '${summarizeToolResultForModel(full)}\n\n$full';
     return _appendMcpErrorMarker(
-      truncateToolResultForModel(buf.toString().trim()),
+      truncateToolResultForModel(summarized),
       res.isError == true,
     );
   }
@@ -200,14 +338,12 @@ class McpToolService extends ChangeNotifier {
         ? assistants.getById(assistantId)
         : assistants.currentAssistant;
     final selected = (a?.mcpServerIds ?? const <String>[]).toSet();
-    // debugPrint('[MCP/Call/Select] assistant=${assistantId ?? a?.id ?? '(current)'} tool=$toolName selectedServers=${selected.join(',')}');
     if (selected.isEmpty) return '';
     for (final s in mcpProvider.connectedServers.where(
       (s) => selected.contains(s.id),
     )) {
       final has = s.tools.any((t) => t.enabled && t.name == toolName);
       if (has) {
-        // debugPrint('[MCP/Call/Select] using server=${s.id} name=${s.name} transport=${s.transport.name}');
         final res = await mcpProvider.callTool(s.id, toolName, arguments);
         if (res == null) {
           final errMsg = mcpProvider.errorFor(s.id) ?? 'Unknown error';
@@ -281,8 +417,13 @@ class McpToolService extends ChangeNotifier {
             // ignore single content parse errors and continue
           }
         }
+        final full = buf.toString().trim();
+        if (full.isEmpty) {
+          return _appendMcpErrorMarker(full, res.isError == true);
+        }
+        final summarized = '${summarizeToolResultForModel(full)}\n\n$full';
         return _appendMcpErrorMarker(
-          truncateToolResultForModel(buf.toString().trim()),
+          truncateToolResultForModel(summarized),
           res.isError == true,
         );
       }
@@ -315,9 +456,10 @@ class McpToolService extends ChangeNotifier {
       'tool': toolName,
       'server': serverName,
       'lastArguments': arguments,
-      if (schema != null && schema.isNotEmpty) 'parametersSchema': schema,
+      if (schema != null && schema.isNotEmpty)
+        'parametersSchemaBrief': compactSchemaForModel(schema),
       'instruction':
-          'Revise arguments to satisfy parametersSchema, then call the same tool again.',
+          'Revise arguments to satisfy parametersSchemaBrief, then call the same tool again.',
     };
     return const JsonEncoder.withIndent('  ').convert(map);
   }
