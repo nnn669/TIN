@@ -9,6 +9,28 @@ import '../../../utils/app_directories.dart';
 class McpToolService extends ChangeNotifier {
   McpToolService();
 
+  /// Maximum characters of a single MCP tool result that are replayed into
+  /// the model context. Longer outputs (large file listings, search results,
+  /// API dumps) are truncated with an explicit marker so multi-tool chains do
+  /// not grow the conversation history -- and the per-round billing -- without
+  /// bound. Tool execution itself is never limited.
+  @visibleForTesting
+  static const int maxModelToolResultChars = 12000;
+
+  /// Truncates a tool result for model consumption. When [text] exceeds
+  /// [maxModelToolResultChars], only the leading part is kept and a marker is
+  /// appended so the model knows the result was cut and can re-run a narrower
+  /// query if it needs the tail. Returns the input unchanged when it fits.
+  @visibleForTesting
+  static String truncateToolResultForModel(String text) {
+    final limit = maxModelToolResultChars;
+    if (text.length <= limit) return text;
+    final head = text.substring(0, limit);
+    return '$head\n\n'
+        '[mcp_tool_result_truncated: ${text.length} chars total, '
+        'showing first $limit; re-run with narrower arguments if needed.]';
+  }
+
   List<McpToolConfig> listAvailableToolsForConversation(
     McpProvider mcpProvider,
     ChatService chat,
@@ -160,7 +182,10 @@ class McpToolService extends ChangeNotifier {
         // ignore single content parse errors and continue
       }
     }
-    return _appendMcpErrorMarker(buf.toString().trim(), res.isError == true);
+    return _appendMcpErrorMarker(
+      truncateToolResultForModel(buf.toString().trim()),
+      res.isError == true,
+    );
   }
 
   Future<String> callToolTextForAssistant(
@@ -256,7 +281,10 @@ class McpToolService extends ChangeNotifier {
             // ignore single content parse errors and continue
           }
         }
-        return _appendMcpErrorMarker(buf.toString().trim(), res.isError == true);
+        return _appendMcpErrorMarker(
+          truncateToolResultForModel(buf.toString().trim()),
+          res.isError == true,
+        );
       }
     }
     return '';
