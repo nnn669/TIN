@@ -26,11 +26,9 @@ jobs:
           from pathlib import Path
           p = Path('lib/features/home/widgets/message_list_view.dart')
           s = p.read_text()
-          old = "import 'model_icon.dart';"
-          new = "import 'model_icon.dart';\nimport 'agent_workspace_message.dart';"
-          if old not in s or "agent_workspace_message.dart" in s:
-              raise SystemExit('unexpected import state')
-          s = s.replace(old, new, 1)
+          import_line = "import 'model_icon.dart';"
+          if "agent_workspace_message.dart" not in s:
+              s = s.replace(import_line, import_line + "\nimport 'agent_workspace_message.dart';", 1)
           old = "    if (!isSpotlight) return messageColumn;"
           new = """    final workspaceMessage = AgentWorkspaceMessage(
           role: message.role,
@@ -38,10 +36,12 @@ jobs:
           child: messageColumn,
         );
         if (!isSpotlight) return workspaceMessage;"""
-          if old not in s:
-              raise SystemExit('message exit not found')
-          s = s.replace(old, new, 1)
-          s = s.replace('      child: messageColumn,\n    );', '      child: workspaceMessage,\n    );', 1)
+          if old in s:
+              s = s.replace(old, new, 1)
+          old_child = "      child: messageColumn,\n    );\n  }\n\n  int _latestAssistantMessageIndex()"
+          new_child = "      child: workspaceMessage,\n    );\n  }\n\n  int _latestAssistantMessageIndex()"
+          if old_child in s:
+              s = s.replace(old_child, new_child, 1)
           p.write_text(s)
           PY
           dart format lib/features/home/widgets/message_list_view.dart lib/features/home/widgets/agent_workspace_message.dart
@@ -51,7 +51,6 @@ jobs:
           git config user.email 510875510@qq.com
           git add lib/features/home/widgets/message_list_view.dart lib/features/home/widgets/agent_workspace_message.dart
           git commit -m 'feat(chat): render all messages in agent workspace'
-          git push origin main
           git rm .github/workflows/apply-agent-workspace.yml
           git commit -m 'chore: remove one-time agent workspace patch workflow'
           git push origin main
