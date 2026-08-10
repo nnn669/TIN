@@ -16,24 +16,36 @@ class ApiKeyManager {
   final Map<String, int> _roundRobinIndexMap = {}; // providerId -> index
   final Map<String, int> _keyUsageMap = {}; // keyId -> total uses (ephemeral)
 
-  KeySelectionResult selectForProvider(ProviderConfig provider) {
+  /// Selects the next usable key while excluding keys that already failed in
+  /// the current request. The exclusion is request-scoped so a transient
+  /// failure never changes a user's persisted key configuration.
+  KeySelectionResult selectForProvider(
+    ProviderConfig provider, {
+    Set<String> excludedKeyIds = const <String>{},
+  }) {
     final keys = List<ApiKeyConfig>.from(
-      (provider.apiKeys ?? const <ApiKeyConfig>[]).where((k) => k.isEnabled),
+      (provider.apiKeys ?? const <ApiKeyConfig>[]).where(
+        (key) => key.isEnabled && !excludedKeyIds.contains(key.id),
+      ),
     );
-    if (keys.isEmpty) return const KeySelectionResult(null, 'no_keys');
+    if (keys.isEmpty) {
+      return KeySelectionResult(
+        null,
+        excludedKeyIds.isEmpty ? 'no_keys' : 'no_remaining_keys',
+      );
+    }
 
-    // Filter by status and cooldown
+    // Filter by status and cooldown.
     final now = DateTime.now().millisecondsSinceEpoch;
     final cooldownMs =
         (provider.keyManagement?.failureRecoveryTimeMinutes ?? 5) * 60 * 1000;
-    final available = keys.where((k) {
-      if (k.status == ApiKeyStatus.disabled) return false;
-      if (k.status == ApiKeyStatus.error) {
-        final since = now - (k.updatedAt);
+    final available = keys.where((key) {
+      if (key.status == ApiKeyStatus.disabled) return false;
+      if (key.status == ApiKeyStatus.error) {
+        final since = now - key.updatedAt;
         if (since < cooldownMs) return false;
       }
-      // Only select keys marked active; error keys are filtered by cooldown above and disabled are skipped.
-      return k.status == ApiKeyStatus.active;
+      return key.status == ApiKeyStatus.active;
     }).toList();
 
     if (available.isEmpty) {
@@ -78,7 +90,7 @@ class ApiKeyManager {
     String? error,
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    var updated = key.copyWith(
+    final updated = key.copyWith(
       usage: key.usage.copyWith(
         totalRequests: key.usage.totalRequests + 1,
         successfulRequests: key.usage.successfulRequests + (success ? 1 : 0),
