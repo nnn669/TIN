@@ -1,13 +1,16 @@
 name: Apply Agent Workspace Surface
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.event.head_commit.message != 'feat(chat): render all messages in agent workspace'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
