@@ -11,12 +11,12 @@ class AgentWorkspaceMessage extends StatelessWidget {
   const AgentWorkspaceMessage({
     super.key,
     required this.role,
-    required this.index,
+    required this.isLast,
     required this.child,
   });
 
   final String role;
-  final int index;
+  final bool isLast;
   final Widget child;
 
   bool get _isUser => role == 'user';
@@ -26,7 +26,6 @@ class AgentWorkspaceMessage extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final accent = _isUser ? colors.tertiary : colors.primary;
-    final isLast = index == 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
