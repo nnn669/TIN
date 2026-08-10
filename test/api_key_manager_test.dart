@@ -79,6 +79,29 @@ void main() {
       },
     );
 
+    test('excludes failed keys while selecting the next key for a request', () {
+      final provider = _provider(
+        id: 'request-scoped-failover',
+        keys: [_key('key_a', 'first'), _key('key_b', 'second')],
+      );
+      final manager = ApiKeyManager();
+
+      final first = manager.selectForProvider(provider);
+      final retry = manager.selectForProvider(
+        provider,
+        excludedKeyIds: {first.key!.id},
+      );
+      final exhausted = manager.selectForProvider(
+        provider,
+        excludedKeyIds: {'key_a', 'key_b'},
+      );
+
+      expect(first.key?.key, 'first');
+      expect(retry.key?.key, 'second');
+      expect(exhausted.key, isNull);
+      expect(exhausted.reason, 'no_remaining_keys');
+    });
+
     test('returns no available keys when all configured keys are disabled', () {
       final provider = _provider(
         id: 'round-robin-no-available',
