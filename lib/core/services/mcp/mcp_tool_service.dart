@@ -10,27 +10,15 @@ class McpToolService extends ChangeNotifier {
   McpToolService();
 
   /// Maximum characters of a single MCP tool result that are replayed into
-  /// the model context. Longer outputs (large file listings, search results,
-  /// API dumps) are truncated with an explicit marker so multi-tool chains do
-  /// not grow the conversation history -- and the per-round billing -- without
-  /// bound. Tool execution itself is never limited.
+  /// the model context. Truncation is currently disabled per user request.
   @visibleForTesting
-  static const int maxModelToolResultChars = 12000;
+  static const int maxModelToolResultChars = 2147483647;
 
-  /// Truncates a tool result for model consumption. When [text] exceeds
-  /// [maxModelToolResultChars], the leading structurally-complete content is
-  /// kept (JSON keeps whole top-level entries, plain text keeps head + tail)
-  /// and a marker is appended so the model knows the result was cut and can
-  /// re-run a narrower query if it needs the tail. Returns the input unchanged
-  /// when it fits.
+  /// Truncates a tool result for model consumption. Truncation is currently
+  /// disabled; returns the input unchanged.
   @visibleForTesting
   static String truncateToolResultForModel(String text) {
-    final limit = maxModelToolResultChars;
-    if (text.length <= limit) return text;
-    final kept = _cutPreservingStructure(text, limit);
-    return '$kept\n\n'
-        '[mcp_tool_result_truncated: ${text.length} chars total, '
-        'kept ~$limit; re-run with narrower arguments if needed.]';
+    return text;
   }
 
   /// One-line summary of a tool result, injected above the full text so the
