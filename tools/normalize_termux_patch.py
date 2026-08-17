@@ -2,8 +2,9 @@ from pathlib import Path
 
 path = Path("tools/patch_termux_mcp.py")
 source = path.read_text(encoding="utf-8")
-start = source.find("replace_once(\n    provider,\n", source.find("builtinEnabledById"))
-end = source.find("\nreplace_once(\n    provider,", start + 1)
+target = source.find("builtinEnabledById")
+start = source.rfind("replace_once(\n    provider,\n", 0, target)
+end = source.find("\nreplace_once(\n    provider,", target)
 if start < 0 or end < 0:
     raise SystemExit("provider import branch replacement not found")
 replacement = '''replace_once(
