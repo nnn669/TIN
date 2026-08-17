@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
     private var processTextChannel: MethodChannel? = null
     private var fileSaveChannel: MethodChannel? = null
     private var termuxChannel: MethodChannel? = null
+    private var termuxHandler: TermuxCommandHandler? = null
     private var pendingProcessText: String? = null
     private var pendingSaveResult: MethodChannel.Result? = null
     private var pendingSaveSourcePath: String? = null
@@ -51,12 +52,22 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        termuxHandler = TermuxCommandHandler(this)
         termuxChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             TermuxCommandHandler.CHANNEL_NAME,
         )
-        termuxChannel?.setMethodCallHandler(TermuxCommandHandler(this))
+        termuxChannel?.setMethodCallHandler(termuxHandler)
         pendingProcessText = extractProcessText(intent) ?: extractSharedContent(intent)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        termuxHandler?.onRequestPermissionsResult(requestCode, grantResults)
     }
 
     override fun onNewIntent(intent: Intent) {

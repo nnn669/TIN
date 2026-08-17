@@ -24,9 +24,23 @@ class McpToolService extends ChangeNotifier {
       'type': schema['type'] ?? 'object',
       if (names.isNotEmpty) 'propertyNames': names,
       if (required is List && required.isNotEmpty) 'required': required,
-      'note': 'full parameter schemas compacted to save context; use the '
+      'note':
+          'full parameter schemas compacted to save context; use the '
           'listed property names for valid arguments.',
     };
+  }
+
+  @visibleForTesting
+  static Set<String> effectiveAssistantServerIds(
+    Iterable<String> configuredIds, {
+    bool? includeBuiltinTermux,
+  }) {
+    final selected = configuredIds.toSet();
+    final include =
+        includeBuiltinTermux ??
+        (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+    if (include) selected.add(McpProvider.builtinTermuxId);
+    return selected;
   }
 
   List<McpToolConfig> listAvailableToolsForConversation(
@@ -46,7 +60,9 @@ class McpToolService extends ChangeNotifier {
     final a = (assistantId != null)
         ? assistants.getById(assistantId)
         : assistants.currentAssistant;
-    final selected = (a?.mcpServerIds ?? const <String>[]).toSet();
+    final selected = effectiveAssistantServerIds(
+      a?.mcpServerIds ?? const <String>[],
+    );
     return mcpProvider.getEnabledToolsForServers(selected);
   }
 
@@ -184,7 +200,9 @@ class McpToolService extends ChangeNotifier {
     final a = (assistantId != null)
         ? assistants.getById(assistantId)
         : assistants.currentAssistant;
-    final selected = (a?.mcpServerIds ?? const <String>[]).toSet();
+    final selected = effectiveAssistantServerIds(
+      a?.mcpServerIds ?? const <String>[],
+    );
     if (selected.isEmpty) return '';
     for (final s in mcpProvider.connectedServers.where(
       (s) => selected.contains(s.id),
