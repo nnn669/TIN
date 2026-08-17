@@ -2,6 +2,12 @@
 
 TIN is an Android Flutter application.
 
+## Download source
+
+When GitHub's `codeload` service is rate-limited, download the latest `main` branch archive from the stable release asset:
+
+https://github.com/nnn669/TIN/releases/download/source-latest/TIN-main.zip
+
 ## Build
 
 ```bash
