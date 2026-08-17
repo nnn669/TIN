@@ -30,7 +30,16 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
       - name: Apply fix
-        run: python3 tools/apply_termux_runtime_fix.py
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/apply_termux_runtime_fix.py')
+          text = path.read_text()
+          text = text.replace("'_builtinTermuxName',\n    'builtinTermuxName',\n    count=7,", "'_builtinTermuxName',\n    'builtinTermuxName',\n    count=5,")
+          text = text.replace("    count=3,\n)\n\nreplace(\n    'lib/features/home/services/tool_handler_service.dart'", "    count=2,\n)\n\nreplace(\n    'lib/features/home/services/tool_handler_service.dart'")
+          path.write_text(text)
+          PY
+          python3 tools/apply_termux_runtime_fix.py
       - name: Generate and format
         run: |
           flutter gen-l10n
