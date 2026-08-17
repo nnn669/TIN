@@ -45,7 +45,18 @@ jobs:
                   inside_triple_quote = not inside_triple_quote
           if inside_triple_quote:
               raise SystemExit('unterminated triple-quoted string in staged patch')
-          Path('/tmp/apply-termux-mcp.sh').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          script = '\n'.join(lines) + '\n'
+          script = script.replace(
+              "def replace_once(path_name, old, new):\n",
+              "replace_call = 0\n\ndef replace_once(path_name, old, new):\n    global replace_call\n    replace_call += 1\n",
+              1,
+          )
+          script = script.replace(
+              "raise SystemExit(f'{path_name}: expected exactly one match, got {count}')",
+              "raise SystemExit(f'{path_name} anchor {replace_call}: expected exactly one match, got {count}; prefix={old[:120]!r}')",
+              1,
+          )
+          Path('/tmp/apply-termux-mcp.sh').write_text(script, encoding='utf-8')
           PY
           bash /tmp/apply-termux-mcp.sh
 
