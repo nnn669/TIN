@@ -57,6 +57,9 @@
             android:name="de.julianassmann.flutter_background.IsolateHolderService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".TermuxCommandResultService"
+            android:exported="false" />
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"

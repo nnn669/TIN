@@ -8,6 +8,7 @@ import '../services/mcp/kelivo_files/kelivo_files_server.dart';
 import '../services/mcp/kelivo_github/github_api_client.dart';
 import '../services/mcp/kelivo_github/kelivo_github_server.dart';
 import '../services/mcp/kelivo_images/kelivo_images_server.dart';
+import '../services/mcp/kelivo_termux/kelivo_termux_server.dart';
 import '../services/mcp/stdio_command_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -327,6 +328,8 @@ class McpProvider extends ChangeNotifier {
   static const String _builtinGithubName = '@kelivo/github';
   static const String _builtinImagesId = 'kelivo_images';
   static const String _builtinImagesName = '@kelivo/images';
+  static const String _builtinTermuxId = 'kelivo_termux';
+  static const String _builtinTermuxName = '@kelivo/termux';
   static const Set<String> _builtinFileWriteToolNames = {
     'kelivo_create_directory',
     'kelivo_create_text_file',
@@ -488,6 +491,11 @@ class McpProvider extends ChangeNotifier {
         _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
       );
     }
+    if (!_hasBuiltinServer(_builtinTermuxId, _builtinTermuxName)) {
+      next.add(
+        _builtinServer(_builtinTermuxId, _builtinTermuxName, enabled: false),
+      );
+    }
     _servers = next;
   }
 
@@ -537,10 +545,14 @@ class McpProvider extends ChangeNotifier {
         (server.id == _builtinGithubId || server.name == _builtinGithubName);
   }
 
+  bool _isBuiltinTermuxServer(McpServerConfig server) {
+    return server.transport == McpTransportType.inmemory &&
+        (server.id == _builtinTermuxId || server.name == _builtinTermuxName);
+  }
+
   bool _isLegacyBuiltinCopilotServer(McpServerConfig server) {
     return server.transport == McpTransportType.inmemory &&
-        (server.id == 'kelivo_copilot' ||
-            server.name == '@kelivo/copilot');
+        (server.id == 'kelivo_copilot' || server.name == '@kelivo/copilot');
   }
 
   bool _removeLegacyCopilotServers() {
@@ -556,7 +568,8 @@ class McpProvider extends ChangeNotifier {
     return _isBuiltinFetchServer(server) ||
         _isBuiltinFilesServer(server) ||
         _isBuiltinGithubServer(server) ||
-        _isBuiltinImagesServer(server);
+        _isBuiltinImagesServer(server) ||
+        _isBuiltinTermuxServer(server);
   }
 
   bool isBuiltinGithubServer(McpServerConfig server) {
@@ -588,6 +601,9 @@ class McpProvider extends ChangeNotifier {
       return KelivoGithubMcpServerEngine(
         client: GitHubApiClient(accessTokenProvider: () async => _githubToken),
       );
+    }
+    if (_isBuiltinTermuxServer(server)) {
+      return KelivoTermuxMcpServerEngine();
     }
     return KelivoFetchMcpServerEngine();
   }
@@ -760,6 +776,8 @@ class McpProvider extends ChangeNotifier {
               builtinEnabledById[_builtinGithubId] = enabled;
             } else if (id == _builtinImagesId || name == _builtinImagesName) {
               builtinEnabledById[_builtinImagesId] = enabled;
+            } else if (id == _builtinTermuxId || name == _builtinTermuxName) {
+              builtinEnabledById[_builtinTermuxId] = enabled;
             } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
               return;
             } else if (id == _builtinFetchId || name == _builtinFetchName) {
@@ -874,6 +892,13 @@ class McpProvider extends ChangeNotifier {
               _builtinImagesName,
               enabled: false,
             ).copyWith(enabled: builtinEnabledById[_builtinImagesId] ?? false),
+          );
+          next.add(
+            _builtinServer(
+              _builtinTermuxId,
+              _builtinTermuxName,
+              enabled: false,
+            ).copyWith(enabled: builtinEnabledById[_builtinTermuxId] ?? false),
           );
         }
       } else if (data is List) {
@@ -1809,7 +1834,8 @@ class McpProvider extends ChangeNotifier {
                 (_isBuiltinFilesServer(_servers[idx]) &&
                         _builtinFileWriteToolNames.contains(t.name)) ||
                     (_isBuiltinGithubServer(_servers[idx]) &&
-                        _builtinGithubWriteToolNames.contains(t.name)),
+                        _builtinGithubWriteToolNames.contains(t.name)) ||
+                    _isBuiltinTermuxServer(_servers[idx]),
           ),
         );
       }

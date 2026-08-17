@@ -17,13 +17,19 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           received = call;
-          return <String, dynamic>{'success': true, 'launched': true};
+          return <String, dynamic>{
+            'success': true,
+            'exitCode': 0,
+            'stdout': 'hello\n',
+            'stderr': '',
+          };
         });
 
     final result = await TermuxCommand.run(
       command: 'python',
       arguments: const ['-c', 'print("hello")'],
       workingDirectory: '/data/data/com.termux/files/home/project',
+      timeoutSeconds: 20,
       methodChannel: channel,
     );
 
@@ -33,13 +39,16 @@ void main() {
       'arguments': const ['-c', 'print("hello")'],
       'workingDirectory': '/data/data/com.termux/files/home/project',
       'background': false,
+      'timeoutSeconds': 20,
     });
-    expect(result['launched'], isTrue);
+    expect(result['exitCode'], 0);
+    expect(result['stdout'], 'hello\n');
   });
 
   test('rejects command paths so arguments cannot change the executable', () {
     expect(
-      () => TermuxCommand.run(command: '/system/bin/sh', methodChannel: channel),
+      () =>
+          TermuxCommand.run(command: '/system/bin/sh', methodChannel: channel),
       throwsArgumentError,
     );
     expect(
@@ -64,6 +73,17 @@ void main() {
       () => TermuxCommand.run(
         command: 'echo',
         arguments: List<String>.filled(TermuxCommand.maxArguments + 1, 'x'),
+        methodChannel: channel,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('rejects timeout outside the bounded result window', () {
+    expect(
+      () => TermuxCommand.run(
+        command: 'pwd',
+        timeoutSeconds: TermuxCommand.maxTimeoutSeconds + 1,
         methodChannel: channel,
       ),
       throwsArgumentError,
