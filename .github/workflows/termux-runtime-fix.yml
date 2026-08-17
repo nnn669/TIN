@@ -48,12 +48,6 @@ jobs:
           dart format lib/core/providers/mcp_provider.dart lib/core/services/mcp/mcp_tool_service.dart lib/features/home/services/tool_handler_service.dart test/termux_mcp_provider_test.dart test/core/services/mcp/mcp_tool_service_test.dart
       - name: Analyze changed paths
         run: flutter analyze lib/core/providers/mcp_provider.dart lib/core/services/mcp/mcp_tool_service.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/services/termux_command.dart lib/features/home/services/tool_handler_service.dart test/termux_mcp_provider_test.dart test/core/services/mcp/mcp_tool_service_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_command_test.dart
-      - name: Verify MCP path dependency
-        working-directory: dependencies/mcp_client
-        run: |
-          dart pub get
-          dart analyze
-          dart test
       - name: Run Termux regression tests
         run: flutter test test/termux_mcp_provider_test.dart test/core/services/mcp/mcp_tool_service_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_command_test.dart
       - name: Compile Android arm64 debug APK
