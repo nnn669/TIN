@@ -8,13 +8,14 @@ import 'package:mcp_client/mcp_client.dart' as mcp;
 import '../../termux_command.dart';
 import '../in_memory_mcp_server.dart';
 
-typedef TermuxCommandExecutor = Future<Map<String, dynamic>> Function({
-  required String command,
-  required List<String> arguments,
-  required String? workingDirectory,
-  required bool background,
-  required int timeoutSeconds,
-});
+typedef TermuxCommandExecutor =
+    Future<Map<String, dynamic>> Function({
+      required String command,
+      required List<String> arguments,
+      required String? workingDirectory,
+      required bool background,
+      required int timeoutSeconds,
+    });
 
 class KelivoTermuxMcpServerEngine implements KelivoInMemoryMcpServerEngine {
   KelivoTermuxMcpServerEngine({
@@ -97,14 +98,11 @@ class KelivoTermuxMcpServerEngine implements KelivoInMemoryMcpServerEngine {
 
   Future<Map<String, dynamic>> _call(dynamic rawArguments) async {
     if (!_isSupported()) {
-      return _toolResult(
-        const {
-          'success': false,
-          'error': 'unsupported_platform',
-          'message': 'Termux commands are only available on Android.',
-        },
-        isError: true,
-      );
+      return _toolResult(const {
+        'success': false,
+        'error': 'unsupported_platform',
+        'message': 'Termux commands are only available on Android.',
+      }, isError: true);
     }
     if (rawArguments is! Map) {
       return _invalidArguments('arguments must be an object');
@@ -150,42 +148,34 @@ class KelivoTermuxMcpServerEngine implements KelivoInMemoryMcpServerEngine {
       );
       return _toolResult(result, isError: result['success'] != true);
     } on PlatformException catch (error) {
-      return _toolResult(
-        {
-          'success': false,
-          'error': error.code,
-          'message': error.message ?? 'Termux command failed.',
-        },
-        isError: true,
-      );
+      return _toolResult({
+        'success': false,
+        'error': error.code,
+        'message': error.message ?? 'Termux command failed.',
+      }, isError: true);
     } on TimeoutException {
-      return _toolResult(
-        const {
-          'success': false,
-          'error': 'termux_timeout',
-          'message': 'Termux command did not finish before the timeout.',
-        },
-        isError: true,
-      );
+      return _toolResult(const {
+        'success': false,
+        'error': 'termux_timeout',
+        'message': 'Termux command did not finish before the timeout.',
+      }, isError: true);
     } on ArgumentError catch (error) {
       return _invalidArguments(error.message?.toString() ?? error.toString());
     } catch (error) {
-      return _toolResult(
-        {
-          'success': false,
-          'error': 'termux_command_failed',
-          'message': error.toString(),
-        },
-        isError: true,
-      );
+      return _toolResult({
+        'success': false,
+        'error': 'termux_command_failed',
+        'message': error.toString(),
+      }, isError: true);
     }
   }
 
   Map<String, dynamic> _invalidArguments(String message) {
-    return _toolResult(
-      {'success': false, 'error': 'invalid_arguments', 'message': message},
-      isError: true,
-    );
+    return _toolResult({
+      'success': false,
+      'error': 'invalid_arguments',
+      'message': message,
+    }, isError: true);
   }
 
   Map<String, dynamic> _toolResult(

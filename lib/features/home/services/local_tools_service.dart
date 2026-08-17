@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:math_expressions/math_expressions.dart';
 
 import '../../../core/models/assistant.dart';
-import '../../../core/services/termux_command.dart';
 
 typedef TextToSpeechStarter = Future<void> Function(String text);
 
@@ -16,7 +15,6 @@ class LocalToolNames {
   static const String textToSpeech = 'text_to_speech';
   static const String askUser = 'ask_user_input_v0';
   static const String calculate = 'calculate';
-  static const String termuxRunCommand = 'termux_run_command';
 }
 
 class LocalToolsService {
@@ -145,42 +143,6 @@ class LocalToolsService {
         },
       });
     }
-    if (assistant.localToolIds.contains(LocalToolNames.termuxRunCommand)) {
-      tools.add(const {
-        'type': 'function',
-        'function': {
-          'name': LocalToolNames.termuxRunCommand,
-          'description':
-              '通过本机 Termux 执行一个已安装的命令。仅在用户明确要求调用 Termux 时使用。命令和参数分开传递，不要拼接 shell 命令；调用只表示已交给 Termux，不返回命令输出。需要 Termux 开启 allow-external-apps。',
-          'parameters': {
-            'type': 'object',
-            'properties': {
-              'command': {
-                'type': 'string',
-                'description': 'Termux 可执行文件名，例如 python、git、pkg，不含路径。',
-              },
-              'arguments': {
-                'type': 'array',
-                'description': '按顺序传给命令的参数，每一项是一个独立参数。',
-                'items': {'type': 'string'},
-                'maxItems': 64,
-              },
-              'working_directory': {
-                'type': 'string',
-                'description':
-                    '可选工作目录，必须位于 /data/data/com.termux/files/ 内。',
-              },
-              'background': {
-                'type': 'boolean',
-                'description': '是否在 Termux 后台执行，默认 false。',
-                'default': false,
-              },
-            },
-            'required': ['command'],
-          },
-        },
-      });
-    }
     return tools;
   }
 
@@ -204,9 +166,6 @@ class LocalToolsService {
     }
     if (name == LocalToolNames.calculate) {
       return _handleCalculateTool(args);
-    }
-    if (name == LocalToolNames.termuxRunCommand) {
-      return _handleTermuxRunCommand(args);
     }
     return null;
   }
@@ -242,24 +201,6 @@ class LocalToolsService {
     }
     await onSpeakText(text);
     return jsonEncode({'success': true});
-  }
-
-  static Future<String> _handleTermuxRunCommand(
-    Map<String, dynamic> args,
-  ) async {
-    final rawArguments = args['arguments'];
-    if (rawArguments != null && rawArguments is! List) {
-      throw ArgumentError('arguments must be an array');
-    }
-    final result = await TermuxCommand.run(
-      command: (args['command'] ?? '').toString(),
-      arguments: rawArguments is List
-          ? rawArguments.map((value) => value.toString()).toList()
-          : const <String>[],
-      workingDirectory: args['working_directory']?.toString(),
-      background: args['background'] == true,
-    );
-    return jsonEncode(result);
   }
 
   static Map<String, dynamic> _buildTimeInfoPayload(DateTime now) {

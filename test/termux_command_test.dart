@@ -47,7 +47,8 @@ void main() {
 
   test('rejects command paths so arguments cannot change the executable', () {
     expect(
-      () => TermuxCommand.run(command: '/system/bin/sh', methodChannel: channel),
+      () =>
+          TermuxCommand.run(command: '/system/bin/sh', methodChannel: channel),
       throwsArgumentError,
     );
     expect(

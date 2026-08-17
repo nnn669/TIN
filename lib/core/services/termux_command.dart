@@ -58,7 +58,9 @@ class TermuxCommand {
     final normalizedWorkingDirectory = workingDirectory?.trim();
     if (normalizedWorkingDirectory != null &&
         normalizedWorkingDirectory.isNotEmpty &&
-        !normalizedWorkingDirectory.startsWith('/data/data/com.termux/files/')) {
+        !normalizedWorkingDirectory.startsWith(
+          '/data/data/com.termux/files/',
+        )) {
       throw ArgumentError(
         'working_directory must be inside /data/data/com.termux/files/',
       );
