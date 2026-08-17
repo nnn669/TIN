@@ -1,0 +1,89 @@
+name: Validate Termux MCP Patch
+
+on:
+  push:
+    branches:
+      - automation/termux-mcp-patch
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract and apply staged patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/patch_deepseek_thinking.yml').read_text(encoding='utf-8')
+          start_marker = "      - name: Apply Termux MCP patch\n        shell: bash\n        run: |\n"
+          end_marker = "\n      - name: Set up Java 17\n"
+          start = source.find(start_marker)
+          end = source.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('staged patch script markers not found')
+          block = source[start + len(start_marker):end]
+          lines = [line[10:] if line.startswith('          ') else line for line in block.splitlines()]
+          Path('/tmp/apply-termux-mcp.sh').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          bash /tmp/apply-termux-mcp.sh
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies and run generators
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Format and analyze
+        run: |
+          set -euo pipefail
+          dart format lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart
+          flutter analyze
+
+      - name: Run related Flutter tests
+        run: |
+          set -euo pipefail
+          flutter test test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/local_tools_service_test.dart test/mcp_lifecycle_reconnect_test.dart
+
+      - name: Verify Android arm64 debug build
+        run: |
+          set -euo pipefail
+          flutter build apk --debug --target-platform android-arm64
+
+      - name: Commit validated patch
+        run: |
+          set -euo pipefail
+          git checkout origin/main -- .github/workflows/patch_deepseek_thinking.yml
+          git rm .github/workflows/termux-mcp-validate.yml
+          git config user.name 'TIN Bot'
+          git config user.email 'actions@github.com'
+          git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
+          git diff --cached --check
+          git commit -m 'feat(mcp): move Termux execution behind built-in server'
+          git push origin HEAD:automation/termux-mcp-patch
