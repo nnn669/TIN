@@ -127,6 +127,12 @@ class DioHttpClient extends http.BaseClient {
       }
     }
     try {
+      if (Platform.isAndroid && uri.scheme.toLowerCase() == 'http') {
+        throw http.ClientException(
+          'Cleartext HTTP is disabled on Android; use HTTPS.',
+          uri,
+        );
+      }
       final resp = await _dio.request<ResponseBody>(uri.toString(), data: bodyBytes.isEmpty ? null : bodyBytes, options: Options(method: method, headers: reqHeaders, responseType: ResponseType.stream, followRedirects: request.followRedirects, maxRedirects: request.maxRedirects, receiveDataWhenStatusError: true), cancelToken: _cancelToken);
       final statusCode = resp.statusCode ?? 0;
       final headers = <String, String>{};
