@@ -21,44 +21,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract and apply staged patch
-        shell: bash
+      - name: Apply provider and migration patch
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          source = Path('.github/workflows/patch_deepseek_thinking.yml').read_text(encoding='utf-8')
-          start_marker = "      - name: Apply Termux MCP patch\n        shell: bash\n        run: |\n"
-          end_marker = "\n      - name: Set up Java 17\n"
-          start = source.find(start_marker)
-          end = source.find(end_marker, start)
-          if start < 0 or end < 0:
-              raise SystemExit('staged patch script markers not found')
-          block = source[start + len(start_marker):end]
-          lines = []
-          inside_triple_quote = False
-          for line in block.splitlines():
-              if not inside_triple_quote and line.startswith('          '):
-                  line = line[10:]
-              lines.append(line)
-              if line.count("'''") % 2 == 1:
-                  inside_triple_quote = not inside_triple_quote
-          if inside_triple_quote:
-              raise SystemExit('unterminated triple-quoted string in staged patch')
-          script = '\n'.join(lines) + '\n'
-          script = script.replace(
-              "def replace_once(path_name, old, new):\n",
-              "replace_call = 0\n\ndef replace_once(path_name, old, new):\n    global replace_call\n    replace_call += 1\n",
-              1,
-          )
-          script = script.replace(
-              "raise SystemExit(f'{path_name}: expected exactly one match, got {count}')",
-              "raise SystemExit(f'{path_name} anchor {replace_call}: expected exactly one match, got {count}; prefix={old[:120]!r}')",
-              1,
-          )
-          Path('/tmp/apply-termux-mcp.sh').write_text(script, encoding='utf-8')
-          PY
-          bash /tmp/apply-termux-mcp.sh
+          python3 tools/patch_termux_mcp.py
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -83,13 +49,13 @@ jobs:
       - name: Format and analyze
         run: |
           set -euo pipefail
-          dart format lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart
+          dart format lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart
           flutter analyze
 
       - name: Run related Flutter tests
         run: |
           set -euo pipefail
-          flutter test test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/local_tools_service_test.dart test/mcp_lifecycle_reconnect_test.dart
+          flutter test test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart test/local_tools_service_test.dart test/mcp_lifecycle_reconnect_test.dart
 
       - name: Verify Android arm64 debug build
         run: |
@@ -99,11 +65,10 @@ jobs:
       - name: Commit validated patch
         run: |
           set -euo pipefail
-          git checkout origin/main -- .github/workflows/patch_deepseek_thinking.yml
-          git rm .github/workflows/termux-mcp-validate.yml
+          git rm .github/workflows/termux-mcp-validate.yml tools/patch_termux_mcp.py
           git config user.name 'TIN Bot'
           git config user.email 'actions@github.com'
-          git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
+          git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
           git diff --cached --check
           git commit -m 'feat(mcp): move Termux execution behind built-in server'
           git push origin HEAD:automation/termux-mcp-patch
