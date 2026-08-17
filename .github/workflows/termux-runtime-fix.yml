@@ -45,9 +45,15 @@ jobs:
           flutter gen-l10n
           dart run build_runner build --delete-conflicting-outputs
           dart format lib/core/providers/mcp_provider.dart lib/core/services/mcp/mcp_tool_service.dart lib/features/home/services/tool_handler_service.dart test/termux_mcp_provider_test.dart test/core/services/mcp/mcp_tool_service_test.dart
-      - name: Analyze
-        run: flutter analyze
-      - name: Test
+      - name: Analyze root app
+        run: flutter analyze lib test
+      - name: Verify MCP path dependency
+        working-directory: dependencies/mcp_client
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Test root app
         run: flutter test
       - name: Compile Android arm64 debug APK
         run: flutter build apk --debug --target-platform android-arm64
