@@ -24,35 +24,7 @@ jobs:
       - name: Apply provider and migration patch
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('tools/patch_termux_mcp.py')
-          source = path.read_text(encoding='utf-8')
-          old = '''    "            } else if (id == _builtinImagesId ||\\n"
-    "                name == _builtinImagesName) {\\n"
-    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
-    "            } else if (id == 'kelivo_copilot' ||\\n",
-    "            } else if (id == _builtinImagesId ||\\n"
-    "                name == _builtinImagesName) {\\n"
-    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
-    "            } else if (id == _builtinTermuxId ||\\n"
-    "                name == _builtinTermuxName) {\\n"
-    "              builtinEnabledById[_builtinTermuxId] = enabled;\\n"
-    "            } else if (id == 'kelivo_copilot' ||\\n",
-'''
-          new = '''    "            } else if (id == _builtinImagesId || name == _builtinImagesName) {\\n"
-    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
-    "            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {\\n",
-    "            } else if (id == _builtinImagesId || name == _builtinImagesName) {\\n"
-    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
-    "            } else if (id == _builtinTermuxId || name == _builtinTermuxName) {\\n"
-    "              builtinEnabledById[_builtinTermuxId] = enabled;\\n"
-    "            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {\\n",
-'''
-          if source.count(old) != 1:
-              raise SystemExit('provider anchor patch block not found')
-          path.write_text(source.replace(old, new), encoding='utf-8')
-          PY
+          python3 tools/normalize_termux_patch.py
           python3 tools/patch_termux_mcp.py
 
       - name: Set up Java 17
@@ -94,7 +66,7 @@ jobs:
       - name: Commit validated patch
         run: |
           set -euo pipefail
-          git rm .github/workflows/termux-mcp-validate.yml tools/patch_termux_mcp.py
+          git rm .github/workflows/termux-mcp-validate.yml tools/patch_termux_mcp.py tools/normalize_termux_patch.py
           git config user.name 'TIN Bot'
           git config user.email 'actions@github.com'
           git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
