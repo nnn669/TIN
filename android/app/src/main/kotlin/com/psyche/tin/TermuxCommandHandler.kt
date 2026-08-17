@@ -1,6 +1,5 @@
 package com.psyche.tin
 
-import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.ComponentName
