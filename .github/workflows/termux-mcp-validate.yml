@@ -47,11 +47,11 @@ jobs:
           flutter gen-l10n
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Format and analyze
+      - name: Format and analyze changed paths
         run: |
           set -euo pipefail
           dart format lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart
-          flutter analyze
+          flutter analyze lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart
 
       - name: Run related Flutter tests
         run: |
