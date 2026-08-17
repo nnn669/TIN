@@ -1,9 +1,11 @@
 package com.psyche.tin
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,12 +14,14 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodCallHandler {
+class TermuxCommandHandler(private val activity: Activity) : MethodChannel.MethodCallHandler {
     companion object {
         const val CHANNEL_NAME = "app.termux"
         const val EXTRA_REQUEST_ID = "com.psyche.tin.TERMUX_REQUEST_ID"
-        const val EXTRA_COMMAND_RESULT = "com.termux.RUN_COMMAND_RESULT"
+        const val EXTRA_COMMAND_RESULT = "result"
+        const val PERMISSION_REQUEST_CODE = 4812
         private const val TERMUX_PACKAGE = "com.termux"
+        private const val TERMUX_PERMISSION = "com.termux.permission.RUN_COMMAND"
         private const val TERMUX_SERVICE = "com.termux.app.RunCommandService"
         private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
         private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
@@ -36,12 +40,40 @@ class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodC
         private const val DEFAULT_TIMEOUT_SECONDS = 15
     }
 
+    private var pendingPermissionCall: MethodCall? = null
+    private var pendingPermissionResult: MethodChannel.Result? = null
+
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (call.method != "runCommand") {
             result.notImplemented()
             return
         }
+        runCommand(call, result)
+    }
 
+    fun onRequestPermissionsResult(
+        requestCode: Int,
+        grantResults: IntArray,
+    ): Boolean {
+        if (requestCode != PERMISSION_REQUEST_CODE) return false
+        val call = pendingPermissionCall
+        val result = pendingPermissionResult
+        pendingPermissionCall = null
+        pendingPermissionResult = null
+        if (call == null || result == null) return true
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            runCommand(call, result)
+        } else {
+            result.error(
+                "termux_permission_denied",
+                "Termux command permission was denied.",
+                null,
+            )
+        }
+        return true
+    }
+
+    private fun runCommand(call: MethodCall, result: MethodChannel.Result) {
         val command = call.argument<String>("command")?.trim().orEmpty()
         if (!command.matches(Regex("[a-zA-Z0-9][a-zA-Z0-9._+-]*"))) {
             result.error("invalid_command", "Invalid Termux command name.", null)
@@ -73,16 +105,33 @@ class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodC
             result.error("invalid_timeout", "Invalid Termux command timeout.", null)
             return
         }
+        if (!isTermuxInstalled()) {
+            result.error("termux_unavailable", "Termux is not installed.", null)
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            activity.checkSelfPermission(TERMUX_PERMISSION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (pendingPermissionResult != null) {
+                result.error("termux_permission_busy", "A Termux permission request is already active.", null)
+                return
+            }
+            pendingPermissionCall = call
+            pendingPermissionResult = result
+            activity.requestPermissions(arrayOf(TERMUX_PERMISSION), PERMISSION_REQUEST_CODE)
+            return
+        }
+
         val background = call.argument<Boolean>("background") ?: false
         val requestId = TermuxCommandResultRegistry.register(
             result = result,
             timeoutMillis = timeoutSeconds * 1000L,
         )
-        val callbackIntent = Intent(context, TermuxCommandResultService::class.java).apply {
+        val callbackIntent = Intent(activity, TermuxCommandResultService::class.java).apply {
             putExtra(EXTRA_REQUEST_ID, requestId)
         }
         val callback = PendingIntent.getService(
-            context,
+            activity,
             requestId,
             callbackIntent,
             PendingIntent.FLAG_ONE_SHOT or
@@ -99,7 +148,7 @@ class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodC
         }
 
         try {
-            val component = context.startService(intent)
+            val component = activity.startService(intent)
             if (component == null) {
                 TermuxCommandResultRegistry.cancel(requestId)
                 result.error("termux_unavailable", "Termux command service is unavailable.", null)
@@ -114,6 +163,16 @@ class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodC
         } catch (error: Exception) {
             TermuxCommandResultRegistry.cancel(requestId)
             result.error("termux_launch_failed", error.message, error.toString())
+        }
+    }
+
+    private fun isTermuxInstalled(): Boolean {
+        return try {
+            @Suppress("DEPRECATION")
+            activity.packageManager.getPackageInfo(TERMUX_PACKAGE, 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
         }
     }
 }
@@ -165,16 +224,18 @@ object TermuxCommandResultRegistry {
             val stdout = bundle.getString("stdout").orEmpty()
             val stderr = bundle.getString("stderr").orEmpty()
             val exitCode = bundle.getInt("exitCode", -1)
-            val error = bundle.getString("err").orEmpty()
+            val errorCode = bundle.getInt("err", 0)
+            val errorMessage = bundle.getString("errmsg").orEmpty()
             val stdoutOriginalLength = bundle.getInt("stdout_original_length", stdout.length)
             val stderrOriginalLength = bundle.getInt("stderr_original_length", stderr.length)
             entry.result.success(
                 mapOf(
-                    "success" to (exitCode == 0 && error.isBlank()),
+                    "success" to (exitCode == 0 && errorCode == 0),
                     "exitCode" to exitCode,
                     "stdout" to stdout,
                     "stderr" to stderr,
-                    "error" to error,
+                    "errorCode" to errorCode,
+                    "error" to errorMessage,
                     "stdoutOriginalLength" to stdoutOriginalLength,
                     "stderrOriginalLength" to stderrOriginalLength,
                     "stdoutTruncated" to (stdoutOriginalLength > stdout.length),

@@ -320,6 +320,8 @@ class McpProvider extends ChangeNotifier {
   static const String _githubTokenPrefsKey = 'mcp_github_token_v1';
   static const String _imagesApiBaseUrlPrefsKey = 'mcp_images_api_base_url_v1';
   static const String _imagesApiKeyPrefsKey = 'mcp_images_api_key_v1';
+  static const String _termuxAutoEnableMigrationKey =
+      'mcp_termux_auto_enable_migrated_v1';
   static const String _builtinFetchId = 'kelivo_fetch';
   static const String _builtinFetchName = '@kelivo/fetch';
   static const String _builtinFilesId = 'kelivo_files';
@@ -328,8 +330,8 @@ class McpProvider extends ChangeNotifier {
   static const String _builtinGithubName = '@kelivo/github';
   static const String _builtinImagesId = 'kelivo_images';
   static const String _builtinImagesName = '@kelivo/images';
-  static const String _builtinTermuxId = 'kelivo_termux';
-  static const String _builtinTermuxName = '@kelivo/termux';
+  static const String builtinTermuxId = 'kelivo_termux';
+  static const String builtinTermuxName = '@kelivo/termux';
   static const Set<String> _builtinFileWriteToolNames = {
     'kelivo_create_directory',
     'kelivo_create_text_file',
@@ -453,7 +455,8 @@ class McpProvider extends ChangeNotifier {
     }
     final removedLegacyCopilot = _removeLegacyCopilotServers();
     _ensureBuiltinServersPresent();
-    if (removedLegacyCopilot) {
+    final enabledTermux = await _enableBuiltinTermuxOnAndroidOnce(prefs);
+    if (removedLegacyCopilot || enabledTermux) {
       await _persist();
     }
     // initialize statuses
@@ -491,12 +494,33 @@ class McpProvider extends ChangeNotifier {
         _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
       );
     }
-    if (!_hasBuiltinServer(_builtinTermuxId, _builtinTermuxName)) {
+    if (!_hasBuiltinServer(builtinTermuxId, builtinTermuxName)) {
       next.add(
-        _builtinServer(_builtinTermuxId, _builtinTermuxName, enabled: false),
+        _builtinServer(
+          builtinTermuxId,
+          builtinTermuxName,
+          enabled: _isAndroidPlatform(),
+        ),
       );
     }
     _servers = next;
+  }
+
+  Future<bool> _enableBuiltinTermuxOnAndroidOnce(
+    SharedPreferences prefs,
+  ) async {
+    if (!_isAndroidPlatform() ||
+        prefs.getBool(_termuxAutoEnableMigrationKey) == true) {
+      return false;
+    }
+    final index = _servers.indexWhere(_isBuiltinTermuxServer);
+    var changed = false;
+    if (index >= 0 && !_servers[index].enabled) {
+      _servers[index] = _servers[index].copyWith(enabled: true);
+      changed = true;
+    }
+    await prefs.setBool(_termuxAutoEnableMigrationKey, true);
+    return changed;
   }
 
   Iterable<McpServerConfig> _autoConnectServers() {
@@ -547,7 +571,7 @@ class McpProvider extends ChangeNotifier {
 
   bool _isBuiltinTermuxServer(McpServerConfig server) {
     return server.transport == McpTransportType.inmemory &&
-        (server.id == _builtinTermuxId || server.name == _builtinTermuxName);
+        (server.id == builtinTermuxId || server.name == builtinTermuxName);
   }
 
   bool _isLegacyBuiltinCopilotServer(McpServerConfig server) {
@@ -776,8 +800,8 @@ class McpProvider extends ChangeNotifier {
               builtinEnabledById[_builtinGithubId] = enabled;
             } else if (id == _builtinImagesId || name == _builtinImagesName) {
               builtinEnabledById[_builtinImagesId] = enabled;
-            } else if (id == _builtinTermuxId || name == _builtinTermuxName) {
-              builtinEnabledById[_builtinTermuxId] = enabled;
+            } else if (id == builtinTermuxId || name == builtinTermuxName) {
+              builtinEnabledById[builtinTermuxId] = enabled;
             } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
               return;
             } else if (id == _builtinFetchId || name == _builtinFetchName) {
@@ -895,10 +919,10 @@ class McpProvider extends ChangeNotifier {
           );
           next.add(
             _builtinServer(
-              _builtinTermuxId,
-              _builtinTermuxName,
+              builtinTermuxId,
+              builtinTermuxName,
               enabled: false,
-            ).copyWith(enabled: builtinEnabledById[_builtinTermuxId] ?? false),
+            ).copyWith(enabled: builtinEnabledById[builtinTermuxId] ?? false),
           );
         }
       } else if (data is List) {
@@ -1133,6 +1157,16 @@ class McpProvider extends ChangeNotifier {
 
   /// Check if a tool (by name) requires approval across all connected servers.
   /// Conservative: returns true if ANY connected server marks the tool as needing approval.
+  bool toolRequiresMandatoryApproval(String toolName) {
+    for (final server in _servers) {
+      if (!_isBuiltinTermuxServer(server) || !server.enabled) continue;
+      if (server.tools.any((tool) => tool.enabled && tool.name == toolName)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool toolNeedsApproval(String toolName) {
     for (final s in _servers) {
       if (statusFor(s.id) != McpStatus.connected) continue;
@@ -1986,6 +2020,10 @@ class McpProvider extends ChangeNotifier {
     }
     _heartbeats.clear();
     super.dispose();
+  }
+
+  bool _isAndroidPlatform() {
+    return !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   }
 
   bool _isDesktopPlatform() {
