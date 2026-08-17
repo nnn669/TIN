@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
     private val fileSaveChannelName = "app.file_save"
     private var processTextChannel: MethodChannel? = null
     private var fileSaveChannel: MethodChannel? = null
+    private var termuxChannel: MethodChannel? = null
     private var pendingProcessText: String? = null
     private var pendingSaveResult: MethodChannel.Result? = null
     private var pendingSaveSourcePath: String? = null
@@ -50,6 +51,11 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        termuxChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            TermuxCommandHandler.CHANNEL_NAME,
+        )
+        termuxChannel?.setMethodCallHandler(TermuxCommandHandler(this))
         pendingProcessText = extractProcessText(intent) ?: extractSharedContent(intent)
     }
 
