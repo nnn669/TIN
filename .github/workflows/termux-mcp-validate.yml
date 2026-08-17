@@ -24,6 +24,35 @@ jobs:
       - name: Apply provider and migration patch
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/patch_termux_mcp.py')
+          source = path.read_text(encoding='utf-8')
+          old = '''    "            } else if (id == _builtinImagesId ||\\n"
+    "                name == _builtinImagesName) {\\n"
+    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
+    "            } else if (id == 'kelivo_copilot' ||\\n",
+    "            } else if (id == _builtinImagesId ||\\n"
+    "                name == _builtinImagesName) {\\n"
+    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
+    "            } else if (id == _builtinTermuxId ||\\n"
+    "                name == _builtinTermuxName) {\\n"
+    "              builtinEnabledById[_builtinTermuxId] = enabled;\\n"
+    "            } else if (id == 'kelivo_copilot' ||\\n",
+'''
+          new = '''    "            } else if (id == _builtinImagesId || name == _builtinImagesName) {\\n"
+    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
+    "            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {\\n",
+    "            } else if (id == _builtinImagesId || name == _builtinImagesName) {\\n"
+    "              builtinEnabledById[_builtinImagesId] = enabled;\\n"
+    "            } else if (id == _builtinTermuxId || name == _builtinTermuxName) {\\n"
+    "              builtinEnabledById[_builtinTermuxId] = enabled;\\n"
+    "            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {\\n",
+'''
+          if source.count(old) != 1:
+              raise SystemExit('provider anchor patch block not found')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+          PY
           python3 tools/patch_termux_mcp.py
 
       - name: Set up Java 17
