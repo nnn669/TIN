@@ -1,4 +1,4 @@
-name: Patch DeepSeek Thinking Budget
+name: Patch And Validate Termux MCP
 
 on:
   workflow_dispatch:
@@ -6,54 +6,1128 @@ on:
 permissions:
   contents: write
 
+env:
+  FLUTTER_VERSION: 3.44.1
+
 jobs:
   patch:
-    name: Patch openai_common DeepSeek branch
+    name: Patch and validate Termux MCP
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout patch branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Apply DeepSeek thinking budget_tokens patch
+      - name: Apply Termux MCP patch
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('lib/core/services/api/providers/openai_common.dart')
-          src = path.read_text(encoding='utf-8')
-          old = (
-              "  } else if (info.isDeepSeek) {\n"
-              "    if (isReasoning) {\n"
-              "      body['thinking'] = {'type': off ? 'disabled' : 'enabled'};\n"
-              "    } else {\n"
+
+          def replace_once(path_name, old, new):
+              path = Path(path_name)
+              source = path.read_text(encoding='utf-8')
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path_name}: expected exactly one match, got {count}')
+              path.write_text(source.replace(old, new), encoding='utf-8')
+
+          Path('lib/core/services/termux_command.dart').write_text(r'''import 'dart:async';
+
+import 'package:flutter/services.dart';
+
+class TermuxCommand {
+  const TermuxCommand._();
+
+  static const MethodChannel channel = MethodChannel('app.termux');
+  static const int maxArguments = 64;
+  static const int maxArgumentLength = 4096;
+  static const int maxTotalLength = 16384;
+  static const int minTimeoutSeconds = 1;
+  static const int maxTimeoutSeconds = 25;
+  static const int defaultTimeoutSeconds = 15;
+  static final RegExp _commandPattern = RegExp(
+    r'^[a-zA-Z0-9][a-zA-Z0-9._+-]*$',
+  );
+
+  static Future<Map<String, dynamic>> run({
+    required String command,
+    List<String> arguments = const <String>[],
+    String? workingDirectory,
+    bool background = false,
+    int timeoutSeconds = defaultTimeoutSeconds,
+    MethodChannel methodChannel = channel,
+  }) async {
+    final normalizedCommand = command.trim();
+    if (!_commandPattern.hasMatch(normalizedCommand)) {
+      throw ArgumentError(
+        'command must be a Termux executable name without path separators',
+      );
+    }
+    if (arguments.length > maxArguments) {
+      throw ArgumentError('arguments must contain at most $maxArguments items');
+    }
+    if (arguments.any((value) => value.length > maxArgumentLength)) {
+      throw ArgumentError(
+        'each argument must contain at most $maxArgumentLength characters',
+      );
+    }
+    final totalLength = arguments.fold<int>(
+      normalizedCommand.length,
+      (total, value) => total + value.length,
+    );
+    if (totalLength > maxTotalLength) {
+      throw ArgumentError(
+        'command and arguments must contain at most $maxTotalLength characters',
+      );
+    }
+    if (timeoutSeconds < minTimeoutSeconds ||
+        timeoutSeconds > maxTimeoutSeconds) {
+      throw ArgumentError(
+        'timeout_seconds must be between $minTimeoutSeconds and '
+        '$maxTimeoutSeconds',
+      );
+    }
+
+    final normalizedWorkingDirectory = workingDirectory?.trim();
+    if (normalizedWorkingDirectory != null &&
+        normalizedWorkingDirectory.isNotEmpty &&
+        !normalizedWorkingDirectory.startsWith('/data/data/com.termux/files/')) {
+      throw ArgumentError(
+        'working_directory must be inside /data/data/com.termux/files/',
+      );
+    }
+
+    final result = await methodChannel
+        .invokeMapMethod<String, dynamic>('runCommand', <String, dynamic>{
+          'command': normalizedCommand,
+          'arguments': arguments,
+          if (normalizedWorkingDirectory?.isNotEmpty == true)
+            'workingDirectory': normalizedWorkingDirectory,
+          'background': background,
+          'timeoutSeconds': timeoutSeconds,
+        })
+        .timeout(Duration(seconds: timeoutSeconds + 2));
+    if (result == null) {
+      throw StateError('Termux returned no command result');
+    }
+    return result;
+  }
+}
+''', encoding='utf-8')
+
+          Path('android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt').write_text(r'''package com.psyche.tin
+
+import android.app.PendingIntent
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+
+class TermuxCommandHandler(private val context: Context) : MethodChannel.MethodCallHandler {
+    companion object {
+        const val CHANNEL_NAME = "app.termux"
+        const val EXTRA_REQUEST_ID = "com.psyche.tin.TERMUX_REQUEST_ID"
+        const val EXTRA_COMMAND_RESULT = "com.termux.RUN_COMMAND_RESULT"
+        private const val TERMUX_PACKAGE = "com.termux"
+        private const val TERMUX_SERVICE = "com.termux.app.RunCommandService"
+        private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
+        private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
+        private const val EXTRA_ARGUMENTS = "com.termux.RUN_COMMAND_ARGUMENTS"
+        private const val EXTRA_WORKDIR = "com.termux.RUN_COMMAND_WORKDIR"
+        private const val EXTRA_BACKGROUND = "com.termux.RUN_COMMAND_BACKGROUND"
+        private const val EXTRA_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
+        private const val PREFIX = "/data/data/com.termux/files/usr/bin/"
+        private const val TERMUX_FILES_PREFIX = "/data/data/com.termux/files/"
+        private const val DEFAULT_WORKDIR = "/data/data/com.termux/files/home"
+        private const val MAX_ARGUMENTS = 64
+        private const val MAX_ARGUMENT_LENGTH = 4096
+        private const val MAX_TOTAL_LENGTH = 16384
+        private const val MIN_TIMEOUT_SECONDS = 1
+        private const val MAX_TIMEOUT_SECONDS = 25
+        private const val DEFAULT_TIMEOUT_SECONDS = 15
+    }
+
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method != "runCommand") {
+            result.notImplemented()
+            return
+        }
+
+        val command = call.argument<String>("command")?.trim().orEmpty()
+        if (!command.matches(Regex("[a-zA-Z0-9][a-zA-Z0-9._+-]*"))) {
+            result.error("invalid_command", "Invalid Termux command name.", null)
+            return
+        }
+        val rawArguments = call.argument<List<*>>("arguments") ?: emptyList<Any?>()
+        if (rawArguments.size > MAX_ARGUMENTS) {
+            result.error("invalid_arguments", "Too many Termux command arguments.", null)
+            return
+        }
+        val arguments = rawArguments.map { it?.toString().orEmpty() }
+        if (arguments.any { it.length > MAX_ARGUMENT_LENGTH } ||
+            command.length + arguments.sumOf { it.length } > MAX_TOTAL_LENGTH
+        ) {
+            result.error("invalid_arguments", "Termux command arguments are too long.", null)
+            return
+        }
+        val workingDirectory = call.argument<String>("workingDirectory")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: DEFAULT_WORKDIR
+        if (!workingDirectory.startsWith(TERMUX_FILES_PREFIX)) {
+            result.error("invalid_workdir", "Working directory is outside Termux.", null)
+            return
+        }
+        val timeoutSeconds = call.argument<Number>("timeoutSeconds")?.toInt()
+            ?: DEFAULT_TIMEOUT_SECONDS
+        if (timeoutSeconds !in MIN_TIMEOUT_SECONDS..MAX_TIMEOUT_SECONDS) {
+            result.error("invalid_timeout", "Invalid Termux command timeout.", null)
+            return
+        }
+        val background = call.argument<Boolean>("background") ?: false
+        val requestId = TermuxCommandResultRegistry.register(
+            result = result,
+            timeoutMillis = timeoutSeconds * 1000L,
+        )
+        val callbackIntent = Intent(context, TermuxCommandResultService::class.java).apply {
+            putExtra(EXTRA_REQUEST_ID, requestId)
+        }
+        val callback = PendingIntent.getService(
+            context,
+            requestId,
+            callbackIntent,
+            PendingIntent.FLAG_ONE_SHOT or
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                PendingIntent.FLAG_MUTABLE,
+        )
+        val intent = Intent(ACTION_RUN_COMMAND).apply {
+            component = ComponentName(TERMUX_PACKAGE, TERMUX_SERVICE)
+            putExtra(EXTRA_COMMAND_PATH, "$PREFIX$command")
+            putExtra(EXTRA_ARGUMENTS, arguments.toTypedArray())
+            putExtra(EXTRA_WORKDIR, workingDirectory)
+            putExtra(EXTRA_BACKGROUND, background)
+            putExtra(EXTRA_PENDING_INTENT, callback)
+        }
+
+        try {
+            val component = context.startService(intent)
+            if (component == null) {
+                TermuxCommandResultRegistry.cancel(requestId)
+                result.error("termux_unavailable", "Termux command service is unavailable.", null)
+            }
+        } catch (error: SecurityException) {
+            TermuxCommandResultRegistry.cancel(requestId)
+            result.error(
+                "termux_permission_denied",
+                "Termux denied external commands. Enable allow-external-apps in ~/.termux/termux.properties.",
+                error.toString(),
+            )
+        } catch (error: Exception) {
+            TermuxCommandResultRegistry.cancel(requestId)
+            result.error("termux_launch_failed", error.message, error.toString())
+        }
+    }
+}
+
+object TermuxCommandResultRegistry {
+    private data class PendingResult(
+        val result: MethodChannel.Result,
+        val timeout: Runnable,
+    )
+
+    private val nextRequestId = AtomicInteger(1)
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val pending = ConcurrentHashMap<Int, PendingResult>()
+
+    fun register(result: MethodChannel.Result, timeoutMillis: Long): Int {
+        val requestId = nextRequestId.getAndUpdate { current ->
+            if (current == Int.MAX_VALUE) 1 else current + 1
+        }
+        val timeout = Runnable {
+            val entry = pending.remove(requestId) ?: return@Runnable
+            entry.result.error(
+                "termux_timeout",
+                "Termux command did not finish before the timeout.",
+                null,
+            )
+        }
+        pending[requestId] = PendingResult(result, timeout)
+        mainHandler.postDelayed(timeout, timeoutMillis)
+        return requestId
+    }
+
+    fun cancel(requestId: Int) {
+        val entry = pending.remove(requestId) ?: return
+        mainHandler.removeCallbacks(entry.timeout)
+    }
+
+    fun complete(requestId: Int, bundle: Bundle?) {
+        val entry = pending.remove(requestId) ?: return
+        mainHandler.removeCallbacks(entry.timeout)
+        mainHandler.post {
+            if (bundle == null) {
+                entry.result.error(
+                    "termux_missing_result",
+                    "Termux returned an empty command result.",
+                    null,
+                )
+                return@post
+            }
+            val stdout = bundle.getString("stdout").orEmpty()
+            val stderr = bundle.getString("stderr").orEmpty()
+            val exitCode = bundle.getInt("exitCode", -1)
+            val error = bundle.getString("err").orEmpty()
+            val stdoutOriginalLength = bundle.getInt("stdout_original_length", stdout.length)
+            val stderrOriginalLength = bundle.getInt("stderr_original_length", stderr.length)
+            entry.result.success(
+                mapOf(
+                    "success" to (exitCode == 0 && error.isBlank()),
+                    "exitCode" to exitCode,
+                    "stdout" to stdout,
+                    "stderr" to stderr,
+                    "error" to error,
+                    "stdoutOriginalLength" to stdoutOriginalLength,
+                    "stderrOriginalLength" to stderrOriginalLength,
+                    "stdoutTruncated" to (stdoutOriginalLength > stdout.length),
+                    "stderrTruncated" to (stderrOriginalLength > stderr.length),
+                )
+            )
+        }
+    }
+}
+''', encoding='utf-8')
+
+          Path('android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt').write_text(r'''package com.psyche.tin
+
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
+
+class TermuxCommandResultService : Service() {
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val requestId = intent?.getIntExtra(TermuxCommandHandler.EXTRA_REQUEST_ID, -1) ?: -1
+        if (requestId >= 0) {
+            TermuxCommandResultRegistry.complete(
+                requestId,
+                intent?.getBundleExtra(TermuxCommandHandler.EXTRA_COMMAND_RESULT),
+            )
+        }
+        stopSelf(startId)
+        return START_NOT_STICKY
+    }
+}
+''', encoding='utf-8')
+
+          Path('lib/core/services/mcp/kelivo_termux').mkdir(parents=True, exist_ok=True)
+          Path('lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart').write_text(r'''import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:mcp_client/mcp_client.dart' as mcp;
+
+import '../../termux_command.dart';
+import '../in_memory_mcp_server.dart';
+
+typedef TermuxCommandExecutor = Future<Map<String, dynamic>> Function({
+  required String command,
+  required List<String> arguments,
+  required String? workingDirectory,
+  required bool background,
+  required int timeoutSeconds,
+});
+
+class KelivoTermuxMcpServerEngine implements KelivoInMemoryMcpServerEngine {
+  KelivoTermuxMcpServerEngine({
+    TermuxCommandExecutor? executor,
+    bool Function()? isSupported,
+  }) : _executor = executor ?? _runCommand,
+       _isSupported = isSupported ?? _isAndroid;
+
+  final TermuxCommandExecutor _executor;
+  final bool Function() _isSupported;
+  bool _closed = false;
+
+  static Future<Map<String, dynamic>> _runCommand({
+    required String command,
+    required List<String> arguments,
+    required String? workingDirectory,
+    required bool background,
+    required int timeoutSeconds,
+  }) {
+    return TermuxCommand.run(
+      command: command,
+      arguments: arguments,
+      workingDirectory: workingDirectory,
+      background: background,
+      timeoutSeconds: timeoutSeconds,
+    );
+  }
+
+  static bool _isAndroid() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  @override
+  Future<dynamic> handleMessage(dynamic message) async {
+    if (_closed) return null;
+    if (message is List) {
+      final responses = <dynamic>[];
+      for (final item in message) {
+        responses.add(await _handleSingle(item));
+      }
+      return responses;
+    }
+    return _handleSingle(message);
+  }
+
+  Future<Map<String, dynamic>> _handleSingle(dynamic raw) async {
+    if (raw is! Map) {
+      return _error(null, code: -32600, message: 'Invalid Request');
+    }
+    final request = raw.cast<String, dynamic>();
+    final id = request['id'];
+    final method = (request['method'] ?? '').toString();
+    final params = request['params'] is Map
+        ? (request['params'] as Map).cast<String, dynamic>()
+        : <String, dynamic>{};
+
+    switch (method) {
+      case mcp.McpProtocol.methodInitialize:
+        return _ok(id, {
+          'serverInfo': {'name': '@kelivo/termux', 'version': '1.0.0'},
+          'protocolVersion': mcp.McpProtocol.defaultVersion,
+          'capabilities': {
+            'tools': {'listChanged': false},
+          },
+        });
+      case mcp.McpProtocol.methodListTools:
+        return _ok(id, {
+          'tools': [_toolDefinition],
+        });
+      case mcp.McpProtocol.methodCallTool:
+        final name = (params['name'] ?? '').toString();
+        if (name != 'termux_run_command') {
+          return _error(id, code: -32101, message: 'Tool not found: $name');
+        }
+        final arguments = params['arguments'];
+        final result = await _call(arguments);
+        return _ok(id, result);
+      default:
+        if (id == null) return {'jsonrpc': '2.0'};
+        return _error(id, code: -32601, message: 'Method not found: $method');
+    }
+  }
+
+  Future<Map<String, dynamic>> _call(dynamic rawArguments) async {
+    if (!_isSupported()) {
+      return _toolResult(
+        const {
+          'success': false,
+          'error': 'unsupported_platform',
+          'message': 'Termux commands are only available on Android.',
+        },
+        isError: true,
+      );
+    }
+    if (rawArguments is! Map) {
+      return _invalidArguments('arguments must be an object');
+    }
+    final args = rawArguments.cast<String, dynamic>();
+    final command = args['command'];
+    if (command is! String || command.trim().isEmpty) {
+      return _invalidArguments('command is required');
+    }
+    final rawCommandArguments = args['arguments'];
+    if (rawCommandArguments != null &&
+        (rawCommandArguments is! List ||
+            rawCommandArguments.any((value) => value is! String))) {
+      return _invalidArguments('arguments must be an array of strings');
+    }
+    final workingDirectory = args['working_directory'];
+    if (workingDirectory != null && workingDirectory is! String) {
+      return _invalidArguments('working_directory must be a string');
+    }
+    final rawTimeout = args['timeout_seconds'];
+    if (rawTimeout != null && rawTimeout is! int) {
+      return _invalidArguments('timeout_seconds must be an integer');
+    }
+    final timeoutSeconds = rawTimeout as int? ?? TermuxCommand.defaultTimeoutSeconds;
+
+    try {
+      final result = await _executor(
+        command: command,
+        arguments: rawCommandArguments is List
+            ? rawCommandArguments.cast<String>()
+            : const <String>[],
+        workingDirectory: workingDirectory as String?,
+        background: true,
+        timeoutSeconds: timeoutSeconds,
+      );
+      return _toolResult(result, isError: result['success'] != true);
+    } on PlatformException catch (error) {
+      return _toolResult(
+        {
+          'success': false,
+          'error': error.code,
+          'message': error.message ?? 'Termux command failed.',
+        },
+        isError: true,
+      );
+    } on TimeoutException {
+      return _toolResult(
+        const {
+          'success': false,
+          'error': 'termux_timeout',
+          'message': 'Termux command did not finish before the timeout.',
+        },
+        isError: true,
+      );
+    } on ArgumentError catch (error) {
+      return _invalidArguments(error.message?.toString() ?? error.toString());
+    } catch (error) {
+      return _toolResult(
+        {
+          'success': false,
+          'error': 'termux_command_failed',
+          'message': error.toString(),
+        },
+        isError: true,
+      );
+    }
+  }
+
+  Map<String, dynamic> _invalidArguments(String message) {
+    return _toolResult(
+      {'success': false, 'error': 'invalid_arguments', 'message': message},
+      isError: true,
+    );
+  }
+
+  Map<String, dynamic> _toolResult(
+    Map<String, dynamic> payload, {
+    required bool isError,
+  }) {
+    return {
+      'content': [
+        {'type': 'text', 'text': jsonEncode(payload)},
+      ],
+      'isStreaming': false,
+      'isError': isError,
+    };
+  }
+
+  Map<String, dynamic> _ok(dynamic id, Map<String, dynamic> result) => {
+    'jsonrpc': '2.0',
+    if (id != null) 'id': id,
+    'result': result,
+  };
+
+  Map<String, dynamic> _error(
+    dynamic id, {
+    required int code,
+    required String message,
+  }) => {
+    'jsonrpc': '2.0',
+    if (id != null) 'id': id,
+    'error': {'code': code, 'message': message},
+  };
+
+  static const Map<String, dynamic> _toolDefinition = {
+    'name': 'termux_run_command',
+    'description':
+        '通过本机 Termux 执行单个已安装命令并返回退出码、标准输出和标准错误。仅在用户明确要求调用 Termux 时使用；命令与参数必须分开传递，不支持 shell 拼接。',
+    'inputSchema': {
+      'type': 'object',
+      'properties': {
+        'command': {
+          'type': 'string',
+          'description': 'Termux 可执行文件名，例如 python、git、pkg，不含路径。',
+        },
+        'arguments': {
+          'type': 'array',
+          'description': '按顺序传给命令的独立参数。',
+          'items': {'type': 'string'},
+          'maxItems': TermuxCommand.maxArguments,
+        },
+        'working_directory': {
+          'type': 'string',
+          'description': '可选工作目录，必须位于 /data/data/com.termux/files/ 内。',
+        },
+        'timeout_seconds': {
+          'type': 'integer',
+          'description': '等待命令结果的秒数。',
+          'minimum': TermuxCommand.minTimeoutSeconds,
+          'maximum': TermuxCommand.maxTimeoutSeconds,
+          'default': TermuxCommand.defaultTimeoutSeconds,
+        },
+      },
+      'required': ['command'],
+    },
+  };
+
+  @override
+  void close() {
+    _closed = true;
+  }
+}
+''', encoding='utf-8')
+
+          Path('test/kelivo_termux_mcp_server_test.dart').write_text(r'''import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:tin/core/services/mcp/kelivo_termux/kelivo_termux_server.dart';
+
+void main() {
+  group('KelivoTermuxMcpServerEngine', () {
+    test('lists one controlled Termux command tool', () async {
+      final engine = KelivoTermuxMcpServerEngine(isSupported: () => true);
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'tools/list',
+      }) as Map<String, dynamic>;
+      final tools = response['result']['tools'] as List;
+      final tool = tools.single as Map;
+      final schema = tool['inputSchema'] as Map;
+
+      expect(tool['name'], 'termux_run_command');
+      expect(schema['required'], const ['command']);
+      expect(schema['properties']['arguments']['maxItems'], 64);
+      expect(schema['properties']['timeout_seconds']['maximum'], 25);
+    });
+
+    test('returns stdout and forces result-producing background mode', () async {
+      late Map<String, dynamic> received;
+      final engine = KelivoTermuxMcpServerEngine(
+        isSupported: () => true,
+        executor: ({
+          required command,
+          required arguments,
+          required workingDirectory,
+          required background,
+          required timeoutSeconds,
+        }) async {
+          received = {
+            'command': command,
+            'arguments': arguments,
+            'workingDirectory': workingDirectory,
+            'background': background,
+            'timeoutSeconds': timeoutSeconds,
+          };
+          return {
+            'success': true,
+            'exitCode': 0,
+            'stdout': 'clean\n',
+            'stderr': '',
+          };
+        },
+      );
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 2,
+        'method': 'tools/call',
+        'params': {
+          'name': 'termux_run_command',
+          'arguments': {
+            'command': 'git',
+            'arguments': ['status', '--short'],
+            'working_directory': '/data/data/com.termux/files/home/project',
+            'timeout_seconds': 20,
+          },
+        },
+      }) as Map<String, dynamic>;
+      final result = response['result'] as Map<String, dynamic>;
+      final payload = jsonDecode(result['content'][0]['text'] as String) as Map;
+
+      expect(received['background'], isTrue);
+      expect(received['timeoutSeconds'], 20);
+      expect(received['arguments'], const ['status', '--short']);
+      expect(result['isError'], isFalse);
+      expect(payload['exitCode'], 0);
+      expect(payload['stdout'], 'clean\n');
+    });
+
+    test('marks non-zero exit as an MCP error with stderr intact', () async {
+      final engine = KelivoTermuxMcpServerEngine(
+        isSupported: () => true,
+        executor: ({
+          required command,
+          required arguments,
+          required workingDirectory,
+          required background,
+          required timeoutSeconds,
+        }) async => {
+          'success': false,
+          'exitCode': 2,
+          'stdout': '',
+          'stderr': 'bad option',
+        },
+      );
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 3,
+        'method': 'tools/call',
+        'params': {
+          'name': 'termux_run_command',
+          'arguments': {'command': 'git'},
+        },
+      }) as Map<String, dynamic>;
+      final result = response['result'] as Map<String, dynamic>;
+      final payload = jsonDecode(result['content'][0]['text'] as String) as Map;
+
+      expect(result['isError'], isTrue);
+      expect(payload['exitCode'], 2);
+      expect(payload['stderr'], 'bad option');
+    });
+
+    test('rejects invalid arguments without invoking Android', () async {
+      var invoked = false;
+      final engine = KelivoTermuxMcpServerEngine(
+        isSupported: () => true,
+        executor: ({
+          required command,
+          required arguments,
+          required workingDirectory,
+          required background,
+          required timeoutSeconds,
+        }) async {
+          invoked = true;
+          return <String, dynamic>{};
+        },
+      );
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 4,
+        'method': 'tools/call',
+        'params': {
+          'name': 'termux_run_command',
+          'arguments': {'command': 'echo', 'arguments': 'hello'},
+        },
+      }) as Map<String, dynamic>;
+      final result = response['result'] as Map<String, dynamic>;
+
+      expect(invoked, isFalse);
+      expect(result['isError'], isTrue);
+      expect(result['content'][0]['text'], contains('invalid_arguments'));
+    });
+
+    test('returns explicit unsupported-platform failure', () async {
+      final engine = KelivoTermuxMcpServerEngine(isSupported: () => false);
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 5,
+        'method': 'tools/call',
+        'params': {
+          'name': 'termux_run_command',
+          'arguments': {'command': 'pwd'},
+        },
+      }) as Map<String, dynamic>;
+      final result = response['result'] as Map<String, dynamic>;
+
+      expect(result['isError'], isTrue);
+      expect(result['content'][0]['text'], contains('unsupported_platform'));
+    });
+
+    test('turns executor timeout into a stable MCP error', () async {
+      final engine = KelivoTermuxMcpServerEngine(
+        isSupported: () => true,
+        executor: ({
+          required command,
+          required arguments,
+          required workingDirectory,
+          required background,
+          required timeoutSeconds,
+        }) => throw TimeoutException('late'),
+      );
+      addTearDown(engine.close);
+
+      final response = await engine.handleMessage({
+        'jsonrpc': '2.0',
+        'id': 6,
+        'method': 'tools/call',
+        'params': {
+          'name': 'termux_run_command',
+          'arguments': {'command': 'sleep'},
+        },
+      }) as Map<String, dynamic>;
+      final result = response['result'] as Map<String, dynamic>;
+
+      expect(result['isError'], isTrue);
+      expect(result['content'][0]['text'], contains('termux_timeout'));
+    });
+  });
+}
+''', encoding='utf-8')
+
+          Path('test/termux_command_test.dart').write_text(r'''import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:tin/core/services/termux_command.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('app.termux.test');
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
+
+  test('sends a command and separate arguments to Android', () async {
+    MethodCall? received;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          received = call;
+          return <String, dynamic>{
+            'success': true,
+            'exitCode': 0,
+            'stdout': 'hello\n',
+            'stderr': '',
+          };
+        });
+
+    final result = await TermuxCommand.run(
+      command: 'python',
+      arguments: const ['-c', 'print("hello")'],
+      workingDirectory: '/data/data/com.termux/files/home/project',
+      timeoutSeconds: 20,
+      methodChannel: channel,
+    );
+
+    expect(received?.method, 'runCommand');
+    expect(received?.arguments, <String, dynamic>{
+      'command': 'python',
+      'arguments': const ['-c', 'print("hello")'],
+      'workingDirectory': '/data/data/com.termux/files/home/project',
+      'background': false,
+      'timeoutSeconds': 20,
+    });
+    expect(result['exitCode'], 0);
+    expect(result['stdout'], 'hello\n');
+  });
+
+  test('rejects command paths so arguments cannot change the executable', () {
+    expect(
+      () => TermuxCommand.run(command: '/system/bin/sh', methodChannel: channel),
+      throwsArgumentError,
+    );
+    expect(
+      () => TermuxCommand.run(command: 'git;rm', methodChannel: channel),
+      throwsArgumentError,
+    );
+  });
+
+  test('rejects working directories outside Termux storage', () {
+    expect(
+      () => TermuxCommand.run(
+        command: 'pwd',
+        workingDirectory: '/sdcard',
+        methodChannel: channel,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('rejects excessive arguments before invoking Android', () {
+    expect(
+      () => TermuxCommand.run(
+        command: 'echo',
+        arguments: List<String>.filled(TermuxCommand.maxArguments + 1, 'x'),
+        methodChannel: channel,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('rejects timeout outside the bounded result window', () {
+    expect(
+      () => TermuxCommand.run(
+        command: 'pwd',
+        timeoutSeconds: TermuxCommand.maxTimeoutSeconds + 1,
+        methodChannel: channel,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('surfaces a missing Termux plugin as a platform failure', () {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          throw PlatformException(
+            code: 'termux_unavailable',
+            message: 'Termux command service is unavailable.',
+          );
+        });
+
+    expect(
+      () => TermuxCommand.run(command: 'pwd', methodChannel: channel),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          'code',
+          'termux_unavailable',
+        ),
+      ),
+    );
+  });
+}
+''', encoding='utf-8')
+
+          local_tools = Path('lib/features/home/services/local_tools_service.dart')
+          source = local_tools.read_text(encoding='utf-8')
+          source = source.replace("import '../../../core/services/termux_command.dart';\n", '')
+          source = source.replace("  static const String termuxRunCommand = 'termux_run_command';\n", '')
+          schema_start = "    if (assistant.localToolIds.contains(LocalToolNames.termuxRunCommand)) {\n"
+          schema_end = "    return tools;\n"
+          start = source.find(schema_start)
+          end = source.find(schema_end, start)
+          if start < 0 or end < 0:
+              raise SystemExit('local_tools_service.dart: Termux schema block not found')
+          source = source[:start] + source[end:]
+          source = source.replace(
+              "    if (name == LocalToolNames.termuxRunCommand) {\n"
+              "      return _handleTermuxRunCommand(args);\n"
+              "    }\n",
+              '',
           )
-          new = (
-              "  } else if (info.isDeepSeek) {\n"
-              "    if (isReasoning) {\n"
-              "      body['thinking'] = <String, dynamic>{\n"
-              "        'type': off ? 'disabled' : 'enabled',\n"
-              "        if (!off && thinkingBudget != null && thinkingBudget > 0)\n"
-              "          'budget_tokens': thinkingBudget,\n"
-              "      };\n"
-              "    } else {\n"
+          handler_start = "  static Future<String> _handleTermuxRunCommand(\n"
+          handler_end = "  static Map<String, dynamic> _buildTimeInfoPayload(DateTime now) {\n"
+          start = source.find(handler_start)
+          end = source.find(handler_end, start)
+          if start < 0 or end < 0:
+              raise SystemExit('local_tools_service.dart: Termux handler block not found')
+          source = source[:start] + source[end:]
+          local_tools.write_text(source, encoding='utf-8')
+          Path('test/termux_local_tool_test.dart').unlink()
+
+          replace_once(
+              'android/app/src/main/AndroidManifest.xml',
+              '''        <service
+            android:name="de.julianassmann.flutter_background.IsolateHolderService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+''',
+              '''        <service
+            android:name="de.julianassmann.flutter_background.IsolateHolderService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".TermuxCommandResultService"
+            android:exported="false" />
+''',
           )
-          count = src.count(old)
-          if count != 1:
-              raise SystemExit(f'expected exactly 1 match, got {count}')
-          path.write_text(src.replace(old, new), encoding='utf-8')
-          print('patched ok')
+
+          provider = 'lib/core/providers/mcp_provider.dart'
+          replace_once(
+              provider,
+              "import '../services/mcp/kelivo_images/kelivo_images_server.dart';\n",
+              "import '../services/mcp/kelivo_images/kelivo_images_server.dart';\n"
+              "import '../services/mcp/kelivo_termux/kelivo_termux_server.dart';\n",
+          )
+          replace_once(
+              provider,
+              "  static const String _builtinImagesName = '@kelivo/images';\n",
+              "  static const String _builtinImagesName = '@kelivo/images';\n"
+              "  static const String _builtinTermuxId = 'kelivo_termux';\n"
+              "  static const String _builtinTermuxName = '@kelivo/termux';\n",
+          )
+          replace_once(
+              provider,
+              """    if (!_hasBuiltinServer(_builtinImagesId, _builtinImagesName)) {
+      next.add(
+        _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
+      );
+    }
+""",
+              """    if (!_hasBuiltinServer(_builtinImagesId, _builtinImagesName)) {
+      next.add(
+        _builtinServer(_builtinImagesId, _builtinImagesName, enabled: false),
+      );
+    }
+    if (!_hasBuiltinServer(_builtinTermuxId, _builtinTermuxName)) {
+      next.add(
+        _builtinServer(_builtinTermuxId, _builtinTermuxName, enabled: false),
+      );
+    }
+""",
+          )
+          replace_once(
+              provider,
+              """  bool _isBuiltinGithubServer(McpServerConfig server) {
+    return server.transport == McpTransportType.inmemory &&
+        (server.id == _builtinGithubId || server.name == _builtinGithubName);
+  }
+
+""",
+              """  bool _isBuiltinGithubServer(McpServerConfig server) {
+    return server.transport == McpTransportType.inmemory &&
+        (server.id == _builtinGithubId || server.name == _builtinGithubName);
+  }
+
+  bool _isBuiltinTermuxServer(McpServerConfig server) {
+    return server.transport == McpTransportType.inmemory &&
+        (server.id == _builtinTermuxId || server.name == _builtinTermuxName);
+  }
+
+""",
+          )
+          replace_once(
+              provider,
+              """    return _isBuiltinFetchServer(server) ||
+        _isBuiltinFilesServer(server) ||
+        _isBuiltinGithubServer(server) ||
+        _isBuiltinImagesServer(server);
+""",
+              """    return _isBuiltinFetchServer(server) ||
+        _isBuiltinFilesServer(server) ||
+        _isBuiltinGithubServer(server) ||
+        _isBuiltinImagesServer(server) ||
+        _isBuiltinTermuxServer(server);
+""",
+          )
+          replace_once(
+              provider,
+              """    if (_isBuiltinGithubServer(server)) {
+      return KelivoGithubMcpServerEngine(
+        client: GitHubApiClient(accessTokenProvider: () async => _githubToken),
+      );
+    }
+    return KelivoFetchMcpServerEngine();
+""",
+              """    if (_isBuiltinGithubServer(server)) {
+      return KelivoGithubMcpServerEngine(
+        client: GitHubApiClient(accessTokenProvider: () async => _githubToken),
+      );
+    }
+    if (_isBuiltinTermuxServer(server)) {
+      return KelivoTermuxMcpServerEngine();
+    }
+    return KelivoFetchMcpServerEngine();
+""",
+          )
+          replace_once(
+              provider,
+              """            } else if (id == _builtinImagesId || name == _builtinImagesName) {
+              builtinEnabledById[_builtinImagesId] = enabled;
+            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
+""",
+              """            } else if (id == _builtinImagesId || name == _builtinImagesName) {
+              builtinEnabledById[_builtinImagesId] = enabled;
+            } else if (id == _builtinTermuxId || name == _builtinTermuxName) {
+              builtinEnabledById[_builtinTermuxId] = enabled;
+            } else if (id == 'kelivo_copilot' || name == '@kelivo/copilot') {
+""",
+          )
+          replace_once(
+              provider,
+              """          next.add(
+            _builtinServer(
+              _builtinImagesId,
+              _builtinImagesName,
+              enabled: false,
+            ).copyWith(enabled: builtinEnabledById[_builtinImagesId] ?? false),
+          );
+""",
+              """          next.add(
+            _builtinServer(
+              _builtinImagesId,
+              _builtinImagesName,
+              enabled: false,
+            ).copyWith(enabled: builtinEnabledById[_builtinImagesId] ?? false),
+          );
+          next.add(
+            _builtinServer(
+              _builtinTermuxId,
+              _builtinTermuxName,
+              enabled: false,
+            ).copyWith(enabled: builtinEnabledById[_builtinTermuxId] ?? false),
+          );
+""",
+          )
+          replace_once(
+              provider,
+              """                    (_isBuiltinGithubServer(_servers[idx]) &&
+                        _builtinGithubWriteToolNames.contains(t.name)),
+""",
+              """                    (_isBuiltinGithubServer(_servers[idx]) &&
+                        _builtinGithubWriteToolNames.contains(t.name)) ||
+                    _isBuiltinTermuxServer(_servers[idx]),
+""",
+          )
           PY
 
-      - name: Commit and push
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies and run generators
         shell: bash
         run: |
           set -euo pipefail
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Format and analyze
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/core/providers/mcp_provider.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart
+          flutter analyze
+
+      - name: Run related Flutter tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter test test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/local_tools_service_test.dart test/mcp_lifecycle_reconnect_test.dart
+
+      - name: Verify Android arm64 debug build
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build apk --debug --target-platform android-arm64
+
+      - name: Restore temporary workflow and commit validated patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout origin/main -- .github/workflows/patch_deepseek_thinking.yml
+          git status --short
           git config user.name 'TIN Bot'
           git config user.email 'actions@github.com'
-          git add lib/core/services/api/providers/openai_common.dart
-          git diff --cached --stat
-          git commit -m 'fix(api): pass thinking budget_tokens for DeepSeek reasoning'
-          git push origin HEAD:main
+          git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
+          git diff --cached --check
+          git commit -m 'feat(mcp): move Termux execution behind built-in server'
+          git push origin HEAD:automation/termux-mcp-patch
