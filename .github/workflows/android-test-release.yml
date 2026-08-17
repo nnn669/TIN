@@ -130,6 +130,14 @@ jobs:
           "$apksigner" verify --verbose --print-certs "$apk"
           "$apkanalyzer" manifest version-code "$apk"
           sha256sum "$apk"
+      - name: Package source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --prefix=TIN-main/ --output=TIN-main.zip "$GITHUB_SHA"
+          test -s TIN-main.zip
+          unzip -tq TIN-main.zip
+          sha256sum TIN-main.zip
       - name: Upload single arm64 APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -137,6 +145,19 @@ jobs:
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Publish latest source archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes=$(printf 'TIN main 分支最新源码归档。\n\nCommit: %s' "$GITHUB_SHA")
+          if gh release view source-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload source-latest TIN-main.zip --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit source-latest --title 'TIN 最新源码' --notes "$notes" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create source-latest TIN-main.zip --prerelease --title 'TIN 最新源码' --notes "$notes" --repo "$GITHUB_REPOSITORY"
+          fi
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
