@@ -66,7 +66,7 @@ jobs:
       - name: Commit validated patch
         run: |
           set -euo pipefail
-          git rm .github/workflows/termux-mcp-validate.yml tools/patch_termux_mcp.py tools/normalize_termux_patch.py
+          git rm -f .github/workflows/termux-mcp-validate.yml tools/patch_termux_mcp.py tools/normalize_termux_patch.py
           git config user.name 'TIN Bot'
           git config user.email 'actions@github.com'
           git add android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt android/app/src/main/kotlin/com/psyche/tin/TermuxCommandResultService.kt lib/core/providers/mcp_provider.dart lib/core/services/termux_command.dart lib/core/services/mcp/kelivo_termux/kelivo_termux_server.dart lib/features/home/services/local_tools_service.dart test/termux_command_test.dart test/kelivo_termux_mcp_server_test.dart test/termux_mcp_provider_test.dart test/termux_local_tool_test.dart .github/workflows/patch_deepseek_thinking.yml
