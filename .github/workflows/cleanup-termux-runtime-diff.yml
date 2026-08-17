@@ -1,0 +1,29 @@
+name: Clean Termux Runtime Diff
+
+on:
+  push:
+    branches:
+      - fix/termux-mcp-runtime
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove validation noise
+        run: |
+          git checkout origin/main -- pubspec.lock lib/core/models/chat_message.g.dart lib/l10n/app_localizations.dart lib/l10n/app_localizations_en.dart lib/l10n/app_localizations_zh.dart
+          sed -i '/^import android.Manifest$/d' android/app/src/main/kotlin/com/psyche/tin/TermuxCommandHandler.kt
+          rm .github/workflows/cleanup-termux-runtime-diff.yml
+      - name: Commit cleanup
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          git commit -m "chore: remove Termux validation noise"
+          git push origin HEAD:fix/termux-mcp-runtime
