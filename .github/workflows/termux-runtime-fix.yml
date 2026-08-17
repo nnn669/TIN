@@ -1,4 +1,4 @@
-name: Validate and apply Termux runtime fix
+name: Validate Termux Runtime Fix
 
 on:
   push:
@@ -13,7 +13,6 @@ env:
 
 jobs:
   validate-and-commit:
-    if: contains(github.event.head_commit.message, 'ci: validate Termux MCP runtime fix')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
