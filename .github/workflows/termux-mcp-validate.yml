@@ -35,7 +35,16 @@ jobs:
           if start < 0 or end < 0:
               raise SystemExit('staged patch script markers not found')
           block = source[start + len(start_marker):end]
-          lines = [line[10:] if line.startswith('          ') else line for line in block.splitlines()]
+          lines = []
+          inside_triple_quote = False
+          for line in block.splitlines():
+              if not inside_triple_quote and line.startswith('          '):
+                  line = line[10:]
+              lines.append(line)
+              if line.count("'''") % 2 == 1:
+                  inside_triple_quote = not inside_triple_quote
+          if inside_triple_quote:
+              raise SystemExit('unterminated triple-quoted string in staged patch')
           Path('/tmp/apply-termux-mcp.sh').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
           bash /tmp/apply-termux-mcp.sh
