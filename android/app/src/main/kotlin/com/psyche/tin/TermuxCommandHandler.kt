@@ -30,7 +30,11 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
         private const val EXTRA_BACKGROUND = "com.termux.RUN_COMMAND_BACKGROUND"
         private const val EXTRA_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
         private const val PREFIX = "/data/data/com.termux/files/usr/bin/"
-        private const val TERMUX_FILES_PREFIX = "/data/data/com.termux/files/"
+        private val ALLOWED_WORKDIRS = listOf(
+            "/data/data/com.termux/files",
+            "/storage/emulated/0",
+            "/sdcard",
+        )
         private const val DEFAULT_WORKDIR = "/data/data/com.termux/files/home"
         private const val MAX_ARGUMENTS = 64
         private const val MAX_ARGUMENT_LENGTH = 4096
@@ -51,10 +55,7 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
         runCommand(call, result)
     }
 
-    fun onRequestPermissionsResult(
-        requestCode: Int,
-        grantResults: IntArray,
-    ): Boolean {
+    fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray): Boolean {
         if (requestCode != PERMISSION_REQUEST_CODE) return false
         val call = pendingPermissionCall
         val result = pendingPermissionResult
@@ -64,11 +65,7 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             runCommand(call, result)
         } else {
-            result.error(
-                "termux_permission_denied",
-                "Termux command permission was denied.",
-                null,
-            )
+            result.error("termux_permission_denied", "Termux command permission was denied.", null)
         }
         return true
     }
@@ -85,22 +82,16 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
             return
         }
         val arguments = rawArguments.map { it?.toString().orEmpty() }
-        if (arguments.any { it.length > MAX_ARGUMENT_LENGTH } ||
-            command.length + arguments.sumOf { it.length } > MAX_TOTAL_LENGTH
-        ) {
+        if (arguments.any { it.length > MAX_ARGUMENT_LENGTH } || command.length + arguments.sumOf { it.length } > MAX_TOTAL_LENGTH) {
             result.error("invalid_arguments", "Termux command arguments are too long.", null)
             return
         }
-        val workingDirectory = call.argument<String>("workingDirectory")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: DEFAULT_WORKDIR
-        if (!workingDirectory.startsWith(TERMUX_FILES_PREFIX)) {
-            result.error("invalid_workdir", "Working directory is outside Termux.", null)
+        val workingDirectory = call.argument<String>("workingDirectory")?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_WORKDIR
+        if (!isAllowedWorkingDirectory(workingDirectory)) {
+            result.error("invalid_workdir", "Working directory is outside allowed storage.", null)
             return
         }
-        val timeoutSeconds = call.argument<Number>("timeoutSeconds")?.toInt()
-            ?: DEFAULT_TIMEOUT_SECONDS
+        val timeoutSeconds = call.argument<Number>("timeoutSeconds")?.toInt() ?: DEFAULT_TIMEOUT_SECONDS
         if (timeoutSeconds !in MIN_TIMEOUT_SECONDS..MAX_TIMEOUT_SECONDS) {
             result.error("invalid_timeout", "Invalid Termux command timeout.", null)
             return
@@ -109,9 +100,7 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
             result.error("termux_unavailable", "Termux is not installed.", null)
             return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            activity.checkSelfPermission(TERMUX_PERMISSION) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && activity.checkSelfPermission(TERMUX_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
             if (pendingPermissionResult != null) {
                 result.error("termux_permission_busy", "A Termux permission request is already active.", null)
                 return
@@ -123,21 +112,9 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
         }
 
         val background = call.argument<Boolean>("background") ?: false
-        val requestId = TermuxCommandResultRegistry.register(
-            result = result,
-            timeoutMillis = timeoutSeconds * 1000L,
-        )
-        val callbackIntent = Intent(activity, TermuxCommandResultService::class.java).apply {
-            putExtra(EXTRA_REQUEST_ID, requestId)
-        }
-        val callback = PendingIntent.getService(
-            activity,
-            requestId,
-            callbackIntent,
-            PendingIntent.FLAG_ONE_SHOT or
-                PendingIntent.FLAG_UPDATE_CURRENT or
-                PendingIntent.FLAG_MUTABLE,
-        )
+        val requestId = TermuxCommandResultRegistry.register(result = result, timeoutMillis = timeoutSeconds * 1000L)
+        val callbackIntent = Intent(activity, TermuxCommandResultService::class.java).apply { putExtra(EXTRA_REQUEST_ID, requestId) }
+        val callback = PendingIntent.getService(activity, requestId, callbackIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
         val intent = Intent(ACTION_RUN_COMMAND).apply {
             component = ComponentName(TERMUX_PACKAGE, TERMUX_SERVICE)
             putExtra(EXTRA_COMMAND_PATH, "$PREFIX$command")
@@ -155,49 +132,38 @@ class TermuxCommandHandler(private val activity: Activity) : MethodChannel.Metho
             }
         } catch (error: SecurityException) {
             TermuxCommandResultRegistry.cancel(requestId)
-            result.error(
-                "termux_permission_denied",
-                "Termux denied external commands. Enable allow-external-apps in ~/.termux/termux.properties.",
-                error.toString(),
-            )
+            result.error("termux_permission_denied", "Termux denied external commands. Enable allow-external-apps in ~/.termux/termux.properties.", error.toString())
         } catch (error: Exception) {
             TermuxCommandResultRegistry.cancel(requestId)
             result.error("termux_launch_failed", error.message, error.toString())
         }
     }
 
-    private fun isTermuxInstalled(): Boolean {
-        return try {
-            @Suppress("DEPRECATION")
-            activity.packageManager.getPackageInfo(TERMUX_PACKAGE, 0)
-            true
-        } catch (_: PackageManager.NameNotFoundException) {
-            false
-        }
+    private fun isAllowedWorkingDirectory(value: String): Boolean {
+        val normalized = java.io.File(value).normalize().path
+        return ALLOWED_WORKDIRS.any { root -> normalized == root || normalized.startsWith("$root/") }
+    }
+
+    private fun isTermuxInstalled(): Boolean = try {
+        @Suppress("DEPRECATION")
+        activity.packageManager.getPackageInfo(TERMUX_PACKAGE, 0)
+        true
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
     }
 }
 
 object TermuxCommandResultRegistry {
-    private data class PendingResult(
-        val result: MethodChannel.Result,
-        val timeout: Runnable,
-    )
-
+    private data class PendingResult(val result: MethodChannel.Result, val timeout: Runnable)
     private val nextRequestId = AtomicInteger(1)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pending = ConcurrentHashMap<Int, PendingResult>()
 
     fun register(result: MethodChannel.Result, timeoutMillis: Long): Int {
-        val requestId = nextRequestId.getAndUpdate { current ->
-            if (current == Int.MAX_VALUE) 1 else current + 1
-        }
+        val requestId = nextRequestId.getAndUpdate { current -> if (current == Int.MAX_VALUE) 1 else current + 1 }
         val timeout = Runnable {
             val entry = pending.remove(requestId) ?: return@Runnable
-            entry.result.error(
-                "termux_timeout",
-                "Termux command did not finish before the timeout.",
-                null,
-            )
+            entry.result.error("termux_timeout", "Termux command did not finish before the timeout.", null)
         }
         pending[requestId] = PendingResult(result, timeout)
         mainHandler.postDelayed(timeout, timeoutMillis)
@@ -214,11 +180,7 @@ object TermuxCommandResultRegistry {
         mainHandler.removeCallbacks(entry.timeout)
         mainHandler.post {
             if (bundle == null) {
-                entry.result.error(
-                    "termux_missing_result",
-                    "Termux returned an empty command result.",
-                    null,
-                )
+                entry.result.error("termux_missing_result", "Termux returned an empty command result.", null)
                 return@post
             }
             val stdout = bundle.getString("stdout").orEmpty()
@@ -228,20 +190,7 @@ object TermuxCommandResultRegistry {
             val errorMessage = bundle.getString("errmsg").orEmpty()
             val stdoutOriginalLength = bundle.getInt("stdout_original_length", stdout.length)
             val stderrOriginalLength = bundle.getInt("stderr_original_length", stderr.length)
-            entry.result.success(
-                mapOf(
-                    "success" to (exitCode == 0 && errorCode == 0),
-                    "exitCode" to exitCode,
-                    "stdout" to stdout,
-                    "stderr" to stderr,
-                    "errorCode" to errorCode,
-                    "error" to errorMessage,
-                    "stdoutOriginalLength" to stdoutOriginalLength,
-                    "stderrOriginalLength" to stderrOriginalLength,
-                    "stdoutTruncated" to (stdoutOriginalLength > stdout.length),
-                    "stderrTruncated" to (stderrOriginalLength > stderr.length),
-                )
-            )
+            entry.result.success(mapOf("success" to (exitCode == 0 && errorCode == 0), "exitCode" to exitCode, "stdout" to stdout, "stderr" to stderr, "errorCode" to errorCode, "error" to errorMessage, "stdoutOriginalLength" to stdoutOriginalLength, "stderrOriginalLength" to stderrOriginalLength, "stdoutTruncated" to (stdoutOriginalLength > stdout.length), "stderrTruncated" to (stderrOriginalLength > stderr.length)))
         }
     }
 }
