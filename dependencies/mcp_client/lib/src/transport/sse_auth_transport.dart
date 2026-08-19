@@ -115,13 +115,17 @@ class SseAuthClientTransport implements ClientTransport {
                 throw McpError('Timed out waiting for authenticated endpoint'),
       );
 
+      // Endpoints supplied as absolute URLs are validated to be
+      // same-origin so bearer tokens are never forwarded to another host.
       transport._messageEndpoint =
-          endpointPath.startsWith('http')
-              ? endpointPath
-              : transport._constructEndpointUrl(
-                Uri.parse(serverUrl),
-                endpointPath,
-              );
+          McpTransportSecurity.endpointFromServer(
+            serverUrl: serverUrl,
+            endpointPath: endpointPath,
+          ) ??
+          transport._constructEndpointUrl(
+            Uri.parse(serverUrl),
+            endpointPath,
+          );
 
       _logger.debug(
         'Authenticated SSE transport ready: ${transport._messageEndpoint}',
@@ -234,9 +238,11 @@ class SseAuthClientTransport implements ClientTransport {
     );
 
     _messageEndpoint =
-        endpointPath.startsWith('http')
-            ? endpointPath
-            : _constructEndpointUrl(Uri.parse(serverUrl), endpointPath);
+        McpTransportSecurity.endpointFromServer(
+          serverUrl: serverUrl,
+          endpointPath: endpointPath,
+        ) ??
+        _constructEndpointUrl(Uri.parse(serverUrl), endpointPath);
   }
 
   void _handleAuthFailure(int statusCode, String body) {
