@@ -180,10 +180,14 @@ class SseHeartbeatClientTransport implements ClientTransport {
           () => throw McpError('Timed out waiting for heartbeat endpoint'),
     );
 
+    // Endpoints supplied as absolute URLs are validated to be
+    // same-origin so credentials are never forwarded to another host.
     _messageEndpoint =
-        endpointPath.startsWith('http')
-            ? endpointPath
-            : _constructEndpointUrl(Uri.parse(serverUrl), endpointPath);
+        McpTransportSecurity.endpointFromServer(
+          serverUrl: serverUrl,
+          endpointPath: endpointPath,
+        ) ??
+        _constructEndpointUrl(Uri.parse(serverUrl), endpointPath);
 
     // Update health and start heartbeat
     _updateHealth(ConnectionHealth.healthy);
