@@ -571,6 +571,64 @@ class McpProvider extends ChangeNotifier {
     return _isBuiltinImagesServer(server);
   }
 
+  /// Default approval policy for tools discovered during refresh.
+  ///
+  /// Built-in write tools are always gated. For external servers, tools whose
+  /// names indicate a high-impact operation (write/delete/exec/publish/send/
+  /// upload/commit/…) default to requiring approval so destructive actions are
+  /// not taken silently. Read-only external tools keep the permissive default;
+  /// the user can still change any tool's policy in the UI.
+  bool _defaultNeedsApproval(McpServerConfig server, String toolName) {
+    if (_isBuiltinFilesServer(server) &&
+        _builtinFileWriteToolNames.contains(toolName)) {
+      return true;
+    }
+    if (_isBuiltinGithubServer(server) &&
+        _builtinGithubWriteToolNames.contains(toolName)) {
+      return true;
+    }
+    if (isBuiltinServer(server)) return false;
+    return _isHighImpactToolName(toolName);
+  }
+
+  bool _isHighImpactToolName(String name) {
+    final lower = name.toLowerCase();
+    return lower.contains('delete') ||
+        lower.contains('remove') ||
+        lower.contains('erase') ||
+        lower.contains('write') ||
+        lower.contains('create') ||
+        lower.contains('update') ||
+        lower.contains('edit') ||
+        lower.contains('modify') ||
+        lower.contains('exec') ||
+        lower.contains('run') ||
+        lower.contains('bash') ||
+        lower.contains('shell') ||
+        lower.contains('publish') ||
+        lower.contains('release') ||
+        lower.contains('deploy') ||
+        lower.contains('send') ||
+        lower.contains('post') ||
+        lower.contains('put') ||
+        lower.contains('commit') ||
+        lower.contains('push') ||
+        lower.contains('upload') ||
+        lower.contains('transfer') ||
+        lower.contains('move') ||
+        lower.contains('copy') ||
+        lower.contains('rename') ||
+        lower.contains('kill') ||
+        lower.contains('terminate') ||
+        lower.contains('stop') ||
+        lower.contains('restart') ||
+        lower.contains('reset') ||
+        lower.contains('format') ||
+        lower.contains('install') ||
+        lower.contains('uninstall') ||
+        lower.contains('download');
+  }
+
   bool _isBuiltinFetchServer(McpServerConfig server) {
     return server.transport == McpTransportType.inmemory &&
         (server.id == _builtinFetchId || server.name == _builtinFetchName);
@@ -1806,10 +1864,7 @@ class McpProvider extends ChangeNotifier {
             schema: schemaJson,
             needsApproval:
                 prior?.needsApproval ??
-                (_isBuiltinFilesServer(_servers[idx]) &&
-                        _builtinFileWriteToolNames.contains(t.name)) ||
-                    (_isBuiltinGithubServer(_servers[idx]) &&
-                        _builtinGithubWriteToolNames.contains(t.name)),
+                _defaultNeedsApproval(_servers[idx], t.name),
           ),
         );
       }
