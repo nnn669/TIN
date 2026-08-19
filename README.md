@@ -1,13 +1,13 @@
 # TIN
 
-TIN (package name `Kelivo`) is a cross-platform LLM chat client built with Flutter.
-It targets Android, iOS, macOS, Windows and Linux, with a mobile-first custom iOS-style UI.
+TIN (package name `Kelivo`) is an Android LLM chat client built with Flutter,
+featuring a custom iOS-style UI.
 
 ## Features
 
 - **Multi-provider chat**: OpenAI-compatible endpoints (Chat Completions / Responses / Images),
   Google Gemini & Vertex AI (incl. service-account auth), and the Anthropic Claude official API.
-  Widely tested against OpenAI, DeepSeek, Kimi (Moonshot), Zhipu GLM, SiliconFlow, Qwen/DashScope and OpenRouter.
+  Tested against OpenAI, DeepSeek, Kimi (Moonshot), Zhipu GLM, SiliconFlow, Qwen/DashScope and OpenRouter.
 - **Streaming responses** (SSE) with reasoning/thinking steps support and collapsed thinking display.
 - **Provider & model management**: provider groups, per-provider headers, custom providers,
   model overrides and payload overrides, reasoning budget control.
@@ -18,19 +18,9 @@ It targets Android, iOS, macOS, Windows and Linux, with a mobile-first custom iO
 - **Content tools**: web search (DuckDuckGo), translation, document text extraction,
   Markdown rendering (incl. Mermaid and math), PDF export, image input/cropping, image generation.
 - **Productivity**: quick phrases, chat statistics, QR code scanning, webview, share, haptics, TTS.
-- **Background generation** with local notifications on Android and iOS.
+- **Background generation** with local notifications on Android.
 - **Backup & restore**: local file backup and S3-compatible remote backup.
 - **Localization**: English, Simplified Chinese and Traditional Chinese.
-- **Desktop shell**: tray icon, hotkeys and a custom window title bar on macOS/Windows/Linux.
-
-## Platforms
-
-| Platform | Entry point |
-| --- | --- |
-| Android / iOS | `lib/main.dart` → `HomePage` |
-| macOS / Windows / Linux | `lib/main.dart` → `DesktopHomePage` |
-
-Android builds are released as a single **arm64-v8a** APK.
 
 ## Build
 
@@ -41,15 +31,11 @@ flutter pub get
 flutter build apk --release --split-per-abi --target-platform android-arm64
 ```
 
+Android builds are released as a single **arm64-v8a** APK.
+
 Release builds require a configured signing key in `android/key.properties`
 (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`).
 Never commit credentials, tokens, keystores, or build artifacts.
-
-For other platforms:
-
-```bash
-flutter run -d macos    # or windows / linux
-```
 
 ## Project layout
 
@@ -59,7 +45,6 @@ lib/
   features/    feature modules: chat, home, provider, model, assistant, mcp, skills,
                instruction_injection, quick_phrase, search, translate, backup,
                scan, settings, stats
-  desktop/     desktop app shell: nav rail, tray, hotkeys, title bar, desktop settings
   shared/      reusable UI primitives (iOS-style widgets, dialogs, responsive helpers)
   theme/       theming tokens and dynamic color
   l10n/        ARB localization templates
