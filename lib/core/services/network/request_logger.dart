@@ -146,6 +146,122 @@ class RequestLogger {
         .replaceAll('\t', r'\t');
   }
 
+  static const Set<String> _sensitiveHeaderNames = {
+    'authorization',
+    'proxy-authorization',
+    'cookie',
+    'set-cookie',
+    'x-api-key',
+    'api-key',
+    'apikey',
+    'x-auth-token',
+    'x-token',
+  };
+
+  /// Redacts header values that may contain credentials (API keys, tokens,
+  /// cookies) before they are written to the request log.
+  static Map<String, String> redactHeaders(Map<String, String> headers) {
+    final result = <String, String>{};
+    headers.forEach((name, value) {
+      final lower = name.toLowerCase();
+      final sensitive =
+          _sensitiveHeaderNames.contains(lower) ||
+          lower.contains('api-key') ||
+          lower.contains('token') ||
+          lower.contains('secret') ||
+          lower.contains('password');
+      result[name] = sensitive && value.isNotEmpty ? '***' : value;
+    });
+    return result;
+  }
+
+  static const Set<String> _sensitiveBodyKeys = {
+    'api_key',
+    'apikey',
+    'token',
+    'access_token',
+    'refresh_token',
+    'id_token',
+    'password',
+    'passwd',
+    'secret',
+    'client_secret',
+    'authorization',
+    'private_key',
+    'x_api_key',
+    'x-api-key',
+  };
+
+  /// Redacts sensitive values inside a JSON document before it is written to
+  /// the request log. Text that cannot be parsed as JSON (for example a
+  /// partial streamed chunk) is returned unchanged so it can still be
+  /// inspected during debugging.
+  static String redactSensitiveJson(String text) {
+    if (text.isEmpty) return text;
+    var candidate = text;
+    var prefix = '';
+    if (candidate.startsWith('data:')) {
+      prefix = 'data: ';
+      candidate = candidate.substring(5).trimLeft();
+    }
+    try {
+      final decoded = jsonDecode(candidate);
+      final redacted =
+          const JsonEncoder.withIndent('  ').convert(_redactValue(decoded));
+      return prefix + redacted;
+    } catch (_) {
+      return text;
+    }
+  }
+
+  static dynamic _redactValue(dynamic value) {
+    if (value is Map) {
+      final result = <String, dynamic>{};
+      value.forEach((key, val) {
+        final lower = key.toString().toLowerCase();
+        if (_sensitiveBodyKeys.contains(lower) && val != null) {
+          final s = val.toString();
+          result[key.toString()] = s.isEmpty ? '' : '***';
+        } else {
+          result[key.toString()] = _redactValue(val);
+        }
+      });
+      return result;
+    }
+    if (value is List) {
+      return value.map(_redactValue).toList();
+    }
+    return value;
+  }
+
+  /// Deletes every persisted request log file. Used to purge logs written by
+  /// older versions that may contain secrets (API keys, tokens, conversation
+  /// bodies) in cleartext.
+  static Future<void> purgeAllLogs() async {
+    try {
+      final dir = await AppDirectories.getAppDataDirectory();
+      final logsDir = Directory('${dir.path}/logs');
+      if (!await logsDir.exists()) return;
+      await for (final entity in logsDir.list()) {
+        if (entity is File && entity.path.toLowerCase().endsWith('.txt')) {
+          try {
+            await entity.delete();
+          } catch (_) {}
+        }
+      }
+      // The active sink may still reference a deleted file; close it so the
+      // next write re-opens a fresh log file.
+      try {
+        await _sink?.flush();
+      } catch (_) {}
+      try {
+        await _sink?.close();
+      } catch (_) {}
+      _sink = null;
+      _sinkDate = null;
+    } catch (_) {}
+  }
+
   static Future<void> cleanupLogs({
     required int autoDeleteDays,
     required int maxSizeMB,
