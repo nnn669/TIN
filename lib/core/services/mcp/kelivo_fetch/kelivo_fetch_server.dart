@@ -57,17 +57,101 @@ class KelivoFetcher {
   static const _defaultUA =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+  /// Maximum bytes accepted from a fetch response.
+  static const int _maxResponseBytes = 5 * 1024 * 1024; // 5 MiB
+  static const int _maxRedirects = 5;
+  static const Duration _timeout = Duration(seconds: 15);
+
+  /// Blocks loopback / private / link-local / reserved destinations so the
+  /// fetch tool cannot be abused to probe internal networks (SSRF).
+  static bool _isBlockedHost(String host) {
+    final normalized = host.toLowerCase();
+    if (normalized == 'localhost' || normalized.endsWith('.localhost')) {
+      return true;
+    }
+    var h = normalized;
+    if (h.startsWith('[') && h.endsWith(']')) {
+      h = h.substring(1, h.length - 1);
+    }
+    if (h.contains(':')) {
+      // IPv4-mapped IPv6 like ::ffff:127.0.0.1
+      if (h.contains('.')) {
+        final idx = h.lastIndexOf(':');
+        if (idx >= 0) {
+          return _isBlockedIpv4(h.substring(idx + 1));
+        }
+        return false;
+      }
+      if (!RegExp(r'^[0-9a-f:]+$').hasMatch(h)) return false;
+      if (h == '::' || h == '::1') return true;
+      if (RegExp(r'^fe[89a-f]').hasMatch(h)) return true; // link-local fe80::/10
+      if (h.startsWith('fc') || h.startsWith('fd')) return true; // ULA fc00::/7
+      return false;
+    }
+    return _isBlockedIpv4(h);
+  }
+
+  static bool _isBlockedIpv4(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+    final nums = parts.map(int.tryParse).toList();
+    if (nums.any((n) => n == null || n < 0 || n > 255)) return false;
+    final a = nums[0]!;
+    final b = nums[1]!;
+    if (a == 0 || a == 10) return true; // 0.0.0.0/8, 10.0.0.0/8
+    if (a == 127) return true; // loopback
+    if (a == 169 && b == 254) return true; // link-local
+    if (a == 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a == 192 && b == 168) return true; // 192.168.0.0/16
+    if (a == 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a >= 224) return true; // multicast + reserved
+    return false;
+  }
+
   static Future<http.Response> _fetch(KelivoFetchRequestPayload payload) async {
     try {
       final merged = <String, String>{
         'User-Agent': _defaultUA,
         ...payload.headers,
       };
-      final resp = await http.get(payload.url, headers: merged);
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        throw Exception('HTTP ${resp.statusCode}');
+      final client = http.Client();
+      try {
+        var current = payload.url;
+        var redirects = 0;
+        while (true) {
+          if (_isBlockedHost(current.host)) {
+            throw Exception('Blocked destination: ${current.host}');
+          }
+          final request = http.Request('GET', current)..headers.addAll(merged);
+          request.followRedirects = false;
+          final streamed = await client.send(request).timeout(_timeout);
+          final resp = await http.Response.fromStream(streamed);
+          if (resp.statusCode >= 300 && resp.statusCode < 400) {
+            final location = resp.headers['location'];
+            if (location == null) {
+              throw Exception('HTTP ${resp.statusCode} without Location');
+            }
+            if (++redirects > _maxRedirects) {
+              throw Exception('Too many redirects');
+            }
+            final next = current.resolve(location);
+            if (!(next.isScheme('http') || next.isScheme('https'))) {
+              throw Exception('Invalid redirect: $location');
+            }
+            current = next;
+            continue;
+          }
+          if (resp.statusCode < 200 || resp.statusCode >= 300) {
+            throw Exception('HTTP ${resp.statusCode}');
+          }
+          if (resp.bodyBytes.length > _maxResponseBytes) {
+            throw Exception('Response too large');
+          }
+          return resp;
+        }
+      } finally {
+        client.close();
       }
-      return resp;
     } catch (e) {
       throw Exception(
         'Failed to fetch ${payload.url}: ${e is Exception ? e.toString() : 'Unknown error'}',
