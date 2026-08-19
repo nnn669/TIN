@@ -365,6 +365,18 @@ class StreamableHttpClientTransport implements ClientTransport {
 
     final currentUri = request.url;
     final redirectedUri = currentUri.resolve(location);
+
+    // Security: never follow a redirect to a different origin. Forwarding
+    // credentials (Authorization, session id, API keys) to another host
+    // would leak the token, and an HTTPS -> HTTP downgrade would expose
+    // the traffic in cleartext.
+    if (!McpTransportSecurity.isSameOrigin(currentUri, redirectedUri)) {
+      await response.stream.drain<void>();
+      throw McpError(
+        'Refusing HTTP redirect to a different origin: $redirectedUri',
+      );
+    }
+
     await response.stream.drain<void>();
 
     _baseUrl = redirectedUri.toString();
