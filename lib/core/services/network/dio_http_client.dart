@@ -120,10 +120,13 @@ class DioHttpClient extends http.BaseClient {
     reqHeaders.putIfAbsent('User-Agent', () => 'TIN');
     if (RequestLogger.enabled) {
       RequestLogger.logLine('[REQ $reqId] $method $uri');
-      if (reqHeaders.isNotEmpty) RequestLogger.logLine('[REQ $reqId] headers=${RequestLogger.encodeObject(reqHeaders)}');
+      if (reqHeaders.isNotEmpty) RequestLogger.logLine('[REQ $reqId] headers=${RequestLogger.encodeObject(RequestLogger.redactHeaders(reqHeaders))}');
       if (bodyBytes.isNotEmpty) {
         final decoded = RequestLogger.safeDecodeUtf8(bodyBytes);
-        RequestLogger.logLine('[REQ $reqId] body=${RequestLogger.escape(decoded.isNotEmpty ? decoded : 'base64:${base64Encode(bodyBytes)}')}');
+        final logged = decoded.isNotEmpty
+            ? RequestLogger.redactSensitiveJson(decoded)
+            : 'base64:${base64Encode(bodyBytes)}';
+        RequestLogger.logLine('[REQ $reqId] body=${RequestLogger.escape(logged)}');
       }
     }
     try {
@@ -142,7 +145,7 @@ class DioHttpClient extends http.BaseClient {
       final responseIsJson = contentType.contains('application/json') || contentType.contains('+json');
       if (RequestLogger.enabled) {
         RequestLogger.logLine('[RES $reqId] status=$statusCode headers_ms=${requestStarted.elapsedMilliseconds}');
-        if (headers.isNotEmpty) RequestLogger.logLine('[RES $reqId] headers=${RequestLogger.encodeObject(headers)}');
+        if (headers.isNotEmpty) RequestLogger.logLine('[RES $reqId] headers=${RequestLogger.encodeObject(RequestLogger.redactHeaders(headers))}');
         if (requestedEventStream && responseIsJson) RequestLogger.logLine('[RES $reqId] normalized_json_as_sse=true');
       }
       final body = resp.data!;
@@ -171,7 +174,10 @@ class DioHttpClient extends http.BaseClient {
           controller.add(chunk);
           if (RequestLogger.enabled && RequestLogger.saveOutput) {
             final s = RequestLogger.safeDecodeUtf8(chunk);
-            if (s.isNotEmpty) RequestLogger.logLine('[RES $reqId] chunk=${RequestLogger.escape(s)}');
+            if (s.isNotEmpty) {
+              final logged = RequestLogger.redactSensitiveJson(s);
+              RequestLogger.logLine('[RES $reqId] chunk=${RequestLogger.escape(logged)}');
+            }
           }
         }, onError: (Object e, StackTrace st) {
           idleTimer?.cancel();
