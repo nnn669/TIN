@@ -29,6 +29,7 @@ import 'core/services/android_background.dart';
 import 'core/services/chat/chat_service.dart';
 import 'core/services/logging/flutter_logger.dart';
 import 'core/services/mcp/mcp_tool_service.dart';
+import 'core/services/network/request_logger.dart';
 import 'core/services/notification_service.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/home/services/ask_user_interaction_service.dart';
@@ -49,6 +50,10 @@ Future<void> main() async {
       FlutterLogger.installGlobalHandlers();
       await _restoreFlutterLogState();
       _trimImageCache();
+      // Purge request logs written by older versions that may contain
+      // secrets (API keys, tokens, conversation bodies) in cleartext.
+      // Logs produced by current versions are redacted.
+      unawaited(RequestLogger.purgeAllLogs());
       await SandboxPathResolver.init();
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       runApp(const MyApp());
