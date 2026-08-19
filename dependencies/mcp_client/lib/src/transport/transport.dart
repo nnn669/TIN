@@ -10,6 +10,86 @@ import 'stdio_launch.dart';
 
 final Logger _logger = Logger('mcp_client.transport');
 
+/// Security helpers shared by HTTP-based transports.
+///
+/// Guards against forwarding credentials across origins and against trusting
+/// server-supplied endpoints that point to a different host than the one the
+/// client authenticated against.
+class McpTransportSecurity {
+  const McpTransportSecurity._();
+
+  /// Header names that carry credentials and must never be forwarded to a
+  /// different origin.
+  static const Set<String> credentialHeaderNames = {
+    'authorization',
+    'proxy-authorization',
+    'cookie',
+    'set-cookie',
+    'x-api-key',
+    'api-key',
+    'apikey',
+    'x-auth-token',
+  };
+
+  /// Returns true when [a] and [b] share the same scheme, host and port.
+  static bool isSameOrigin(Uri a, Uri b) {
+    return a.scheme.toLowerCase() == b.scheme.toLowerCase() &&
+        _normalizeHost(a.host) == _normalizeHost(b.host) &&
+        _effectivePort(a) == _effectivePort(b);
+  }
+
+  /// Returns true when [name] is a credential header (case-insensitive).
+  static bool isCredentialHeader(String name) =>
+      credentialHeaderNames.contains(name.toLowerCase());
+
+  /// Returns a copy of [headers] without credential headers. Intended for
+  /// requests that are about to be sent to a different origin.
+  static Map<String, String> withoutCredentialHeaders(
+    Map<String, String> headers,
+  ) {
+    final result = <String, String>{};
+    headers.forEach((name, value) {
+      if (!isCredentialHeader(name)) {
+        result[name] = value;
+      }
+    });
+    return result;
+  }
+
+  /// Validates a server-supplied SSE endpoint.
+  ///
+  /// Returns the endpoint string when [endpointPath] is an absolute URL
+  /// (already validated to be same-origin with [serverUrl]), or null when
+  /// [endpointPath] is relative (the caller builds it from the server URL as
+  /// before). Throws [McpError] when the endpoint is invalid or points to a
+  /// different origin.
+  static String? endpointFromServer({
+    required String serverUrl,
+    required String endpointPath,
+  }) {
+    if (!endpointPath.startsWith('http')) {
+      return null;
+    }
+    final origin = Uri.parse(serverUrl);
+    final candidate = Uri.tryParse(endpointPath);
+    if (candidate == null ||
+        !(candidate.isScheme('http') || candidate.isScheme('https'))) {
+      throw McpError('Invalid MCP endpoint returned by server: $endpointPath');
+    }
+    if (!isSameOrigin(origin, candidate)) {
+      throw McpError(
+        'MCP server returned an endpoint on a different origin: $endpointPath',
+      );
+    }
+    return candidate.toString();
+  }
+
+  static String _normalizeHost(String host) => host.toLowerCase();
+
+  static int _effectivePort(Uri uri) =>
+      uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
+}
+
 /// Abstract base class for client transport implementations
 abstract class ClientTransport {
   /// Stream of incoming messages
@@ -307,14 +387,18 @@ class SseClientTransport implements ClientTransport {
         onTimeout: () => throw McpError('Timed out waiting for endpoint'),
       );
 
-      // Set up message endpoint following MCP standard
+      // Set up message endpoint following MCP standard. Endpoints supplied
+      // as absolute URLs are validated to be same-origin before they are
+      // trusted, so credentials are never forwarded to another host.
       transport._messageEndpoint =
-          endpointPath.startsWith('http')
-              ? endpointPath
-              : transport._constructEndpointUrl(
-                Uri.parse(serverUrl),
-                endpointPath,
-              );
+          McpTransportSecurity.endpointFromServer(
+            serverUrl: serverUrl,
+            endpointPath: endpointPath,
+          ) ??
+          transport._constructEndpointUrl(
+            Uri.parse(serverUrl),
+            endpointPath,
+          );
       _logger.debug(
         'Transport ready with MCP standard endpoint: ${transport._messageEndpoint}',
       );
