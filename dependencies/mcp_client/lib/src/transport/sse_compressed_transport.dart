@@ -131,13 +131,17 @@ class SseCompressedClientTransport implements ClientTransport {
             () => throw McpError('Timed out waiting for compressed endpoint'),
       );
 
+      // Endpoints supplied as absolute URLs are validated to be
+      // same-origin so credentials are never forwarded to another host.
       transport._messageEndpoint =
-          endpointPath.startsWith('http')
-              ? endpointPath
-              : transport._constructEndpointUrl(
-                Uri.parse(serverUrl),
-                endpointPath,
-              );
+          McpTransportSecurity.endpointFromServer(
+            serverUrl: serverUrl,
+            endpointPath: endpointPath,
+          ) ??
+          transport._constructEndpointUrl(
+            Uri.parse(serverUrl),
+            endpointPath,
+          );
 
       _logger.debug(
         'Compressed SSE transport ready: ${transport._messageEndpoint}',
