@@ -1,11 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:tin/core/models/settings_provider.dart';
 import 'package:tin/core/providers/settings_provider.dart';
 import 'package:tin/core/services/image_generation_routing.dart';
 
 void main() {
-  test('routes configured provider and model without changing prompt args', () {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  test('routes configured provider and model without changing prompt args', () async {
     final settings = SettingsProvider();
     final chat = ProviderConfig(
       id: 'chat',
@@ -27,7 +33,8 @@ void main() {
       apiKey: 'image-key',
       baseUrl: 'https://images.example/v1',
     );
-    settings.setProviderConfigsForTesting({'chat': chat, 'images': images});
+    await settings.setProviderConfig('chat', chat);
+    await settings.setProviderConfig('images', images);
 
     final result = ImageGenerationRouting.resolveToolArguments(
       name: ImageGenerationRouting.toolName,
@@ -44,7 +51,7 @@ void main() {
     expect(result.arguments['api_key'], 'image-key');
   });
 
-  test('rejects a partial association and does not leak arguments', () {
+  test('rejects a partial association and does not leak arguments', () async {
     final settings = SettingsProvider();
     final chat = ProviderConfig(
       id: 'chat',
@@ -56,7 +63,7 @@ void main() {
         'chat-model': {'imageProviderId': 'images'},
       },
     );
-    settings.setProviderConfigsForTesting({'chat': chat});
+    await settings.setProviderConfig('chat', chat);
 
     final result = ImageGenerationRouting.resolveToolArguments(
       name: ImageGenerationRouting.toolName,
@@ -70,7 +77,7 @@ void main() {
     expect(result.arguments, isEmpty);
   });
 
-  test('leaves unrelated tools unchanged', () {
+  test('leaves unrelated tools unchanged') {
     final settings = SettingsProvider();
     final original = <String, dynamic>{'prompt': 'a red fox'};
 
