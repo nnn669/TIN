@@ -1,4 +1,4 @@
-name: Rollback Recent Chat Changes
+name: Restore Main To Latest Successful Build
 
 on:
   workflow_dispatch:
@@ -7,10 +7,10 @@ permissions:
   contents: write
 
 jobs:
-  rollback:
+  restore:
     runs-on: ubuntu-latest
     steps:
-      - name: Force main back to v1.1.51 baseline
+      - name: Force main to Android test build 644
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -20,6 +20,6 @@ jobs:
           gh api --method PATCH \
             -H "Accept: application/vnd.github+json" \
             "/repos/${GH_REPO}/git/refs/heads/main" \
-            -f sha=151a6838f0ff77ce472d67e781e933ecb03bbdc5 \
+            -f sha=2154e2d758fa41ff8ef7ab643afd1d8e330966d4 \
             -F force=true
-          echo "main moved to v1.1.51 baseline"
+          echo "main moved to latest successful Android build 644"
