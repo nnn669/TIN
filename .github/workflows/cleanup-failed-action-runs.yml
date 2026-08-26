@@ -18,15 +18,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t run_ids < <(
-            gh api --paginate \
+          deleted=0
+          while true; do
+            run_id="$(gh api \
               -H "Accept: application/vnd.github+json" \
-              "/repos/${GH_REPO}/actions/runs?status=failure&per_page=100" \
-              --jq '.workflow_runs[].id'
-          )
-          echo "Deleting ${#run_ids[@]} failed workflow runs"
-          for run_id in "${run_ids[@]}"; do
+              "/repos/${GH_REPO}/actions/runs?status=failure&per_page=1" \
+              --jq '.workflow_runs[0].id // empty')"
+            if [[ -z "${run_id}" ]]; then
+              break
+            fi
             gh api --method DELETE \
               -H "Accept: application/vnd.github+json" \
               "/repos/${GH_REPO}/actions/runs/${run_id}"
+            deleted=$((deleted + 1))
+            echo "Deleted failed workflow run ${run_id} (${deleted})"
           done
+          echo "Deleted ${deleted} failed workflow runs"
