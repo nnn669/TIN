@@ -1,0 +1,23 @@
+name: Rollback Recent Chat Changes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Force main back to v1.1.51 baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init rollback
+          cd rollback
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags origin 151a6838f0ff77ce472d67e781e933ecb03bbdc5
+          git push --force origin 151a6838f0ff77ce472d67e781e933ecb03bbdc5:refs/heads/main
