@@ -16,6 +16,7 @@ import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../utils/sandbox_path_resolver.dart';
+import '../../../utils/image_request_headers.dart';
 import '../../../utils/clipboard_images.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../l10n/app_localizations.dart';
@@ -537,7 +538,7 @@ class _ImageViewerPageState extends State<ImageViewerPage>
 
   ImageProvider _createProviderFor(String src) {
     if (src.startsWith('http://') || src.startsWith('https://')) {
-      return NetworkImage(src);
+      return NetworkImage(src, headers: browserImageRequestHeaders);
     }
     if (src.startsWith('data:')) {
       try {
@@ -618,7 +619,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
           bytes = base64Decode(src.substring(idx + marker.length));
         }
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
-        final resp = await http.get(Uri.parse(src));
+        final resp = await http.get(
+          Uri.parse(src),
+          headers: browserImageRequestHeaders,
+        );
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           bytes = resp.bodyBytes;
         } else {
@@ -745,7 +749,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         }
       } else if (src.startsWith('http')) {
         // Try download and share
-        final resp = await http.get(Uri.parse(src));
+        final resp = await http.get(
+          Uri.parse(src),
+          headers: browserImageRequestHeaders,
+        );
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           final tmp = await getTemporaryDirectory();
           final ext = p.extension(Uri.parse(src).path);
@@ -873,7 +880,7 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         }
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
         final uri = Uri.parse(src);
-        final resp = await http.get(uri);
+        final resp = await http.get(uri, headers: browserImageRequestHeaders);
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           bytes = resp.bodyBytes;
           final urlExt = p.extension(uri.path);
@@ -1500,7 +1507,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
           }
         }
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
-        final resp = await http.get(Uri.parse(src));
+        final resp = await http.get(
+          Uri.parse(src),
+          headers: browserImageRequestHeaders,
+        );
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           bytes = resp.bodyBytes;
           final urlExt = p.extension(Uri.parse(src).path);

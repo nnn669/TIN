@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:tin/features/chat/pages/image_viewer_page.dart';
 import 'package:tin/shared/widgets/markdown_with_highlight.dart';
@@ -9,6 +10,7 @@ import 'package:tin/icons/lucide_adapter.dart';
 import 'package:tin/l10n/app_localizations.dart';
 import 'package:tin/theme/palettes.dart';
 import 'package:tin/theme/theme_factory.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -547,6 +549,54 @@ Inline ***strong emphasis*** text.
       final image = tester.widget<Image>(find.byType(Image));
       expect(image.width, 160.0);
       expect(image.height, isNull);
+    },
+  );
+
+  testWidgets(
+    'MarkdownWithCodeHighlight keeps a visible placeholder for remote images',
+    (tester) async {
+      await tester.pumpWidget(
+        _markdownHarness(
+          '![image](https://example.invalid/generated.png)',
+          width: 200,
+        ),
+      );
+
+      final image = tester.widget<Image>(find.byType(Image));
+      final resized = image.image as ResizeImage;
+      final network = resized.imageProvider as NetworkImage;
+      expect(network.headers?['Accept'], contains('image/'));
+      expect(network.headers?['User-Agent'], contains('Mozilla/5.0'));
+      expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(CupertinoActivityIndicator)).height,
+        20,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'MarkdownWithCodeHighlight renders encoded local file URI images',
+    (tester) async {
+      final temp = await Directory.systemTemp.createTemp('tin image path ');
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final file = File('${temp.path}/generated image.png');
+      await file.writeAsBytes(_transparentPngBytes);
+
+      await tester.pumpWidget(
+        _markdownHarness('![image](${Uri.file(file.path)})', width: 160),
+      );
+      await tester.pump();
+
+      final image = tester.widget<Image>(find.byType(Image));
+      final resized = image.image as ResizeImage;
+      final local = resized.imageProvider as FileImage;
+      expect(local.file.path, file.path);
+      expect(find.byIcon(Icons.broken_image), findsNothing);
     },
   );
 

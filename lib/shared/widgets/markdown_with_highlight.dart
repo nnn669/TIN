@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -18,6 +19,7 @@ import 'dart:ui' as ui;
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import '../../utils/sandbox_path_resolver.dart';
+import '../../utils/image_request_headers.dart';
 import '../../utils/clipboard_images.dart';
 import '../../features/chat/pages/image_viewer_page.dart';
 import '../../features/chat/pages/html_preview_page.dart';
@@ -311,13 +313,24 @@ class _MarkdownWithCodeHighlightState extends State<MarkdownWithCodeHighlight> {
                     // Missing or unsupported source: show a broken image indicator
                     return const Icon(Icons.broken_image);
                   }
-                  return Image(
-                    image: provider,
-                    width: width ?? constraints.maxWidth,
+                  final availableWidth = constraints.maxWidth.isFinite
+                      ? constraints.maxWidth
+                      : MediaQuery.sizeOf(context).width;
+                  final imageWidth = width ?? availableWidth;
+                  final placeholderHeight = height ?? imageWidth * 0.62;
+                  final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+                  final cacheWidth = (imageWidth * pixelRatio)
+                      .round()
+                      .clamp(1, 2048)
+                      .toInt();
+                  return _RetryingMarkdownImage(
+                    source: url,
+                    provider: provider,
+                    width: imageWidth,
                     height: height,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stack) =>
-                        const Icon(Icons.broken_image),
+                    placeholderHeight: placeholderHeight,
+                    cacheWidth: cacheWidth,
+                    placeholderColor: cs.onSurface.withValues(alpha: 0.55),
                   );
                 }(),
               );
@@ -1875,6 +1888,124 @@ String _softBreakInline(String input) {
   return buf.toString();
 }
 
+class _RetryingMarkdownImage extends StatefulWidget {
+  const _RetryingMarkdownImage({
+    required this.source,
+    required this.provider,
+    required this.width,
+    required this.height,
+    required this.placeholderHeight,
+    required this.cacheWidth,
+    required this.placeholderColor,
+  });
+
+  final String source;
+  final ImageProvider provider;
+  final double width;
+  final double? height;
+  final double placeholderHeight;
+  final int cacheWidth;
+  final Color placeholderColor;
+
+  @override
+  State<_RetryingMarkdownImage> createState() => _RetryingMarkdownImageState();
+}
+
+class _RetryingMarkdownImageState extends State<_RetryingMarkdownImage> {
+  static const List<Duration> _retryDelays = <Duration>[
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+    Duration(seconds: 8),
+  ];
+
+  Timer? _retryTimer;
+  int _retryAttempt = 0;
+  int _generation = 0;
+
+  bool get _isRemote =>
+      widget.source.startsWith('http://') ||
+      widget.source.startsWith('https://');
+
+  @override
+  void didUpdateWidget(covariant _RetryingMarkdownImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source == widget.source) return;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryAttempt = 0;
+    _generation = 0;
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  Widget _placeholder({required bool failed}) {
+    return SizedBox(
+      width: widget.width,
+      height: widget.placeholderHeight,
+      child: Center(
+        child: failed
+            ? const Icon(Icons.broken_image)
+            : CupertinoActivityIndicator(color: widget.placeholderColor),
+      ),
+    );
+  }
+
+  void _scheduleRetry(ImageProvider provider) {
+    if (!_isRemote ||
+        _retryTimer != null ||
+        _retryAttempt >= _retryDelays.length) {
+      return;
+    }
+    final delay = _retryDelays[_retryAttempt];
+    _retryTimer = Timer(delay, () {
+      _retryTimer = null;
+      unawaited(_evictAndRetry(provider));
+    });
+  }
+
+  Future<void> _evictAndRetry(ImageProvider provider) async {
+    try {
+      await provider.evict();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _retryAttempt += 1;
+      _generation += 1;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayProvider = ResizeImage(
+      widget.provider,
+      width: widget.cacheWidth,
+    );
+    return Image(
+      key: ValueKey<String>('${widget.source}:$_generation'),
+      image: displayProvider,
+      width: widget.width,
+      height: widget.height,
+      fit: BoxFit.contain,
+      frameBuilder: (context, child, frame, syncLoaded) {
+        if (syncLoaded || frame != null) return child;
+        return _placeholder(failed: false);
+      },
+      errorBuilder: (context, error, stack) {
+        if (_isRemote && _retryAttempt < _retryDelays.length) {
+          _scheduleRetry(displayProvider);
+          return _placeholder(failed: false);
+        }
+        return _placeholder(failed: true);
+      },
+    );
+  }
+}
+
 List<String> _extractImageUrls(String md) {
   final re = RegExp(r"!\[[^\]]*\]\(([^)\s]+)\)");
   return re
@@ -1931,7 +2062,7 @@ String _sanitizeImageLinks(String input) {
 
 ImageProvider? _imageProviderFor(String src) {
   if (src.startsWith('http://') || src.startsWith('https://')) {
-    return NetworkImage(src);
+    return NetworkImage(src, headers: browserImageRequestHeaders);
   }
   if (src.startsWith('data:')) {
     try {
