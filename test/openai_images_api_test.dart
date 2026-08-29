@@ -488,6 +488,7 @@ void main() {
           jsonEncode({
             'data': [
               {
+                'url': 'https://example.invalid/delayed-image.webp',
                 'b64_json': base64Encode(const [1, 2, 3, 4]),
               },
             ],
@@ -509,6 +510,7 @@ void main() {
         r'!\[image\]\(([^)]+)\)',
       ).firstMatch(chunks.single.content)!.group(1)!;
       expect(requestBody['output_format'], 'webp');
+      expect(chunks.single.content, isNot(contains('delayed-image.webp')));
       expect(imagePath.endsWith('.webp'), isTrue);
       expect(await File(imagePath).readAsBytes(), const [1, 2, 3, 4]);
     });

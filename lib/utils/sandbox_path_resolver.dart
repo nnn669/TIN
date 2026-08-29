@@ -53,9 +53,17 @@ class SandboxPathResolver {
   static String fix(String path) {
     if (path.isEmpty) return path;
 
-    // Strip file:// scheme if present
-    final String raw0 = path.startsWith('file://') ? path.substring(7) : path;
-    // Normalize backslashes to forward slashes for matching
+    // Decode file URIs created by Markdown sanitization. Stripping only the
+    // scheme leaves percent escapes such as `%20` in the filesystem path.
+    String raw0 = path;
+    if (path.startsWith('file://')) {
+      try {
+        raw0 = Uri.parse(path).toFilePath(windows: Platform.isWindows);
+      } catch (_) {
+        raw0 = Uri.decodeFull(path.substring(7));
+      }
+    }
+    // Normalize backslashes to forward slashes for matching.
     final String raw = raw0.replaceAll('\\', '/');
 
     final docs = _docsDir;
