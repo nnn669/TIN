@@ -137,6 +137,83 @@ void main() {
       expect(requestBody['n'], 3);
     });
 
+    test('tops up images when the upstream ignores n', () async {
+      final requestBodies = <Map<String, dynamic>>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      server.listen((request) async {
+        final body =
+            jsonDecode(await utf8.decoder.bind(request).join())
+                as Map<String, dynamic>;
+        requestBodies.add(body);
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'data': [
+              {'url': 'https://example.com/img-${requestBodies.length}.png'},
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+
+      final chunks = await ChatApiService.sendMessageStream(
+        config: _openAiConfig(_baseUrl(server)),
+        modelId: 'gpt-image-2',
+        messages: const [
+          {'role': 'user', 'content': 'draw two posters'},
+        ],
+        imageGenerationCount: 2,
+      ).toList();
+
+      expect(requestBodies, hasLength(2));
+      expect(requestBodies.first['n'], 2);
+      expect(requestBodies.last.containsKey('n'), isFalse);
+      expect(chunks.single.content, contains('img-1.png'));
+      expect(chunks.single.content, contains('img-2.png'));
+    });
+
+    test('does not top up when the upstream honors n', () async {
+      var requestCount = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        await server.close(force: true);
+      });
+
+      server.listen((request) async {
+        requestCount += 1;
+        await utf8.decoder.bind(request).join();
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'data': [
+              {'url': 'https://example.com/honored-1.png'},
+              {'url': 'https://example.com/honored-2.png'},
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+
+      final chunks = await ChatApiService.sendMessageStream(
+        config: _openAiConfig(_baseUrl(server)),
+        modelId: 'gpt-image-2',
+        messages: const [
+          {'role': 'user', 'content': 'draw two posters'},
+        ],
+        imageGenerationCount: 2,
+      ).toList();
+
+      expect(requestCount, 1);
+      expect(chunks.single.content, contains('honored-1.png'));
+      expect(chunks.single.content, contains('honored-2.png'));
+    });
+
     test('prefers explicit n from extra body over batch count', () async {
       late Map<String, dynamic> requestBody;
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

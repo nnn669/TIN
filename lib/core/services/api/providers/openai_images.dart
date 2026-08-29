@@ -67,11 +67,23 @@ Stream<ChatStreamChunk> _sendOpenAIImagesStream(
           extraHeaders: extraHeaders,
           extraBody: extraBody,
         );
+  final effectiveResponse = input.imageRefs.isEmpty && imageCount > 1
+      ? await _topUpOpenAIImageResults(
+          client,
+          config,
+          modelId,
+          input.prompt,
+          response,
+          imageCount,
+          extraHeaders: extraHeaders,
+          extraBody: extraBody,
+        )
+      : response;
   final markdown = await _openAIImagesResponseToMarkdown(
-    response,
+    effectiveResponse,
     outputMime: outputMime,
   );
-  final usage = _openAIImagesUsage(response);
+  final usage = _openAIImagesUsage(effectiveResponse);
   yield ChatStreamChunk(
     content: markdown,
     isDone: true,
@@ -170,6 +182,52 @@ Future<Map<String, dynamic>> _sendOpenAIImageEdit(
   final streamed = await client.send(request);
   final response = await http.Response.fromStream(streamed);
   return _decodeOpenAIImagesResponse(response);
+}
+
+/// Ensures [imageCount] images are returned even when the upstream ignores
+/// the `n` parameter: it tops up the missing images with parallel
+/// single-image requests using the same prompt and overrides.
+Future<Map<String, dynamic>> _topUpOpenAIImageResults(
+  http.Client client,
+  ProviderConfig config,
+  String modelId,
+  String prompt,
+  Map<String, dynamic> response,
+  int imageCount, {
+  Map<String, String>? extraHeaders,
+  Map<String, dynamic>? extraBody,
+}) async {
+  final data = response['data'];
+  if (data is! List) return response;
+  final missing = imageCount - data.length;
+  if (missing <= 0) return response;
+
+  final extraResponses = await Future.wait([
+    for (var i = 0; i < missing; i++)
+      () async {
+        try {
+          return await _sendOpenAIImageGeneration(
+            client,
+            config,
+            modelId,
+            prompt,
+            extraHeaders: extraHeaders,
+            extraBody: extraBody,
+            imageCount: 1,
+          );
+        } catch (_) {
+          return const <String, dynamic>{};
+        }
+      }(),
+  ]);
+
+  final combined = <dynamic>[...data];
+  for (final extra in extraResponses) {
+    final extraData = extra['data'];
+    if (extraData is List) combined.addAll(extraData);
+  }
+  if (combined.length == data.length) return response;
+  return <String, dynamic>{...response, 'data': combined};
 }
 
 Future<String> _lastOpenAIImagePrompt(
