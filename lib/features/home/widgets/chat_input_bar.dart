@@ -14,6 +14,7 @@ import 'package:path/path.dart' as p;
 import '../../../shared/responsive/breakpoints.dart';
 import 'dart:async';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/models/chat_input_data.dart';
 import '../../../utils/clipboard_images.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -184,6 +185,7 @@ class _ChatInputBarState extends State<ChatInputBar>
   String? _videoModeModelKey;
   String? _lastVideoModeModelKey;
   String? _dismissedVideoModeModelKey;
+  int _imageGenerationCount = 1;
 
   bool get _composerLocked => widget.hasQueuedInput;
 
@@ -314,7 +316,29 @@ class _ChatInputBarState extends State<ChatInputBar>
       imagePaths: List<String>.of(_images),
       documents: List<DocumentAttachment>.of(_docs),
       allowImagesApiRouting: _allowImagesApiRouting,
+      imageGenerationCount: _imageGenerationCount,
     );
+  }
+
+  static const String _imageGenerationCountPrefKey =
+      'image_generation_count_v1';
+
+  Future<void> _loadImageGenerationCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_imageGenerationCountPrefKey) ?? 1;
+      if (!mounted) return;
+      setState(() => _imageGenerationCount = saved.clamp(1, 4).toInt());
+    } catch (_) {}
+  }
+
+  Future<void> _cycleImageGenerationCount() async {
+    final next = _imageGenerationCount >= 4 ? 1 : _imageGenerationCount + 1;
+    setState(() => _imageGenerationCount = next);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_imageGenerationCountPrefKey, next);
+    } catch (_) {}
   }
 
   void _clearDraft() {
@@ -339,6 +363,7 @@ class _ChatInputBarState extends State<ChatInputBar>
     _controller = widget.controller ?? TextEditingController();
     widget.mediaController?._bind(this);
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadImageGenerationCount());
   }
 
   @override
@@ -412,6 +437,7 @@ class _ChatInputBarState extends State<ChatInputBar>
               imagePaths: List.of(_images),
               documents: List.of(_docs),
               allowImagesApiRouting: _allowImagesApiRouting,
+              imageGenerationCount: _imageGenerationCount,
             ),
           ) ??
           ChatInputSubmissionResult.rejected;
@@ -2040,23 +2066,35 @@ class _ChatInputBarState extends State<ChatInputBar>
                   PositionedDirectional(
                     top: -12,
                     start: AppSpacing.sm,
-                    child: _ModePill(
-                      icon: Lucide.Brush,
-                      label: AppLocalizations.of(
-                        context,
-                      )!.chatInputBarImageMode,
-                      closeTooltip: AppLocalizations.of(
-                        context,
-                      )!.chatInputBarDisableImageModeTooltip,
-                      onClose: _composerLocked
-                          ? null
-                          : () {
-                              final key = _imageModeModelKey;
-                              if (key == null) return;
-                              setState(() {
-                                _dismissedImageModeModelKey = key;
-                              });
-                            },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ModePill(
+                          icon: Lucide.Brush,
+                          label: AppLocalizations.of(
+                            context,
+                          )!.chatInputBarImageMode,
+                          closeTooltip: AppLocalizations.of(
+                            context,
+                          )!.chatInputBarDisableImageModeTooltip,
+                          onClose: _composerLocked
+                              ? null
+                              : () {
+                                  final key = _imageModeModelKey;
+                                  if (key == null) return;
+                                  setState(() {
+                                    _dismissedImageModeModelKey = key;
+                                  });
+                                },
+                        ),
+                        const SizedBox(width: 6),
+                        _CountPill(
+                          label: '×$_imageGenerationCount',
+                          onTap: _composerLocked
+                              ? null
+                              : () => unawaited(_cycleImageGenerationCount()),
+                        ),
+                      ],
                     ),
                   ),
                 if (_videoModeActive)
@@ -2269,6 +2307,64 @@ class _ModePill extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountPill extends StatelessWidget {
+  const _CountPill({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = (isDark ? Colors.black : Colors.white).withValues(
+      alpha: isDark ? 0.34 : 0.58,
+    );
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : scheme.primary.withValues(alpha: 0.36);
+    final fg = isDark ? scheme.onSurface : scheme.primary;
+
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: border),
+              ),
+              child: SizedBox(
+                height: 24,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: 10,
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: fg,
+                        fontWeight: AppFontWeights.semibold,
+                        letterSpacing: 0,
+                      ),
+                    ),
                   ),
                 ),
               ),

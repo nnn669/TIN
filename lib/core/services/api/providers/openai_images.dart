@@ -37,6 +37,7 @@ Stream<ChatStreamChunk> _sendOpenAIImagesStream(
   List<String>? userImagePaths,
   Map<String, String>? extraHeaders,
   Map<String, dynamic>? extraBody,
+  int imageCount = 1,
 }) async* {
   final input = await _openAIImagesInput(messages, userImagePaths);
   final outputMime = _openAIImagesOutputMime(config, modelId, extraBody);
@@ -55,6 +56,7 @@ Stream<ChatStreamChunk> _sendOpenAIImagesStream(
           input.prompt,
           extraHeaders: extraHeaders,
           extraBody: extraBody,
+          imageCount: imageCount,
         )
       : await _sendOpenAIImageEdit(
           client,
@@ -85,12 +87,19 @@ Future<Map<String, dynamic>> _sendOpenAIImageGeneration(
   String prompt, {
   Map<String, String>? extraHeaders,
   Map<String, dynamic>? extraBody,
+  int imageCount = 1,
 }) async {
   final body = <String, dynamic>{
     'model': _apiModelId(config, modelId),
     'prompt': prompt,
   };
   _applyOpenAIImagesExtraBody(body, config, modelId, extraBody);
+  final upstreamModelId = _apiModelId(config, modelId).toLowerCase();
+  if (imageCount > 1 &&
+      !body.containsKey('n') &&
+      upstreamModelId != 'dall-e-3') {
+    body['n'] = imageCount;
+  }
   final response = await client.post(
     _openAIImagesUrl(config, '/images/generations'),
     headers: _openAIImagesJsonHeaders(

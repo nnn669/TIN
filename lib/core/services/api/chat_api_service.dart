@@ -584,6 +584,7 @@ class ChatApiService {
     String? requestId,
     bool allowImagesApiRouting = true,
     bool ocrActive = false,
+    int imageGenerationCount = 1,
   }) async* {
     final kind = ProviderConfig.classify(
       config.id,
@@ -632,6 +633,7 @@ class ChatApiService {
             userImagePaths: safeUserImagePaths,
             extraHeaders: extraHeaders,
             extraBody: extraBody,
+            imageCount: imageGenerationCount,
           );
         } else if (useArkVideo) {
           yield* _sendArkVideoStream(

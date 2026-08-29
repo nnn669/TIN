@@ -1329,6 +1329,7 @@ class GenerationContext {
     required this.streamOutput,
     this.ocrActive = false,
     this.generateTitleOnFinish = true,
+    this.imageGenerationCount = 1,
   });
 
   final ChatMessage assistantMessage;
@@ -1349,6 +1350,7 @@ class GenerationContext {
   final bool streamOutput;
   final bool ocrActive;
   final bool generateTitleOnFinish;
+  final int imageGenerationCount;
 }
 
 /// State object for streaming message generation.

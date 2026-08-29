@@ -584,6 +584,7 @@ class ChatActions {
         supportsReasoning: supportsReasoning,
         enableReasoning: enableReasoning,
         generateTitleOnFinish: true,
+        imageGenerationCount: input.imageGenerationCount,
       );
 
       await _executeGeneration(ctx);
@@ -1031,6 +1032,7 @@ class ChatActions {
         requestId: conversationId,
         allowImagesApiRouting: ctx.allowImagesApiRouting,
         ocrActive: ctx.ocrActive,
+        imageGenerationCount: ctx.imageGenerationCount,
       );
 
       await _conversationStreams[conversationId]?.cancel();

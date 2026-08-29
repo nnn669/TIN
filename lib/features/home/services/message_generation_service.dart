@@ -304,6 +304,7 @@ class MessageGenerationService {
     required bool supportsReasoning,
     required bool enableReasoning,
     required bool generateTitleOnFinish,
+    int imageGenerationCount = 1,
   }) {
     final bool ocrActive =
         settings.ocrEnabled &&
@@ -332,6 +333,7 @@ class MessageGenerationService {
       streamOutput: assistant?.streamOutput ?? true,
       ocrActive: ocrActive,
       generateTitleOnFinish: generateTitleOnFinish,
+      imageGenerationCount: imageGenerationCount,
     );
   }
 
