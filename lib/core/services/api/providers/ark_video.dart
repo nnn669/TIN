@@ -134,7 +134,7 @@ Stream<ChatStreamChunk> _sendArkVideoStream(
         videoUrl,
         headers: pollHeaders,
       );
-      final usage = _arkVideoUsage(decoded);
+      final usage = _arkVideoUsage(decoded.cast<String, dynamic>());
       yield ChatStreamChunk(
         content: '[video:${localPath ?? videoUrl}]',
         isDone: true,
