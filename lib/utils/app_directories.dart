@@ -120,4 +120,33 @@ class AppDirectories {
       return null;
     }
   }
+
+  /// Gets the directory for generated video files.
+  static Future<Directory> getVideosDirectory() async {
+    final root = await getAppDataDirectory();
+    return Directory('${root.path}/videos');
+  }
+
+  /// Save generated video bytes to the videos directory.
+  /// Returns the saved file path, or null if failed.
+  static Future<String?> saveVideoBytes(
+    List<int> bytes, {
+    String ext = 'mp4',
+  }) async {
+    if (bytes.isEmpty) return null;
+    try {
+      final dir = await getVideosDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final safeExt = RegExp(r'^[a-z0-9]{2,5}$').hasMatch(ext) ? ext : 'mp4';
+      final path =
+          '${dir.path}/video_${DateTime.now().microsecondsSinceEpoch}.$safeExt';
+      await File(path).writeAsBytes(bytes, flush: true);
+      return path;
+    } catch (e) {
+      debugPrint('Failed to save video: $e');
+      return null;
+    }
+  }
 }

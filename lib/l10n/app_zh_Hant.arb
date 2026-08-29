@@ -838,6 +838,8 @@
   "chatInputBarMoreTooltip": "更多",
   "chatInputBarImageMode": "繪圖模式",
   "chatInputBarDisableImageModeTooltip": "關閉繪圖模式",
+  "chatInputBarVideoMode": "影片模式",
+  "chatInputBarDisableVideoModeTooltip": "關閉影片模式",
   "chatInputBarQueuedPending": "排隊中",
   "chatInputBarQueuedCancel": "取消排隊",
   "chatInputBarInsertNewline": "換行",

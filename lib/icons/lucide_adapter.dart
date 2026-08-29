@@ -23,6 +23,7 @@ class Lucide {
   static const IconData Image = lucide.LucideIcons.image;
   static const IconData ImageDown = lucide.LucideIcons.imageDown;
   static const IconData Brush = lucide.LucideIcons.brush;
+  static const IconData Clapperboard = lucide.LucideIcons.clapperboard;
   static const IconData Crop = lucide.LucideIcons.crop;
   static const IconData Upload = lucide.LucideIcons.upload;
   static const IconData Bot = lucide.LucideIcons.bot;

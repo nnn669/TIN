@@ -46,11 +46,26 @@ import '../../home/services/tool_approval_service.dart';
 import '../utils/thinking_tag_parser.dart';
 import 'citation_sources_sheet.dart';
 import 'chat_suggestion_bubbles.dart';
+import 'video_message_card.dart';
 import 'token_display_widget.dart';
 import 'local_response_timer_badge.dart';
 import '../../../theme/app_font_weights.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
+
+/// Matches persisted generated-video tokens like `[video:/path/to.mp4]`.
+final RegExp _assistantVideoTokenRe = RegExp(r'\[(?:video|视频):([^\]\n]+)\]');
+
+(List<String>, String) _splitAssistantVideoTokens(String input) {
+  final matches = _assistantVideoTokenRe.allMatches(input).toList();
+  if (matches.isEmpty) return (const <String>[], input);
+  final sources = <String>[];
+  for (final match in matches) {
+    final source = (match.group(1) ?? '').trim();
+    if (source.isNotEmpty) sources.add(source);
+  }
+  return (sources, input.replaceAll(_assistantVideoTokenRe, ' ').trim());
+}
 
 Uri? _tryNormalizeExternalUri(String raw) {
   var u = raw.trim();
@@ -2220,12 +2235,15 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final parsedInlineThinking = _legacyInlineThinkingFor(widget);
     final extractedThinking = parsedInlineThinking.thinkingTexts.join('\n\n');
     final contentWithoutThink = parsedInlineThinking.visibleContent;
-    final visualContent = applyAssistantRegexes(
+    final appliedVisualContent = applyAssistantRegexes(
       contentWithoutThink,
       assistant: assistant,
       scope: AssistantRegexScope.assistant,
       target: AssistantRegexTransformTarget.visual,
     );
+    final (assistantVideoSources, cleanedVisualContent) =
+        _splitAssistantVideoTokens(appliedVisualContent);
+    final visualContent = cleanedVisualContent;
     final visualTranslation = widget.message.translation != null
         ? applyAssistantRegexes(
             widget.message.translation!,
@@ -2429,6 +2447,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             }
             return widgets;
           }(),
+          for (final videoSource in assistantVideoSources) ...[
+            const SizedBox(height: 8),
+            VideoMessageCard(source: videoSource),
+          ],
           if (hasTranslation) ...[
             const SizedBox(height: 12),
             SizedBox(

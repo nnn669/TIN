@@ -1103,6 +1103,8 @@
   "chatInputBarMoreTooltip": "Add",
   "chatInputBarImageMode": "Image mode",
   "chatInputBarDisableImageModeTooltip": "Turn off image mode",
+  "chatInputBarVideoMode": "Video mode",
+  "chatInputBarDisableVideoModeTooltip": "Turn off video mode",
   "chatInputBarQueuedPending": "Queued to send",
   "chatInputBarQueuedCancel": "Cancel Queue",
   "chatInputBarInsertNewline": "Newline",

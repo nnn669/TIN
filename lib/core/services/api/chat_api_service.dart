@@ -28,6 +28,7 @@ part 'chat_api_service_shims.dart';
 part 'providers/openai_common.dart';
 part 'providers/openai_chat_completions.dart';
 part 'providers/openai_images.dart';
+part 'providers/ark_video.dart';
 part 'providers/openai_responses.dart';
 part 'providers/google_common.dart';
 part 'providers/google_gemini.dart';
@@ -66,6 +67,24 @@ class ChatApiService {
     );
     return kind == ProviderKind.openai &&
         _shouldUseOpenAIImagesApi(config, modelId);
+  }
+
+  /// Whether [modelId] routes to an Ark-compatible video generation task API.
+  /// Detected by name heuristics (seedance) or a per-model
+  /// `videoGeneration: true` override.
+  static bool supportsArkVideoGeneration(
+    ProviderConfig config,
+    String modelId,
+  ) {
+    final kind = ProviderConfig.classify(
+      config.id,
+      explicitType: config.providerType,
+    );
+    if (kind != ProviderKind.openai) return false;
+    final upstream = _apiModelId(config, modelId).toLowerCase();
+    if (upstream.contains('seedance')) return true;
+    final ov = _modelOverride(config, modelId);
+    return ov['videoGeneration'] == true || ov['video_generation'] == true;
   }
 
   static void cancelRequest(String requestId) {
@@ -583,10 +602,16 @@ class ChatApiService {
         kind == ProviderKind.openai &&
         allowImagesApiRouting &&
         _shouldUseOpenAIImagesApi(config, modelId);
+    final useArkVideo =
+        kind == ProviderKind.openai &&
+        !useOpenAIImagesApi &&
+        allowImagesApiRouting &&
+        supportsArkVideoGeneration(config, modelId);
     final unicodeSafeMessages = _sanitizeMessages(messages);
     final stripUnsupportedImageInputs =
         !ocrActive &&
         !useOpenAIImagesApi &&
+        !useArkVideo &&
         !_supportsImageInput(config, modelId);
     final safeMessages = stripUnsupportedImageInputs
         ? await _stripImageInputsFromMessages(unicodeSafeMessages)
@@ -600,6 +625,16 @@ class ChatApiService {
       if (kind == ProviderKind.openai) {
         if (useOpenAIImagesApi) {
           yield* _sendOpenAIImagesStream(
+            client,
+            config,
+            modelId,
+            safeMessages,
+            userImagePaths: safeUserImagePaths,
+            extraHeaders: extraHeaders,
+            extraBody: extraBody,
+          );
+        } else if (useArkVideo) {
+          yield* _sendArkVideoStream(
             client,
             config,
             modelId,

@@ -181,6 +181,9 @@ class _ChatInputBarState extends State<ChatInputBar>
   String? _imageModeModelKey;
   String? _lastImageModeModelKey;
   String? _dismissedImageModeModelKey;
+  String? _videoModeModelKey;
+  String? _lastVideoModeModelKey;
+  String? _dismissedVideoModeModelKey;
 
   bool get _composerLocked => widget.hasQueuedInput;
 
@@ -219,6 +222,7 @@ class _ChatInputBarState extends State<ChatInputBar>
     final modelId = a?.chatModelId ?? settings.currentModelId;
     if (providerKey == null || modelId == null) {
       _imageModeModelKey = null;
+      _videoModeModelKey = null;
       return false;
     }
     final cfg = settings.getProviderConfig(providerKey);
@@ -234,6 +238,19 @@ class _ChatInputBarState extends State<ChatInputBar>
       _lastImageModeModelKey = nextKey;
     }
     _imageModeModelKey = nextKey;
+
+    final videoSupported = ChatApiService.supportsArkVideoGeneration(
+      cfg,
+      modelId,
+    );
+    final nextVideoKey = videoSupported
+        ? '${widget.conversationId ?? ''}::$providerKey::$modelId'
+        : null;
+    if (nextVideoKey != _lastVideoModeModelKey) {
+      _dismissedVideoModeModelKey = null;
+      _lastVideoModeModelKey = nextVideoKey;
+    }
+    _videoModeModelKey = nextVideoKey;
     return supported;
   }
 
@@ -242,9 +259,19 @@ class _ChatInputBarState extends State<ChatInputBar>
     return key != null && key != _dismissedImageModeModelKey;
   }
 
+  bool get _videoModeActive {
+    final key = _videoModeModelKey;
+    return key != null && key != _dismissedVideoModeModelKey;
+  }
+
   bool get _allowImagesApiRouting {
-    final key = _imageModeModelKey;
-    return key == null || key != _dismissedImageModeModelKey;
+    final imageKey = _imageModeModelKey;
+    final videoKey = _videoModeModelKey;
+    final imageAllowed =
+        imageKey == null || imageKey != _dismissedImageModeModelKey;
+    final videoAllowed =
+        videoKey == null || videoKey != _dismissedVideoModeModelKey;
+    return imageAllowed && videoAllowed;
   }
 
   bool get _hasDraftMedia => _images.isNotEmpty || _docs.isNotEmpty;
@@ -2013,7 +2040,8 @@ class _ChatInputBarState extends State<ChatInputBar>
                   PositionedDirectional(
                     top: -12,
                     start: AppSpacing.sm,
-                    child: _ImageModePill(
+                    child: _ModePill(
+                      icon: Lucide.Brush,
                       label: AppLocalizations.of(
                         context,
                       )!.chatInputBarImageMode,
@@ -2027,6 +2055,29 @@ class _ChatInputBarState extends State<ChatInputBar>
                               if (key == null) return;
                               setState(() {
                                 _dismissedImageModeModelKey = key;
+                              });
+                            },
+                    ),
+                  ),
+                if (_videoModeActive)
+                  PositionedDirectional(
+                    top: -12,
+                    start: AppSpacing.sm,
+                    child: _ModePill(
+                      icon: Lucide.Clapperboard,
+                      label: AppLocalizations.of(
+                        context,
+                      )!.chatInputBarVideoMode,
+                      closeTooltip: AppLocalizations.of(
+                        context,
+                      )!.chatInputBarDisableVideoModeTooltip,
+                      onClose: _composerLocked
+                          ? null
+                          : () {
+                              final key = _videoModeModelKey;
+                              if (key == null) return;
+                              setState(() {
+                                _dismissedVideoModeModelKey = key;
                               });
                             },
                     ),
@@ -2137,16 +2188,18 @@ class _QueuedInputBanner extends StatelessWidget {
   }
 }
 
-class _ImageModePill extends StatelessWidget {
-  const _ImageModePill({
+class _ModePill extends StatelessWidget {
+  const _ModePill({
     required this.label,
     required this.closeTooltip,
     required this.onClose,
+    required this.icon,
   });
 
   final String label;
   final String closeTooltip;
   final VoidCallback? onClose;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -2183,7 +2236,7 @@ class _ImageModePill extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Lucide.Brush, size: 14, color: iconColor),
+                      Icon(icon, size: 14, color: iconColor),
                       const SizedBox(width: 5),
                       Flexible(
                         child: Text(

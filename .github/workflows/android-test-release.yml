@@ -79,6 +79,8 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Generate localizations
+        run: flutter gen-l10n
       - name: Calculate Android version code
         shell: bash
         run: |
