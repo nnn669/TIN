@@ -608,7 +608,8 @@ class GitHubApiClient {
           'start_line': _positiveInt(startLine, name: 'start_line'),
         if ((startSide ?? '').trim().isNotEmpty)
           'start_side': _requiredReviewSide(startSide!),
-        if (normalizedSubjectType != null) 'subject_type': normalizedSubjectType,
+        if (normalizedSubjectType != null)
+          'subject_type': normalizedSubjectType,
       };
     }
     final raw = await _postJson(

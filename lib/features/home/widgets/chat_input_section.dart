@@ -13,16 +13,61 @@ import '../utils/model_display_helper.dart';
 import 'chat_input_bar.dart';
 import 'model_icon.dart';
 
-defaultShouldStopBeforeSubmit({required bool isLoading, required ChatInputData input}) {
-  return isLoading && input.text.trim().isEmpty && input.imagePaths.isEmpty && input.documents.isEmpty;
+defaultShouldStopBeforeSubmit({
+  required bool isLoading,
+  required ChatInputData input,
+}) {
+  return isLoading &&
+      input.text.trim().isEmpty &&
+      input.imagePaths.isEmpty &&
+      input.documents.isEmpty;
 }
 
 typedef IsToolModelCallback = bool Function(String providerKey, String modelId);
-typedef IsReasoningModelCallback = bool Function(String providerKey, String modelId);
+typedef IsReasoningModelCallback =
+    bool Function(String providerKey, String modelId);
 typedef IsReasoningEnabledCallback = bool Function(int? budget);
 
 class ChatInputSection extends StatelessWidget {
-  const ChatInputSection({super.key, required this.inputBarKey, required this.inputFocus, required this.inputController, required this.mediaController, required this.isTablet, required this.isLoading, required this.isToolModel, required this.isReasoningModel, required this.isReasoningEnabled, this.onMore, this.onSelectModel, this.onLongPressSelectModel, this.onOpenMcp, this.onOpenSkills, this.onLongPressMcp, this.onOpenSearch, this.onConfigureReasoning, this.onSend, this.onStop, this.hasQueuedInput = false, this.queuedPreviewText, this.onCancelQueuedInput, this.onQuickPhrase, this.onLongPressQuickPhrase, this.onToggleOcr, this.onOpenMiniMap, this.onPickCamera, this.onPickPhotos, this.onUploadFiles, this.onToggleLearningMode, this.onLongPressLearning, this.onClearContext, this.onCompressContext, this.conversationId, this.sendButtonTooltip, this.backgroundImageActive = false});
+  const ChatInputSection({
+    super.key,
+    required this.inputBarKey,
+    required this.inputFocus,
+    required this.inputController,
+    required this.mediaController,
+    required this.isTablet,
+    required this.isLoading,
+    required this.isToolModel,
+    required this.isReasoningModel,
+    required this.isReasoningEnabled,
+    this.onMore,
+    this.onSelectModel,
+    this.onLongPressSelectModel,
+    this.onOpenMcp,
+    this.onOpenSkills,
+    this.onLongPressMcp,
+    this.onOpenSearch,
+    this.onConfigureReasoning,
+    this.onSend,
+    this.onStop,
+    this.hasQueuedInput = false,
+    this.queuedPreviewText,
+    this.onCancelQueuedInput,
+    this.onQuickPhrase,
+    this.onLongPressQuickPhrase,
+    this.onToggleOcr,
+    this.onOpenMiniMap,
+    this.onPickCamera,
+    this.onPickPhotos,
+    this.onUploadFiles,
+    this.onToggleLearningMode,
+    this.onLongPressLearning,
+    this.onClearContext,
+    this.onCompressContext,
+    this.conversationId,
+    this.sendButtonTooltip,
+    this.backgroundImageActive = false,
+  });
   final GlobalKey inputBarKey;
   final FocusNode inputFocus;
   final TextEditingController inputController;
@@ -78,11 +123,16 @@ class ChatInputSection extends StatelessWidget {
         final hasInterruptingText = inputValue.text.trim().isNotEmpty;
         final showStopButton = isLoading && !hasInterruptingText;
         Future<ChatInputSubmissionResult> submit(ChatInputData input) async {
-          if (defaultShouldStopBeforeSubmit(isLoading: isLoading, input: input)) {
+          if (defaultShouldStopBeforeSubmit(
+            isLoading: isLoading,
+            input: input,
+          )) {
             await onStop?.call();
           }
-          return await onSend?.call(input) ?? ChatInputSubmissionResult.rejected;
+          return await onSend?.call(input) ??
+              ChatInputSubmissionResult.rejected;
         }
+
         return ChatInputBar(
           key: inputBarKey,
           onMore: onMore,
@@ -93,14 +143,26 @@ class ChatInputSection extends StatelessWidget {
           onOpenSkills: skillsActive ? onOpenSkills : null,
           onLongPressMcp: onLongPressMcp,
           onStop: onStop,
-          modelIcon: (pk != null && mid != null) ? CurrentModelIcon(providerKey: pk, modelId: mid, size: 40, withBackground: true, backgroundColor: Colors.transparent) : null,
+          modelIcon: (pk != null && mid != null)
+              ? CurrentModelIcon(
+                  providerKey: pk,
+                  modelId: mid,
+                  size: 40,
+                  withBackground: true,
+                  backgroundColor: Colors.transparent,
+                )
+              : null,
           focusNode: inputFocus,
           controller: inputController,
           mediaController: mediaController,
           onConfigureReasoning: onConfigureReasoning,
-          reasoningActive: isReasoningEnabled(a?.thinkingBudget ?? settings.thinkingBudget),
+          reasoningActive: isReasoningEnabled(
+            a?.thinkingBudget ?? settings.thinkingBudget,
+          ),
           reasoningBudget: a?.thinkingBudget ?? settings.thinkingBudget,
-          supportsReasoning: (pk != null && mid != null) ? isReasoningModel(pk, mid) : false,
+          supportsReasoning: (pk != null && mid != null)
+              ? isReasoningModel(pk, mid)
+              : false,
           onOpenSearch: onOpenSearch,
           onSend: submit,
           loading: showStopButton,
@@ -114,7 +176,12 @@ class ChatInputSection extends StatelessWidget {
           showQuickPhraseButton: _hasQuickPhrases(context, a),
           onQuickPhrase: onQuickPhrase,
           onLongPressQuickPhrase: onLongPressQuickPhrase,
-          showOcrButton: isTablet ? (settings.ocrModelProvider != null && settings.ocrModelId != null) : (isDesktop && settings.ocrModelProvider != null && settings.ocrModelId != null),
+          showOcrButton: isTablet
+              ? (settings.ocrModelProvider != null &&
+                    settings.ocrModelId != null)
+              : (isDesktop &&
+                    settings.ocrModelProvider != null &&
+                    settings.ocrModelId != null),
           ocrActive: settings.ocrEnabled,
           onToggleOcr: onToggleOcr,
           showMiniMapButton: isTablet,
@@ -124,7 +191,12 @@ class ChatInputSection extends StatelessWidget {
           onUploadFiles: isTablet ? onUploadFiles : null,
           onToggleLearningMode: isTablet ? onToggleLearningMode : null,
           onLongPressLearning: isTablet ? onLongPressLearning : null,
-          learningModeActive: isTablet ? context.watch<InstructionInjectionProvider>().activeIdsFor(assistantId).isNotEmpty : false,
+          learningModeActive: isTablet
+              ? context
+                    .watch<InstructionInjectionProvider>()
+                    .activeIdsFor(assistantId)
+                    .isNotEmpty
+              : false,
           showMoreButton: !isTablet,
           onClearContext: isTablet ? onClearContext : null,
           onCompressContext: isTablet ? onCompressContext : null,
@@ -138,31 +210,50 @@ class ChatInputSection extends StatelessWidget {
 
   bool _isDesktopPlatform(BuildContext context) {
     final platform = Theme.of(context).platform;
-    return platform == TargetPlatform.macOS || platform == TargetPlatform.windows || platform == TargetPlatform.linux;
+    return platform == TargetPlatform.macOS ||
+        platform == TargetPlatform.windows ||
+        platform == TargetPlatform.linux;
   }
 
-  void _enforceModelCapabilities(BuildContext context, SettingsProvider settings, AssistantProvider ap, Assistant? a, String? pk, String? mid) {
+  void _enforceModelCapabilities(
+    BuildContext context,
+    SettingsProvider settings,
+    AssistantProvider ap,
+    Assistant? a,
+    String? pk,
+    String? mid,
+  ) {
     if (pk == null || mid == null) return;
     final supportsTools = isToolModel(pk, mid);
     if (!supportsTools && (a?.mcpServerIds.isNotEmpty ?? false)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final aa = ap.currentAssistant;
-        if (aa != null && aa.mcpServerIds.isNotEmpty) ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
+        if (aa != null && aa.mcpServerIds.isNotEmpty)
+          ap.updateAssistant(aa.copyWith(mcpServerIds: const <String>[]));
       });
     }
     final supportsReasoning = isReasoningModel(pk, mid);
     if (!supportsReasoning && a != null) {
-      final enabledNow = isReasoningEnabled(a.thinkingBudget ?? settings.thinkingBudget);
+      final enabledNow = isReasoningEnabled(
+        a.thinkingBudget ?? settings.thinkingBudget,
+      );
       if (enabledNow) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           final aa = ap.currentAssistant;
-          if (aa != null) await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
+          if (aa != null)
+            await ap.updateAssistant(aa.copyWith(thinkingBudget: 0));
         });
       }
     }
   }
 
-  bool _shouldShowMcpButton(BuildContext context, SettingsProvider settings, Assistant? a, String? pk, String? mid) {
+  bool _shouldShowMcpButton(
+    BuildContext context,
+    SettingsProvider settings,
+    Assistant? a,
+    String? pk,
+    String? mid,
+  ) {
     final pk2 = a?.chatModelProvider ?? settings.currentModelProvider;
     final mid3 = a?.chatModelId ?? settings.currentModelId;
     if (pk2 == null || mid3 == null) return false;
@@ -187,7 +278,9 @@ class ChatInputSection extends StatelessWidget {
   bool _hasQuickPhrases(BuildContext context, Assistant? a) {
     final quickPhraseProvider = context.watch<QuickPhraseProvider>();
     final globalCount = quickPhraseProvider.globalPhrases.length;
-    final assistantCount = a != null ? quickPhraseProvider.getForAssistant(a.id).length : 0;
+    final assistantCount = a != null
+        ? quickPhraseProvider.getForAssistant(a.id).length
+        : 0;
     return (globalCount + assistantCount) > 0;
   }
 }

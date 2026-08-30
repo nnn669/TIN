@@ -73,10 +73,10 @@ void main() {
 
         expect(chunks.last.isDone, isTrue);
         expect(requests, hasLength(1));
-        expect(
-          requests.single['thinking'],
-          {'type': 'enabled', 'budget_tokens': 64000},
-        );
+        expect(requests.single['thinking'], {
+          'type': 'enabled',
+          'budget_tokens': 64000,
+        });
         expect(requests.single['reasoning_effort'], 'xhigh');
       },
     );

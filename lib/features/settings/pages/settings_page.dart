@@ -272,9 +272,7 @@ class SettingsPage extends StatelessWidget {
                 label: l10n.settingsPageQuickPhrase,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const QuickPhrasesPage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const QuickPhrasesPage()),
                   );
                 },
               ),
@@ -298,9 +296,7 @@ class SettingsPage extends StatelessWidget {
                 label: l10n.settingsPageNetworkProxy,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const NetworkProxyPage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const NetworkProxyPage()),
                   );
                 },
               ),
@@ -571,7 +567,10 @@ Widget _sheetOption(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           children: [
-            SizedBox(width: 28, child: Icon(icon, size: 21, color: cs.onSurface)),
+            SizedBox(
+              width: 28,
+              child: Icon(icon, size: 21, color: cs.onSurface),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

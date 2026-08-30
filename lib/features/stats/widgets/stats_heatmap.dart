@@ -64,13 +64,13 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 3),
-        child: Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 3),
+    child: Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    ),
+  );
 }
 
 class _BezierHeatmapPainter extends CustomPainter {
@@ -105,8 +105,12 @@ class _BezierHeatmapPainter extends CustomPainter {
     );
     final axisMax = _niceAxisMax(maxTokens);
     final points = _points(chart, axisMax);
-    final axisColor = colorScheme.onSurface.withValues(alpha: isDark ? .56 : .48);
-    final gridColor = colorScheme.onSurface.withValues(alpha: isDark ? .15 : .10);
+    final axisColor = colorScheme.onSurface.withValues(
+      alpha: isDark ? .56 : .48,
+    );
+    final gridColor = colorScheme.onSurface.withValues(
+      alpha: isDark ? .15 : .10,
+    );
     final labelStyle = TextStyle(
       fontSize: 10,
       color: colorScheme.onSurface.withValues(alpha: .58),
@@ -299,10 +303,10 @@ class _BezierHeatmapPainter extends CustomPainter {
     final step = normalized <= 1
         ? 1.0
         : normalized <= 2
-            ? 2.0
-            : normalized <= 5
-                ? 5.0
-                : 10.0;
+        ? 2.0
+        : normalized <= 5
+        ? 5.0
+        : 10.0;
     return step * magnitude;
   }
 
@@ -327,7 +331,11 @@ class _BezierHeatmapPainter extends CustomPainter {
     var drawn = 0.0;
     while (drawn < distance) {
       final next = math.min(drawn + dash, distance);
-      canvas.drawLine(start + direction * drawn, start + direction * next, paint);
+      canvas.drawLine(
+        start + direction * drawn,
+        start + direction * next,
+        paint,
+      );
       drawn = next + gap;
     }
   }

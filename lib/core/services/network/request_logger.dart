@@ -206,8 +206,9 @@ class RequestLogger {
     }
     try {
       final decoded = jsonDecode(candidate);
-      final redacted =
-          const JsonEncoder.withIndent('  ').convert(_redactValue(decoded));
+      final redacted = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(_redactValue(decoded));
       return prefix + redacted;
     } catch (_) {
       return text;

@@ -465,8 +465,7 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
             'keywords': {
               'type': 'array',
               'items': {'type': 'string'},
-              'description':
-                  'Trigger keywords for skills.',
+              'description': 'Trigger keywords for skills.',
             },
             'enabled': {
               'type': 'boolean',
@@ -1547,7 +1546,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     });
   }
 
-
   Future<String> _executeMcpServer(
     Map<String, dynamic> args,
     String operation,
@@ -2478,9 +2476,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
     );
   }
 
-
-
-
   String _title(Map<String, dynamic> args, String target) {
     final explicit = (args['title'] ?? '').toString().trim();
     if (explicit.isNotEmpty) return explicit;
@@ -2539,7 +2534,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       'assistant_id': assistant.id,
     };
   }
-
 
   Map<String, dynamic> _searchSettingsSnapshot(Assistant assistant) {
     final settings = contextProvider.read<SettingsProvider>();
@@ -2688,7 +2682,6 @@ Prefer `plan_action` when the user's wording is ambiguous or the change is large
       assistantId: payload['assistant_id']?.toString(),
     );
   }
-
 
   String _preview(String text, [int max = 500]) {
     final trimmed = text.trim();

@@ -917,9 +917,7 @@ class _SegTabBar extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         decoration: BoxDecoration(
                           color: bg,
-                          borderRadius: BorderRadius.circular(
-                            innerRadius,
-                          ),
+                          borderRadius: BorderRadius.circular(innerRadius),
                         ),
                         alignment: Alignment.center,
                         child: Padding(

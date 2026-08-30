@@ -84,9 +84,7 @@ void main() {
       final total = const TokenUsage(
         promptTokens: 100,
         completionTokens: 20,
-      ).add(
-        const TokenUsage(promptTokens: 160, completionTokens: 8),
-      );
+      ).add(const TokenUsage(promptTokens: 160, completionTokens: 8));
 
       expect(total.promptTokens, 260);
       expect(total.completionTokens, 28);

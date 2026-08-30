@@ -539,8 +539,7 @@ class McpProvider extends ChangeNotifier {
 
   bool _isLegacyBuiltinCopilotServer(McpServerConfig server) {
     return server.transport == McpTransportType.inmemory &&
-        (server.id == 'kelivo_copilot' ||
-            server.name == '@kelivo/copilot');
+        (server.id == 'kelivo_copilot' || server.name == '@kelivo/copilot');
   }
 
   bool _removeLegacyCopilotServers() {

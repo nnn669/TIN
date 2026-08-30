@@ -10,7 +10,11 @@ import 'chat_fluid_motion_controller.dart';
 /// broad, slow-moving color fields and a light overlay so it remains visible
 /// in light mode without competing with chat content.
 class ChatFluidBackground extends StatelessWidget {
-  const ChatFluidBackground({super.key, this.background, this.maskStrength = 1});
+  const ChatFluidBackground({
+    super.key,
+    this.background,
+    this.maskStrength = 1,
+  });
 
   final Widget? background;
   final double maskStrength;
@@ -63,7 +67,8 @@ class _AnimatedChatFluidBackground extends StatefulWidget {
       _AnimatedChatFluidBackgroundState();
 }
 
-class _AnimatedChatFluidBackgroundState extends State<_AnimatedChatFluidBackground>
+class _AnimatedChatFluidBackgroundState
+    extends State<_AnimatedChatFluidBackground>
     with SingleTickerProviderStateMixin {
   static const _paintFramesPerSecond = 18;
   static const _animationDurationSeconds = 30;
@@ -200,16 +205,17 @@ class _FluidBlobPainter extends CustomPainter {
     ];
     for (final blob in blobs) {
       final paint = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            blob.color.withValues(alpha: opacity),
-            blob.color.withValues(alpha: opacity * 0.42),
-            blob.color.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.50, 1],
-        ).createShader(
-          Rect.fromCircle(center: blob.center, radius: blob.radius),
-        );
+        ..shader =
+            RadialGradient(
+              colors: [
+                blob.color.withValues(alpha: opacity),
+                blob.color.withValues(alpha: opacity * 0.42),
+                blob.color.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.50, 1],
+            ).createShader(
+              Rect.fromCircle(center: blob.center, radius: blob.radius),
+            );
       canvas.drawCircle(blob.center, blob.radius, paint);
     }
   }

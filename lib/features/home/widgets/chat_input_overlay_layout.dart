@@ -29,9 +29,7 @@ class ChatInputOverlayLayout extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: ChatFluidBackground(
-            background: background ?? topBackground,
-          ),
+          child: ChatFluidBackground(background: background ?? topBackground),
         ),
         // Keep the title area readable without hiding the fluid motion.
         // The lower gradient edge fades the veil into the background naturally.
@@ -50,18 +48,15 @@ class ChatInputOverlayLayout extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.30),
-                        Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.22),
-                        Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.0),
+                        Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.30),
+                        Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.22),
+                        Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.0),
                       ],
                       stops: const [0.0, 0.56, 1.0],
                     ),

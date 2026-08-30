@@ -54,10 +54,7 @@ class _StatsPageState extends State<StatsPage> {
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        _RangeSelector(
-          selected: _range.preset,
-          onChanged: _setPreset,
-        ),
+        _RangeSelector(selected: _range.preset, onChanged: _setPreset),
         const SizedBox(height: 12),
         StatsSectionCard(
           title: l10n.statsPageHeatmapTitle,
@@ -208,10 +205,7 @@ class _StatsPageState extends State<StatsPage> {
 }
 
 class _RangeSelector extends StatelessWidget {
-  const _RangeSelector({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _RangeSelector({required this.selected, required this.onChanged});
 
   final StatsDateRangePreset selected;
   final ValueChanged<StatsDateRangePreset> onChanged;

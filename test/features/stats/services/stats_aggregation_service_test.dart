@@ -48,9 +48,7 @@ void main() {
 
     test('builds a 30-day heatmap ending on the supplied system date', () {
       final yesterday = DateTime(2026, 5, 2, 9);
-      final conversations = [
-        conversation('c1', createdAt: yesterday),
-      ];
+      final conversations = [conversation('c1', createdAt: yesterday)];
       final messages = {
         'c1': [
           message(
@@ -147,9 +145,9 @@ void main() {
       expect(snapshot.heatmap, hasLength(30));
       expect(snapshot.heatmap.last.date, DateTime(2026, 3, 10));
       expect(
-        snapshot.heatmap.singleWhere(
-          (day) => day.date == DateTime(2026, 3, 8),
-        ).tokens,
+        snapshot.heatmap
+            .singleWhere((day) => day.date == DateTime(2026, 3, 8))
+            .tokens,
         8,
       );
     });

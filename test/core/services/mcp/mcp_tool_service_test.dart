@@ -15,8 +15,7 @@ void main() {
     });
 
     test('falls back to type only without properties', () {
-      final compact =
-          McpToolService.compactSchemaForModel({'type': 'object'});
+      final compact = McpToolService.compactSchemaForModel({'type': 'object'});
       expect(compact['type'], 'object');
       expect(compact.containsKey('propertyNames'), isFalse);
     });
