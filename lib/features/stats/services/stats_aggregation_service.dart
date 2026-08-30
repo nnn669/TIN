@@ -111,8 +111,8 @@ class StatsAggregationService {
   }
 
   static int _messageTokenTotal(ChatMessage message) {
-    final categorized = (message.promptTokens ?? 0) +
-        (message.completionTokens ?? 0);
+    final categorized =
+        (message.promptTokens ?? 0) + (message.completionTokens ?? 0);
     if (categorized > 0) return categorized;
     return message.totalTokens ?? 0;
   }

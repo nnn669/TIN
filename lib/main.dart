@@ -108,9 +108,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ToolApprovalService()),
         ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
         ChangeNotifierProvider(
-          create: (ctx) => AssistantProvider(
-            chatService: ctx.read<ChatService>(),
-          ),
+          create: (ctx) =>
+              AssistantProvider(chatService: ctx.read<ChatService>()),
         ),
         ChangeNotifierProvider(create: (_) => TagProvider()),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
@@ -118,7 +117,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => QuickPhraseProvider()),
         ChangeNotifierProvider(create: (_) => SkillProvider()),
         ChangeNotifierProvider(create: (_) => InstructionInjectionProvider()),
-        ChangeNotifierProvider(create: (_) => InstructionInjectionGroupProvider()),
+        ChangeNotifierProvider(
+          create: (_) => InstructionInjectionGroupProvider(),
+        ),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => BackupReminderProvider()),
         ChangeNotifierProvider(
@@ -277,13 +278,13 @@ class _AppRootState extends State<_AppRoot> {
       } catch (_) {}
       try {
         ctx.read<ChatService>().setDefaultConversationTitle(
-              l10n.chatServiceDefaultConversationTitle,
-            );
+          l10n.chatServiceDefaultConversationTitle,
+        );
       } catch (_) {}
       try {
         ctx.read<UserProvider>().setDefaultNameIfUnset(
-              l10n.userProviderDefaultUserName,
-            );
+          l10n.userProviderDefaultUserName,
+        );
       } catch (_) {}
     });
   }
@@ -295,22 +296,22 @@ class _AppRootState extends State<_AppRoot> {
     TextStyle? withFamily(TextStyle? style) =>
         style?.copyWith(fontFamily: effectiveAppFont);
     TextTheme apply(TextTheme theme) => theme.copyWith(
-          displayLarge: withFamily(theme.displayLarge),
-          displayMedium: withFamily(theme.displayMedium),
-          displaySmall: withFamily(theme.displaySmall),
-          headlineLarge: withFamily(theme.headlineLarge),
-          headlineMedium: withFamily(theme.headlineMedium),
-          headlineSmall: withFamily(theme.headlineSmall),
-          titleLarge: withFamily(theme.titleLarge),
-          titleMedium: withFamily(theme.titleMedium),
-          titleSmall: withFamily(theme.titleSmall),
-          bodyLarge: withFamily(theme.bodyLarge),
-          bodyMedium: withFamily(theme.bodyMedium),
-          bodySmall: withFamily(theme.bodySmall),
-          labelLarge: withFamily(theme.labelLarge),
-          labelMedium: withFamily(theme.labelMedium),
-          labelSmall: withFamily(theme.labelSmall),
-        );
+      displayLarge: withFamily(theme.displayLarge),
+      displayMedium: withFamily(theme.displayMedium),
+      displaySmall: withFamily(theme.displaySmall),
+      headlineLarge: withFamily(theme.headlineLarge),
+      headlineMedium: withFamily(theme.headlineMedium),
+      headlineSmall: withFamily(theme.headlineSmall),
+      titleLarge: withFamily(theme.titleLarge),
+      titleMedium: withFamily(theme.titleMedium),
+      titleSmall: withFamily(theme.titleSmall),
+      bodyLarge: withFamily(theme.bodyLarge),
+      bodyMedium: withFamily(theme.bodyMedium),
+      bodySmall: withFamily(theme.bodySmall),
+      labelLarge: withFamily(theme.labelLarge),
+      labelMedium: withFamily(theme.labelMedium),
+      labelSmall: withFamily(theme.labelSmall),
+    );
 
     final appBar = base.appBarTheme.copyWith(
       titleTextStyle: (base.appBarTheme.titleTextStyle ?? const TextStyle())

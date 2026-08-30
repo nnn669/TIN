@@ -33,11 +33,7 @@ class ToolCallResultCache {
     if (cached != null) return cached;
 
     late final Future<String> pending;
-    pending = _runAndKeepSuccessfulResult(
-      signature,
-      execute,
-      () => pending,
-    );
+    pending = _runAndKeepSuccessfulResult(signature, execute, () => pending);
     _results[signature] = pending;
     return pending;
   }

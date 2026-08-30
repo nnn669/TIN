@@ -958,10 +958,7 @@ class KelivoGithubMcpServerEngine implements KelivoInMemoryMcpServerEngine {
     throw ArgumentError('$name must be an integer');
   }
 
-  static int? _optionalPositiveIntArg(
-    Map<String, dynamic> args,
-    String name,
-  ) {
+  static int? _optionalPositiveIntArg(Map<String, dynamic> args, String name) {
     if (!args.containsKey(name)) return null;
     final raw = args[name];
     if (raw == null) return null;

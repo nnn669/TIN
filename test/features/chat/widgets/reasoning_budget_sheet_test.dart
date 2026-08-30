@@ -88,7 +88,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ReasoningBudgetSheet (stacked layout)', () {
-    testWidgets('renders the five base levels in stacked order', (tester) async {
+    testWidgets('renders the five base levels in stacked order', (
+      tester,
+    ) async {
       final settings = await _settingsForClaudeModel(
         tester,
         'claude-sonnet-4-5',
@@ -150,7 +152,10 @@ void main() {
 
       await _openSheet(tester);
 
-      expect(find.byKey(ThinkingEffortStack.optionKey('xhigh')), findsOneWidget);
+      expect(
+        find.byKey(ThinkingEffortStack.optionKey('xhigh')),
+        findsOneWidget,
+      );
       expect(find.byKey(ThinkingEffortStack.optionKey('max')), findsNothing);
       expect(
         find.byKey(ThinkingEffortStack.optionKey('ultracode')),

@@ -873,10 +873,7 @@ class _ModelSelectSheetState extends State<_ModelSelectSheet> {
                         : _buildContent(context),
                   ),
                 ),
-                Container(
-                  color: cs.surface,
-                  child: _buildBottomTabs(context),
-                ),
+                Container(color: cs.surface, child: _buildBottomTabs(context)),
               ],
             );
           },

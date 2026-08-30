@@ -84,7 +84,8 @@ class KelivoFetcher {
       }
       if (!RegExp(r'^[0-9a-f:]+$').hasMatch(h)) return false;
       if (h == '::' || h == '::1') return true;
-      if (RegExp(r'^fe[89a-f]').hasMatch(h)) return true; // link-local fe80::/10
+      if (RegExp(r'^fe[89a-f]').hasMatch(h))
+        return true; // link-local fe80::/10
       if (h.startsWith('fc') || h.startsWith('fd')) return true; // ULA fc00::/7
       return false;
     }

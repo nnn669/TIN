@@ -24,7 +24,8 @@ class McpToolService extends ChangeNotifier {
       'type': schema['type'] ?? 'object',
       if (names.isNotEmpty) 'propertyNames': names,
       if (required is List && required.isNotEmpty) 'required': required,
-      'note': 'full parameter schemas compacted to save context; use the '
+      'note':
+          'full parameter schemas compacted to save context; use the '
           'listed property names for valid arguments.',
     };
   }

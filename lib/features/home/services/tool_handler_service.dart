@@ -353,7 +353,10 @@ class ToolHandlerService {
   /// 助手「神经权能网关」的审批不经过这里，由 `assistant.appControlPolicy`
   /// 单独判定，不受本开关影响。
   @visibleForTesting
-  Future<bool> shouldRequestMcpApproval(McpProvider mcp, String toolName) async {
+  Future<bool> shouldRequestMcpApproval(
+    McpProvider mcp,
+    String toolName,
+  ) async {
     await autoApprovalStore.ensureLoaded();
     if (autoApprovalStore.enabled) return false;
     return mcp.toolNeedsApproval(toolName);

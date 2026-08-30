@@ -44,15 +44,16 @@ class TokenUsage {
   }) : promptTokens = basePromptTokens + snapshotPromptTokens,
        completionTokens = baseCompletionTokens + snapshotCompletionTokens,
        cachedTokens = baseCachedTokens + snapshotCachedTokens,
-       totalTokens = (basePromptTokens +
+       totalTokens =
+           (basePromptTokens +
                    snapshotPromptTokens +
                    baseCompletionTokens +
                    snapshotCompletionTokens) >
                0
            ? basePromptTokens +
-               snapshotPromptTokens +
-               baseCompletionTokens +
-               snapshotCompletionTokens
+                 snapshotPromptTokens +
+                 baseCompletionTokens +
+                 snapshotCompletionTokens
            : baseTotalTokens + snapshotTotalTokens,
        _isCumulative = true,
        _basePromptTokens = basePromptTokens,
@@ -75,12 +76,12 @@ class TokenUsage {
 
     if (_isCumulative) {
       final nextRound =
-          other.promptTokens > _snapshotPromptTokens &&
-          other.promptTokens > 0;
+          other.promptTokens > _snapshotPromptTokens && other.promptTokens > 0;
       return TokenUsage._cumulative(
         basePromptTokens: nextRound ? promptTokens : _basePromptTokens,
-        baseCompletionTokens:
-            nextRound ? completionTokens : _baseCompletionTokens,
+        baseCompletionTokens: nextRound
+            ? completionTokens
+            : _baseCompletionTokens,
         baseCachedTokens: nextRound ? cachedTokens : _baseCachedTokens,
         baseTotalTokens: nextRound ? totalTokens : _baseTotalTokens,
         snapshotPromptTokens: other.promptTokens,

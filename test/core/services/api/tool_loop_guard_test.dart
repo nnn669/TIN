@@ -20,11 +20,9 @@ void main() {
       final guard = ToolLoopGuard();
       for (var i = 0; i < 120; i++) {
         expect(
-          guard.evaluate(
-            'fetch_txt',
-            const {'url': 'https://example.com'},
-            cached: true,
-          ),
+          guard.evaluate('fetch_txt', const {
+            'url': 'https://example.com',
+          }, cached: true),
           isNull,
         );
       }
@@ -58,10 +56,7 @@ void main() {
         expect(guard.evaluate('read_file', {'path': 'file$i.txt'}), isNull);
       }
       expect(guard.evaluate('search_web', const {'q': 'same'}), isNull);
-      expect(
-        guard.evaluate('read_file', const {'path': 'notes.txt'}),
-        isNull,
-      );
+      expect(guard.evaluate('read_file', const {'path': 'notes.txt'}), isNull);
     });
 
     test('unstable key order does not restrict identical calls', () {
@@ -104,8 +99,12 @@ void main() {
     });
 
     test('list order does change the signature', () {
-      final a = ToolLoopGuard.signatureOf('t', const {'items': [1, 2]});
-      final b = ToolLoopGuard.signatureOf('t', const {'items': [2, 1]});
+      final a = ToolLoopGuard.signatureOf('t', const {
+        'items': [1, 2],
+      });
+      final b = ToolLoopGuard.signatureOf('t', const {
+        'items': [2, 1],
+      });
       expect(a, isNot(b));
     });
   });
@@ -175,22 +174,14 @@ void main() {
       final cache = ToolCallResultCache();
       var executions = 0;
       const args = {'url': 'https://example.com/retry'};
-      final failed = await cache.run(
-        'fetch_txt',
-        args,
-        () async {
-          executions++;
-          return '{"type":"tool_error","error":"network"}';
-        },
-      );
-      final retried = await cache.run(
-        'fetch_txt',
-        args,
-        () async {
-          executions++;
-          return 'recovered';
-        },
-      );
+      final failed = await cache.run('fetch_txt', args, () async {
+        executions++;
+        return '{"type":"tool_error","error":"network"}';
+      });
+      final retried = await cache.run('fetch_txt', args, () async {
+        executions++;
+        return 'recovered';
+      });
       expect(failed, contains('tool_error'));
       expect(retried, 'recovered');
       expect(executions, 2);
