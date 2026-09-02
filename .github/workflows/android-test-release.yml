@@ -87,6 +87,10 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Run CI checks before release build
+        run: |
+          flutter analyze lib/
+          flutter test --coverage
       - name: Calculate Android version code
         shell: bash
         run: |
