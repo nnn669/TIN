@@ -71,3 +71,26 @@ internationalization.md
 /.agent/
 /.agents/
 /skills-lock.json
+
+# Android signing and local config
+*.jks
+*.keystore
+local.properties
+signing.properties
+
+# Coverage and build artifacts
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Flutter/Dart build caches
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Logs
+*.log
+logs/
