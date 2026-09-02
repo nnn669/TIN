@@ -88,6 +88,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.6
   flutter_lints: ^5.0.0
+  coverage: ^2.1.0
+  coverage: ^2.1.0
 
 dependency_overrides:
   permission_handler_windows:
